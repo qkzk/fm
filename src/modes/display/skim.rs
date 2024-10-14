@@ -127,3 +127,15 @@ pub fn print_ansi_str(
     }
     Ok(())
 }
+
+pub fn parse_line_output(items: &[Arc<dyn SkimItem>]) -> Vec<std::path::PathBuf> {
+    items
+        .iter()
+        .map(|s| s.output().to_string())
+        .map(|s| s.split_once(':').unwrap_or(("", "")).0.to_owned())
+        .filter(|s| !s.is_empty())
+        .map(std::path::PathBuf::from)
+        .map(std::fs::canonicalize)
+        .filter_map(|s| s.ok())
+        .collect()
+}

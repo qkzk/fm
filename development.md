@@ -1100,10 +1100,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
 - [x] refactor draw tree line
 - [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
-- [ ]
 - [ ] Badges to latest version
-
-## Current dev
 
 ### Version 0.1.29
 
@@ -1153,28 +1150,127 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
 
+## Current dev
+
+### Version 0.1.30
+
+#### Summary
+
+- shell & exec menu allow %t as terminal expansion. It allows you to open a file in a new terminal.
+  `! %t nvim %s` will open the selected file with neovim in a new terminal.
+- cd command (Alt+g) includes children of a path (detected as soon as you type a /)
+- double clic on a menu item to execute it. Same as a clic then press enter.
+- Fixed a bug where search completion would be made before the char is inserted, displaying wrong results
+- Fixed a bug where preview were built for second pane even if it wasn't visible, wasting ressources
+- Move as you type. In Cd menu (Alt+g), the display and preview is updated as you type.
+  Pressing Esc (leave mode) go back to where you started from.
+  You need to validate with enter.
+- Sync left tab from right path shift+left. shift+right go the other way.
+- A lot of refactoring:
+  - flagged files,
+  - input history,
+  - application start, main loop & quit,
+  - display
+  - menus
+- Fixed a bug where leaving a menu while a tree is displayed resets the index.
+
+#### Changelog
+
+- [x] Refactor flagged files
+  - [x] Fix: can't clic flagged. Display is offset by something
+  - [x] Fix: can't flag files when flagged menu is opened
+  - [x] Fix: removing flagged files can crash.
+  - [x] removed window from flagged
+  - [x] Fix: Too much flags + scroll = crash
+- [x] menus refactor
+  - [x] Fix: closing left menu shouldn't clear right
+  - [x] refactor menu.remote_mount into a separate module with parser & executer
+- [x] DrawMenu used to display most of navigable elements.
+- [x] refactor display.
+  - [x] renamed most methods
+  - [x] separated by mode
+  - [x] common interface using `draw` method from tuikit
+- [x] cd: after typing '/' extend with children
+- [x] exec: allow %t in first param to be expanded to $TERM + flags
+
+  - [x] %t + TAB -> /usr/bin/alacritty -e
+  - [x] Fix after ! command, empty preview is displayed
+  - [x] documentation, help
+
+- [x] Fix: :Preview does nothing. Had to create a new kind of event
+- [ ] revisit cloud configuration make it permanent
+  - [ ] something is wrong, IDK what
+- [x] double clic on menu items
+- [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
+- [x] FIX: previewer is called even when preview can't be seen
+- [x] FIX: Refresher is sending its quit message trought a closed channel
+- [x] tree: separate builder for nodes and for treelines
+- [x] non bloking previews, "simple" way.
+  - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
+  - [x] refresher send more events, also asking for previews to be checked
+  - [x] check if a preview should be asked in app every event received
+  - [x] don't display obsoletes previews
+  - [ ] tests, perf, memory usage...
+- [x] refactor app:
+  - [x] simplify update loop
+  - [x] simplify build
+  - [x] simplify early exit
+- [x] don't pass users to preview, build them if needed in tree
+- [x] Move as you type in Alt+g, esc go back to previous
+  - [x] hold origin in tab
+  - [x] cd there as you type
+  - [x] reset when pressing Esc
+  - [x] Fix: preview doesn't update every time
+    - [x] cd should be called from status or parent not menu
+    - [x] request a preview
+    - [x] preview is updated when input is a directory
+    - [x] preview is updated when input is an existing file
+  - [x] NOT A BUG, a kernel feature:
+        multiple //// are allowed in pathes, kernel collapses them into a single separator.
+        [See StackOverflow](https://stackoverflow.com/questions/16840916/what-is-path-how-is-it-different-from)
+  - [x] can't use history. Every cd is recorded, so when need to remember where we started...
+- [x] refactor input history calls
+- [x] sync left to right or right left with shift+arrow
+- [x] removed unused struct
+- [ ] search refactor
+  - [x] common trait to impl iter from index to index in tree & directory.
+  - [x] macro like impl_selectable
+  - [x] move search execution to status
+  - [x] refactor status.search & status.search_again
+  - [x] use reference to files, avoiding a clone
+  - [x] FIX: tree search doesn't find first match
+  - [x] FIX: search doesn't update if tab
+- [x] Refactor completion
+- [x] leavemode small refactor
+- [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
+- [x] removed backtab action
+- [x] FIX: leaving a menu while in tree resets the index.
+- [x] Massive renaming and moving.
+- [x] Simplify display mode comparison with a few methods. Should make the code more readable
+- [ ] directory preview should just be a "directory" ?
+
 ## TODO
 
-- [ ] google drive should be a display ?
-- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
-- [ ] menus refactor
-  - [ ] open 2 menus at once
-  - [ ] maybe use the same system as preview, create them on the fly
-  - [ ] attach menus to tab, where they belong
-  - [ ] leaving left menu shouldn't reset right menu
+### Next version
+
 - [ ] replace tuikit by ratatui + crossterm
+  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
+  - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+- [ ] common trait to validate a data : input string, config, args...
+- [ ] google drive should be a display ?
+- [ ] previews: find a way to stop
+
+### Other ideas
+
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
       Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
-- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
-- [ ] move as you type in Alt+g
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
-- [ ] refactor & unify all shell commands
-- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control

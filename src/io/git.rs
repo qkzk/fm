@@ -148,9 +148,7 @@ pub fn git(path: &Path) -> Result<String> {
         // We're most likely not in a Git repo
         return Ok("".to_owned());
     }
-    let porcerlain_output = String::from_utf8(output.stdout)
-        .ok()
-        .context("Invalid UTF-8 while decoding Git output")?;
+    let porcerlain_output = String::from_utf8(output.stdout)?;
 
     GitStatus::parse_porcelain2(porcerlain_output)
         .context("Error while parsing Git output")?

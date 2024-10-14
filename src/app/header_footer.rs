@@ -3,8 +3,8 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::common::{
-        PathShortener, UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-        LOG_SECOND_SENTENCE,
+        PathShortener, UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LAZYGIT,
+        LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
     };
     use crate::event::ActionMap;
     use crate::modes::{
@@ -237,14 +237,16 @@ mod inner {
     }
 
     impl Footer {
-        const FOOTER_ACTIONS: [ActionMap; 6] = [
-            ActionMap::Nothing, // position
-            ActionMap::Ncdu,
-            ActionMap::Sort,
-            ActionMap::LazyGit,
-            ActionMap::DisplayFlagged,
-            ActionMap::Sort,
-        ];
+        fn footer_actions() -> [ActionMap; 6] {
+            [
+                ActionMap::Nothing, // position
+                ActionMap::Custom("%t ".to_owned() + NCDU),
+                ActionMap::Sort,
+                ActionMap::Custom("%t ".to_owned() + LAZYGIT),
+                ActionMap::DisplayFlagged,
+                ActionMap::Sort,
+            ]
+        }
 
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
@@ -268,7 +270,7 @@ mod inner {
                 let elem = ClickableString::new(
                     string.to_owned(),
                     Align::Left,
-                    Self::FOOTER_ACTIONS[index].to_owned(),
+                    Self::footer_actions()[index].to_owned(),
                     left,
                 );
                 left += elem.width();
@@ -303,7 +305,7 @@ mod inner {
         fn string_first_row_position(tab: &Tab) -> Result<String> {
             let len: usize;
             let index: usize;
-            if matches!(tab.display_mode, Display::Tree) {
+            if tab.display_mode.is_tree() {
                 index = tab.tree.selected_node().context("no node")?.index() + 1;
                 len = tab.tree.len();
             } else {
@@ -500,7 +502,7 @@ mod inner {
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
-                    TextKind::CliInfo => Self::make_colored_text(text_content),
+                    TextKind::CommandStdout => Self::make_colored_text(text_content),
                     TextKind::Help => Self::make_help(),
                     TextKind::Log => Self::make_log(),
                     _ => Self::make_default_preview(status, tab),

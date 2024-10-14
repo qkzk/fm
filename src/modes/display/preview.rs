@@ -24,8 +24,8 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind,
-    SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
+    Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -180,18 +180,16 @@ impl Preview {
     }
 }
 
-pub struct PreviewBuilder<'a> {
+pub struct PreviewBuilder {
     path: PathBuf,
-    users: &'a Users,
 }
 
-impl<'a> PreviewBuilder<'a> {
+impl PreviewBuilder {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    pub fn new(path: &Path, users: &'a Users) -> Self {
+    pub fn new(path: &Path) -> Self {
         Self {
             path: path.to_owned(),
-            users,
         }
     }
 
@@ -225,22 +223,18 @@ impl<'a> PreviewBuilder<'a> {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     fn directory(&self) -> Result<Preview> {
-        Ok(Preview::Tree(Tree::new(
-            std::sync::Arc::from(self.path.as_path()),
-            4,
-            SortKind::tree_default(),
-            self.users,
-            false,
-            &FilterKind::All,
-        )))
+        let users = Users::default();
+        Ok(Preview::Tree(
+            TreeBuilder::new(std::sync::Arc::from(self.path.as_path()), &users)
+                .with_max_depth(4)
+                .with_hidden(false)
+                .with_filter_kind(&FilterKind::All)
+                .build(),
+        ))
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
-        Self::new(
-            &std::fs::read_link(&self.path).unwrap_or_default(),
-            self.users,
-        )
-        .build()
+        Self::new(&std::fs::read_link(&self.path).unwrap_or_default()).build()
     }
 
     fn normal_file(&self) -> Result<Preview> {
@@ -352,7 +346,7 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
-        Preview::Text(Text::cli_info(output, command))
+        Preview::Text(Text::command_stdout(output, command))
     }
 }
 
@@ -373,7 +367,7 @@ pub enum TextKind {
 
     Archive,
     Blockdevice,
-    CliInfo,
+    CommandStdout,
     Epub,
     FifoChardevice,
     Help,
@@ -543,12 +537,12 @@ impl Text {
         )
     }
     /// Make a new previewed colored text.
-    pub fn cli_info(output: &str, title: String) -> Self {
+    pub fn command_stdout(output: &str, title: String) -> Self {
         let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         let length = content.len();
         Self {
             title,
-            kind: TextKind::CliInfo,
+            kind: TextKind::CommandStdout,
             content,
             length,
         }
@@ -852,4 +846,4 @@ pub type VecSyntaxedString = Vec<SyntaxedString>;
 impl_window!(HLContent, VecSyntaxedString);
 impl_window!(Text, String);
 impl_window!(BinaryContent, Line);
-impl_window!(TreeLines, TreeLineBuilder);
+impl_window!(TreeLines, TLine);

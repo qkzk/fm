@@ -89,7 +89,10 @@ impl Config {
 /// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::default();
-    let file = File::open(path::Path::new(&tilde(path).to_string()))?;
+    let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+        crate::log_info!("Couldn't read config file at {path}");
+        return Ok(config);
+    };
     let Ok(yaml) = from_reader(file) else {
         return Ok(config);
     };

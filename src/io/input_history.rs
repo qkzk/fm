@@ -4,11 +4,11 @@ use std::io::Write;
 use clap::Parser;
 use strum_macros::Display;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::common::{read_lines, tilde};
 use crate::io::Args;
-use crate::modes::{Edit, InputCompleted, InputSimple};
+use crate::modes::{InputCompleted, InputSimple, Menu};
 
 pub struct InputHistory {
     file_path: std::path::PathBuf,
@@ -48,7 +48,7 @@ impl InputHistory {
         Ok(())
     }
 
-    pub fn filter_by_mode(&mut self, edit_mode: Edit) {
+    pub fn filter_by_mode(&mut self, edit_mode: Menu) {
         let Some(kind) = HistoryKind::from_mode(edit_mode) else {
             return;
         };
@@ -82,7 +82,7 @@ impl InputHistory {
     }
 
     /// If logs are disabled, nothing is saved on disk, only during current session
-    pub fn update(&mut self, mode: Edit, input_string: &str) -> Result<()> {
+    pub fn update(&mut self, mode: Menu, input_string: &str) -> Result<()> {
         let Some(elem) = HistoryElement::from_mode_input_string(mode, input_string) else {
             return Ok(());
         };
@@ -94,76 +94,40 @@ impl InputHistory {
     }
 }
 
-#[derive(Display, PartialEq, Eq, Clone)]
+#[derive(Display, Clone, PartialEq, Eq)]
 pub enum HistoryKind {
-    Cd,
-    Search,
-    Exec,
-    Action,
-    Rename,
-    Chmod,
-    Newfile,
-    Newdir,
-    RegexMatch,
-    Sort,
-    Filter,
-    SetNvimAddr,
-    Shell,
-    Remote,
+    InputSimple(InputSimple),
+    InputCompleted(InputCompleted),
 }
 
 impl HistoryKind {
     fn from_string(kind: &String) -> Result<Self> {
         Ok(match kind.as_ref() {
-            "Cd" => Self::Cd,
-            "Search" => Self::Search,
-            "Exec" => Self::Exec,
-            "Action" => Self::Action,
-            "Rename" => Self::Rename,
-            "Chmod" => Self::Chmod,
-            "Newfile" => Self::Newfile,
-            "Newdir" => Self::Newdir,
-            "RegexMatch" => Self::RegexMatch,
-            "Sort" => Self::Sort,
-            "Filter" => Self::Filter,
-            "SetNvimAddr" => Self::SetNvimAddr,
-            "Shell" => Self::Shell,
-            "Remote" => Self::Remote,
-            _ => return Err(anyhow!("{kind} isn't a valid HistoryKind")),
+            "Cd" => Self::InputCompleted(InputCompleted::Cd),
+            "Search" => Self::InputCompleted(InputCompleted::Search),
+            "Exec" => Self::InputCompleted(InputCompleted::Exec),
+            "Action" => Self::InputCompleted(InputCompleted::Action),
+
+            "Shell" => Self::InputSimple(InputSimple::Shell),
+            "Chmod" => Self::InputSimple(InputSimple::Chmod),
+            "Sort" => Self::InputSimple(InputSimple::Sort),
+            "Rename" => Self::InputSimple(InputSimple::Rename),
+            "Newfile" => Self::InputSimple(InputSimple::Newfile),
+            "Newdir" => Self::InputSimple(InputSimple::Newdir),
+            "RegexMatch" => Self::InputSimple(InputSimple::RegexMatch),
+            "Filter" => Self::InputSimple(InputSimple::Filter),
+            "SetNvimAddr" => Self::InputSimple(InputSimple::SetNvimAddr),
+            "Remote" => Self::InputSimple(InputSimple::Remote),
+
+            _ => bail!("{kind} isn't a valid HistoryKind"),
         })
     }
 
-    fn from_input_simple(input_simple: InputSimple) -> Option<Self> {
-        match input_simple {
-            InputSimple::Rename => Some(Self::Rename),
-            InputSimple::Chmod => Some(Self::Chmod),
-            InputSimple::Newfile => Some(Self::Newfile),
-            InputSimple::Newdir => Some(Self::Newdir),
-            InputSimple::RegexMatch => Some(Self::RegexMatch),
-            InputSimple::Sort => Some(Self::Sort),
-            InputSimple::Filter => Some(Self::Filter),
-            InputSimple::SetNvimAddr => Some(Self::SetNvimAddr),
-            InputSimple::Shell => Some(Self::Shell),
-            InputSimple::Remote => Some(Self::Remote),
-            _ => None,
-        }
-    }
-
-    fn from_input_completed(input_completed: InputCompleted) -> Self {
-        match input_completed {
-            InputCompleted::Cd => Self::Cd,
-            InputCompleted::Search => Self::Search,
-            InputCompleted::Exec => Self::Exec,
-            InputCompleted::Action => Self::Action,
-        }
-    }
-
-    fn from_mode(edit_mode: Edit) -> Option<Self> {
+    fn from_mode(edit_mode: Menu) -> Option<Self> {
         match edit_mode {
-            Edit::InputSimple(input_simple) => Self::from_input_simple(input_simple),
-            Edit::InputCompleted(input_completed) => {
-                Some(Self::from_input_completed(input_completed))
-            }
+            Menu::InputSimple(InputSimple::Password(_, _) | InputSimple::CloudNewdir) => None,
+            Menu::InputSimple(input_simple) => Some(Self::InputSimple(input_simple)),
+            Menu::InputCompleted(input_completed) => Some(Self::InputCompleted(input_completed)),
             _ => None,
         }
     }
@@ -197,7 +161,7 @@ impl HistoryElement {
         Ok((kind.to_owned(), content.to_owned()))
     }
 
-    pub fn from_mode_input_string(mode: Edit, input_string: &str) -> Option<Self> {
+    pub fn from_mode_input_string(mode: Menu, input_string: &str) -> Option<Self> {
         let kind = HistoryKind::from_mode(mode)?;
         Some(Self {
             kind,

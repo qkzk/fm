@@ -1,18 +1,13 @@
-use anyhow::anyhow;
-use anyhow::Context;
-use anyhow::Result;
-use opendal::services;
-use opendal::Entry;
-use opendal::EntryMode;
-use opendal::Operator;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_yml::from_str;
-use serde_yml::to_string as to_yml_string;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use std::borrow::Cow;
+
+use anyhow::{anyhow, Context, Result};
+use opendal::{services, Entry, EntryMode, Operator};
+use serde::{Deserialize, Serialize};
+use serde_yml::{from_str, to_string as to_yml_string};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
+use crate::io::{CowStr, DrawMenu};
 use crate::modes::{human_size, FileInfo};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -125,10 +120,8 @@ pub fn get_cloud_token_names() -> Result<Vec<String>> {
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file())
         .map(|e| e.file_name().to_string_lossy().to_string())
-        .filter(|filename| filename.starts_with("token_"))
-        .filter(|filename| filename.ends_with(".yaml"))
-        .map(|filename| filename.replace("token_", ""))
-        .map(|filename| filename.replace(".yaml", ""))
+        .filter(|filename| filename.starts_with("token_") && filename.ends_with(".yaml"))
+        .map(|filename| filename.replace("token_", "").replace(".yaml", ""))
         .collect())
 }
 
@@ -410,3 +403,11 @@ impl OpendalContainer {
 
 impl_selectable!(OpendalContainer);
 impl_content!(Entry, OpendalContainer);
+
+impl CowStr for Entry {
+    fn cow_str(&self) -> Cow<str> {
+        format!("{mode} {path}", mode = self.mode_fmt(), path = self.path()).into()
+    }
+}
+
+impl DrawMenu<Entry> for OpendalContainer {}

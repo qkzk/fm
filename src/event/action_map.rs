@@ -1,10 +1,10 @@
 use anyhow::Result;
+use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::EventAction;
-use crate::modes::LeaveMode;
 
 /// Different kind of action which can be mapped to a key.
 /// All those actions are mapped to a key and this enum
@@ -14,7 +14,6 @@ use crate::modes::LeaveMode;
 pub enum ActionMap {
     Action,
     Back,
-    BackTab,
     Backspace,
     Bulk,
     Cd,
@@ -52,7 +51,6 @@ pub enum ActionMap {
     History,
     Home,
     KeyHome,
-    LazyGit,
     Log,
     MarksJump,
     MarksNew,
@@ -60,7 +58,6 @@ pub enum ActionMap {
     MoveLeft,
     MoveRight,
     MoveUp,
-    Ncdu,
     NextThing,
     NewDir,
     NewFile,
@@ -91,6 +88,7 @@ pub enum ActionMap {
     Shortcut,
     Sort,
     Symlink,
+    SyncLTR,
     Tab,
     ToggleDisplayFull,
     ToggleDualPane,
@@ -115,7 +113,6 @@ impl ActionMap {
         match self {
             Self::Action => EventAction::action(status),
             Self::Back => EventAction::back(status),
-            Self::BackTab => EventAction::backtab(status),
             Self::Backspace => EventAction::backspace(status),
             Self::Bulk => EventAction::bulk(status),
             Self::Cd => EventAction::cd(status),
@@ -154,14 +151,12 @@ impl ActionMap {
             Self::Home => EventAction::home(status),
             Self::KeyHome => EventAction::key_home(status),
             Self::Log => EventAction::log(status),
-            Self::LazyGit => EventAction::lazygit(status),
             Self::MarksJump => EventAction::marks_jump(status),
             Self::MarksNew => EventAction::marks_new(status),
             Self::MoveDown => EventAction::move_down(status),
             Self::MoveLeft => EventAction::move_left(status),
             Self::MoveRight => EventAction::move_right(status),
             Self::MoveUp => EventAction::move_up(status),
-            Self::Ncdu => EventAction::ncdu(status),
             Self::NextThing => EventAction::next_thing(status),
             Self::NewDir => EventAction::new_dir(status),
             Self::NewFile => EventAction::new_file(status),
@@ -190,6 +185,7 @@ impl ActionMap {
             Self::Shortcut => EventAction::shortcut(status),
             Self::Sort => EventAction::sort(status),
             Self::Symlink => EventAction::symlink(status),
+            Self::SyncLTR => EventAction::sync_ltr(status),
             Self::Tab => EventAction::tab(status),
             Self::ToggleDisplayFull => EventAction::toggle_display_full(status),
             Self::ToggleDualPane => EventAction::toggle_dualpane(status),
@@ -199,7 +195,7 @@ impl ActionMap {
             Self::TrashEmpty => EventAction::trash_empty(status),
             Self::TrashMoveFile => EventAction::trash_move_file(status),
             Self::TrashOpen => EventAction::trash_open(status),
-            Self::TrashRestoreFile => LeaveMode::trash(status),
+            Self::TrashRestoreFile => EventAction::trash_restore(status),
             Self::Tree => EventAction::tree(status),
             Self::TreeFold => EventAction::tree_fold(status),
             Self::TreeFoldAll => EventAction::tree_fold_all(status),
@@ -215,7 +211,6 @@ impl ActionMap {
         match self {
             Self::Action => "ACTION",
             Self::Back => "move back to previous dir",
-            Self::BackTab => "cycle tab",
             Self::Backspace => "delete previous char",
             Self::Bulk => "BULK",
             Self::Cd => "CD",
@@ -231,7 +226,7 @@ impl ActionMap {
             Self::Custom(_) => "custom command",
             Self::CutPaste => "move to current dir",
             Self::Delete => "delete files permanently",
-            Self::DeleteLine => "delete the whole line",
+            Self::DeleteLine => "delete the whole line / Sync left tab from right tab",
             Self::DisplayFlagged => "FLAGGED",
             Self::EncryptedDrive => "ENCRYPTED DRIVE",
             Self::End => "go to last line",
@@ -254,7 +249,6 @@ impl ActionMap {
             Self::History => "HISTORY",
             Self::Home => "move to $HOME",
             Self::KeyHome => "go to first line",
-            Self::LazyGit => "open lazygit in terminal",
             Self::Log => "open the logs",
             Self::MarksJump => "jump to a mark",
             Self::MarksNew => "mark current path",
@@ -262,7 +256,6 @@ impl ActionMap {
             Self::MoveLeft => "cd to parent directory ",
             Self::MoveRight => "cd to child directory",
             Self::MoveUp => "one line up  ",
-            Self::Ncdu => "open NCDU in a terminal",
             Self::NewDir => "NEWDIR ",
             Self::NewFile => "NEWFILE",
             Self::NextThing => "select next 'thing'",
@@ -304,6 +297,7 @@ impl ActionMap {
             Self::Shortcut => "SHORTCUT",
             Self::Sort => "SORT",
             Self::Symlink => "symlink to current dir",
+            Self::SyncLTR => "Sync right tab from left tab path",
             Self::Tab => "cycle tab",
             Self::ToggleDisplayFull => "toggle full metadata display of files",
             Self::ToggleDualPane => "toggle dual pane - if the width is sufficiant",
@@ -320,5 +314,12 @@ impl ActionMap {
             Self::TreeUnFoldAll => "Unfold every node",
             Self::TuiMenu => "TUI APPS",
         }
+    }
+
+    pub fn actions_matching(key: String) -> Vec<String> {
+        Self::iter()
+            .filter(|action| action.to_string().to_lowercase().contains(&key))
+            .map(|action| action.to_string())
+            .collect()
     }
 }

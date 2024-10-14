@@ -232,7 +232,6 @@ Only developpers of fm should be concerned.
 - Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
 - Drag and drop files (requires dragon-drop installed) with D
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
-- Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
 - Enter "command mode" with ':'. Type the name of a command and it will be executed.
 - Mount a remote filesystem using ssfhs with Alt-r.
@@ -352,21 +351,13 @@ Alt('f')  :      FILTER
     (by name "n name", by ext "e ext", "d only directories" or "a all" for reset)
 Enter     :      Execute mode then NORMAL
 
-- MOC -
-Control MOC from your TUI
-CtrlUp    :      MOCP: Add selected file or folder to the playlist
-CtrlLeft  :      MOCP: Previous song
-CtrlDown  :      MOCP: Toggle play/pause.
-CtrlRight :      MOCP: Next song
-AltEnter  :      MOCP: Go to currently playing song
-Ctrl('x') :      MOCP: Clear the playlist
-
 - CUSTOM ACTIONS -
 %s: the selected file,
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
 %p: the full path of the current directory.
+%t: the currently set terminal & its flags.
 Alt('u'):        /usr/bin/google-chrome-stable %s
 Char('D'):        /usr/bin/dragon-drop %s
 ```
@@ -397,7 +388,7 @@ You can configure :
 - **Colors** of files.
   Non standard files (directory, char devices, block devices, symlinks, sockets, fifo) have their own configurable colors.
   You can use ansi colors or rgb values.
-  Standard files are colored by their extension and you can use 3 differents palettes (red-green, red-blue or green-blue).
+  Standard files are colored by their extension and you can use any gradient between two colors
   Every extension has its own random color.
 
 ## External dependencies
@@ -408,7 +399,6 @@ Most of the openers and tui applications are configurable from config files. Som
 - [faillock](https://linux.die.net/man/8/faillock): reset failed sudo attempts
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
-- [MOC](https://moc.daper.net/) Music On Console allows you to play music from your terminal
 - [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
 - [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file

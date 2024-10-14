@@ -1,13 +1,12 @@
 use std::process::exit;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{mpsc, Arc, Mutex};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, init_term, print_on_quit, CONFIG_PATH};
-use crate::config::{cloud_config, load_config, set_configurable_static, Config, START_FOLDER};
+use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{set_loggers, Args, Opener};
 use crate::log_info;
@@ -46,41 +45,28 @@ impl FM {
     ///
     /// May fail if the [`tuikit::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
-        set_loggers()?;
-        let Ok(config) = load_config(CONFIG_PATH) else {
-            Self::exit_wrong_config()
-        };
+        let (config, start_folder) = Self::early_exit()?;
+        log_info!("start folder: {start_folder}");
+        set_configurable_static(&start_folder)?;
+        Self::build(config)
+    }
 
-        let args = Args::parse();
-
-        if args.keybinds {
-            Self::exit_with_binds(&config);
-        }
-
-        if args.cloudconfig {
-            Self::exit_with_cloud_config()?;
-        }
-
-        set_configurable_static(&args.path)?;
-        Self::display_start_folder()?;
-
-        let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
+    fn build(config: Config) -> Result<Self> {
+        let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
         let term = Arc::new(init_term()?);
         let fm_sender = Arc::new(fm_sender);
+
         let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let opener = Opener::new(&config.terminal, &config.terminal_flag);
         let status = Arc::new(Mutex::new(Status::new(
-            term.term_size()?.1,
             term.clone(),
-            opener,
+            Opener::new(&config.terminal, &config.terminal_flag),
             &config.binds,
             fm_sender.clone(),
         )?));
-        drop(config);
-
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
+
         Ok(Self {
             event_reader,
             event_dispatcher,
@@ -90,13 +76,22 @@ impl FM {
         })
     }
 
-    fn display_start_folder() -> Result<()> {
-        let startfolder = START_FOLDER.get().context("Startfolder should be set")?;
-        log_info!(
-            "start folder: {startfolder}",
-            startfolder = startfolder.display(),
-        );
-        Ok(())
+    /// Read config and args, leaving immediatly if the arguments say so.
+    fn early_exit() -> Result<(Config, String)> {
+        let args = Args::parse();
+        if args.log {
+            set_loggers()?;
+        }
+        let Ok(config) = load_config(CONFIG_PATH) else {
+            Self::exit_wrong_config()
+        };
+        if args.keybinds {
+            Self::exit_with_binds(&config);
+        }
+        if args.cloudconfig {
+            Self::exit_with_cloud_config()?;
+        }
+        Ok((config, args.path))
     }
 
     fn exit_with_binds(config: &Config) {
@@ -117,43 +112,28 @@ impl FM {
         exit(1)
     }
 
-    /// Return the last event received by the terminal
-    ///
-    /// # Errors
-    ///
-    /// May fail if the terminal crashes
-    fn poll_event(&self) -> Result<FmEvents> {
-        self.event_reader.poll_event()
-    }
-
     /// Update itself, changing its status.
     fn update(&mut self, event: FmEvents) -> Result<()> {
-        match self.status.lock() {
-            Ok(mut status) => {
-                self.event_dispatcher.dispatch(&mut status, event)?;
-                status.refresh_shortcuts();
-                drop(status);
-                Ok(())
-            }
-            Err(error) => Err(anyhow!("Error locking status: {error}")),
-        }
+        let Ok(mut status) = self.status.lock() else {
+            bail!("Error locking status");
+        };
+        self.event_dispatcher.dispatch(&mut status, event)?;
+        status.refresh_shortcuts();
+        Ok(())
     }
 
     /// True iff the application must quit.
     fn must_quit(&self) -> Result<bool> {
-        match self.status.lock() {
-            Ok(status) => Ok(status.must_quit()),
-            Err(error) => Err(anyhow!("Error locking status: {error}")),
-        }
+        let Ok(status) = self.status.lock() else {
+            bail!("Error locking status");
+        };
+        Ok(status.must_quit())
     }
 
-    /// Run the status loop and returns itself after completion.
+    /// Run the update status loop and returns itself after completion.
     pub fn run(mut self) -> Result<Self> {
-        while let Ok(event) = self.poll_event() {
-            self.update(event)?;
-            if self.must_quit()? {
-                break;
-            }
+        while !self.must_quit()? {
+            self.update(self.event_reader.poll_event())?;
         }
         Ok(self)
     }
@@ -179,6 +159,9 @@ impl FM {
         drop(self.event_dispatcher);
         self.displayer.quit();
         self.refresher.quit();
+        if let Ok(status) = self.status.lock() {
+            status.previewer.quit()
+        }
         drop(self.status);
 
         print_on_quit(final_path);

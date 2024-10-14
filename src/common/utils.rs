@@ -91,7 +91,7 @@ pub fn current_uid() -> Result<u32> {
 /// Get the current username as a String.
 /// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
-    Users::new()
+    Users::only_users()
         .get_user_by_uid(current_uid()?)
         .context("Couldn't read my own name")
         .cloned()

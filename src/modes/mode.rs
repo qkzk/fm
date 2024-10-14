@@ -93,7 +93,7 @@ impl std::fmt::Display for NeedConfirmation {
 /// the name of a new file, of a new directory,
 /// A regex to match all files in current directory,
 /// a kind of sort, a mark name, a new mark or a filter.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum InputSimple {
     /// Rename the selected file
     Rename,
@@ -267,10 +267,26 @@ impl Leave for Navigate {
     }
 }
 
-/// Different "edit" mode in which the application can be.
-/// It dictates the reaction to event and what to display in the bottom window.
+impl Navigate {
+    /// True if the draw_menu trait can be called directly to display this mode
+    pub fn simple_draw_menu(&self) -> bool {
+        matches!(
+            self,
+            Self::Compress
+                | Self::Shortcut
+                | Self::TuiApplication
+                | Self::CliApplication
+                | Self::EncryptedDrive
+                | Self::RemovableDevices
+                | Self::Marks(_)
+        )
+    }
+}
+
+/// Different "menu" mode in which the application can be.
+/// It dictates the reaction to event and is displayed in the bottom window.
 #[derive(Clone, Copy)]
-pub enum Edit {
+pub enum Menu {
     /// Do something that may be completed
     /// Completion may come from :
     /// - executable in $PATH,
@@ -292,7 +308,7 @@ pub enum Edit {
     Nothing,
 }
 
-impl fmt::Display for Edit {
+impl fmt::Display for Menu {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::InputCompleted(input_completed) => input_completed.fmt(f),
@@ -304,7 +320,7 @@ impl fmt::Display for Edit {
     }
 }
 
-impl Edit {
+impl Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
     pub fn cursor_offset(&self) -> usize {
@@ -337,9 +353,14 @@ impl Edit {
             _ => "",
         }
     }
+
+    /// True if the edit mode is "Nothing" aka no menu is opened in this tab.
+    pub fn is_nothing(&self) -> bool {
+        matches!(self, Self::Nothing)
+    }
 }
 
-impl Leave for Edit {
+impl Leave for Menu {
     fn must_refresh(&self) -> bool {
         match self {
             Self::InputCompleted(input_completed) => input_completed.must_refresh(),
@@ -371,7 +392,7 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
@@ -380,4 +401,18 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+}
+
+impl Display {
+    fn is(&self, other: Self) -> bool {
+        self == &other
+    }
+
+    pub fn is_tree(&self) -> bool {
+        self.is(Self::Tree)
+    }
+
+    pub fn is_preview(&self) -> bool {
+        self.is(Self::Preview)
+    }
 }

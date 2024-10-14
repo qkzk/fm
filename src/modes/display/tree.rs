@@ -1,31 +1,17 @@
 use std::borrow::Borrow;
+use std::cmp::min;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tuikit::attr::Attr;
+use tuikit::attr::{Attr, Effect};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
-use crate::modes::{files_collection, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users};
-
-/// Holds a string, its display attributes and the associated pathbuf.
-#[derive(Clone, Debug)]
-pub struct ColoredString {
-    /// A text to be printed. In most case, it should be a filename.
-    pub text: String,
-    /// A pair of [`tuikit::attr::Color`] and [`tuikit::attr::Effect`] used to enhance the text.
-    pub attr: Attr,
-    /// The complete path of this string.
-    pub path: Arc<Path>,
-}
-
-impl ColoredString {
-    /// Creates a new colored string.
-    pub fn new(text: String, attr: Attr, path: Arc<Path>) -> Self {
-        Self { text, attr, path }
-    }
-}
+use crate::impl_index_to_index;
+use crate::modes::{
+    files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
+};
 
 /// An element of a tree.
 /// It's a file/directory, some optional children.
@@ -84,9 +70,9 @@ impl Node {
         self.index
     }
 
-    /// Creates a new fileinfo from the node.
-    pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
-        FileInfo::new(&self.path, users)
+    /// Path of this node
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     #[inline]
@@ -137,11 +123,454 @@ trait Depth {
 }
 
 impl Depth for Arc<Path> {
-    /// Measure the number of components of a `PathBuf`.
+    /// Measure the number of components of a [`std::path::Path`].
     /// For absolute paths, it's the number of folders plus one for / and one for the file itself.
     #[inline]
     fn depth(&self) -> usize {
         self.components().collect::<Vec<_>>().len()
+    }
+}
+
+pub struct TreeBuilder<'a> {
+    root_path: Arc<Path>,
+    users: &'a Users,
+    filter_kind: &'a FilterKind,
+    max_depth: usize,
+    show_hidden: bool,
+    sort_kind: SortKind,
+}
+
+impl<'a> TreeBuilder<'a> {
+    const DEFAULT_DEPTH: usize = 5;
+    const DEFAULT_FILTER: FilterKind = FilterKind::All;
+    const DEFAULT_HIDDEN: bool = false;
+    const DEFAULT_SORT: SortKind = SortKind::tree_default();
+
+    pub fn new(root_path: Arc<Path>, users: &'a Users) -> Self {
+        let filter_kind = &Self::DEFAULT_FILTER;
+        let max_depth = Self::DEFAULT_DEPTH;
+        let show_hidden = Self::DEFAULT_HIDDEN;
+        let sort_kind = Self::DEFAULT_SORT;
+        Self {
+            root_path,
+            users,
+            filter_kind,
+            max_depth,
+            show_hidden,
+            sort_kind,
+        }
+    }
+
+    pub fn with_filter_kind(mut self, filter_kind: &'a FilterKind) -> Self {
+        self.filter_kind = filter_kind;
+        self
+    }
+
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self
+    }
+
+    pub fn with_hidden(mut self, show_hidden: bool) -> Self {
+        self.show_hidden = show_hidden;
+        self
+    }
+
+    pub fn with_sort_kind(mut self, sort_kind: SortKind) -> Self {
+        self.sort_kind = sort_kind;
+        self
+    }
+
+    pub fn build(self) -> Tree {
+        let nodes = NodesBuilder::new(
+            &self.root_path,
+            self.max_depth,
+            self.sort_kind,
+            self.users,
+            self.show_hidden,
+            self.filter_kind,
+        )
+        .build();
+        let displayable_lines = TreeLinesBuilder::new(&nodes, &self.root_path, self.users).build();
+
+        Tree {
+            selected: self.root_path.clone(),
+            root_path: self.root_path,
+            nodes,
+            displayable_lines,
+        }
+    }
+}
+
+pub struct NodesBuilder<'a> {
+    root_path: &'a Arc<Path>,
+    max_depth: usize,
+    sort_kind: SortKind,
+    users: &'a Users,
+    show_hidden: bool,
+    filter_kind: &'a FilterKind,
+    root_depth: usize,
+}
+
+impl<'a> NodesBuilder<'a> {
+    fn new(
+        root_path: &'a Arc<Path>,
+        max_depth: usize,
+        sort_kind: SortKind,
+        users: &'a Users,
+        show_hidden: bool,
+        filter_kind: &'a FilterKind,
+    ) -> Self {
+        let root_depth = root_path.depth();
+        Self {
+            root_path,
+            max_depth,
+            sort_kind,
+            users,
+            show_hidden,
+            filter_kind,
+            root_depth,
+        }
+    }
+
+    #[inline]
+    fn build(self) -> HashMap<Arc<Path>, Node> {
+        let mut stack = vec![self.root_path.to_owned()];
+        let mut nodes = HashMap::new();
+        let mut last_path = self.root_path.to_owned();
+        let mut index = 0;
+
+        while let Some(current_path) = stack.pop() {
+            let current_depth = current_path.depth();
+            if self.current_is_too_deep(current_depth) {
+                continue;
+            }
+            let children = if self.node_may_have_children(current_depth, &current_path) {
+                self.create_children(&mut stack, &current_path)
+            } else {
+                None
+            };
+            let current_node = Node::new(&current_path, children, &last_path, index);
+            self.set_next_for_last(&mut nodes, &current_path, &last_path);
+            last_path = current_path.clone();
+            nodes.insert(current_path.clone(), current_node);
+            index += 1;
+        }
+        self.set_prev_for_root(&mut nodes, last_path);
+        nodes
+    }
+
+    fn current_is_too_deep(&self, current_depth: usize) -> bool {
+        current_depth >= self.max_depth + self.root_depth
+    }
+
+    fn node_may_have_children(&self, current_depth: usize, current_path: &Path) -> bool {
+        self.is_not_too_deep_for_children(current_depth)
+            && current_path.is_dir()
+            && !current_path.is_symlink()
+    }
+
+    fn is_not_too_deep_for_children(&self, current_depth: usize) -> bool {
+        self.root_depth + self.max_depth > 1 + current_depth
+    }
+
+    #[inline]
+    fn set_prev_for_root(&self, nodes: &mut HashMap<Arc<Path>, Node>, last_path: Arc<Path>) {
+        let Some(root_node) = nodes.get_mut(self.root_path) else {
+            unreachable!("root_path should be in nodes");
+        };
+        root_node.prev = last_path;
+        root_node.select();
+    }
+
+    #[inline]
+    fn set_next_for_last(
+        &self,
+        nodes: &mut HashMap<Arc<Path>, Node>,
+        current_path: &Path,
+        last_path: &Path,
+    ) {
+        if let Some(last_node) = nodes.get_mut(last_path) {
+            last_node.next = Arc::from(current_path);
+        };
+    }
+
+    #[inline]
+    fn create_children(
+        &self,
+        stack: &mut Vec<Arc<Path>>,
+        current_path: &Path,
+    ) -> Option<Vec<Arc<Path>>> {
+        if let Some(mut files) = files_collection(
+            current_path,
+            self.users,
+            self.show_hidden,
+            self.filter_kind,
+            true,
+        ) {
+            self.sort_kind.sort(&mut files);
+            let children = Self::make_children_and_stack_them(stack, &files);
+            if !children.is_empty() {
+                return Some(children);
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn make_children_and_stack_them(
+        stack: &mut Vec<Arc<Path>>,
+        files: &[FileInfo],
+    ) -> Vec<Arc<Path>> {
+        files
+            .iter()
+            .map(|fileinfo| fileinfo.path.clone())
+            .inspect(|path| stack.push(path.clone()))
+            .collect()
+    }
+}
+
+#[inline]
+fn first_prefix(prefix: &str) -> String {
+    let mut prefix = prefix.to_string();
+    prefix.push(' ');
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
+    prefix.push_str("└──");
+    prefix
+}
+
+#[inline]
+fn other_prefix(prefix: &str) -> String {
+    let mut prefix = prefix.to_string();
+    prefix.push(' ');
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
+    prefix.push_str("├──");
+    prefix
+}
+
+#[inline]
+fn filename_format(current_path: &Path, folded: bool) -> String {
+    let filename = filename_from_path(current_path)
+        .unwrap_or_default()
+        .to_owned();
+
+    if current_path.is_dir() && !current_path.is_symlink() {
+        if folded {
+            format!("▸ {}", filename)
+        } else {
+            format!("▾ {}", filename)
+        }
+    } else {
+        filename
+    }
+}
+
+struct TreeLinesBuilder<'a> {
+    nodes: &'a HashMap<Arc<Path>, Node>,
+    root_path: &'a Arc<Path>,
+    users: &'a Users,
+}
+
+impl<'a> TreeLinesBuilder<'a> {
+    fn new(
+        nodes: &'a HashMap<Arc<Path>, Node>,
+        root_path: &'a Arc<Path>,
+        users: &'a Users,
+    ) -> Self {
+        Self {
+            nodes,
+            root_path,
+            users,
+        }
+    }
+
+    /// Create a displayable content from the tree.
+    /// Returns 2 informations :
+    /// - the index of the selected node into this content.
+    ///      It's usefull to know where the user clicked
+    /// - a vector of `TreeLineMaker` which holds every information
+    ///     needed to display the tree.
+    ///     We try to keep as much reference as possible and generate
+    ///     the information lazyly, avoiding as much useless calcuations
+    ///     as possible.
+    ///     The metadata information (permissions, modified time etc.) must be
+    ///     calculated immediatly, therefore for every node, since it requires
+    ///     an access to the user list.
+    ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
+    ///     Name format is calculated on the fly.
+    fn build(self) -> TreeLines {
+        let mut stack = vec![("".to_owned(), self.root_path.clone())];
+        let mut lines = vec![];
+        let mut index = 0;
+
+        while let Some((prefix, path)) = stack.pop() {
+            let Some(node) = self.nodes.get(&path) else {
+                continue;
+            };
+
+            if node.selected {
+                index = lines.len();
+            }
+
+            let Ok(fileinfo) = FileInfo::new(&path, self.users) else {
+                continue;
+            };
+
+            lines.push(TLine::new(&fileinfo, &prefix, node, &path));
+
+            if node.have_children() {
+                Self::stack_children(&mut stack, prefix, node);
+            }
+        }
+        TreeLines::new(lines, index)
+    }
+
+    #[inline]
+    fn stack_children(stack: &mut Vec<(String, Arc<Path>)>, prefix: String, current_node: &Node) {
+        let first_prefix = first_prefix(&prefix);
+        let other_prefix = other_prefix(&prefix);
+
+        let Some(children) = &current_node.children else {
+            return;
+        };
+        let mut children = children.iter();
+        let Some(first_leaf) = children.next() else {
+            return;
+        };
+        stack.push((first_prefix, first_leaf.clone()));
+
+        for leaf in children {
+            stack.push((other_prefix.clone(), leaf.clone()));
+        }
+    }
+}
+
+/// A vector of displayable lines used to draw a tree content.
+/// We use the index to follow the user movements in the tree.
+#[derive(Clone, Debug, Default)]
+pub struct TreeLines {
+    pub content: Vec<TLine>,
+    index: usize,
+}
+
+impl TreeLines {
+    fn new(content: Vec<TLine>, index: usize) -> Self {
+        Self { content, index }
+    }
+
+    pub fn content(&self) -> &Vec<TLine> {
+        &self.content
+    }
+
+    /// Index of the currently selected file.
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    /// A reference to the displayable lines.
+    pub fn lines(&self) -> &Vec<TLine> {
+        &self.content
+    }
+
+    fn find_by_path(&self, path: &Path) -> Option<usize> {
+        self.content.iter().position(|tlm| tlm.path() == path)
+    }
+
+    fn unselect(&mut self) {
+        if !self.content.is_empty() {
+            self.content[self.index].unselect()
+        }
+    }
+
+    fn select(&mut self, index: usize) {
+        if !self.content.is_empty() {
+            self.index = index;
+            self.content[self.index].select()
+        }
+    }
+
+    fn selected_is_last(&self) -> bool {
+        self.index + 1 == self.content.len()
+    }
+}
+
+impl_index_to_index!(TLine, TreeLines);
+
+/// Holds a few references used to display a tree line
+/// Only the metadata info is hold.
+#[derive(Clone, Debug)]
+pub struct TLine {
+    folded: bool,
+    prefix: Arc<str>,
+    pub path: Arc<Path>,
+    pub attr: Attr,
+    metadata: String,
+}
+
+impl TLine {
+    /// Uses references to fileinfo, prefix, node & path to create an instance.
+    fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
+        let mut attr = fileinfo.attr();
+        // required for some edge cases when opening the tree while "." is the selected file
+        if node.selected() {
+            attr.effect |= Effect::REVERSE;
+        }
+        let prefix = Arc::from(prefix);
+        let path = Arc::from(path);
+        let metadata = fileinfo
+            .format_no_filename()
+            .unwrap_or_else(|_| "?".repeat(19));
+        let folded = node.folded;
+
+        Self {
+            folded,
+            prefix,
+            path,
+            attr,
+            metadata,
+        }
+    }
+
+    /// Formated filename
+    pub fn filename(&self) -> String {
+        filename_format(&self.path, self.folded)
+    }
+
+    /// Vertical bar displayed before the filename to show
+    /// the adress of the file
+    pub fn prefix(&self) -> &str {
+        self.prefix.borrow()
+    }
+
+    /// Path of the file
+    pub fn path(&self) -> &Path {
+        self.path.borrow()
+    }
+
+    /// Metadata string representation
+    /// permission, size, owner, groupe, modification date
+    pub fn metadata(&self) -> &str {
+        &self.metadata
+    }
+
+    /// Change the current effect to Empty, displaying
+    /// the file as not selected
+    pub fn unselect(&mut self) {
+        self.attr.effect = Effect::empty();
+    }
+
+    /// Change the current effect to `REVERSE`, displaying
+    /// the file as selected.
+    pub fn select(&mut self) {
+        self.attr.effect |= Effect::REVERSE;
+    }
+}
+
+impl ToPath for TLine {
+    fn to_path(&self) -> &Path {
+        &self.path
     }
 }
 
@@ -168,129 +597,6 @@ impl Default for Tree {
 }
 
 impl Tree {
-    /// Creates a new tree, exploring every node until depth is reached.
-    pub fn new(
-        root_path: Arc<Path>,
-        depth: usize,
-        sort_kind: SortKind,
-        users: &Users,
-        show_hidden: bool,
-        filter_kind: &FilterKind,
-    ) -> Self {
-        let nodes = Self::make_nodes(
-            root_path.clone(),
-            depth,
-            sort_kind,
-            users,
-            show_hidden,
-            filter_kind,
-        );
-
-        let content = Self::make_displayable(users, &root_path, &nodes);
-
-        Self {
-            selected: root_path.clone(),
-            root_path,
-            nodes,
-            displayable_lines: content,
-        }
-    }
-
-    #[inline]
-    fn make_nodes(
-        root_path: Arc<Path>,
-        depth: usize,
-        sort_kind: SortKind,
-        users: &Users,
-        show_hidden: bool,
-        filter_kind: &FilterKind,
-    ) -> HashMap<Arc<Path>, Node> {
-        // keep track of the depth
-        let root_depth = root_path.depth();
-        let mut stack = vec![root_path.to_owned()];
-        let mut nodes: HashMap<Arc<Path>, Node> = HashMap::new();
-        let mut last_path = root_path.to_owned();
-        let mut index = 0;
-
-        while let Some(current_path) = stack.pop() {
-            let current_depth = current_path.depth();
-            if current_depth >= depth + root_depth {
-                continue;
-            }
-            let children_will_be_added = depth + root_depth > 1 + current_depth;
-            let children =
-                if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
-                    Self::create_children(
-                        &mut stack,
-                        &current_path,
-                        users,
-                        show_hidden,
-                        filter_kind,
-                        sort_kind,
-                    )
-                } else {
-                    None
-                };
-            let current_node = Node::new(&current_path, children, &last_path, index);
-            Self::set_next_for_last(&mut nodes, &current_path, &last_path);
-            last_path = current_path.clone();
-            nodes.insert(current_path, current_node);
-            index += 1;
-        }
-        Self::set_prev_for_root(&mut nodes, &root_path, &last_path);
-        // Self::set_next_for_last(&mut nodes, &root_path, &last_path);
-        nodes
-    }
-
-    #[inline]
-    fn set_prev_for_root(nodes: &mut HashMap<Arc<Path>, Node>, root_path: &Path, last_path: &Path) {
-        let Some(root_node) = nodes.get_mut(root_path) else {
-            unreachable!("root_path should be in nodes");
-        };
-        root_node.prev = Arc::from(last_path);
-        root_node.select();
-    }
-
-    #[inline]
-    fn set_next_for_last(nodes: &mut HashMap<Arc<Path>, Node>, root_path: &Path, last_path: &Path) {
-        if let Some(last_node) = nodes.get_mut(last_path) {
-            last_node.next = Arc::from(root_path);
-        };
-    }
-
-    #[inline]
-    fn create_children(
-        stack: &mut Vec<Arc<Path>>,
-        current_path: &Path,
-        users: &Users,
-        show_hidden: bool,
-        filter_kind: &FilterKind,
-        sort_kind: SortKind,
-    ) -> Option<Vec<Arc<Path>>> {
-        if let Some(mut files) =
-            files_collection(current_path, users, show_hidden, filter_kind, true)
-        {
-            sort_kind.sort(&mut files);
-            let children = Self::make_children_and_stack_them(stack, &files);
-            if !children.is_empty() {
-                return Some(children);
-            }
-        }
-        None
-    }
-
-    #[inline]
-    fn make_children_and_stack_them(
-        stack: &mut Vec<Arc<Path>>,
-        files: &[FileInfo],
-    ) -> Vec<Arc<Path>> {
-        files
-            .iter()
-            .map(|fileinfo| fileinfo.path.clone())
-            .inspect(|path| stack.push(path.clone()))
-            .collect()
-    }
-
     /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
         self.root_path.borrow()
@@ -350,11 +656,11 @@ impl Tree {
     /// this node in `select_prev` `select_next`.
     /// It will construct all parent path from `/` to `node.path` except for the last one.
     fn node_has_parent_folded(&self, node: &Node) -> bool {
-        let path = &node.path;
-        let mut current_path = std::path::PathBuf::from("/");
-        for part in path.components() {
+        let node_path = node.path();
+        let mut current_path = PathBuf::from("/");
+        for part in node_path.components() {
             current_path = current_path.join(part.as_os_str());
-            if current_path == <Arc<std::path::Path> as Borrow<Path>>::borrow(path) {
+            if current_path == node_path {
                 continue;
             }
             if let Some(current_node) = self.nodes.get(current_path.as_path()) {
@@ -393,7 +699,6 @@ impl Tree {
     fn select_prev(&mut self) {
         let previous_path = self.find_prev_path();
         self.select_path(&previous_path);
-        drop(previous_path);
     }
 
     fn find_prev_path(&self) -> Arc<Path> {
@@ -518,28 +823,27 @@ impl Tree {
         }
         self.remake_displayable(users);
     }
-
-    fn children_of_selected(&self) -> Vec<Arc<Path>> {
-        self.nodes
-            .keys()
-            .filter(|p| p.starts_with(&self.selected) && p != &&self.selected)
-            .map(|p| p.to_owned())
-            .collect()
+    fn children_of_selected(&self) -> Option<&Vec<Arc<Path>>> {
+        self.nodes.get(&self.selected)?.children.as_ref()
     }
 
     fn make_children_reachable(&mut self) {
-        for path in self.children_of_selected().iter() {
-            if let Some(child_node) = self.nodes.get_mut(path) {
-                child_node.reachable = true;
-            };
-        }
+        self.set_children_reachable(true)
     }
 
     fn make_children_unreachable(&mut self) {
-        for path in self.children_of_selected().iter() {
-            if let Some(child_node) = self.nodes.get_mut(path) {
-                child_node.reachable = false;
+        self.set_children_reachable(false)
+    }
+
+    fn set_children_reachable(&mut self, reachable: bool) {
+        let Some(children) = self.children_of_selected() else {
+            return;
+        };
+        for child_path in children.to_owned().iter() {
+            let Some(child_node) = self.nodes.get_mut(child_path) else {
+                continue;
             };
+            child_node.reachable = reachable;
         }
     }
 
@@ -560,53 +864,8 @@ impl Tree {
         self.remake_displayable(users);
     }
 
-    /// Create a displayable content from the tree.
-    /// Returns 2 informations :
-    /// - the index of the selected node into this content.
-    ///      It's usefull to know where the user clicked
-    /// - a vector of `TreeLineMaker` which holds every information
-    ///     needed to display the tree.
-    ///     We try to keep as much reference as possible and generate
-    ///     the information lazyly, avoiding as much useless calcuations
-    ///     as possible.
-    ///     The metadata information (permissions, modified time etc.) must be
-    ///     calculated immediatly, therefore for every node, since it requires
-    ///     an access to the user list.
-    ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
-    ///     Name format is calculated on the fly.
-    fn make_displayable(
-        users: &Users,
-        root_path: &Path,
-        nodes: &HashMap<Arc<Path>, Node>,
-    ) -> TreeLines {
-        let mut stack = vec![("".to_owned(), root_path)];
-        let mut lines = vec![];
-        let mut index = 0;
-
-        while let Some((prefix, path)) = stack.pop() {
-            let Some(node) = nodes.get(path) else {
-                continue;
-            };
-
-            if node.selected {
-                index = lines.len();
-            }
-
-            let Ok(fileinfo) = FileInfo::new(path, users) else {
-                continue;
-            };
-
-            lines.push(TreeLineBuilder::new(&fileinfo, &prefix, node, path));
-
-            if node.have_children() {
-                Self::stack_children(&mut stack, prefix, node);
-            }
-        }
-        TreeLines::new(lines, index)
-    }
-
     fn remake_displayable(&mut self, users: &Users) {
-        self.displayable_lines = Self::make_displayable(users, &self.root_path, &self.nodes);
+        self.displayable_lines = TreeLinesBuilder::new(&self.nodes, &self.root_path, users).build();
     }
 
     pub fn displayable(&self) -> &TreeLines {
@@ -634,34 +893,11 @@ impl Tree {
             .any(|path| has_last_modification_happened_less_than(path, 10).unwrap_or(false))
     }
 
-    #[inline]
-    fn stack_children<'a>(
-        stack: &mut Vec<(String, &'a Path)>,
-        prefix: String,
-        current_node: &'a Node,
-    ) {
-        let first_prefix = first_prefix(&prefix);
-        let other_prefix = other_prefix(&prefix);
-
-        let Some(children) = &current_node.children else {
-            return;
-        };
-        let mut children = children.iter();
-        let Some(first_leaf) = children.next() else {
-            return;
-        };
-        stack.push((first_prefix, first_leaf));
-
-        for leaf in children {
-            stack.push((other_prefix.clone(), leaf));
-        }
-    }
-
     pub fn selected_is_last(&self) -> bool {
         self.displayable_lines.selected_is_last()
     }
 
-    pub fn path_from_index(&self, index: usize) -> Result<std::path::PathBuf> {
+    pub fn path_from_index(&self, index: usize) -> Result<PathBuf> {
         let displayable = self.displayable();
         Ok(displayable
             .lines()
@@ -670,168 +906,26 @@ impl Tree {
             .path()
             .to_owned())
     }
-}
 
-#[inline]
-fn first_prefix(prefix: &str) -> String {
-    let mut prefix = prefix.to_string();
-    prefix.push(' ');
-    prefix = prefix.replace("└──", "  ");
-    prefix = prefix.replace("├──", "│ ");
-    prefix.push_str("└──");
-    prefix
-}
-
-#[inline]
-fn other_prefix(prefix: &str) -> String {
-    let mut prefix = prefix.to_string();
-    prefix.push(' ');
-    prefix = prefix.replace("└──", "  ");
-    prefix = prefix.replace("├──", "│ ");
-    prefix.push_str("├──");
-    prefix
-}
-
-#[inline]
-fn filename_format(current_path: &Path, folded: bool) -> String {
-    let filename = filename_from_path(current_path)
-        .unwrap_or_default()
-        .to_owned();
-
-    if current_path.is_dir() && !current_path.is_symlink() {
-        if folded {
-            format!("▸ {}", filename)
-        } else {
-            format!("▾ {}", filename)
-        }
-    } else {
-        filename
-    }
-}
-
-/// A vector of displayable lines used to draw a tree content.
-/// We use the index to follow the user movements in the tree.
-#[derive(Clone, Debug, Default)]
-pub struct TreeLines {
-    pub content: Vec<TreeLineBuilder>,
-    index: usize,
-}
-
-impl TreeLines {
-    fn new(content: Vec<TreeLineBuilder>, index: usize) -> Self {
-        Self { content, index }
-    }
-
-    pub fn content(&self) -> &Vec<TreeLineBuilder> {
-        &self.content
-    }
-
-    /// Index of the currently selected file.
-    pub fn index(&self) -> usize {
-        self.index
-    }
-
-    /// A reference to the displayable lines.
-    pub fn lines(&self) -> &Vec<TreeLineBuilder> {
-        &self.content
-    }
-
-    fn find_by_path(&self, path: &Path) -> Option<usize> {
-        self.content
+    pub fn lines_enum_skip_take(
+        &self,
+        window: &ContentWindow,
+    ) -> Take<Skip<Enumerate<Iter<TLine>>>> {
+        let lines = self.displayable().lines();
+        let length = lines.len();
+        lines
             .iter()
-            .position(|tlm| <Arc<std::path::Path> as Borrow<Path>>::borrow(&tlm.path) == path)
-    }
-
-    fn unselect(&mut self) {
-        if !self.content.is_empty() {
-            self.content[self.index].unselect()
-        }
-    }
-
-    fn select(&mut self, index: usize) {
-        if !self.content.is_empty() {
-            self.index = index;
-            self.content[self.index].select()
-        }
-    }
-
-    fn selected_is_last(&self) -> bool {
-        self.index + 1 == self.content.len()
+            .enumerate()
+            .skip(window.top)
+            .take(min(length, window.bottom + 1))
     }
 }
 
-/// Holds a few references used to display a tree line
-/// Only the metadata info is hold.
-#[derive(Clone, Debug)]
-pub struct TreeLineBuilder {
-    folded: bool,
-    prefix: Arc<str>,
-    pub path: Arc<Path>,
-    pub attr: Attr,
-    metadata: String,
-}
-
-impl TreeLineBuilder {
-    /// Uses references to fileinfo, prefix, node & path to create an instance.
-    fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let mut attr = fileinfo.attr();
-        // required for some edge cases when opening the tree while "." is the selected file
-        if node.selected() {
-            attr.effect |= tuikit::attr::Effect::REVERSE;
-        }
-        let prefix = Arc::from(prefix);
-        let path = Arc::from(path);
-        let metadata = fileinfo
-            .format_no_filename()
-            .unwrap_or_else(|_| "?".repeat(19));
-        let folded = node.folded;
-
-        Self {
-            folded,
-            prefix,
-            path,
-            attr,
-            metadata,
-        }
-    }
-
-    /// Formated filename
-    pub fn filename(&self) -> String {
-        filename_format(&self.path, self.folded)
-    }
-
-    /// Vertical bar displayed before the filename to show
-    /// the adress of the file
-    pub fn prefix(&self) -> &str {
-        self.prefix.borrow()
-    }
-
-    /// Path of the file
-    pub fn path(&self) -> &Path {
-        self.path.borrow()
-    }
-
-    /// Metadata string representation
-    /// permission, size, owner, groupe, modification date
-    pub fn metadata(&self) -> &str {
-        &self.metadata
-    }
-
-    /// Change the current effect to Empty, displaying
-    /// the file as not selected
-    pub fn unselect(&mut self) {
-        self.attr.effect = tuikit::attr::Effect::empty();
-    }
-
-    /// Change the current effect to `REVERSE`, displaying
-    /// the file as selected.
-    pub fn select(&mut self) {
-        self.attr.effect = tuikit::attr::Effect::REVERSE;
-    }
-}
-
-impl ToPath for TreeLineBuilder {
-    fn to_path(&self) -> &Path {
-        &self.path
+impl IndexToIndex<TLine> for Tree {
+    /// Iterate over line from current index to bottom then from top to current index.
+    ///
+    /// Useful when going to next match in search results
+    fn index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+        self.displayable().index_to_index()
     }
 }

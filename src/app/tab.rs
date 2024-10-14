@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 use std::cmp::min;
+use std::iter::{Enumerate, Skip, Take};
 use std::path;
+use std::slice;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -12,8 +14,9 @@ use crate::config::START_FOLDER;
 use crate::io::Args;
 use crate::log_info;
 use crate::modes::{
-    Content, ContentWindow, Directory, Display, Edit, FileInfo, FileKind, FilterKind, Go, History,
-    Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, Users,
+    Content, ContentWindow, Directory, Display, FileInfo, FileKind, FilterKind, Go, History,
+    IndexToIndex, Menu, Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree,
+    TreeBuilder, Users,
 };
 
 pub struct TabSettings {
@@ -70,9 +73,9 @@ pub struct Tab {
     /// Empty if not in preview mode.
     pub preview: Preview,
 
-    /// The edit mode the application is currenty in.
+    /// The menu currently opened in this tab.
     /// Most of the time is spent in `EditMode::Nothing`
-    pub edit_mode: Edit,
+    pub menu_mode: Menu,
 
     /// The indexes of displayed file
     pub window: ContentWindow,
@@ -92,6 +95,7 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    pub origin_path: Option<std::path::PathBuf>,
 }
 
 impl Tab {
@@ -117,18 +121,19 @@ impl Tab {
         let mut directory =
             Directory::new(start_dir, &users, &settings.filter, settings.show_hidden)?;
         let display_mode = Display::default();
-        let edit_mode = Edit::Nothing;
+        let edit_mode = Menu::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
         let history = History::default();
         let search = Search::empty();
         let index = directory.select_file(path);
         let tree = Tree::default();
+        let origin_path = None;
 
         window.scroll_to(index);
         Ok(Self {
             display_mode,
-            edit_mode,
+            menu_mode: edit_mode,
             window,
             directory,
             height,
@@ -138,6 +143,7 @@ impl Tab {
             users,
             tree,
             settings,
+            origin_path,
         })
     }
 
@@ -168,10 +174,13 @@ impl Tab {
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
-            Display::Tree => {
-                let node = self.tree.selected_node().context("no selected node")?;
-                node.fileinfo(&self.users)
-            }
+            Display::Tree => FileInfo::new(
+                self.tree
+                    .selected_node()
+                    .context("no selected node")?
+                    .path(),
+                &self.users,
+            ),
             _ => Ok(self
                 .directory
                 .selected()
@@ -196,8 +205,8 @@ impl Tab {
 
     /// Returns true if the current mode requires 2 windows.
     /// Only Tree, Normal & Preview doesn't require 2 windows.
-    pub fn need_second_window(&self) -> bool {
-        !matches!(self.edit_mode, Edit::Nothing)
+    pub fn need_menu_window(&self) -> bool {
+        !matches!(self.menu_mode, Menu::Nothing)
     }
 
     /// Returns a string of the current directory path.
@@ -208,11 +217,17 @@ impl Tab {
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) {
         self.preview = PreviewBuilder::empty();
-        if matches!(self.display_mode, Display::Tree) {
-            self.make_tree(None);
+        if self.display_mode.is_tree() {
+            self.remake_same_tree()
         } else {
             self.tree = Tree::default()
         };
+    }
+
+    fn remake_same_tree(&mut self) {
+        let current_path = self.tree.selected_path().to_owned();
+        self.make_tree(None);
+        self.tree.go(To::Path(&current_path))
     }
 
     /// Refresh the current view.
@@ -256,14 +271,11 @@ impl Tab {
         self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
         let users = &self.users;
-        self.tree = Tree::new(
-            path.clone(),
-            5,
-            sort_kind,
-            users,
-            self.settings.show_hidden,
-            &self.settings.filter,
-        );
+        self.tree = TreeBuilder::new(path.clone(), users)
+            .with_hidden(self.settings.show_hidden)
+            .with_filter_kind(&self.settings.filter)
+            .with_sort_kind(sort_kind)
+            .build();
     }
 
     fn make_tree_for_parent(&mut self) -> Result<()> {
@@ -278,7 +290,7 @@ impl Tab {
     /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
         let current_file = self.current_file()?;
-        if let Display::Tree = self.display_mode {
+        if self.display_mode.is_tree() {
             {
                 self.tree = Tree::default();
                 self.refresh_view()
@@ -314,7 +326,7 @@ impl Tab {
     /// Creates a preview and assign it.
     /// Doesn't check if it's the correct action to do according to display.
     fn make_preview_unchecked(&mut self, file_info: FileInfo) {
-        let preview = PreviewBuilder::new(&file_info.path, &self.users)
+        let preview = PreviewBuilder::new(&file_info.path)
             .build()
             .unwrap_or_default();
         self.set_display_mode(Display::Preview);
@@ -324,7 +336,7 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
-        if matches!(self.display_mode, Display::Preview) {
+        if self.display_mode.is_tree() {
             self.preview = PreviewBuilder::empty();
         }
     }
@@ -362,24 +374,19 @@ impl Tab {
 
     /// Reset the display mode and its view.
     pub fn reset_display_mode_and_view(&mut self) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview) {
+        if self.display_mode.is_preview() {
             self.set_display_mode(Display::Directory);
         }
         self.refresh_view()
     }
 
-    pub fn reset_my_files(&mut self) -> Result<()> {
-        self.directory.reset_files(&self.settings, &self.users)
-    }
-
     pub fn set_filter(&mut self, filter: FilterKind) -> Result<()> {
         self.settings.set_filter(filter);
-        self.reset_my_files()?;
-        if let Display::Tree = self.display_mode {
+        self.directory.reset_files(&self.settings, &self.users)?;
+        if self.display_mode.is_tree() {
             self.make_tree(None);
         }
-        let len = self.directory.content.len();
-        self.window.reset(len);
+        self.window.reset(self.directory.content.len());
         Ok(())
     }
 
@@ -394,7 +401,7 @@ impl Tab {
         self.settings.toggle_hidden();
         self.directory.reset_files(&self.settings, &self.users)?;
         self.window.reset(self.directory.content.len());
-        if let Display::Tree = self.display_mode {
+        if self.display_mode.is_tree() {
             self.make_tree(None)
         }
         Ok(())
@@ -442,11 +449,32 @@ impl Tab {
         self.tree.go(To::Path(&selected_path));
     }
 
+    pub fn set_sortkind_per_mode(&mut self) {
+        self.settings.sort_kind = match self.display_mode {
+            Display::Tree => SortKind::tree_default(),
+            _ => SortKind::default(),
+        };
+    }
+
     pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
-        let parent = path.parent().context("no parent")?;
+        crate::log_info!("cd_to_file: {path}", path = path.display());
+        let parent = match path.parent() {
+            Some(parent) => parent,
+            None => std::path::Path::new("/"),
+        };
         self.cd(parent)?;
         self.go_to_file(path);
         Ok(())
+    }
+
+    pub fn try_cd_to_file(&mut self, path_str: String) -> Result<bool> {
+        let path = path::Path::new(&path_str);
+        if path.exists() {
+            self.cd_to_file(path)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Set the pathcontent to a new path.
@@ -454,7 +482,7 @@ impl Tab {
     /// Add the last path to the history of visited paths.
     /// Does nothing in preview or flagged display mode.
     pub fn cd(&mut self, path: &path::Path) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview) {
+        if self.display_mode.is_preview() {
             return Ok(());
         }
         self.search.reset_paths();
@@ -468,7 +496,7 @@ impl Tab {
         self.history.push(&self.current_file()?.path);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
-        if matches!(self.display_mode, Display::Tree) {
+        if self.display_mode.is_tree() {
             self.make_tree(Some(self.settings.sort_kind));
             self.window.reset(self.tree.displayable().lines().len());
         } else {
@@ -478,7 +506,7 @@ impl Tab {
     }
 
     pub fn back(&mut self) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview) {
+        if self.display_mode.is_preview() {
             return Ok(());
         }
         if self.history.content.is_empty() {
@@ -497,7 +525,7 @@ impl Tab {
     where
         P: AsRef<path::Path>,
     {
-        if let Display::Tree = self.display_mode {
+        if self.display_mode.is_preview() {
             self.tree.go(To::Path(file.as_ref()));
         } else {
             let index = self.directory.select_file(file.as_ref());
@@ -536,6 +564,18 @@ impl Tab {
             self.make_tree(None);
         }
         self.tree.go(To::Path(jump_target));
+        Ok(())
+    }
+
+    /// Move back to a previously visited path.
+    /// It may fail if the user has no permission to visit the path
+    pub fn history_cd_to_last(&mut self) -> Result<()> {
+        let Some(file) = self.history.selected() else {
+            return Ok(());
+        };
+        let file = file.to_owned();
+        self.cd_to_file(&file)?;
+        self.history.drop_queue();
         Ok(())
     }
 
@@ -672,6 +712,13 @@ impl Tab {
         self.window.scroll_to(self.tree.displayable().index());
     }
 
+    pub fn tree_enter_dir(&mut self, path: std::sync::Arc<path::Path>) -> Result<()> {
+        self.cd(&path)?;
+        self.make_tree(None);
+        self.set_display_mode(Display::Tree);
+        Ok(())
+    }
+
     /// Move the preview to the top
     pub fn preview_go_top(&mut self) {
         self.window.scroll_to(0)
@@ -732,12 +779,41 @@ impl Tab {
         Ok(())
     }
 
+    pub fn completion_search_files(&mut self) -> Vec<String> {
+        match self.display_mode {
+            Display::Directory => self.search.matches_from(self.directory.content()),
+            Display::Tree => self.search.matches_from(self.tree.displayable().content()),
+            Display::Preview => vec![],
+        }
+    }
+
     pub fn directory_search_next(&mut self) {
         if let Some(path) = self.search.select_next() {
             self.go_to_file(path)
-        } else if let (paths, Some(index), Some(path)) = self.search.directory_search_next(self) {
-            self.search.set_index_paths(index, paths);
+        } else if let Some(path) = self
+            .search
+            .directory_search_next(self.directory.index_to_index())
+        {
             self.go_to_file(path);
         }
+    }
+
+    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<FileInfo>>>> {
+        let len = self.directory.content.len();
+        self.directory
+            .enumerate()
+            .skip(self.window.top)
+            .take(min(len, self.window.bottom))
+    }
+
+    pub fn cd_origin_path(&mut self) -> Result<()> {
+        if let Some(op) = &self.origin_path {
+            self.cd_to_file(&op.to_owned())?;
+        }
+        Ok(())
+    }
+
+    pub fn save_origin_path(&mut self) {
+        self.origin_path = Some(self.current_path().to_owned());
     }
 }
