@@ -1260,6 +1260,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] create windows
     - [ ] draw trait of canvas ???
     - [ ] display splits etc.
+    - [ ] term must be mut to display something, can't mutate in arc without mutex
     - [ ] drawmenu trait returns something which must be displayed
     - [ ] shortcut drawmenu
     - [ ] preview::syntaxedstring::print method

@@ -251,7 +251,7 @@ mod inner {
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let full_width = status.internal_settings.term_size()?.0;
-            let canvas_width = status.canvas_width()?;
+            let canvas_width = status.canvas_width().unwrap();
             let elems = Self::make_elems(status, tab, canvas_width)?;
             Ok(Self {
                 elems,

@@ -24,7 +24,7 @@ pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 pub static FILE_ATTRS: OnceLock<FileStyle> = OnceLock::new();
 
 /// Menu color struct
-pub static MENU_ATTRS: OnceLock<MenuStyle> = OnceLock::new();
+pub static MENU_STYLES: OnceLock<MenuStyle> = OnceLock::new();
 
 /// Defines a palette which will color the "normal" files based on their extension.
 /// We try to read a yaml value and pick one of 3 palettes :
@@ -53,7 +53,7 @@ fn set_file_attrs() -> Result<()> {
 }
 
 fn set_menu_attrs() -> Result<()> {
-    MENU_ATTRS
+    MENU_STYLES
         .set(MenuStyle::default().update())
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())

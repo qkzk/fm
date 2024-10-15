@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::config::MENU_ATTRS;
+use crate::config::MENU_STYLES;
 use crate::modes::PasswordHolder;
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
@@ -43,9 +43,9 @@ pub trait MountRepr: MountCommands {
     /// Using configurable colors. "first" when mounted, "inert border" otherwise
     fn attr(&self) -> tuikit::attr::Attr {
         if self.is_mounted() {
-            MENU_ATTRS.get().expect("Menu colors should be set").first
+            MENU_STYLES.get().expect("Menu colors should be set").first
         } else {
-            MENU_ATTRS
+            MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .inert_border

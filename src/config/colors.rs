@@ -59,14 +59,14 @@ impl ColorG {
     }
     /// Parse a tuikit color into it's rgb values.
     /// Non parsable colors returns None.
-    pub fn from_tuikit(color: Color) -> Option<Self> {
+    pub fn from_ratatui(color: Color) -> Option<Self> {
         match color {
             Color::Rgb(r, g, b) => Some(Self { r, g, b }),
             _ => None,
         }
     }
 
-    pub fn as_tuikit(&self) -> Color {
+    pub fn as_ratatui(&self) -> Color {
         Color::Rgb(self.r, self.g, self.b)
     }
 
@@ -121,22 +121,24 @@ where
     S: AsRef<str>,
 {
     match color.as_ref() {
-        "white"         => Color::WHITE,
-        "red"           => Color::RED,
-        "green"         => Color::GREEN,
-        "blue"          => Color::BLUE,
-        "yellow"        => Color::YELLOW,
-        "cyan"          => Color::CYAN,
-        "magenta"       => Color::MAGENTA,
-        "black"         => Color::BLACK,
-        "light_white"   => Color::LIGHT_WHITE,
-        "light_red"     => Color::LIGHT_RED,
-        "light_green"   => Color::LIGHT_GREEN,
-        "light_blue"    => Color::LIGHT_BLUE,
-        "light_yellow"  => Color::LIGHT_YELLOW,
-        "light_cyan"    => Color::LIGHT_CYAN,
-        "light_magenta" => Color::LIGHT_MAGENTA,
-        "light_black"   => Color::LIGHT_BLACK,
+        "white"         => Color::White,
+        "red"           => Color::Red,
+        "green"         => Color::Green,
+        "blue"          => Color::Blue,
+        "yellow"        => Color::Yellow,
+        "cyan"          => Color::Cyan,
+        "magenta"       => Color::Magenta,
+        "black"         => Color::Black,
+        // TODO! light white
+        "light_white"   => Color::White,
+        "light_red"     => Color::LightRed,
+        "light_green"   => Color::LightGreen,
+        "light_blue"    => Color::LightBlue,
+        "light_yellow"  => Color::LightYellow,
+        "light_cyan"    => Color::LightCyan,
+        "light_magenta" => Color::LightMagenta,
+        // TODO! light black
+        "light_black"   => Color::Black,
         color     => parse_text_triplet_unfaillible(color),
     }
 }
@@ -144,7 +146,7 @@ where
 fn parse_text_triplet_unfaillible(color: &str) -> Color {
     match parse_text_triplet(color) {
         Some((r, g, b)) => Color::Rgb(r, g, b),
-        None => Color::default(),
+        None => Color::Rgb(0, 0, 0),
     }
 }
 

@@ -174,7 +174,7 @@ where
 // impl_selectable_content!(PathBuf, Shortcut);
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
-use crate::config::{ColorG, Gradient, MENU_ATTRS};
+use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::color_to_style;
 use crate::io::CowStr;
 use std::cmp::min;

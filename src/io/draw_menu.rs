@@ -3,11 +3,11 @@ use std::cmp::min;
 
 use anyhow::Result;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph};
 
-use crate::config::{ColorG, Gradient, MENU_ATTRS};
+use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::color_to_style;
 use crate::modes::{Content, ContentWindow};
 
@@ -18,20 +18,22 @@ macro_rules! colored_skip_take {
         std::iter::zip(
             $t.iter().enumerate(),
             Gradient::new(
-                ColorG::from_tuikit(
-                    MENU_ATTRS
+                ColorG::from_ratatui(
+                    MENU_STYLES
                         .get()
                         .expect("Menu colors should be set")
                         .first
-                        .fg,
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
                 )
                 .unwrap_or_default(),
-                ColorG::from_tuikit(
-                    MENU_ATTRS
+                ColorG::from_ratatui(
+                    MENU_STYLES
                         .get()
                         .expect("Menu colors should be set")
                         .palette_3
-                        .fg,
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
                 )
                 .unwrap_or_default(),
                 $t.len(),

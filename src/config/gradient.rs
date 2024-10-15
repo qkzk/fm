@@ -44,6 +44,6 @@ impl Gradient {
     }
 
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
-        (0..self.len).map(|step| self.step(step).as_tuikit())
+        (0..self.len).map(|step| self.step(step).as_ratatui())
     }
 }
