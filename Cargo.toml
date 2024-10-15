@@ -64,4 +64,4 @@ url-escape = "0.1.1"
 zip = "2.2.0"
 
 crossterm = "0.26"
-ratatui = "0.21" 
+ratatui = "0.28" 

@@ -1,14 +1,13 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use anyhow::Result;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Color;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Paragraph};
+use ratatui::Frame;
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::color_to_style;
+use crate::io::{color_to_style, Canvas};
 use crate::modes::{Content, ContentWindow};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
@@ -77,28 +76,29 @@ impl CowStr for String {
 /// Since the content kind is linked to a mode,
 /// it prints the second line of the mode.
 pub trait DrawMenu<T: CowStr> {
-    fn draw_menu(&self, rect: &Rect, window: &ContentWindow) -> Result<Paragraph>
+    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
     where
         Self: Content<T>,
     {
         let content = self.content();
         let mut spans = vec![];
-        for (row, line, attr) in colored_skip_take!(content, window) {
-            let attr = self.style(row, &attr);
-            let mut style = Style::default().fg(attr.fg);
-            if let Some(modifier) = &attr.modifier {
-                style = style.add_modifier(modifier);
-            }
-            let text = Line::from(Span::styled(&line.cow_str(), style));
+        for (row, line, style) in colored_skip_take!(content, window) {
+            let style = self.style(row, &style);
+            // TODO: why ??????????????????????????????????????????????
+            // let mut style = Style::default().fg(style.fg.unwrap_or(Color::Rgb(0, 0, 0)));
+            // if let Some(modifier) = &style.add_modifier {
+            //     style = style.add_modifier(modifier);
+            // }
+            let text = Line::from(Span::styled(line.cow_str(), style));
             spans.push(text);
-            // rect.print_with_attr(
-            //     row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
-            //     4,
-            //     &line.cow_str(),
-            //     self.attr(row, &attr),
-            // )?;
-            Ok(Paragraph::new(spans).block(Block::default()));
+            rect.print_with_attr(
+                f,
+                (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
+                4,
+                &line.cow_str(),
+                self.style(row, &style),
+            );
+            // Ok(Paragraph::new(spans).block(Block::default()));
         }
-        Ok(())
     }
 }

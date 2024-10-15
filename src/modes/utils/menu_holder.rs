@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::{bail, Result};
 use ratatui::layout::Rect;
 use ratatui::widgets::Paragraph;
+use ratatui::Frame;
 // use tuikit::prelude::Canvas;
 
 use crate::app::Tab;
@@ -345,16 +346,16 @@ impl MenuHolder {
     ///
     /// Some mode can't be displayed directly and this method will raise an error.
     /// It's the responsability of the caller to check beforehand.
-    pub fn draw_navigate(&self, rect: &Rect, navigate: Navigate) -> Result<Paragraph> {
+    pub fn draw_navigate(&self, f: &mut Frame, rect: &Rect, navigate: Navigate) {
         match navigate {
-            Navigate::Compress => self.compression.draw_menu(rect, &self.window),
-            Navigate::Shortcut => self.shortcut.draw_menu(rect, &self.window),
-            Navigate::Marks(_) => self.marks.draw_menu(rect, &self.window),
-            Navigate::TuiApplication => self.tui_applications.draw_menu(rect, &self.window),
-            Navigate::CliApplication => self.cli_applications.draw_menu(rect, &self.window),
-            Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(rect, &self.window),
-            Navigate::RemovableDevices => self.removable_devices.draw_menu(rect, &self.window),
-            _ => bail!("{navigate} requires more information to be displayed."),
+            Navigate::Compress => self.compression.draw_menu(f, rect, &self.window),
+            Navigate::Shortcut => self.shortcut.draw_menu(f, rect, &self.window),
+            Navigate::Marks(_) => self.marks.draw_menu(f, rect, &self.window),
+            Navigate::TuiApplication => self.tui_applications.draw_menu(f, rect, &self.window),
+            Navigate::CliApplication => self.cli_applications.draw_menu(f, rect, &self.window),
+            Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(f, rect, &self.window),
+            Navigate::RemovableDevices => self.removable_devices.draw_menu(f, rect, &self.window),
+            _ => unreachable!("{navigate} requires more information to be displayed."),
         }
     }
 
