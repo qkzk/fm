@@ -53,13 +53,13 @@ impl FM {
 
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let term = Arc::new(init_term()?);
+        let term = init_term()?;
         let fm_sender = Arc::new(fm_sender);
 
-        let event_reader = EventReader::new(term.clone(), fm_receiver);
+        let event_reader = EventReader::new(fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let status = Arc::new(Mutex::new(Status::new(
-            term.clone(),
+            term.size().unwrap(),
             Opener::new(&config.terminal, &config.terminal_flag),
             &config.binds,
             fm_sender.clone(),

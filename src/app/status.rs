@@ -1,5 +1,3 @@
-// use std::fs;
-use std::io::Stdout;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -9,8 +7,7 @@ use std::sync::{
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
+use ratatui::layout::Size;
 // use skim::SkimItem;
 use sysinfo::{Disk, Disks};
 // use tuikit::{
@@ -136,12 +133,12 @@ impl Status {
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
     pub fn new(
-        term: Arc<Terminal<CrosstermBackend<Stdout>>>,
+        size: Size,
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
-        let height = term.term_size()?.1;
+        let height = size.height as usize;
         // let skimer = None;
         let index = 0;
 
@@ -153,8 +150,8 @@ impl Status {
             path.parent().context("")?
         };
         let disks = Disks::new_with_refreshed_list();
-        let display_settings = Session::new(term.term_size()?.0);
-        let mut internal_settings = InternalSettings::new(opener, term, disks);
+        let display_settings = Session::new(size.width as usize);
+        let mut internal_settings = InternalSettings::new(opener, size, disks);
         let mount_points = internal_settings.mount_points();
         let menu = MenuHolder::new(start_dir, &mount_points, binds, fm_sender.clone())?;
         let focus = Focus::default();
@@ -239,7 +236,7 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
         if self.display_settings.dual() {
-            if (col as usize) < self.term_width()? / 2 {
+            if (col as usize) < self.term_width() / 2 {
                 self.select_left();
             } else {
                 self.select_right();
@@ -270,7 +267,7 @@ impl Status {
 
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
-        let window = self.window_from_row(row, self.term_size()?.1);
+        let window = self.window_from_row(row, self.term_size().1);
         self.set_focus_from_window_and_index(&window);
         Ok(window)
     }
@@ -337,7 +334,7 @@ impl Status {
     }
 
     pub fn second_window_height(&self) -> Result<usize> {
-        let (_, height) = self.term_size()?;
+        let (_, height) = self.term_size();
         Ok(height / 2 + (height % 2))
     }
 
@@ -396,12 +393,12 @@ impl Status {
     }
 
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> Result<(usize, usize)> {
+    pub fn term_size(&self) -> (usize, usize) {
         self.internal_settings.term_size()
     }
 
-    fn term_width(&self) -> Result<usize> {
-        Ok(self.term_size()?.0)
+    fn term_width(&self) -> usize {
+        self.term_size().0
     }
 
     /// Refresh the current view, reloading the files. Move the selection to top.
@@ -506,6 +503,7 @@ impl Status {
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
     pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
+        self.internal_settings.update_size(width, height);
         self.set_dual_pane_if_wide_enough(width)?;
         self.tabs[0].set_height(height);
         self.tabs[1].set_height(height);
@@ -515,7 +513,7 @@ impl Status {
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
         if self.are_settings_requiring_dualpane_preview() {
-            if self.can_display_dualpane_preview()? {
+            if self.can_display_dualpane_preview() {
                 self.set_second_pane_for_preview()?;
             } else {
                 self.tabs[1].preview = PreviewBuilder::empty();
@@ -528,8 +526,8 @@ impl Status {
         self.index == 0 && self.display_settings.dual() && self.display_settings.preview()
     }
 
-    fn can_display_dualpane_preview(&self) -> Result<bool> {
-        Ok(Session::display_wide_enough(self.term_width()?))
+    fn can_display_dualpane_preview(&self) -> bool {
+        Session::display_wide_enough(self.term_width())
     }
 
     /// Force preview the selected file of the first pane in the second pane.
@@ -575,7 +573,7 @@ impl Status {
     }
 
     fn pick_correct_tab_from(&self, index: usize) -> Result<usize> {
-        if index == 1 && self.can_display_dualpane_preview()? && self.display_settings.preview() {
+        if index == 1 && self.can_display_dualpane_preview() && self.display_settings.preview() {
             Ok(0)
         } else {
             Ok(index)
@@ -622,7 +620,7 @@ impl Status {
     }
 
     pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
-        let height = self.internal_settings.term.term_size()?.1;
+        let height = self.internal_settings.term_size().1;
         let prim_window_height = if edit_mode.is_nothing() {
             height
         } else {
@@ -827,7 +825,7 @@ impl Status {
                 cut_or_copy,
                 sources,
                 dest,
-                &self.internal_settings.term.size()?.width as usize,
+                self.internal_settings.term_size().0,
                 // Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
@@ -842,7 +840,7 @@ impl Status {
             crate::modes::CopyMove::Copy,
             sources,
             dest,
-            self.internal_settings.term.size()?.width as usize,
+            self.internal_settings.term_size().0 as usize,
             std::sync::Arc::clone(&self.fm_sender),
         )?;
         self.internal_settings.store_copy_progress(in_mem);
@@ -1568,7 +1566,7 @@ impl Status {
 
     /// The width of a displayed canvas.
     pub fn canvas_width(&self) -> Result<usize> {
-        let full_width = self.internal_settings.term_size()?.0;
+        let full_width = self.internal_settings.term_size().0;
         if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
         } else {

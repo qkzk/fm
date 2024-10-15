@@ -20,7 +20,7 @@ pub struct Displayer {
 impl Displayer {
     const THIRTY_PER_SECONDS_IN_MILLIS: u64 = 33;
 
-    pub fn new(term: Arc<Terminal<CrosstermBackend<Stdout>>>, status: Arc<Mutex<Status>>) -> Self {
+    pub fn new(term: Terminal<CrosstermBackend<Stdout>>, status: Arc<Mutex<Status>>) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut display = Display::new(term);
 
@@ -37,7 +37,7 @@ impl Displayer {
                 }
                 match status.lock() {
                     Ok(status) => {
-                        display.display_all(&status)?;
+                        display.display_all(&status);
                         drop(status);
                     }
                     Err(error) => bail!("Error locking status: {error}"),

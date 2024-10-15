@@ -41,7 +41,7 @@ impl EventDispatcher {
         match ev {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Resize(width, height)) => {
-                EventAction::resize(status, width, height)
+                EventAction::resize(status, width as usize, height as usize)
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),

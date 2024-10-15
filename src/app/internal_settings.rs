@@ -1,11 +1,7 @@
-use std::io::Stdout;
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
+use ratatui::layout::Size;
 use sysinfo::Disks;
 
 use crate::common::{is_in_path, NVIM, SS};
@@ -21,8 +17,10 @@ pub struct InternalSettings {
     pub nvim_server: String,
     /// The opener used by the application.
     pub opener: Opener,
-    /// terminal
-    pub term: Arc<Terminal<CrosstermBackend<Stdout>>>,
+    /// terminal width
+    pub width: usize,
+    /// terminal height
+    pub height: usize,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub disks: Disks,
@@ -35,11 +33,7 @@ pub struct InternalSettings {
 }
 
 impl InternalSettings {
-    pub fn new(
-        opener: Opener,
-        term: Arc<Terminal<CrosstermBackend<Stdout>>>,
-        disks: Disks,
-    ) -> Self {
+    pub fn new(opener: Opener, size: Size, disks: Disks) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
@@ -47,22 +41,31 @@ impl InternalSettings {
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let copy_progress = None;
+        let width = size.width as usize;
+        let height = size.height as usize;
         Self {
             force_clear,
             must_quit,
             nvim_server,
             opener,
             disks,
-            term,
+            width,
+            height,
             inside_neovim,
             copy_file_queue,
             in_mem_progress: copy_progress,
         }
     }
 
+    // TODO: returns size
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> Result<(usize, usize)> {
-        Ok(self.term.term_size()?)
+    pub fn term_size(&self) -> (usize, usize) {
+        (self.width, self.height)
+    }
+
+    pub fn update_size(&mut self, width: usize, height: usize) {
+        self.width = width;
+        self.height = height;
     }
 
     /// Set a "force clear" flag to true, which will reset the display.
