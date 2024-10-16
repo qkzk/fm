@@ -1256,12 +1256,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] NOT DISPLAY
     - [x] app, status, events, menus, colors, style, key...
     - [ ] doubleclick
+    - [x] copy move
+    - [x] dispatch mouse wheel events
+    - [x] dispatch menu key events
+    - [x] preview
   - [ ] DISPLAY
-    - [ ] create windows
-    - [ ] draw trait of canvas ???
+    - [x] create windows
+    - [x] draw trait of canvas ??? won't work, borrow checker...
+    - [ ] draw trait working
     - [ ] display splits etc.
-    - [ ] term must be mut to display something, can't mutate in arc without mutex
-    - [ ] drawmenu trait returns something which must be displayed
+    - [x] term must be mut to display something, can't mutate in arc without mutex: only one term
+    - [x] drawmenu should display
     - [ ] shortcut drawmenu
     - [ ] preview::syntaxedstring::print method
     - [ ] preview::binary::printhex & printascii

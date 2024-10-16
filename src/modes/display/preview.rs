@@ -655,6 +655,7 @@ impl SyntaxedString {
             bg: None,
             add_modifier: Self::font_style_to_effect(&style.font_style),
             sub_modifier: Modifier::empty(),
+            underline_color: None,
         };
         Self {
             col,
@@ -663,8 +664,8 @@ impl SyntaxedString {
         }
     }
 
-    fn fontstyle_to_effect(font_style: &FontStyle) -> Modifier {
-        let mut modifier: u16 = Modifier::empty();
+    fn font_style_to_effect(font_style: &FontStyle) -> Modifier {
+        let mut modifier = Modifier::empty();
 
         // If the FontStyle has the bold bit set, add bold to the Effect
         if font_style.contains(FontStyle::BOLD) {

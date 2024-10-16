@@ -7,7 +7,6 @@ use std::thread;
 use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
-use tuikit::prelude::Term;
 
 use crate::common::{is_in_path, random_name, NOTIFY_EXECUTABLE};
 use crate::event::FmEvents;
@@ -84,9 +83,9 @@ impl CopyMove {
 
     fn setup_progress_bar(
         &self,
-        size: (usize, usize),
+        width: usize,
+        height: usize,
     ) -> Result<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        let (height, width) = size;
         let in_mem = InMemoryTerm::new(height as u16, width as u16);
         let pb = ProgressBar::with_draw_target(
             Some(100),
@@ -133,12 +132,13 @@ pub fn copy_move<P>(
     sources: Vec<PathBuf>,
     dest: P,
     width: usize,
+    height: usize,
     fm_sender: Arc<Sender<FmEvents>>,
 ) -> Result<InMemoryTerm>
 where
     P: AsRef<std::path::Path>,
 {
-    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(width)?;
+    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(width, height)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&progress_bar, process_info)
     };

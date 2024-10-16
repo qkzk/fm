@@ -826,6 +826,7 @@ impl Status {
                 sources,
                 dest,
                 self.internal_settings.term_size().0,
+                self.internal_settings.term_size().1,
                 // Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
@@ -840,7 +841,8 @@ impl Status {
             crate::modes::CopyMove::Copy,
             sources,
             dest,
-            self.internal_settings.term_size().0 as usize,
+            self.internal_settings.term_size().0,
+            self.internal_settings.term_size().1,
             std::sync::Arc::clone(&self.fm_sender),
         )?;
         self.internal_settings.store_copy_progress(in_mem);

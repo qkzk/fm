@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{Event, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 
 use crate::app::Status;
 use crate::config::Bindings;
@@ -40,6 +40,7 @@ impl EventDispatcher {
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
+            FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
             FmEvents::Term(Event::Resize(width, height)) => {
                 EventAction::resize(status, width as usize, height as usize)
             }
@@ -54,30 +55,29 @@ impl EventDispatcher {
 
     fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         match key {
-            key if key.is_mouse_event() => self.mouse_event(status, key)?,
-            KeyEvent::Char(c) if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
+            key if !status.focus.is_file() => self.menu_key_matcher(status, key)?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
     }
 
-    fn mouse_event(&self, status: &mut Status, mouse_event: MouseEvent) -> Result<()> {
+    fn match_mouse_event(&self, status: &mut Status, mouse_event: MouseEvent) -> Result<()> {
         match mouse_event.kind {
-            MouseEventKind::WheelUp(row, col, nb_of_scrolls) => {
-                EventAction::wheel_up(status, row, col, nb_of_scrolls)
+            MouseEventKind::ScrollUp => {
+                EventAction::wheel_up(status, mouse_event.row, mouse_event.column, 1)
             }
-            MouseEventKind::WheelDown(row, col, nb_of_scrolls) => {
-                EventAction::wheel_down(status, row, col, nb_of_scrolls)
+            MouseEventKind::ScrollDown => {
+                EventAction::wheel_down(status, mouse_event.row, mouse_event.column, 1)
             }
             MouseEventKind::Up(MouseButton::Left) => {
-                EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.col)
+                EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
             // TODO! doubleclick
             // MouseEventKind::Up(MouseButton::Left, row, col) => {
             //     EventAction::double_click(status, row, col, &self.binds)
             // }
             MouseEventKind::Up(MouseButton::Right) => {
-                EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.col)
+                EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
             _ => unreachable!("{mouse_event:?} should be a mouse event"),
         }
@@ -90,7 +90,10 @@ impl EventDispatcher {
         action.matcher(status, &self.binds)
     }
 
-    fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
+    fn menu_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        let KeyCode::Char(c) = key.code else {
+            return Ok(());
+        };
         let tab = status.current_tab_mut();
         match tab.menu_mode {
             Menu::InputSimple(InputSimple::Sort) => status.sort(c),
