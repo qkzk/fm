@@ -1,6 +1,8 @@
 use std::fmt;
 use std::fs::{self, ReadDir};
 
+use ratatui::style::{Modifier, Style};
+
 use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
@@ -237,12 +239,12 @@ impl Completion {
     }
 
     /// Reverse the received effect if the index match the selected index.
-    pub fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr {
-        let mut attr = *attr;
+    pub fn style(&self, index: usize, style: &Style) -> Style {
+        let mut style = *style;
         if index == self.index {
-            attr.effect |= tuikit::attr::Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        attr
+        style
     }
 }
 

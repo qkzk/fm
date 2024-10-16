@@ -1149,20 +1149,20 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
-        status.skim_output_to_tab();
+        // status.skim_output_to_tab();
         status.update_second_pane_for_preview()
     }
 
     /// Start a fuzzy find for a specific line with skim.
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
-        status.skim_line_output_to_tab();
+        // status.skim_line_output_to_tab();
         status.update_second_pane_for_preview()
     }
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.internal_settings.opener);
-        status.skim_find_keybinding_and_run(help);
+        // let help = help_string(binds, &status.internal_settings.opener);
+        // status.skim_find_keybinding_and_run(help);
         Ok(())
     }
 

@@ -1266,9 +1266,7 @@ impl Display {
         } else {
             self.single_pane(status, rect)
         };
-        self.term.draw(|f| {
-            todo!();
-        });
+        self.term.draw(|f| {});
     }
 
     /// Used to force a display of the cursor before leaving the application.

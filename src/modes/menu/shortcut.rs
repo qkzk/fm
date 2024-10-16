@@ -4,13 +4,14 @@ use std::str::FromStr;
 
 use ratatui::layout::Rect;
 use ratatui::widgets::Paragraph;
+use ratatui::Frame;
 
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::io::{git_root, DrawMenu};
 use crate::modes::ContentWindow;
-use crate::{colored_skip_take, impl_content, impl_selectable, log_info};
+use crate::{impl_content, impl_selectable, log_info};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -180,7 +181,7 @@ use crate::io::CowStr;
 use std::cmp::min;
 
 impl DrawMenu<PathBuf> for Shortcut {
-    fn draw_menu(&self, rect: &Rect, window: &ContentWindow) -> anyhow::Result<Paragraph>
+    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
     where
         Self: Content<PathBuf>,
     {

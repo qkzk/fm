@@ -2,7 +2,6 @@ use std::iter::{Chain, Skip, Take};
 use std::slice::Iter;
 
 use ratatui::style::Style;
-use tuikit::attr::Attr;
 
 pub trait Selectable {
     /// True iff the content is empty
@@ -138,7 +137,6 @@ macro_rules! impl_index_to_index {
 #[macro_export]
 macro_rules! impl_content {
     ($content_type:ident, $struct:ident) => {
-        use ratatui::style::{Modifier, Style};
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.
@@ -160,10 +158,10 @@ macro_rules! impl_content {
             }
 
             /// Reverse the received effect if the index match the selected index.
-            fn style(&self, index: usize, style: &Style) -> Style {
+            fn style(&self, index: usize, style: &ratatui::style::Style) -> ratatui::style::Style {
                 let mut style = *style;
                 if index == self.index() {
-                    style.add_modifier |= Modifier::REVERSED;
+                    style.add_modifier |= ratatui::style::Modifier::REVERSED;
                 }
                 style
             }

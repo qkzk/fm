@@ -107,7 +107,7 @@ mod inner {
     impl Header {
         /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size()?.0;
+            let full_width = status.internal_settings.term_size().0;
             let canvas_width = status.canvas_width()?;
             let elems = Self::make_elems(tab, canvas_width)?;
 
@@ -250,7 +250,7 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size()?.0;
+            let full_width = status.internal_settings.term_size().0;
             let canvas_width = status.canvas_width().unwrap();
             let elems = Self::make_elems(status, tab, canvas_width)?;
             Ok(Self {
@@ -363,7 +363,7 @@ mod inner {
 
         /// Creates a new header.
         pub fn new(status: &Status) -> Result<Self> {
-            let full_width = status.internal_settings.term_size()?.0;
+            let full_width = status.internal_settings.term_size().0;
             let canvas_width = status.canvas_width()?;
             let elems = Self::make_elems(status, full_width);
 
@@ -424,7 +424,7 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status) -> Result<Self> {
-            let full_width = status.internal_settings.term.term_size()?.0;
+            let full_width = status.internal_settings.term_size().0;
             let canvas_width = status.canvas_width()?;
             let raw_strings = Self::make_strings(status);
             let strings = Footer::make_padded_strings(&raw_strings, full_width);

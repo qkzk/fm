@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+use ratatui::style::Style;
+
 use crate::config::MENU_STYLES;
 use crate::modes::PasswordHolder;
 
@@ -41,7 +43,7 @@ pub trait MountRepr: MountCommands {
 
     /// Default attr.
     /// Using configurable colors. "first" when mounted, "inert border" otherwise
-    fn attr(&self) -> tuikit::attr::Attr {
+    fn attr(&self) -> Style {
         if self.is_mounted() {
             MENU_STYLES.get().expect("Menu colors should be set").first
         } else {

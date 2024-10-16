@@ -169,13 +169,13 @@ pub struct FileStyle {
 impl FileStyle {
     fn new() -> Self {
         Self {
-            directory: color_to_style(Color::RED),
-            block: color_to_style(Color::YELLOW),
-            char: color_to_style(Color::GREEN),
-            fifo: color_to_style(Color::BLUE),
-            socket: color_to_style(Color::CYAN),
-            symlink: color_to_style(Color::MAGENTA),
-            broken: color_to_style(Color::WHITE),
+            directory: color_to_style(Color::Red),
+            block: color_to_style(Color::Yellow),
+            char: color_to_style(Color::Green),
+            fifo: color_to_style(Color::Blue),
+            socket: color_to_style(Color::Cyan),
+            symlink: color_to_style(Color::Magenta),
+            broken: color_to_style(Color::White),
         }
     }
 
