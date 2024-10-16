@@ -24,7 +24,7 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<bool> {
         match ev {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
@@ -34,10 +34,14 @@ impl EventDispatcher {
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied => EventAction::file_copied(status),
-            FmEvents::CheckPreview => EventAction::check_preview(status),
+            FmEvents::CheckPreview => {
+                EventAction::check_preview(status)?;
+                return Ok(false);
+            }
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             _ => Ok(()),
-        }
+        }?;
+        Ok(true)
     }
 
     fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {

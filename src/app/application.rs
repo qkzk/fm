@@ -3,12 +3,13 @@ use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
+use ratatui::init;
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, init_term, print_on_quit, CONFIG_PATH};
+use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{set_loggers, Args, Opener};
+use crate::io::{set_loggers, Args, Display, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
@@ -28,7 +29,8 @@ pub struct FM {
     /// Used to handle every display on the screen, except from skim (fuzzy finds).
     /// It runs a single thread with an mpsc receiver to handle quit events.
     /// Drawing is done 30 times per second.
-    displayer: Displayer,
+    // displayer: Displayer,
+    display: Display,
 }
 
 impl FM {
@@ -53,7 +55,7 @@ impl FM {
 
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let term = init_term()?;
+        let term = init();
         let fm_sender = Arc::new(fm_sender);
 
         let event_reader = EventReader::new(fm_receiver);
@@ -65,14 +67,22 @@ impl FM {
             fm_sender.clone(),
         )?));
         let refresher = Refresher::new(fm_sender);
-        let displayer = Displayer::new(term, status.clone());
+        // let displayer = Displayer::new(term, status.clone());
+        let mut display = Display::new(term);
+
+        let Ok(st) = status.lock() else {
+            bail!("Error locking status");
+        };
+        display.display_all(&st);
+        drop(st);
 
         Ok(Self {
             event_reader,
             event_dispatcher,
             status,
             refresher,
-            displayer,
+            display,
+            // displayer,
         })
     }
 
@@ -117,8 +127,11 @@ impl FM {
         let Ok(mut status) = self.status.lock() else {
             bail!("Error locking status");
         };
-        self.event_dispatcher.dispatch(&mut status, event)?;
-        status.refresh_shortcuts();
+        if self.event_dispatcher.dispatch(&mut status, event)? {
+            status.refresh_shortcuts();
+            self.display.display_all(&status);
+        }
+
         Ok(())
     }
 
@@ -146,7 +159,7 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
-    pub fn quit(self) -> Result<()> {
+    pub fn quit(mut self) -> Result<()> {
         let final_path = self
             .status
             .lock()
@@ -155,14 +168,17 @@ impl FM {
             .to_owned();
 
         clear_tmp_files();
+        self.display.restore_terminal()?;
+
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        self.displayer.quit();
+        // self.displayer.quit();
         self.refresher.quit();
         if let Ok(status) = self.status.lock() {
             status.previewer.quit()
         }
         drop(self.status);
+        drop(self.display);
 
         print_on_quit(final_path);
         Ok(())

@@ -515,7 +515,7 @@ impl TLine {
         let mut style = fileinfo.style();
         // required for some edge cases when opening the tree while "." is the selected file
         if node.selected() {
-            style.add_modifier(Modifier::REVERSED);
+            style.add_modifier |= Modifier::REVERSED;
         }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
@@ -564,7 +564,7 @@ impl TLine {
     /// Change the current effect to `REVERSED`, displaying
     /// the file as selected.
     pub fn select(&mut self) {
-        self.style.add_modifier(Modifier::REVERSED);
+        self.style.add_modifier |= Modifier::REVERSED;
     }
 }
 

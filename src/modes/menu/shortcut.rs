@@ -172,12 +172,12 @@ where
     elems
 }
 
-// impl_selectable_content!(PathBuf, Shortcut);
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
+use crate::colored_skip_take;
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::color_to_style;
-use crate::io::CowStr;
+use crate::io::{color_to_style, Canvas, CowStr};
+use ratatui::style::Color;
 use std::cmp::min;
 
 impl DrawMenu<PathBuf> for Shortcut {
@@ -185,25 +185,25 @@ impl DrawMenu<PathBuf> for Shortcut {
     where
         Self: Content<PathBuf>,
     {
-        todo!()
-        // let content = self.content();
-        // for (letter, (row, path, attr)) in
-        //     std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
-        // {
-        //     let attr = self.style(row, &attr);
-        //     canvas.print_with_attr(
-        //         row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP,
-        //         2,
-        //         &format!("{letter} "),
-        //         attr,
-        //     )?;
-        //     canvas.print_with_attr(
-        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
-        //         4,
-        //         &path.cow_str(),
-        //         self.style(row, &attr),
-        //     )?;
-        // }
-        // Ok(())
+        let content = self.content();
+        for (letter, (row, path, style)) in
+            std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
+        {
+            let attr = self.style(row, &style);
+            rect.print_with_style(
+                f,
+                (row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP) as u16,
+                2,
+                &format!("{letter} "),
+                attr,
+            );
+            rect.print_with_style(
+                f,
+                (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
+                4,
+                &path.cow_str(),
+                self.style(row, &attr),
+            );
+        }
     }
 }

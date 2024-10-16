@@ -1,20 +1,13 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
 use std::fs::metadata;
-use std::io::stdout;
 use std::io::BufRead;
-use std::io::Stdout;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use crossterm::{
-    execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen},
-};
-use ratatui::{backend::CrosstermBackend, Terminal};
 use sysinfo::Disk;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -28,18 +21,6 @@ use crate::{log_info, log_line};
 //     term.enable_mouse_support()?;
 //     Ok(term)
 // }
-
-pub fn init_term() -> Result<Terminal<CrosstermBackend<Stdout>>> {
-    // Set up Crossterm
-    enable_raw_mode()?;
-    let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-
-    // Set up Ratatui
-    let backend = CrosstermBackend::new(stdout);
-    let terminal = Terminal::new(backend)?;
-    Ok(terminal)
-}
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
@@ -74,7 +55,7 @@ pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
 }
 
 /// Print the path on the stdout.
-pub fn print_on_quit<S: std::fmt::Display>(path_string: S) {
+pub fn print_on_quit(path_string: String) {
     log_info!("print on quit {path_string}");
     println!("{path_string}")
 }

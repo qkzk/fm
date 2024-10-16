@@ -1,11 +1,9 @@
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use ratatui::layout::Rect;
-use ratatui::widgets::Paragraph;
 use ratatui::Frame;
-// use tuikit::prelude::Canvas;
 
 use crate::app::Tab;
 use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, TUIS_PATH};

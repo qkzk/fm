@@ -91,7 +91,7 @@ pub trait DrawMenu<T: CowStr> {
             // }
             let text = Line::from(Span::styled(line.cow_str(), style));
             spans.push(text);
-            rect.print_with_attr(
+            rect.print_with_style(
                 f,
                 (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
                 4,

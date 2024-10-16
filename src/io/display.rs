@@ -1,6 +1,10 @@
 use std::{io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
+use crossterm::{
+    execute,
+    terminal::{disable_raw_mode, LeaveAlternateScreen},
+};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Position, Rect, Size},
@@ -22,13 +26,13 @@ use crate::modes::{
 };
 
 pub trait Canvas: Sized {
-    fn print_with_attr(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
+    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
 
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str);
 }
 
 impl Canvas for Rect {
-    fn print_with_attr(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style) {
+    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style) {
         // Define the area for the text
         let area = Rect {
             x: self.x + col,
@@ -37,10 +41,8 @@ impl Canvas for Rect {
             height: 1,                   // One line of text
         };
 
-        let paragraph = Paragraph::new(Line::from(vec![Span::styled(content, style)]));
-
         // Render at the specified coordinates
-        f.render_widget(paragraph, area);
+        f.render_widget(Span::styled(content, style), area);
     }
 
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
@@ -260,7 +262,7 @@ impl<'a> Files<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             1,
             2,
@@ -282,7 +284,7 @@ impl<'a> Files<'a> {
     ) {
         if status.menu.flagged.contains(path) {
             style.add_modifier |= Modifier::BOLD;
-            rect.print_with_attr(
+            rect.print_with_style(
                 f,
                 row as u16,
                 0,
@@ -391,7 +393,7 @@ impl<'a> DirectoryDisplay<'a> {
         let content = Self::format_file_content(self.status, file, owner_size, group_size);
         Files::print_flagged_symbol(f, self.status, rect, row, &file.path, &mut attr);
         let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
-        rect.print_with_attr(f, row as u16, col as u16, &content, attr);
+        rect.print_with_style(f, row as u16, col as u16, &content, attr);
     }
 
     fn format_file_content(
@@ -476,7 +478,7 @@ impl<'a> TreeDisplay<'a> {
         col += line_builder.prefix().len();
         rect.print(f, row as u16, col as u16, line_builder.prefix());
         col += Self::tree_line_calc_flagged_offset(status, path);
-        rect.print_with_attr(f, row as u16, col as u16, &line_builder.filename(), style);
+        rect.print_with_style(f, row as u16, col as u16, &line_builder.filename(), style);
     }
 
     fn tree_metadata(
@@ -490,7 +492,7 @@ impl<'a> TreeDisplay<'a> {
     ) -> usize {
         if with_medatadata {
             let len = line_builder.metadata().len();
-            rect.print_with_attr(f, row as u16, col as u16, line_builder.metadata(), style);
+            rect.print_with_style(f, row as u16, col as u16, line_builder.metadata(), style);
             len
         } else {
             0
@@ -574,7 +576,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
     ) -> usize {
         let len = line_number_to_print.to_string().len();
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             row_position_in_rect as u16,
             0,
@@ -620,7 +622,7 @@ impl<'a> PreviewDisplay<'a> {
             if row as u16 > height {
                 break;
             }
-            rect.print_with_attr(
+            rect.print_with_style(
                 f,
                 row as u16,
                 0,
@@ -756,7 +758,7 @@ impl Draw for FilesSecondLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
         match (&self.content, &self.style) {
             (Some(content), Some(style)) => {
-                rect.print_with_attr(f, 1, 1, content, *style);
+                rect.print_with_style(f, 1, 1, content, *style);
                 content.len()
             }
             _ => 0,
@@ -794,7 +796,7 @@ struct LogLine;
 impl Draw for LogLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
         let height = rect.height;
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             height - 2,
             4,
@@ -842,7 +844,7 @@ impl<'a> Draw for FilesFooter<'a> {
             style.add_modifier |= Modifier::REVERSED;
             background.add_modifier |= Modifier::REVERSED;
         };
-        rect.print_with_attr(f, height - 1, 0, &" ".repeat(width as usize), background);
+        rect.print_with_style(f, height - 1, 0, &" ".repeat(width as usize), background);
         draw_clickable_strings(f, height as usize - 1, 0, &content, rect, self.is_selected);
     }
 }
@@ -906,7 +908,7 @@ impl<'a> Menu<'a> {
                 let first = MENU_STYLES.get().expect("Menu colors should be set").first;
                 self.menu_line_chmod(f, rect, first, menu);
             }
-            edit => rect.print_with_attr(f, 1, 2, edit.second_line(), menu),
+            edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
         };
     }
 
@@ -916,7 +918,7 @@ impl<'a> Menu<'a> {
         for (text, is_valid) in &mode_parsed {
             let attr = if *is_valid { first } else { menu };
             col += 1 + text.len();
-            rect.print_with_attr(f, 1, col as u16, text, attr);
+            rect.print_with_style(f, 1, col as u16, text, attr);
         }
         col
     }
@@ -935,7 +937,7 @@ impl<'a> Menu<'a> {
         let height = rect.height;
 
         rect.clear_line(f, height.saturating_sub(2));
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             height.saturating_sub(2),
             2,
@@ -983,7 +985,7 @@ impl<'a> Menu<'a> {
 
     fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
         trash.draw_menu(f, rect, &self.status.menu.window);
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             1,
             2,
@@ -1010,7 +1012,7 @@ impl<'a> Menu<'a> {
                 desc = format!("{desc} - {metadata}");
             }
         }
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             2,
             2,
@@ -1028,7 +1030,7 @@ impl<'a> Menu<'a> {
         selectable.draw_menu(f, rect, &self.status.menu.window);
         if let Some(desc) = &selectable.desc {
             rect.clear_line(f, 1);
-            rect.print_with_attr(
+            rect.print_with_style(
                 f,
                 1,
                 2,
@@ -1045,7 +1047,7 @@ impl<'a> Menu<'a> {
 
     fn context_selectable(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.status.menu.context;
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             1,
             2,
@@ -1057,7 +1059,7 @@ impl<'a> Menu<'a> {
             std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
         {
             let style = selectable.style(row, &attr);
-            rect.print_with_attr(
+            rect.print_with_style(
                 f,
                 (row + 1 + ContentWindow::WINDOW_MARGIN_TOP) as u16,
                 2,
@@ -1095,7 +1097,7 @@ impl<'a> Menu<'a> {
     fn flagged_selected(&self, f: &mut Frame, rect: &Rect) {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users).unwrap();
-            rect.print_with_attr(f, 2, 2, &fileinfo.format(6, 6).unwrap(), fileinfo.style());
+            rect.print_with_style(f, 2, 2, &fileinfo.format(6, 6).unwrap(), fileinfo.style());
         };
     }
 
@@ -1187,7 +1189,7 @@ impl<'a> Menu<'a> {
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: usize, text: &str, style: Style) -> usize {
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             (row + ContentWindow::WINDOW_MARGIN_TOP) as u16,
             4,
@@ -1251,7 +1253,6 @@ impl Display {
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
         self.hide_cursor().unwrap();
-        self.term.clear().unwrap();
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
@@ -1369,6 +1370,13 @@ impl Display {
     fn single_pane(&self, rect: Rect, left_menu_perc: u16) -> Vec<Rect> {
         self.vertical_split(rect, left_menu_perc)
     }
+
+    pub fn restore_terminal(&mut self) -> Result<()> {
+        disable_raw_mode()?;
+        execute!(self.term.backend_mut(), LeaveAlternateScreen)?;
+        self.term.show_cursor()?;
+        Ok(())
+    }
 }
 
 fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
@@ -1408,7 +1416,7 @@ fn draw_colored_strings(
         if effect_reverse {
             style.add_modifier |= Modifier::REVERSED;
         }
-        rect.print_with_attr(f, row as u16, (offset + col) as u16, text, style);
+        rect.print_with_style(f, row as u16, (offset + col) as u16, text, style);
         col += text.len();
     }
 }
@@ -1434,7 +1442,7 @@ fn draw_clickable_strings(
         if effect_reverse {
             style.add_modifier |= Modifier::REVERSED;
         }
-        rect.print_with_attr(
+        rect.print_with_style(
             f,
             row as u16,
             (offset + elem.col()) as u16,
