@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Position, Rect, Size},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::Paragraph,
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
 
@@ -279,7 +279,7 @@ impl<'a> Files<'a> {
         row: usize,
         path: &std::path::Path,
         style: &mut Style,
-    ) -> Result<()> {
+    ) {
         if status.menu.flagged.contains(path) {
             style.add_modifier |= Modifier::BOLD;
             rect.print_with_attr(
@@ -290,12 +290,11 @@ impl<'a> Files<'a> {
                 MENU_STYLES.get().expect("Menu colors should be set").second,
             );
         }
-        Ok(())
     }
 
     fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
         let tab = &self.status.tabs[1];
-        let _ = PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
+        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
         let width = rect.width;
         draw_clickable_strings(
             f,
@@ -337,16 +336,16 @@ impl<'a> DirectoryDisplay<'a> {
     /// When we display a simpler version, the menu line is used to display the
     /// metadata of the selected file.
     fn files(&self, f: &mut Frame, rect: &Rect) {
-        let _ = FilesSecondLine::new(self.status, self.tab).draw(f, rect);
+        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
         self.files_content(f, rect);
         if !self.attributes.has_window_below && !self.attributes.is_right() {
-            let _ = LogLine.draw(f, rect);
+            LogLine.draw(f, rect);
         }
     }
 
     fn files_content(&self, f: &mut Frame, rect: &Rect) {
         let (group_size, owner_size) = self.group_owner_size();
-        let height = rect.height as u16;
+        let height = rect.height;
         for (index, file) in self.tab.dir_enum_skip_take() {
             self.files_line(
                 f,
@@ -429,7 +428,7 @@ impl<'a> TreeDisplay<'a> {
     }
 
     fn tree(&self, f: &mut Frame, rect: &Rect) {
-        let _ = FilesSecondLine::new(self.status, self.tab).draw(f, rect);
+        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
         self.tree_content(f, rect)
     }
 
@@ -461,16 +460,16 @@ impl<'a> TreeDisplay<'a> {
         line_builder: &TLine,
         position_param: TreeLinePosition,
         with_medatadata: bool,
-    ) -> Result<()> {
+    ) {
         let (mut col, top, index, height) = position_param.export();
         let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
         if row > height {
-            return Ok(());
+            return;
         }
 
         let mut style = line_builder.style;
         let path = line_builder.path();
-        Files::print_flagged_symbol(f, status, rect, row, path, &mut style)?;
+        Files::print_flagged_symbol(f, status, rect, row, path, &mut style);
 
         col += Self::tree_metadata(f, rect, with_medatadata, row, col, line_builder, style);
         col += if index == 0 { 2 } else { 1 };
@@ -478,7 +477,6 @@ impl<'a> TreeDisplay<'a> {
         rect.print(f, row as u16, col as u16, line_builder.prefix());
         col += Self::tree_line_calc_flagged_offset(status, path);
         rect.print_with_attr(f, row as u16, col as u16, &line_builder.filename(), style);
-        Ok(())
     }
 
     fn tree_metadata(
@@ -598,8 +596,8 @@ impl<'a> PreviewDisplay<'a> {
         for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
             let row_position = calc_line_row(i, window);
             Self::line_number(f, row_position, i + 1, rect);
+            todo!();
             for token in vec_line.iter() {
-                todo!();
                 // TODO! print method for syntaxed
                 // token.print(f, rect, row_position, line_number_width);
             }
@@ -643,8 +641,8 @@ impl<'a> PreviewDisplay<'a> {
         image.draw(
             self.attributes.x_position as u16 + 2,
             3,
-            width as u16 - 2,
-            height as u16 - 2,
+            width - 2,
+            height - 2,
         );
     }
 
@@ -866,6 +864,9 @@ struct Menu<'a> {
 
 impl<'a> Draw for Menu<'a> {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
+        if !self.tab.need_menu_window() {
+            return;
+        }
         let mode = self.tab.menu_mode;
         self.cursor(f);
         MenuFirstLine::new(self.status).draw(f, rect);
@@ -889,14 +890,13 @@ impl<'a> Menu<'a> {
     /// # Errors
     ///
     /// may fail if we can't display on the terminal.
-    fn cursor(&self, f: &mut Frame) -> Result<()> {
+    fn cursor(&self, f: &mut Frame) {
         let offset = self.tab.menu_mode.cursor_offset();
         let index = self.status.menu.input.index();
         let y = (offset + index) as u16;
         if self.tab.menu_mode.show_cursor() {
             f.set_cursor_position(Position::new(0, y));
         }
-        Ok(())
     }
 
     fn menu_line(&self, f: &mut Frame, rect: &Rect) {
@@ -933,10 +933,11 @@ impl<'a> Menu<'a> {
 
     fn binds_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
         let height = rect.height;
-        rect.clear_line(f, height - 1);
+
+        rect.clear_line(f, height.saturating_sub(2));
         rect.print_with_attr(
             f,
-            height - 1,
+            height.saturating_sub(2),
             2,
             mode.binds_per_mode(),
             MENU_STYLES.get().expect("Menu colors should be set").second,
@@ -981,8 +982,8 @@ impl<'a> Menu<'a> {
     }
 
     fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
-        let _ = trash.draw_menu(f, rect, &self.status.menu.window);
-        let _ = rect.print_with_attr(
+        trash.draw_menu(f, rect, &self.status.menu.window);
+        rect.print_with_attr(
             f,
             1,
             2,
@@ -992,7 +993,7 @@ impl<'a> Menu<'a> {
     }
 
     fn trash_is_empty(&self, f: &mut Frame, rect: &Rect) {
-        let _ = Self::content_line(
+        Self::content_line(
             f,
             rect,
             0,
@@ -1009,7 +1010,7 @@ impl<'a> Menu<'a> {
                 desc = format!("{desc} - {metadata}");
             }
         }
-        let _ = rect.print_with_attr(
+        rect.print_with_attr(
             f,
             2,
             2,
@@ -1249,8 +1250,8 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
-        self.hide_cursor();
-        self.term.clear();
+        self.hide_cursor().unwrap();
+        self.term.clear().unwrap();
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
@@ -1261,14 +1262,55 @@ impl Display {
             height,
         };
         let width = self.term.size().unwrap().width;
-        let wins = if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE as u16 {
-            self.dual_pane(status, rect)
+        let borders = self.borders(status);
+        if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE as u16 {
+            let (file_left, file_right) = FilesBuilder::dual(status, width as usize);
+            let menu_left = Menu::new(status, 0);
+            let menu_right = Menu::new(status, 1);
+            let left_menu_perc = self.percent_for_menu_window(&status.tabs[0]);
+            let right_menu_perc = self.percent_for_menu_window(&status.tabs[1]);
+            let wins = self.dual_pane(rect, left_menu_perc, right_menu_perc);
+            self.term
+                .draw(|f| {
+                    // 0 2
+                    // 1 3
+                    Self::draw_dual_borders(borders, f, &wins);
+
+                    file_left.draw(f, &wins[0]);
+                    menu_left.draw(f, &wins[1]);
+                    file_right.draw(f, &wins[2]);
+                    menu_right.draw(f, &wins[3]);
+                })
+                .unwrap();
         } else {
-            self.single_pane(status, rect)
+            let file_left = FilesBuilder::single(status);
+            let menu_left = Menu::new(status, 0);
+            let left_menu_perc = self.percent_for_menu_window(&status.tabs[0]);
+            let wins = self.single_pane(rect, left_menu_perc);
+            self.term
+                .draw(|f| {
+                    Self::draw_single_borders(borders, f, &wins);
+                    file_left.draw(f, &wins[0]);
+                    menu_left.draw(f, &wins[1]);
+                })
+                .unwrap();
         };
-        self.term.draw(|f| {});
     }
 
+    fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        for i in 0..n {
+            let bordered_block = Block::default().borders(Borders::ALL).style(borders[i]);
+            f.render_widget(bordered_block, wins[i]);
+        }
+    }
+
+    fn draw_dual_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        Self::draw_n_borders(4, borders, f, wins)
+    }
+
+    fn draw_single_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        Self::draw_n_borders(2, borders, f, wins)
+    }
     /// Used to force a display of the cursor before leaving the application.
     /// Most of the times we don't need a cursor and it's hidden. We have to
     /// do it unless the shell won't display a cursor anymore.
@@ -1285,29 +1327,23 @@ impl Display {
         Ok(height)
     }
 
-    fn size_for_menu_window(&self, tab: &Tab) -> Result<usize> {
+    fn percent_for_menu_window(&self, tab: &Tab) -> u16 {
         if tab.need_menu_window() {
-            Ok(self.height()? / 2)
+            50
         } else {
-            Ok(0)
+            0
         }
     }
 
-    fn vertical_split<'a>(
-        &self,
-        files: &'a Files,
-        menu: &'a Menu,
-        file_border: Style,
-        menu_border: Style,
-        size: usize,
-        parent_win: Rect,
-    ) -> Vec<Rect> {
-        let wins = Layout::default()
+    fn vertical_split(&self, parent_win: Rect, menu_perc: u16) -> Vec<Rect> {
+        Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .constraints([
+                Constraint::Percentage(100 - menu_perc),
+                Constraint::Percentage(menu_perc),
+            ])
             .split(parent_win)
-            .to_vec();
-        wins
+            .to_vec()
     }
 
     /// Left File, Left Menu, Right File, Right Menu
@@ -1319,53 +1355,19 @@ impl Display {
         borders
     }
 
-    // TODO: render
-    fn dual_pane(&self, status: &Status, rect: Rect) -> Vec<Rect> {
-        let width = rect.width as usize;
-        let height = rect.height as usize;
-        let (files_left, files_right) = FilesBuilder::dual(status, width);
-        let menu_left = Menu::new(status, 0);
-        let menu_right = Menu::new(status, 1);
-        let borders = self.borders(status);
+    fn dual_pane(&self, rect: Rect, left_menu_perc: u16, right_menu_perc: u16) -> Vec<Rect> {
         let parent_wins = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(rect)
             .to_vec();
-        let mut areas = self.vertical_split(
-            &files_left,
-            &menu_left,
-            borders[0],
-            borders[1],
-            height,
-            parent_wins[0],
-        );
-        areas.append(&mut self.vertical_split(
-            &files_right,
-            &menu_right,
-            borders[2],
-            borders[3],
-            height,
-            parent_wins[1],
-        ));
+        let mut areas = self.vertical_split(parent_wins[0], left_menu_perc);
+        areas.append(&mut self.vertical_split(parent_wins[1], right_menu_perc));
         areas
     }
 
-    // TODO: render
-    fn single_pane(&self, status: &Status, rect: Rect) -> Vec<Rect> {
-        let files_left = FilesBuilder::single(status);
-        let menu_left = Menu::new(status, 0);
-        let percent_left = self.size_for_menu_window(&status.tabs[0]).unwrap();
-        let borders = self.borders(status);
-        let areas = self.vertical_split(
-            &files_left,
-            &menu_left,
-            borders[0],
-            borders[1],
-            percent_left,
-            rect,
-        );
-        areas
+    fn single_pane(&self, rect: Rect, left_menu_perc: u16) -> Vec<Rect> {
+        self.vertical_split(rect, left_menu_perc)
     }
 }
 

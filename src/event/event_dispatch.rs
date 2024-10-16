@@ -6,19 +6,6 @@ use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
 use crate::modes::{Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate};
 
-trait IsMouse {
-    fn is_mouse_event(&self) -> bool;
-}
-
-impl IsMouse for Event {
-    #[rustfmt::skip]
-    fn is_mouse_event(&self) -> bool {
-        matches!(
-            self,
-            Event::Mouse(_)
-        )
-    }
-}
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on tabs.selected().
@@ -55,7 +42,12 @@ impl EventDispatcher {
 
     fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         match key {
-            key if !status.focus.is_file() => self.menu_key_matcher(status, key)?,
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: _,
+                kind: _,
+                state: _,
+            } if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
@@ -90,10 +82,7 @@ impl EventDispatcher {
         action.matcher(status, &self.binds)
     }
 
-    fn menu_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
-        let KeyCode::Char(c) = key.code else {
-            return Ok(());
-        };
+    fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.menu_mode {
             Menu::InputSimple(InputSimple::Sort) => status.sort(c),
