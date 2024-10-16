@@ -29,8 +29,7 @@ pub struct FM {
     /// Used to handle every display on the screen, except from skim (fuzzy finds).
     /// It runs a single thread with an mpsc receiver to handle quit events.
     /// Drawing is done 30 times per second.
-    // displayer: Displayer,
-    display: Display,
+    displayer: Displayer,
 }
 
 impl FM {
@@ -67,22 +66,14 @@ impl FM {
             fm_sender.clone(),
         )?));
         let refresher = Refresher::new(fm_sender);
-        // let displayer = Displayer::new(term, status.clone());
-        let mut display = Display::new(term);
-
-        let Ok(st) = status.lock() else {
-            bail!("Error locking status");
-        };
-        display.display_all(&st);
-        drop(st);
+        let displayer = Displayer::new(term, status.clone());
 
         Ok(Self {
             event_reader,
             event_dispatcher,
             status,
             refresher,
-            display,
-            // displayer,
+            displayer,
         })
     }
 
@@ -127,10 +118,8 @@ impl FM {
         let Ok(mut status) = self.status.lock() else {
             bail!("Error locking status");
         };
-        if self.event_dispatcher.dispatch(&mut status, event)? {
-            status.refresh_shortcuts();
-            self.display.display_all(&status);
-        }
+        self.event_dispatcher.dispatch(&mut status, event)?;
+        status.refresh_shortcuts();
 
         Ok(())
     }
@@ -159,7 +148,7 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
-    pub fn quit(mut self) -> Result<()> {
+    pub fn quit(self) -> Result<()> {
         let final_path = self
             .status
             .lock()
@@ -168,17 +157,15 @@ impl FM {
             .to_owned();
 
         clear_tmp_files();
-        self.display.restore_terminal()?;
 
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        // self.displayer.quit();
+        self.displayer.quit();
         self.refresher.quit();
         if let Ok(status) = self.status.lock() {
             status.previewer.quit()
         }
         drop(self.status);
-        drop(self.display);
 
         print_on_quit(final_path);
         Ok(())

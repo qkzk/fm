@@ -30,6 +30,7 @@ impl Displayer {
                     Ok(_) | Err(TryRecvError::Disconnected) => {
                         crate::log_info!("terminating displayer");
                         let _ = display.show_cursor();
+                        display.restore_terminal()?;
                         drop(display);
                         break;
                     }
