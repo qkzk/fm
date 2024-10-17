@@ -1233,7 +1233,6 @@ impl Display {
         Self { term }
     }
 
-    // TODO! render
     /// Display every possible content in the terminal.
     ///
     /// The top line
@@ -1362,6 +1361,7 @@ impl Display {
     fn draw_single_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
         Self::draw_n_borders(2, borders, f, wins)
     }
+
     /// Used to force a display of the cursor before leaving the application.
     /// Most of the times we don't need a cursor and it's hidden. We have to
     /// do it unless the shell won't display a cursor anymore.
@@ -1376,14 +1376,6 @@ impl Display {
     pub fn height(&self) -> Result<usize> {
         let height = self.term.size()?.height as usize;
         Ok(height)
-    }
-
-    fn percent_for_menu_window(&self, tab: &Tab) -> u16 {
-        if tab.need_menu_window() {
-            50
-        } else {
-            0
-        }
     }
 
     fn horizontal_split(&self, rect: Rect) -> Vec<Rect> {
@@ -1414,6 +1406,7 @@ impl Display {
         let bot_rect = Rect::new(parent_win.x, parent_win.y + top + 2, parent_win.width, bot);
         vec![top_rect, bot_rect]
     }
+
     fn vertical_split_border(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
         let (top, bot) = if have_menu {
             (parent_win.height / 2, parent_win.height / 2)
@@ -1427,14 +1420,13 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Style; 4] {
-        let menu_attrs = MENU_STYLES.get().expect("MENU_ATTRS should be set");
-        let mut borders = [menu_attrs.inert_border; 4];
-        let selected_border = menu_attrs.selected_border;
+        let menu_styles = MENU_STYLES.get().expect("MENU_ATTRS should be set");
+        let mut borders = [menu_styles.inert_border; 4];
+        let selected_border = menu_styles.selected_border;
         borders[status.focus.index()] = selected_border;
         borders
     }
 
-    // TODO do the horizontal split by hand
     fn dual_inside_rect(
         &self,
         rect: Rect,
@@ -1454,10 +1446,6 @@ impl Display {
         let mut areas = self.vertical_split_inner(parent_wins[0], have_menu_left);
         areas.append(&mut self.vertical_split_inner(parent_wins[1], have_menu_right));
         areas
-    }
-
-    fn single_pane(&self, rect: Rect, have_menu: bool) -> Vec<Rect> {
-        self.vertical_split_inner(rect, have_menu)
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {

@@ -1274,6 +1274,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] skim
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
       - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+- [ ] shortcut : dedup out of bounds L170
 
 ## TODO
 

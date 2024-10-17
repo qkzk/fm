@@ -226,12 +226,10 @@ pub struct MenuStyle {
 
 impl Default for MenuStyle {
     fn default() -> Self {
-        let mut selected_border = color_to_style(Color::Rgb(45, 250, 209));
-        selected_border.add_modifier |= Modifier::BOLD;
         Self {
             first: color_to_style(Color::Rgb(45, 250, 209)),
             second: color_to_style(Color::Rgb(230, 189, 87)),
-            selected_border,
+            selected_border: color_to_style(Color::Rgb(45, 250, 209)),
             inert_border: color_to_style(Color::Rgb(248, 248, 248)),
             palette_1: color_to_style(Color::Rgb(45, 250, 209)),
             palette_2: color_to_style(Color::Rgb(230, 189, 87)),
