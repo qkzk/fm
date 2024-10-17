@@ -9,7 +9,11 @@ use std::slice::Iter;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    Frame,
+};
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
@@ -22,7 +26,7 @@ use crate::common::{
     TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
-use crate::io::execute_and_capture_output_without_check;
+use crate::io::{execute_and_capture_output_without_check, Canvas};
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
     Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
@@ -680,17 +684,16 @@ impl SyntaxedString {
         modifier
     }
 
-    // TODO! make it work
     // /// Prints itself on a tuikit canvas.
-    // pub fn print(
-    //     &self,
-    //     canvas: &mut dyn tuikit::canvas::Canvas,
-    //     row: usize,
-    //     offset: usize,
-    // ) -> Result<()> {
-    //     canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
-    //     Ok(())
-    // }
+    pub fn print(&self, f: &mut Frame, rect: &Rect, row: usize, offset: usize) {
+        rect.print_with_style(
+            f,
+            row as u16,
+            (self.col + offset + 2) as u16,
+            &self.content,
+            self.style,
+        );
+    }
 }
 
 /// Holds a preview of a binary content.

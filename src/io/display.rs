@@ -598,10 +598,9 @@ impl<'a> PreviewDisplay<'a> {
         for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
             let row_position = calc_line_row(i, window);
             Self::line_number(f, row_position, i + 1, rect);
-            todo!();
             for token in vec_line.iter() {
                 // TODO! print method for syntaxed
-                // token.print(f, rect, row_position, line_number_width);
+                token.print(f, rect, row_position, line_number_width);
             }
         }
     }
