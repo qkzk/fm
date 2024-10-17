@@ -2,9 +2,7 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use ratatui::layout::Rect;
-use ratatui::widgets::Paragraph;
-use ratatui::Frame;
+use ratatui::{layout::Rect, Frame};
 
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
@@ -167,7 +165,9 @@ where
         }
     }
     for i in to_remove.iter().rev() {
-        elems.remove(*i);
+        if *i < to_remove.len() {
+            elems.remove(*i);
+        }
     }
     elems
 }
