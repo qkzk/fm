@@ -1252,22 +1252,23 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.31
 
 - [ ] replace tuikit by ratatui + crossterm
-  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
+  - [x] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
   - [ ] NOT DISPLAY
     - [x] app, status, events, menus, colors, style, key...
-    - [ ] doubleclick
     - [x] copy move
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
+    - [ ] doubleclick
   - [ ] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...
-    - [ ] draw trait working
-    - [ ] display splits etc.
+    - [x] draw trait working
+    - [x] display splits etc.
     - [x] term must be mut to display something, can't mutate in arc without mutex: only one term
     - [x] drawmenu should display
-    - [ ] shortcut drawmenu
+    - [x] shortcut drawmenu
+    - [ ] windows are offset by one: do the splits by hand
     - [ ] preview::syntaxedstring::print method
     - [ ] preview::binary::printhex & printascii
   - [ ] skim

@@ -1256,7 +1256,13 @@ impl Display {
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
-        let rect = Rect {
+        let inside_border_rect = Rect {
+            x: 1,
+            y: 1,
+            width: width.saturating_sub(2),
+            height: height.saturating_sub(2),
+        };
+        let full_rect = Rect {
             x: 0,
             y: 0,
             width,
@@ -1268,31 +1274,63 @@ impl Display {
             let (file_left, file_right) = FilesBuilder::dual(status, width as usize);
             let menu_left = Menu::new(status, 0);
             let menu_right = Menu::new(status, 1);
-            let left_menu_perc = self.percent_for_menu_window(&status.tabs[0]);
-            let right_menu_perc = self.percent_for_menu_window(&status.tabs[1]);
-            let wins = self.dual_pane(rect, left_menu_perc, right_menu_perc);
+            let parent_wins = {
+                let left_rect = Rect::new(
+                    full_rect.x,
+                    full_rect.y,
+                    full_rect.width / 2,
+                    full_rect.height,
+                );
+                let right_rect = Rect::new(
+                    full_rect.x + full_rect.width / 2,
+                    full_rect.y,
+                    full_rect.width / 2,
+                    full_rect.height,
+                );
+                vec![left_rect, right_rect]
+            };
+            // let parent_wins = Layout::default()
+            //     .direction(Direction::Horizontal)
+            //     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            //     .split(full_rect)
+            //     .to_vec();
+            let bordered_wins = {
+                let mut bordered_wins =
+                    self.vertical_split_border(parent_wins[0], status.tabs[0].need_menu_window());
+                bordered_wins.append(
+                    &mut self
+                        .vertical_split_border(parent_wins[1], status.tabs[1].need_menu_window()),
+                );
+                bordered_wins
+            };
+            let inside_wins = self.dual_pane(
+                inside_border_rect,
+                status.tabs[0].need_menu_window(),
+                status.tabs[1].need_menu_window(),
+            );
             self.term
                 .draw(|f| {
                     // 0 2
                     // 1 3
-                    Self::draw_dual_borders(borders, f, &wins);
+                    Self::draw_dual_borders(borders, f, &bordered_wins);
 
-                    file_left.draw(f, &wins[0]);
-                    menu_left.draw(f, &wins[1]);
-                    file_right.draw(f, &wins[2]);
-                    menu_right.draw(f, &wins[3]);
+                    file_left.draw(f, &inside_wins[0]);
+                    menu_left.draw(f, &inside_wins[1]);
+                    file_right.draw(f, &inside_wins[2]);
+                    menu_right.draw(f, &inside_wins[3]);
                 })
                 .unwrap();
         } else {
             let file_left = FilesBuilder::single(status);
             let menu_left = Menu::new(status, 0);
-            let left_menu_perc = self.percent_for_menu_window(&status.tabs[0]);
-            let wins = self.single_pane(rect, left_menu_perc);
+            let need_menu = status.tabs[0].need_menu_window();
+            let bordered_wins = self.vertical_split_border(full_rect, need_menu);
+            let inside_wins = self.vertical_split_inner(inside_border_rect, need_menu);
             self.term
                 .draw(|f| {
-                    Self::draw_single_borders(borders, f, &wins);
-                    file_left.draw(f, &wins[0]);
-                    menu_left.draw(f, &wins[1]);
+                    Self::draw_single_borders(borders, f, &bordered_wins);
+                    file_left.draw(f, &inside_wins[0]);
+                    menu_left.draw(f, &inside_wins[1]);
                 })
                 .unwrap();
         };
@@ -1336,15 +1374,26 @@ impl Display {
         }
     }
 
-    fn vertical_split(&self, parent_win: Rect, menu_perc: u16) -> Vec<Rect> {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage(100 - menu_perc),
-                Constraint::Percentage(menu_perc),
-            ])
-            .split(parent_win)
-            .to_vec()
+    // TODO: do the horizontal split by hand
+    fn vertical_split_inner(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
+        let (top, bot) = if have_menu {
+            (parent_win.height / 2 - 1, parent_win.height / 2)
+        } else {
+            (parent_win.height, 0)
+        };
+        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
+        let bot_rect = Rect::new(parent_win.x, parent_win.y + top + 2, parent_win.width, bot);
+        vec![top_rect, bot_rect]
+    }
+    fn vertical_split_border(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
+        let (top, bot) = if have_menu {
+            (parent_win.height / 2, parent_win.height / 2)
+        } else {
+            (parent_win.height, 0)
+        };
+        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
+        let bot_rect = Rect::new(parent_win.x, parent_win.y + top, parent_win.width, bot);
+        vec![top_rect, bot_rect]
     }
 
     /// Left File, Left Menu, Right File, Right Menu
@@ -1356,19 +1405,25 @@ impl Display {
         borders
     }
 
-    fn dual_pane(&self, rect: Rect, left_menu_perc: u16, right_menu_perc: u16) -> Vec<Rect> {
-        let parent_wins = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(rect)
-            .to_vec();
-        let mut areas = self.vertical_split(parent_wins[0], left_menu_perc);
-        areas.append(&mut self.vertical_split(parent_wins[1], right_menu_perc));
+    // TODO do the horizontal split by hand
+    fn dual_pane(&self, rect: Rect, have_menu_left: bool, have_menu_right: bool) -> Vec<Rect> {
+        let parent_wins = {
+            let left_rect = Rect::new(rect.x, rect.y, rect.width / 2 - 1, rect.height);
+            let right_rect = Rect::new(
+                rect.x + rect.width / 2 + 1,
+                rect.y,
+                rect.width / 2 - 2,
+                rect.height,
+            );
+            vec![left_rect, right_rect]
+        };
+        let mut areas = self.vertical_split_inner(parent_wins[0], have_menu_left);
+        areas.append(&mut self.vertical_split_inner(parent_wins[1], have_menu_right));
         areas
     }
 
-    fn single_pane(&self, rect: Rect, left_menu_perc: u16) -> Vec<Rect> {
-        self.vertical_split(rect, left_menu_perc)
+    fn single_pane(&self, rect: Rect, have_menu: bool) -> Vec<Rect> {
+        self.vertical_split_inner(rect, have_menu)
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {
