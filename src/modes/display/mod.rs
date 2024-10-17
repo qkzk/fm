@@ -2,6 +2,7 @@ mod directory;
 mod preview;
 // TODO! skim...
 // mod skim;
+mod nucleo_picker;
 mod tree;
 mod uber;
 
