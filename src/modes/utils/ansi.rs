@@ -1,3 +1,4 @@
+/// Copied from skim. See [ansi.rs](https://github.com/lotabout/skim/blob/master/src/ansi.rs)
 // Parse ANSI attr code
 use std::default::Default;
 use std::mem;
@@ -13,6 +14,7 @@ use crate::log_info;
 ///
 /// It will cache the latest attribute used, that means if an attribute affect multiple
 /// lines, the parser will recognize it.
+#[derive(Default)]
 pub struct ANSIParser {
     partial_str: String,
     last_attr: Style,
@@ -20,19 +22,6 @@ pub struct ANSIParser {
     stripped: String,
     stripped_char_count: usize,
     fragments: Vec<(Style, (u32, u32))>, // [char_index_start, char_index_end)
-}
-
-impl Default for ANSIParser {
-    fn default() -> Self {
-        ANSIParser {
-            partial_str: String::new(),
-            last_attr: Style::default(),
-
-            stripped: String::new(),
-            stripped_char_count: 0,
-            fragments: Vec::new(),
-        }
-    }
 }
 
 impl Perform for ANSIParser {
@@ -100,7 +89,7 @@ impl Perform for ANSIParser {
                 4 => attr.add_modifier |= Modifier::UNDERLINED,
                 5 => attr.add_modifier |= Modifier::SLOW_BLINK,
                 7 => attr.add_modifier |= Modifier::REVERSED,
-                num if num >= 30 && num <= 37 => {
+                num if (30..=37).contains(&num) => {
                     attr.fg = Some(Color::Indexed((num - 30) as u8));
                 }
                 38 => match iter.next() {
@@ -133,7 +122,7 @@ impl Perform for ANSIParser {
                     }
                 },
                 39 => attr.fg = Some(Color::Black),
-                num if num >= 40 && num <= 47 => {
+                num if (40..=47).contains(&num) => {
                     attr.bg = Some(Color::Indexed((num - 40) as u8));
                 }
                 48 => match iter.next() {
@@ -189,7 +178,7 @@ impl ANSIParser {
             return;
         }
 
-        let string = mem::replace(&mut self.partial_str, String::new());
+        let string = mem::take(&mut self.partial_str);
         let string_char_count = string.chars().count();
         self.fragments.push((
             self.last_attr,
@@ -220,9 +209,9 @@ impl ANSIParser {
         }
         self.save_str();
 
-        let stripped = mem::replace(&mut self.stripped, String::new());
+        let stripped = mem::take(&mut self.stripped);
         self.stripped_char_count = 0;
-        let fragments = mem::replace(&mut self.fragments, Vec::new());
+        let fragments = mem::take(&mut self.fragments);
         AnsiString::new_string(stripped, fragments)
     }
 }
@@ -505,7 +494,7 @@ mod tests {
         let input = "ab";
         let ansistring = ANSIParser::default().parse_ansi(input);
 
-        assert_eq!(false, ansistring.has_attrs());
+        assert!(!ansistring.has_attrs());
 
         let mut it = ansistring.iter();
         assert_eq!(Some(('a', Style::default())), it.next());
