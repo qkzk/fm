@@ -628,10 +628,8 @@ impl<'a> PreviewDisplay<'a> {
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
                 MENU_STYLES.get().expect("Menu colors should be set").first,
             );
-            // TODO! binary print_ascii, print_bytes
-            todo!("print bytes, print_ascii")
-            // line.print_bytes(rect, row, line_number_width_hex + 1);
-            // line.print_ascii(rect, row, line_number_width_hex + 43);
+            line.print_bytes(f, rect, row, line_number_width_hex + 1);
+            line.print_ascii(f, rect, row, line_number_width_hex + 43);
         }
     }
 
