@@ -1,7 +1,7 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
 use crate::common::{

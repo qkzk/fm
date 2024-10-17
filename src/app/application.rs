@@ -9,7 +9,7 @@ use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{set_loggers, Args, Display, Opener};
+use crate::io::{set_loggers, Args, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
