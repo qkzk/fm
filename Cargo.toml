@@ -65,3 +65,5 @@ zip = "2.2.0"
 
 crossterm = "0.26"
 ratatui = "0.28" 
+vte = "0.13.0"
+beef = "0.5.2"

@@ -1259,6 +1259,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
+    - [ ] BUG: when height is low, menus overflows their rect
     - [ ] doubleclick
   - [ ] DISPLAY
     - [x] create windows

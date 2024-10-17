@@ -208,6 +208,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "beef"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -818,6 +824,7 @@ name = "fm-tui"
 version = "0.1.31"
 dependencies = [
  "anyhow",
+ "beef",
  "chrono",
  "clap",
  "content_inspector",
@@ -849,6 +856,7 @@ dependencies = [
  "unicode-segmentation",
  "url",
  "url-escape",
+ "vte 0.13.0",
  "zip",
 ]
 
@@ -3307,7 +3315,7 @@ dependencies = [
  "itoa",
  "log",
  "unicode-width",
- "vte",
+ "vte 0.11.1",
 ]
 
 [[package]]
@@ -3315,6 +3323,17 @@ name = "vte"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5022b5fbf9407086c180e9557be968742d839e68346af7792b8592489732197"
+dependencies = [
+ "arrayvec",
+ "utf8parse",
+ "vte_generate_state_changes",
+]
+
+[[package]]
+name = "vte"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40eb22ae96f050e0c0d6f7ce43feeae26c348fc4dea56928ca81537cfaa6188b"
 dependencies = [
  "arrayvec",
  "utf8parse",
