@@ -3,7 +3,8 @@ use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use ratatui::init;
+use crossterm::execute;
+use ratatui::init as init_term;
 
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
@@ -54,7 +55,8 @@ impl FM {
 
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let term = init();
+        let term = init_term();
+        execute!(std::io::stdout(), crossterm::event::EnableMouseCapture).unwrap();
         let fm_sender = Arc::new(fm_sender);
 
         let event_reader = EventReader::new(fm_receiver);

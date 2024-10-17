@@ -1,8 +1,6 @@
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-use crossterm::event;
-
 use crate::event::FmEvents;
 
 /// Simple struct to read the events.
@@ -26,13 +24,13 @@ impl EventReader {
             if let Ok(event) = self.fm_receiver.try_recv() {
                 return event;
             }
-            let Ok(true) = event::poll(Duration::from_millis(100)) else {
+            let Ok(true) = crossterm::event::poll(Duration::from_millis(20)) else {
                 continue;
             };
-            let Ok(event) = event::read() else {
+            let Ok(term_event) = crossterm::event::read() else {
                 continue;
             };
-            return FmEvents::Term(event);
+            return FmEvents::Term(term_event);
         }
     }
 }

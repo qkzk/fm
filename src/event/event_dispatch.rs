@@ -4,6 +4,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseE
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
+use crate::log_info;
 use crate::modes::{Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate};
 
 /// Struct which mutates `tabs.selected()..
@@ -71,7 +72,11 @@ impl EventDispatcher {
             MouseEventKind::Up(MouseButton::Right) => {
                 EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
-            _ => unreachable!("{mouse_event:?} should be a mouse event"),
+            _ => {
+                // TODO mouse over is now possible + modifiers...
+                // log_info!("{mouse_event:?}");
+                Ok(())
+            }
         }
     }
 
