@@ -1249,6 +1249,9 @@ impl Display {
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
         self.hide_cursor().unwrap();
+        if status.should_be_cleared() {
+            self.term.clear().unwrap();
+        }
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
@@ -1282,10 +1285,8 @@ impl Display {
             borders,
             bordered_wins,
             inside_wins,
-            file_left,
-            file_right,
-            menu_left,
-            menu_right,
+            (file_left, file_right),
+            (menu_left, menu_right),
         );
     }
 
@@ -1294,20 +1295,18 @@ impl Display {
         borders: [Style; 4],
         bordered_wins: Vec<Rect>,
         inside_wins: Vec<Rect>,
-        file_left: Files,
-        file_right: Files,
-        menu_left: Menu,
-        menu_right: Menu,
+        files: (Files, Files),
+        menus: (Menu, Menu),
     ) {
         self.term
             .draw(|f| {
                 // 0 2
                 // 1 3
                 Self::draw_dual_borders(borders, f, &bordered_wins);
-                file_left.draw(f, &inside_wins[0]);
-                menu_left.draw(f, &inside_wins[1]);
-                file_right.draw(f, &inside_wins[2]);
-                menu_right.draw(f, &inside_wins[3]);
+                files.0.draw(f, &inside_wins[0]);
+                menus.0.draw(f, &inside_wins[1]);
+                files.1.draw(f, &inside_wins[2]);
+                menus.1.draw(f, &inside_wins[3]);
             })
             .unwrap();
     }

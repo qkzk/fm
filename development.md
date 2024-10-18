@@ -1259,7 +1259,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
-    - [ ] BUG: when height is low, menus overflows their rect
     - [ ] doubleclick
   - [ ] DISPLAY
     - [x] create windows
@@ -1274,6 +1273,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::binary::printhex & printascii
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
+    - [ ] BUG: when height is low, menus overflows their rect
+    - [ ] BUG: menus aren't resized properly
   - [ ] skim replaced by...
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement

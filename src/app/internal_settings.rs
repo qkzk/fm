@@ -75,6 +75,14 @@ impl InternalSettings {
         self.force_clear = true;
     }
 
+    pub fn reset_clear(&mut self) {
+        self.force_clear = false;
+    }
+
+    pub fn should_be_cleared(&self) -> bool {
+        self.force_clear
+    }
+
     pub fn mount_points(&mut self) -> Vec<&std::path::Path> {
         self.disks.refresh_list();
         self.disks.iter().map(|d| d.mount_point()).collect()

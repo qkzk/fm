@@ -483,6 +483,10 @@ impl Status {
         self.internal_settings.force_clear();
     }
 
+    pub fn should_be_cleared(&self) -> bool {
+        self.internal_settings.should_be_cleared()
+    }
+
     /// Refresh the users for every tab
     pub fn refresh_users(&mut self) -> Result<()> {
         self.tabs[0].users.update();

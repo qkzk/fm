@@ -60,25 +60,42 @@ I may have conflicts with normal message dispatch... since they're read from a g
 
 */
 
-use nucleo::Nucleo;
+use std::{io, thread::spawn};
 
-pub enum NucleoKind {
-    Path,
-    Text,
-    Help,
-}
+use nucleo_picker::{nucleo::Config, Picker};
 
-pub struct NucleoPicker {
-    // /// the matcher
-    // nucleo: Nucleo,
-    /// what the user typed
-    input_string: String,
-    /// kind of matching
-    kind: NucleoKind,
-    /// last output from nucleo, as strings
-    content: Vec<String>,
-    /// currently selected index,
-    index: usize,
-    /// flagged files
-    flagged: Vec<String>,
+static TEXT: [&str; 4] = ["man", "woman", "camera", "tv"];
+
+pub fn nucleo() -> io::Result<()> {
+    // See the nucleo configuration for more options:
+    //   https://docs.rs/nucleo/latest/nucleo/struct.Config.html
+    let config = Config::DEFAULT.match_paths();
+
+    // Initialize a picker with the provided configuration
+    let mut picker = Picker::with_config(config).without_reset();
+
+    // "argument parsing"
+
+    // populate from a separate thread to avoid locking the picker interface
+    let injector = picker.injector();
+    spawn(move || {
+        for entry in TEXT.into_iter() {
+            let _ = injector.push(entry, |e, cols| {
+                // the picker only has one column; fill it with the match text
+                cols[0] = e.to_string().into();
+            });
+        }
+    });
+
+    match picker.pick()? {
+        Some(entry) => {
+            // the matched `entry` is &DirEntry
+            crate::log_info!("Selected : '{}'", entry);
+        }
+        None => {
+            crate::log_info!("Nothing selected!");
+        }
+    }
+
+    Ok(())
 }

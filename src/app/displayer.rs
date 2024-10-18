@@ -37,8 +37,11 @@ impl Displayer {
                     Err(TryRecvError::Empty) => {}
                 }
                 match status.lock() {
-                    Ok(status) => {
+                    Ok(mut status) => {
                         display.display_all(&status);
+                        if status.should_be_cleared() {
+                            status.internal_settings.reset_clear()
+                        }
                         drop(status);
                     }
                     Err(error) => bail!("Error locking status: {error}"),

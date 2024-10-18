@@ -835,7 +835,7 @@ dependencies = [
  "indicatif",
  "log",
  "log4rs",
- "nucleo",
+ "nucleo-picker",
  "nvim-rs",
  "oauth2",
  "opendal",
@@ -1571,7 +1571,7 @@ version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 dependencies = [
- "libc 0.2.158",
+ "libc 0.1.12",
 ]
 
 [[package]]
@@ -1716,6 +1716,15 @@ checksum = "bf33f538733d1a5a3494b836ba913207f14d9d4a1d3cd67030c5061bdd2cac85"
 dependencies = [
  "memchr",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "nucleo-picker"
+version = "0.4.2"
+source = "git+https://github.com/qkzk/qkzk_nucleo-picker?branch=v0.4.2#99b074fcc37afaadf6df1349d7a87cd66e5a8ef4"
+dependencies = [
+ "crossterm 0.28.1",
+ "nucleo",
 ]
 
 [[package]]
