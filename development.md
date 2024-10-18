@@ -1272,6 +1272,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] windows are offset by one: do the splits by hand
     - [x] preview::syntaxedstring::print method
     - [x] preview::binary::printhex & printascii
+    - [x] preview::colored string
+    - [x] tree lines aren't placed properly
   - [ ] skim replaced by...
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement

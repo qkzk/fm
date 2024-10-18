@@ -1,4 +1,25 @@
 /*
+
+It's a full screen with custom binds
+
+So... it must capture all key events and handle them at root level of dispatch
+I may want to use a fork of nucleo-picker, it might be easier to maintain
+I'll just have to allow :
+
+- sending a terminal and not creating one
+- receiving events from MPSC instead of "event::poll() event::read()"
+- capturing the display ?
+
+plan:
+
+1. fork
+2. allow "term" to be sent from somewhere else... use it ?
+
+3. lock the term to be passed to Picker
+4. let the picker to the magic
+4. capture its result in caller
+
+
 +-------------------+
 |   Cargo           | <----
 |                   |

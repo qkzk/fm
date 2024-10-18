@@ -14,8 +14,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
-use crate::common::path_to_string;
+use crate::common::{path_to_string, UtfWidth};
 use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
@@ -23,6 +22,10 @@ use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
     HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
     Preview, SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
+};
+use crate::{
+    app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
+    modes::AnsiString,
 };
 
 pub trait Canvas: Sized {
@@ -46,18 +49,16 @@ impl Canvas for Rect {
     }
 
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
-        // Define the area for the text
-        let area = Rect {
-            x: self.x + col,
-            y: self.y + row,
-            width: content.len() as u16, // Set width based on content length
-            height: 1,                   // One line of text
-        };
-
-        let paragraph = Paragraph::new(Line::from(vec![Span::styled(content, Style::default())]));
-
-        // Render at the specified coordinates
-        f.render_widget(paragraph, area);
+        self.print_with_style(
+            f,
+            row,
+            col,
+            content,
+            Style {
+                fg: Some(Color::Rgb(255, 255, 255)),
+                ..Default::default()
+            },
+        )
     }
 }
 
@@ -383,7 +384,7 @@ impl<'a> DirectoryDisplay<'a> {
         height: usize,
     ) {
         let row = index + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
-        if row > height {
+        if row + 2 > height {
             return;
         }
         let mut attr = file.style();
@@ -465,7 +466,7 @@ impl<'a> TreeDisplay<'a> {
     ) {
         let (mut col, top, index, height) = position_param.export();
         let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
-        if row > height {
+        if row + 2 > height {
             return;
         }
 
@@ -475,8 +476,8 @@ impl<'a> TreeDisplay<'a> {
 
         col += Self::tree_metadata(f, rect, with_medatadata, row, col, line_builder, style);
         col += if index == 0 { 2 } else { 1 };
-        col += line_builder.prefix().len();
         rect.print(f, row as u16, col as u16, line_builder.prefix());
+        col += line_builder.prefix().utf_width();
         col += Self::tree_line_calc_flagged_offset(status, path);
         rect.print_with_style(f, row as u16, col as u16, &line_builder.filename(), style);
     }
@@ -491,8 +492,9 @@ impl<'a> TreeDisplay<'a> {
         style: Style,
     ) -> usize {
         if with_medatadata {
-            let len = line_builder.metadata().len();
-            rect.print_with_style(f, row as u16, col as u16, line_builder.metadata(), style);
+            let line = line_builder.metadata();
+            let len = line.len();
+            rect.print_with_style(f, row as u16, col as u16, line, style);
             len
         } else {
             0
@@ -681,15 +683,13 @@ impl<'a> PreviewDisplay<'a> {
         let height = rect.height;
         for (i, line) in colored_text.window(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-            if row > height as usize {
+            if row + 2 > height as usize {
                 break;
             }
-            let mut col = 3;
-            // TODO!
-            // skim ansi string parse...
-            // for (chr, attr) in skim::AnsiString::parse(line).iter() {
-            //     col += rect.print_with_attr(row, col, &chr.to_string(), attr)?;
-            // }
+            let offset = 3;
+            for (i, (chr, style)) in AnsiString::parse(line).iter().enumerate() {
+                rect.print_with_style(f, row as u16, (offset + i) as u16, &chr.to_string(), style)
+            }
         }
     }
 }

@@ -1,10 +1,11 @@
+use std::io::stdout;
 use std::process::exit;
 use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use crossterm::execute;
-use ratatui::init as init_term;
+use crossterm::{event::EnableMouseCapture, execute};
+use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
@@ -53,32 +54,6 @@ impl FM {
         Self::build(config)
     }
 
-    fn build(config: Config) -> Result<Self> {
-        let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let term = init_term();
-        execute!(std::io::stdout(), crossterm::event::EnableMouseCapture).unwrap();
-        let fm_sender = Arc::new(fm_sender);
-
-        let event_reader = EventReader::new(fm_receiver);
-        let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let status = Arc::new(Mutex::new(Status::new(
-            term.size().unwrap(),
-            Opener::new(&config.terminal, &config.terminal_flag),
-            &config.binds,
-            fm_sender.clone(),
-        )?));
-        let refresher = Refresher::new(fm_sender);
-        let displayer = Displayer::new(term, status.clone());
-
-        Ok(Self {
-            event_reader,
-            event_dispatcher,
-            status,
-            refresher,
-            displayer,
-        })
-    }
-
     /// Read config and args, leaving immediatly if the arguments say so.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
@@ -115,6 +90,35 @@ impl FM {
         exit(1)
     }
 
+    fn build(config: Config) -> Result<Self> {
+        let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
+        let fm_sender = Arc::new(fm_sender);
+        let term = Self::init_term();
+        let event_reader = EventReader::new(fm_receiver);
+        let event_dispatcher = EventDispatcher::new(config.binds.clone());
+        let status = Arc::new(Mutex::new(Status::new(
+            term.size().unwrap(),
+            Opener::new(&config.terminal, &config.terminal_flag),
+            &config.binds,
+            fm_sender.clone(),
+        )?));
+        let refresher = Refresher::new(fm_sender);
+        let displayer = Displayer::new(term, status.clone());
+
+        Ok(Self {
+            event_reader,
+            event_dispatcher,
+            status,
+            refresher,
+            displayer,
+        })
+    }
+
+    fn init_term() -> DefaultTerminal {
+        let term = init_term();
+        execute!(stdout(), EnableMouseCapture).unwrap();
+        term
+    }
     /// Update itself, changing its status.
     fn update(&mut self, event: FmEvents) -> Result<()> {
         let Ok(mut status) = self.status.lock() else {
