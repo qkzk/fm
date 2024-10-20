@@ -13,24 +13,14 @@ Also, I feel like doing the same thing I already did. Why not use a custom made 
 Start again with DirENtry
 */
 mod inner {
-    use std::{sync::Arc, thread::available_parallelism};
+    use std::{cmp::min, sync::Arc, thread::available_parallelism};
 
-    use anyhow::{anyhow, bail, Context, Result};
-    use nucleo::{pattern, Config, Injector, Nucleo, Status, Utf32String};
+    use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 
-    use crate::{
-        impl_content, impl_selectable,
-        modes::{ContentWindow, Input},
-    };
-
-    enum NucleoKind {
-        DirEntry,
-        String,
-    }
+    use crate::modes::{ContentWindow, Input};
 
     pub struct FuzzyFinder<T: Send + Sync + 'static> {
         matcher: Nucleo<T>,
-        matcher_state: usize,
         pub content: Vec<String>,
         pub index: usize,
         pub input: Input,
@@ -58,7 +48,6 @@ mod inner {
         pub fn new(config: Config) -> Self {
             Self {
                 matcher: Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1),
-                matcher_state: 0,
                 content: vec![],
                 index: 0,
                 input: Input::default(),
@@ -90,12 +79,25 @@ mod inner {
         // TODO call it from somewhere else
         pub fn tick(&mut self) {
             let status = self.matcher.tick(10);
-            self.update_status(status);
-        }
+            if status.changed {
+                let snapshot = self.matcher.snapshot();
 
-        // TODO update the content, update the index, update the window
-        fn update_status(&mut self, status: Status) {
-            todo!()
+                let item_count = snapshot.item_count() as usize;
+
+                if item_count == 0 {
+                    self.index = 0;
+                } else {
+                    self.index = min(self.index, item_count - 1)
+                }
+                // TODO use the range in matched_items to only parse displayed elements here not in display.
+                self.content = snapshot
+                    .matched_items(0..item_count as u32)
+                    .map(|t| &t.matcher_columns[0])
+                    .map(format_display)
+                    .collect();
+                self.window.set_len(item_count as _);
+                self.window.scroll_to(self.index);
+            }
         }
 
         pub fn pick(&mut self) -> Option<&T> {
@@ -105,9 +107,26 @@ mod inner {
                 .map(|item| item.data)
         }
     }
+
+    /// Format a [`Utf32String`] for displaying. Currently:
+    /// - Delete control characters.
+    /// - Truncates the string to an appropriate length.
+    /// - Replaces any newline characters with spaces.
+    fn format_display(display: &Utf32String) -> String {
+        display
+            .slice(..)
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .map(|ch| match ch {
+                '\n' => ' ',
+                s => s,
+            })
+            .collect()
+    }
 }
 
 pub mod direntry {
+    use std::cmp::max;
     use std::fs::DirEntry;
 
     use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
@@ -116,13 +135,85 @@ pub mod direntry {
     type Ffd = FuzzyFinder<DirEntry>;
     impl_selectable!(Ffd);
     impl_content!(String, Ffd);
+
+    impl FuzzyFinder<DirEntry> {
+        pub fn select_next(&mut self) {
+            self.next();
+            self.window.scroll_to(self.index);
+        }
+
+        pub fn select_prev(&mut self) {
+            self.prev();
+            self.window.scroll_to(self.index);
+        }
+
+        pub fn select_clic(&mut self, index: usize) {
+            self.index = max(index, self.len().saturating_sub(1));
+            self.window.scroll_to(self.index)
+        }
+
+        pub fn page_down(&mut self) {
+            for _ in 0..10 {
+                if self.index == 0 {
+                    break;
+                }
+                self.select_prev()
+            }
+        }
+
+        pub fn page_up(&mut self) {
+            for _ in 0..10 {
+                if self.index >= self.len() {
+                    break;
+                }
+                self.select_next()
+            }
+        }
+    }
 }
 
 pub mod string {
+    use std::cmp::max;
+
     use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
     use crate::{impl_content, impl_selectable};
 
     type Ffs = FuzzyFinder<String>;
     impl_selectable!(Ffs);
     impl_content!(String, Ffs);
+
+    impl FuzzyFinder<String> {
+        pub fn select_next(&mut self) {
+            self.next();
+            self.window.scroll_to(self.index);
+        }
+
+        pub fn select_prev(&mut self) {
+            self.prev();
+            self.window.scroll_to(self.index);
+        }
+
+        pub fn select_clic(&mut self, index: usize) {
+            self.index = max(index, self.len().saturating_sub(1));
+            self.window.scroll_to(self.index)
+        }
+
+        pub fn page_down(&mut self) {
+            for _ in 0..10 {
+                if self.index == 0 {
+                    break;
+                }
+                self.select_prev()
+            }
+        }
+
+        pub fn page_up(&mut self) {
+            for _ in 0..10 {
+                if self.index >= self.len() {
+                    break;
+                }
+                self.select_next()
+            }
+        }
+    }
 }
