@@ -69,3 +69,4 @@ vte = "0.13.0"
 beef = "0.5.2"
 # nucleo-picker = { git = "https://github.com/qkzk/qkzk_nucleo-picker", branch="v0.4.2" }
 nucleo = "0.5.0"
+walkdir = "2.5.0"

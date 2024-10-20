@@ -3,6 +3,7 @@ use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
 };
+use std::thread::spawn;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -14,6 +15,7 @@ use sysinfo::{Disk, Disks};
 //     prelude::{from_keyname, Event, Key},
 //     term::Term,
 // };
+use walkdir::{DirEntry, WalkDir};
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
@@ -29,10 +31,10 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
-    CopyMove, Display, FileInfo, FileKind, FilterKind, InputCompleted, InputSimple, IsoDevice,
-    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
-    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable,
-    ShellCommandParser, Users,
+    CopyMove, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, InputCompleted, InputSimple,
+    IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation,
+    PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search,
+    Selectable, ShellCommandParser, Users,
 };
 use crate::{log_info, log_line};
 
@@ -112,6 +114,7 @@ pub struct Status {
     pub index: usize,
 
     // skimer: Option<Skimer>,
+    pub fuzzy: Option<FuzzyFinder<DirEntry>>,
     /// Navigable menu
     pub menu: MenuHolder,
     /// Display settings
@@ -140,6 +143,7 @@ impl Status {
     ) -> Result<Self> {
         let height = size.height as usize;
         // let skimer = None;
+        let fuzzy = None;
         let index = 0;
 
         let args = Args::parse();
@@ -169,6 +173,7 @@ impl Status {
             tabs,
             index,
             // skimer,
+            fuzzy,
             menu,
             display_settings,
             internal_settings,
@@ -851,6 +856,37 @@ impl Status {
         )?;
         self.internal_settings.store_copy_progress(in_mem);
         Ok(())
+    }
+
+    pub fn fuzzy_init(&mut self) {
+        self.fuzzy = Some(FuzzyFinder::default());
+    }
+
+    pub fn fuzzy_drop(&mut self) {
+        self.fuzzy = None;
+    }
+
+    pub fn fuzzy_find_files(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            return Ok(());
+        };
+        let current_path = self.current_tab().current_path().to_path_buf();
+        let injector = fuzzy.injector();
+        spawn(move || {
+            for entry in WalkDir::new(current_path)
+                .into_iter()
+                .filter_map(Result::ok)
+            {
+                let _ = injector.push(entry, |e, cols| {
+                    // the picker only has one column; fill it with the match text
+                    cols[0] = e.path().display().to_string().into();
+                });
+            }
+        });
+        let Some(pick) = fuzzy.pick() else {
+            return Ok(());
+        };
+        self.tabs[self.index].cd_to_file(pick.path())
     }
 
     // fn skim_init(&mut self) {

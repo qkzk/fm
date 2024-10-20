@@ -11,6 +11,6 @@ pub use preview::{
     BinaryContent, ExtensionKind, HLContent, Preview, PreviewBuilder, Text, TextKind, Window,
 };
 // pub use skim::{parse_line_output, print_ansi_str, Skimer};
-pub use nucleo_picker::*;
+pub use nucleo_picker::{direntry, string, FuzzyFinder};
 pub use tree::{Go, Node, TLine, To, Tree, TreeBuilder, TreeLines};
 pub use uber::{Ueber, UeberBuilder};

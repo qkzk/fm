@@ -100,7 +100,7 @@ mod inner {
             }
         }
 
-        pub fn pick(&mut self) -> Option<&T> {
+        pub fn pick(&self) -> Option<&T> {
             self.matcher
                 .snapshot()
                 .get_matched_item(self.index as _)
@@ -127,9 +127,9 @@ mod inner {
 
 pub mod direntry {
     use std::cmp::max;
-    use std::fs::DirEntry;
+    use walkdir::DirEntry;
 
-    use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
+    use super::FuzzyFinder;
     use crate::{impl_content, impl_selectable};
 
     type Ffd = FuzzyFinder<DirEntry>;
@@ -172,10 +172,12 @@ pub mod direntry {
     }
 }
 
+pub use inner::FuzzyFinder;
+
 pub mod string {
     use std::cmp::max;
 
-    use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
+    use super::FuzzyFinder;
     use crate::{impl_content, impl_selectable};
 
     type Ffs = FuzzyFinder<String>;
