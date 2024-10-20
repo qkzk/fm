@@ -1149,7 +1149,7 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
-        crate::modes::nucleo()?;
+        // crate::modes::nucleo()?;
         status.force_clear();
         // status.skim_output_to_tab();
         status.update_second_pane_for_preview()

@@ -9,8 +9,8 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Position, Rect, Size},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    text::Span,
+    widgets::{Block, Borders},
     Frame, Terminal,
 };
 

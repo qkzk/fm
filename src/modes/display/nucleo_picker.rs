@@ -1,101 +1,123 @@
 /*
 
-It's a full screen with custom binds
+The current situation is really annoying.
 
-So... it must capture all key events and handle them at root level of dispatch
-I may want to use a fork of nucleo-picker, it might be easier to maintain
-I'll just have to allow :
+It **almost** works.
 
-- sending a terminal and not creating one
-- receiving events from MPSC instead of "event::poll() event::read()"
-- capturing the display ?
+1. When I use Crossterm in nucleo_picker, no problemo I can display whatever I want.
+2. When I use ratatui in nucleo_picker, nothing is displayed properly.
 
-plan:
+Problem with 1. is that it's not easy to extend the display.
+Also, I feel like doing the same thing I already did. Why not use a custom made fuzzy finder and do everything myself ?
 
-1. fork
-2. allow "term" to be sent from somewhere else... use it ?
-
-3. lock the term to be passed to Picker
-4. let the picker to the magic
-4. capture its result in caller
-
-
-+-------------------+
-|   Cargo           | <----
-|                   |
-|    ./Cargo.toml   |
-| >   ./Cargo.lock  |
-|                   |
-|                   |
-|                   |
-+-------------------+
-
-typing something sends a message to nucleo
-we call snapshot... to get an updated list
-space selects an element
-
-ENTER returns the selected + flagged elements
-
-many questions :
-
-- how to know where we were ?
-
-need at least one MPSC ?
-
-we look for a path from current dir
-
-users types "a"
-
-the new prompt is sent, the output is displayed
-I should only use nucleo-picker as a reference and adapt to what I'm doing.
-
-I could :
-
-lock the terminal
-do a picker whatever
-send its output as Vec<String> through messages or whatever
-unlock the terminal
-and voila ... would it work ?
-I may have conflicts with normal message dispatch... since they're read from a global function... check the mode, send it back there
-
+Start again with DirENtry
 */
+mod inner {
+    use std::{sync::Arc, thread::available_parallelism};
 
-use std::{io, thread::spawn};
+    use anyhow::{anyhow, bail, Context, Result};
+    use nucleo::{pattern, Config, Injector, Nucleo, Status, Utf32String};
 
-use nucleo_picker::{nucleo::Config, Picker};
+    use crate::{
+        impl_content, impl_selectable,
+        modes::{ContentWindow, Input},
+    };
 
-static TEXT: [&str; 4] = ["man", "woman", "camera", "tv"];
+    enum NucleoKind {
+        DirEntry,
+        String,
+    }
 
-pub fn nucleo() -> io::Result<()> {
-    // See the nucleo configuration for more options:
-    //   https://docs.rs/nucleo/latest/nucleo/struct.Config.html
-    let config = Config::DEFAULT.match_paths();
+    pub struct FuzzyFinder<T: Send + Sync + 'static> {
+        matcher: Nucleo<T>,
+        matcher_state: usize,
+        pub content: Vec<String>,
+        pub index: usize,
+        pub input: Input,
+        pub window: ContentWindow,
+    }
 
-    // Initialize a picker with the provided configuration
-    let mut picker = Picker::with_config(config).without_reset();
-
-    // "argument parsing"
-
-    // populate from a separate thread to avoid locking the picker interface
-    let injector = picker.injector();
-    spawn(move || {
-        for entry in TEXT.into_iter() {
-            let _ = injector.push(entry, |e, cols| {
-                // the picker only has one column; fill it with the match text
-                cols[0] = e.to_string().into();
-            });
-        }
-    });
-
-    match picker.pick()? {
-        Some(entry) => {
-            // the matched `entry` is &DirEntry
-            crate::log_info!("Selected : '{}'", entry);
-        }
-        None => {
-            crate::log_info!("Nothing selected!");
+    impl<T: Send + Sync + 'static> Default for FuzzyFinder<T> {
+        fn default() -> Self {
+            let config = Config::DEFAULT.match_paths();
+            Self::new(config)
         }
     }
 
-    Ok(())
+    impl<T: Send + Sync + 'static> FuzzyFinder<T> {
+        fn default_thread_count() -> Option<usize> {
+            available_parallelism()
+                .map(|it| it.get().checked_sub(2).unwrap_or(1))
+                .ok()
+        }
+
+        fn build_nucleo(config: Config) -> Nucleo<T> {
+            Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1)
+        }
+
+        pub fn new(config: Config) -> Self {
+            Self {
+                matcher: Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1),
+                matcher_state: 0,
+                content: vec![],
+                index: 0,
+                input: Input::default(),
+                window: ContentWindow::default(),
+            }
+        }
+
+        pub fn update_config(&mut self, config: Config) {
+            self.matcher = Self::build_nucleo(config);
+        }
+
+        /// if insert char: append = true,
+        /// if delete char: append = false,
+        fn update_input(&mut self, append: bool) {
+            self.matcher.pattern.reparse(
+                0,
+                &self.input.string(),
+                pattern::CaseMatching::Smart,
+                pattern::Normalization::Smart,
+                append,
+            )
+        }
+
+        // TODO call it from somewhere else
+        pub fn tick(&mut self) {
+            let status = self.matcher.tick(10);
+            self.update_status(status);
+        }
+
+        // TODO update the content, update the index, update the window
+        fn update_status(&mut self, status: Status) {
+            todo!()
+        }
+
+        pub fn pick(&mut self) -> Option<&T> {
+            self.matcher
+                .snapshot()
+                .get_matched_item(self.index as _)
+                .map(|item| item.data)
+        }
+    }
+}
+
+pub mod direntry {
+    use std::fs::DirEntry;
+
+    use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
+    use crate::{impl_content, impl_selectable};
+
+    type Ffd = FuzzyFinder<DirEntry>;
+    impl_selectable!(Ffd);
+    impl_content!(String, Ffd);
+}
+
+pub mod string {
+    use crate::modes::display::nucleo_picker::inner::FuzzyFinder;
+    use crate::{impl_content, impl_selectable};
+
+    type Ffs = FuzzyFinder<String>;
+    impl_selectable!(Ffs);
+    impl_content!(String, Ffs);
 }

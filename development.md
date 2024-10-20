@@ -1279,7 +1279,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
       - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
-      - [ ] read & adapt nucleo-picker.
+      - [ ] adapt nucleo-picker.
+      - [ ] adapt previous methods
+      - [ ] search in text... display something
 
 #### Once Nucleo is done
 
@@ -1288,6 +1290,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] focus gain (easiest)
   - selection follow mouse ? annoying
   - mouse over files to preview ? (what for ?)
+- [ ] shellcommand with redirection "< > >> |"
+      `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
 
 ## TODO
 
