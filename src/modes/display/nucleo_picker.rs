@@ -22,6 +22,7 @@ mod inner {
     pub struct FuzzyFinder<T: Send + Sync + 'static> {
         matcher: Nucleo<T>,
         pub content: Vec<String>,
+        pub matched_item_count: usize,
         pub index: usize,
         pub input: Input,
         pub window: ContentWindow,
@@ -49,6 +50,7 @@ mod inner {
             Self {
                 matcher: Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1),
                 content: vec![],
+                matched_item_count: 0,
                 index: 0,
                 input: Input::default(),
                 window: ContentWindow::default(),
@@ -66,7 +68,7 @@ mod inner {
 
         /// if insert char: append = true,
         /// if delete char: append = false,
-        fn update_input(&mut self, append: bool) {
+        pub fn update_input(&mut self, append: bool) {
             self.matcher.pattern.reparse(
                 0,
                 &self.input.string(),
@@ -83,6 +85,7 @@ mod inner {
                 let snapshot = self.matcher.snapshot();
 
                 let item_count = snapshot.item_count() as usize;
+                self.matched_item_count = snapshot.matched_item_count() as usize;
 
                 if item_count == 0 {
                     self.index = 0;

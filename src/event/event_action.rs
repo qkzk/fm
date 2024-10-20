@@ -785,7 +785,7 @@ impl EventAction {
                 .search
                 .tree(&mut status.tabs[status.index].tree),
             Display::Directory => status.current_tab_mut().directory_search_next(),
-            Display::Preview => {
+            Display::Preview | Display::Fuzzy => {
                 return Ok(());
             }
         }
@@ -844,6 +844,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev(),
+            Display::Fuzzy => status.fuzzy_up()?,
         }
         Ok(())
     }
@@ -854,6 +855,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next(),
+            Display::Fuzzy => status.fuzzy_down()?,
         }
         Ok(())
     }
@@ -1027,6 +1029,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
+                Display::Fuzzy => todo!(),
             };
             status.update_second_pane_for_preview()
         } else {
@@ -1043,6 +1046,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf(),
+                Display::Fuzzy => todo!(),
             };
             status.update_second_pane_for_preview()?;
         } else {
@@ -1083,6 +1087,7 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => status.fuzzy_page_up()?,
         };
         Ok(())
     }
@@ -1119,6 +1124,7 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => status.fuzzy_page_down()?,
         };
         Ok(())
     }
@@ -1152,9 +1158,9 @@ impl EventAction {
         // crate::modes::nucleo()?;
         status.force_clear();
         status.fuzzy_init();
-        // status.current_tab_mut().set_display_mode(Display::Fuzzy);
+        status.current_tab_mut().set_display_mode(Display::Fuzzy);
         status.fuzzy_find_files()?;
-        status.fuzzy_drop();
+        // status.fuzzy_drop();
         // status.skim_output_to_tab();
         status.update_second_pane_for_preview()
     }

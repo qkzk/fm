@@ -401,6 +401,8 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+    /// Fuzzy finder of something
+    Fuzzy,
 }
 
 impl Display {

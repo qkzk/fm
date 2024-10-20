@@ -1,5 +1,7 @@
-use anyhow::Result;
-use crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use anyhow::{bail, Result};
+use crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 
 use crate::app::Status;
 use crate::config::Bindings;
@@ -81,10 +83,52 @@ impl EventDispatcher {
     }
 
     fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+            return self.fuzzy_matcher(status, key);
+        }
         let Some(action) = self.binds.get(&key) else {
             return Ok(());
         };
         action.matcher(status, &self.binds)
+    }
+
+    fn fuzzy_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        let Some(fuzzy) = &mut status.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        match key {
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: _,
+                kind: _,
+                state: _,
+            } => {
+                fuzzy.input.insert(c);
+                fuzzy.update_input(true);
+                Ok(())
+            }
+            key => self.fuzzy_key_matcher(status, key),
+        }
+    }
+
+    fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        log_info!("fuzzy_key_matcher: {key:?}");
+        if let KeyEvent {
+            code,
+            modifiers: KeyModifiers::NONE,
+            kind: _,
+            state: _,
+        } = key
+        {
+            match code {
+                KeyCode::Enter => status.fuzzy_select()?,
+                KeyCode::Esc => status.fuzzy_leave()?,
+                KeyCode::Up => status.fuzzy_up()?,
+                KeyCode::Down => status.fuzzy_down()?,
+                _ => (),
+            }
+        }
+        Ok(())
     }
 
     fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {

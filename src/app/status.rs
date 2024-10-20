@@ -739,6 +739,7 @@ impl Status {
                 let _ = self.update_second_pane_for_preview();
             }
             Display::Preview => (),
+            Display::Fuzzy => (),
         }
         if matches!(
             self.current_tab().menu_mode,
@@ -868,7 +869,7 @@ impl Status {
 
     pub fn fuzzy_find_files(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
-            return Ok(());
+            bail!("Fuzzy should be set");
         };
         let current_path = self.current_tab().current_path().to_path_buf();
         let injector = fuzzy.injector();
@@ -883,10 +884,57 @@ impl Status {
                 });
             }
         });
-        let Some(pick) = fuzzy.pick() else {
-            return Ok(());
+        Ok(())
+    }
+
+    pub fn fuzzy_select(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
         };
-        self.tabs[self.index].cd_to_file(pick.path())
+        if let Some(pick) = fuzzy.pick() {
+            self.tabs[self.index].cd_to_file(pick.path())?;
+        } else {
+            log_info!("picked nothing");
+        };
+        self.fuzzy_leave()
+    }
+
+    pub fn fuzzy_leave(&mut self) -> Result<()> {
+        self.fuzzy_drop();
+        self.current_tab_mut().set_display_mode(Display::Directory);
+        self.refresh_view()
+    }
+
+    pub fn fuzzy_up(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.select_next();
+        Ok(())
+    }
+
+    pub fn fuzzy_down(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.select_prev();
+        Ok(())
+    }
+
+    pub fn fuzzy_page_up(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.page_down();
+        Ok(())
+    }
+
+    pub fn fuzzy_page_down(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.page_up();
+        Ok(())
     }
 
     // fn skim_init(&mut self) {
@@ -1526,6 +1574,7 @@ impl Status {
                 let footer = Footer::new(self, self.current_tab())?;
                 footer.action(col as usize, is_right).to_owned()
             }
+            Display::Fuzzy => return Ok(()),
         };
         log_info!("action: {action}");
         action.matcher(self, binds)

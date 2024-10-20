@@ -195,6 +195,7 @@ impl Tab {
             Display::Tree => self.tree.display_len(),
             Display::Preview => self.preview.len(),
             Display::Directory => self.directory.len(),
+            Display::Fuzzy => 0,
         }
     }
 
@@ -251,6 +252,7 @@ impl Tab {
                 has_last_modification_happened_less_than(&self.directory.path, 10)?
             }
             Display::Tree => self.tree.has_modified_dirs(),
+            Display::Fuzzy => false,
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -369,6 +371,7 @@ impl Tab {
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
             }
+            Display::Fuzzy => (),
         }
     }
 
@@ -545,6 +548,7 @@ impl Tab {
             Display::Preview => return Ok(()),
             Display::Directory => self.jump_directory(&jump_target, target_dir)?,
             Display::Tree => self.jump_tree(&jump_target, target_dir)?,
+            Display::Fuzzy => return Ok(()),
         }
         Ok(())
     }
@@ -784,6 +788,7 @@ impl Tab {
             Display::Directory => self.search.matches_from(self.directory.content()),
             Display::Tree => self.search.matches_from(self.tree.displayable().content()),
             Display::Preview => vec![],
+            Display::Fuzzy => vec![],
         }
     }
 

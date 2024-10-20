@@ -1,4 +1,4 @@
-use std::{io::Stdout, sync::MutexGuard};
+use std::{cmp::min, io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
 use crossterm::{
@@ -7,15 +7,14 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Position, Rect, Size},
+    layout::{Constraint, Direction, Layout, Position, Rect, Size},
     style::{Color, Modifier, Style},
-    text::Span,
-    widgets::{Block, Borders},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
+use walkdir::DirEntry;
 
-use crate::common::{path_to_string, UtfWidth};
-use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
 use crate::modes::{
@@ -26,6 +25,14 @@ use crate::modes::{
 use crate::{
     app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
     modes::AnsiString,
+};
+use crate::{
+    common::{path_to_string, UtfWidth},
+    modes::FuzzyFinder,
+};
+use crate::{
+    config::{ColorG, Gradient, MENU_STYLES},
+    modes::Input,
 };
 
 pub trait Canvas: Sized {
@@ -243,6 +250,7 @@ impl<'a> Files<'a> {
             DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, rect),
             DisplayMode::Tree => TreeDisplay::new(self).draw(f, rect),
             DisplayMode::Preview => PreviewDisplay::new(self).draw(f, rect),
+            DisplayMode::Fuzzy => FuzzyDisplay::new(self).draw(f, rect),
         }
     }
 
@@ -307,6 +315,133 @@ impl<'a> Files<'a> {
             rect,
             false,
         )
+    }
+}
+
+struct FuzzyDisplay<'a> {
+    status: &'a Status,
+}
+
+impl<'a> Draw for FuzzyDisplay<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.fuzzy(f, rect)
+    }
+}
+
+impl<'a> FuzzyDisplay<'a> {
+    fn new(files: &'a Files) -> Self {
+        Self {
+            status: files.status,
+        }
+    }
+
+    fn fuzzy(&self, f: &mut Frame, rect: &Rect) {
+        let Some(fuzzy) = &self.status.fuzzy else {
+            return;
+        };
+        let rects = Self::build_layout(rect);
+        // Draw the match counts at the top
+        let match_info = self.line_match_info(fuzzy);
+        let match_count_paragraph = Self::paragraph_match_count(match_info);
+        f.render_widget(match_count_paragraph, rects[0]);
+
+        // Draw the matched items
+        let items_paragraph = self.paragraph_matches(fuzzy);
+        f.render_widget(items_paragraph, rects[1]);
+        self.draw_prompt(fuzzy, f, rects[2]);
+    }
+
+    fn build_layout(area: &Rect) -> Vec<Rect> {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Min(0),
+                Constraint::Min(0),
+            ])
+            .split(*area)
+            .to_vec()
+    }
+
+    fn draw_prompt(&self, fuzzy: &FuzzyFinder<DirEntry>, f: &mut Frame, rect: Rect) {
+        // Render the prompt string at the bottom
+        let prompt_view = fuzzy.input.string();
+        let prompt_paragraph = Paragraph::new(vec![Line::from(vec![
+            Span::raw("> "),
+            Span::raw(prompt_view.to_string()),
+        ])])
+        .block(Block::default().borders(Borders::NONE));
+
+        // Render the prompt at the bottom of the layout
+        f.render_widget(prompt_paragraph, rect);
+        self.set_cursor_position(f, rect, &fuzzy.input);
+    }
+
+    fn set_cursor_position(&self, f: &mut Frame, rect: Rect, input: &Input) {
+        // Move the cursor to the prompt
+        f.set_cursor_position(Position {
+            x: rect.x + input.index() as u16 + 2, // Adjust the cursor position for "> "
+            y: rect.y,
+        });
+    }
+
+    fn line_match_info(&self, fuzzy: &FuzzyFinder<DirEntry>) -> Line {
+        Line::from(vec![
+            Span::styled("  ", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                format!("{}", fuzzy.matched_item_count),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+            Span::styled("/", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                format!("{}", fuzzy.len()),
+                Style::default().fg(Color::Yellow),
+            ),
+        ])
+    }
+
+    fn paragraph_match_count(match_info: Line) -> Paragraph {
+        Paragraph::new(match_info)
+            .style(Style::default())
+            .block(Block::default().borders(Borders::NONE))
+    }
+
+    fn paragraph_matches(&self, fuzzy: &FuzzyFinder<DirEntry>) -> Paragraph {
+        let mut items: Vec<Line> = vec![];
+
+        for (index, item) in fuzzy
+            .content()
+            .iter()
+            .enumerate()
+            .skip(fuzzy.window.top)
+            .take(min(fuzzy.window.bottom, fuzzy.len()))
+        {
+            let item_spans = if index == fuzzy.index {
+                Self::selected_line(item)
+            } else {
+                Self::non_selected_line(item)
+            };
+            items.push(item_spans);
+        }
+        Paragraph::new(items)
+    }
+
+    fn selected_line(render: &str) -> Line<'static> {
+        Line::from(vec![
+            Span::styled(
+                "▌ ",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(render.to_owned()),
+        ])
+    }
+
+    fn non_selected_line(render: &str) -> Line<'static> {
+        Line::from(vec![Span::raw("  "), Span::raw(render.to_owned())])
     }
 }
 
