@@ -1276,6 +1276,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] BUG: when height is low, menus overflows their rect
     - [ ] BUG: menus aren't resized properly
   - [ ] skim replaced by...
+    - [ ] don't use nucleo-picker, make my own picker
+      - [ ] struct nucleo-picker
+      - [ ] attach to status or tabs
+      - [ ] send key events
+      - [ ] parse key events
+      - [ ] execute key events
+      - [ ] send refresh events
+      - [ ] display for T
+      - [ ] ff file
+      - [ ] ff line
+      - [ ] ff help
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
       - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm

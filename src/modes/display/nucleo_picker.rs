@@ -66,6 +66,11 @@ mod inner {
             }
         }
 
+        /// Get an [`Injector`] from the internal [`Nucleo`] instance.
+        pub fn injector(&self) -> Injector<T> {
+            self.matcher.injector()
+        }
+
         pub fn update_config(&mut self, config: Config) {
             self.matcher = Self::build_nucleo(config);
         }
