@@ -1155,13 +1155,10 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
-        // crate::modes::nucleo()?;
         status.force_clear();
         status.fuzzy_init();
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         status.fuzzy_find_files()?;
-        // status.fuzzy_drop();
-        // status.skim_output_to_tab();
         status.update_second_pane_for_preview()
     }
 

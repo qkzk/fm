@@ -1,18 +1,4 @@
-/*
-
-The current situation is really annoying.
-
-It **almost** works.
-
-1. When I use Crossterm in nucleo_picker, no problemo I can display whatever I want.
-2. When I use ratatui in nucleo_picker, nothing is displayed properly.
-
-Problem with 1. is that it's not easy to extend the display.
-Also, I feel like doing the same thing I already did. Why not use a custom made fuzzy finder and do everything myself ?
-
-Start again with DirENtry
-*/
-mod inner {
+mod nucleo_struct {
     use std::{cmp::min, sync::Arc, thread::available_parallelism};
 
     use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
@@ -78,28 +64,32 @@ mod inner {
             )
         }
 
+        fn index_clamped(&self, item_count: usize) -> usize {
+            if item_count == 0 {
+                0
+            } else {
+                min(self.index, item_count - 1)
+            }
+        }
+
         pub fn tick(&mut self) {
             let status = self.matcher.tick(10);
-            if status.changed {
-                let snapshot = self.matcher.snapshot();
-
-                let item_count = snapshot.item_count() as usize;
-                self.matched_item_count = snapshot.matched_item_count() as usize;
-
-                if item_count == 0 {
-                    self.index = 0;
-                } else {
-                    self.index = min(self.index, item_count - 1)
-                }
-                // TODO use the range in matched_items to only parse displayed elements here not in display.
-                self.content = snapshot
-                    .matched_items(0..item_count as u32)
-                    .map(|t| &t.matcher_columns[0])
-                    .map(format_display)
-                    .collect();
-                self.window.set_len(item_count as _);
-                self.window.scroll_to(self.index);
+            if !status.changed {
+                return;
             }
+
+            let snapshot = self.matcher.snapshot();
+            let item_count = snapshot.item_count() as usize;
+            self.matched_item_count = snapshot.matched_item_count() as usize;
+            self.index = self.index_clamped(item_count);
+
+            // TODO use the range in matched_items to only parse displayed elements here not in display.
+            self.content = snapshot
+                .matched_items(0..item_count as u32)
+                .map(|t| format_display(&t.matcher_columns[0]))
+                .collect();
+            self.window.set_len(item_count);
+            self.window.scroll_to(self.index);
         }
 
         pub fn pick(&self) -> Option<&T> {
@@ -127,7 +117,7 @@ mod inner {
     }
 }
 
-pub mod direntry {
+pub mod nucleo_direntry {
     use std::cmp::max;
     use walkdir::DirEntry;
 
@@ -174,9 +164,9 @@ pub mod direntry {
     }
 }
 
-pub use inner::FuzzyFinder;
+pub use nucleo_struct::FuzzyFinder;
 
-pub mod string {
+pub mod nucleo_string {
     use std::cmp::max;
 
     use super::FuzzyFinder;

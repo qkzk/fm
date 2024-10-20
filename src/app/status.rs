@@ -870,7 +870,7 @@ impl Status {
         self.fuzzy = Some(FuzzyFinder::default());
     }
 
-    pub fn fuzzy_drop(&mut self) {
+    fn fuzzy_drop(&mut self) {
         self.fuzzy = None;
     }
 
@@ -954,12 +954,13 @@ impl Status {
         Ok(())
     }
 
+    // TODO call fuzzy.navigate(Direction::something)
     pub fn fuzzy_up(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
         fuzzy.select_prev();
-        Ok(())
+        self.update_second_pane_for_preview()
     }
 
     pub fn fuzzy_down(&mut self) -> Result<()> {
@@ -967,8 +968,7 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.select_next();
-        self.update_second_pane_for_preview()?;
-        Ok(())
+        self.update_second_pane_for_preview()
     }
 
     pub fn fuzzy_page_up(&mut self) -> Result<()> {
@@ -976,7 +976,7 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.page_up();
-        Ok(())
+        self.update_second_pane_for_preview()
     }
 
     pub fn fuzzy_page_down(&mut self) -> Result<()> {
@@ -984,7 +984,7 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.page_down();
-        Ok(())
+        self.update_second_pane_for_preview()
     }
 
     pub fn fuzzy_tick(&mut self) {
