@@ -1501,7 +1501,8 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn check_preview(status: &mut Status) -> Result<()> {
+    pub fn check_preview_fuzzy_tick(status: &mut Status) -> Result<()> {
+        status.fuzzy_tick();
         status.check_preview()
     }
 }

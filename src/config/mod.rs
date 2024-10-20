@@ -11,6 +11,6 @@ pub use configuration::{load_config, read_normal_file_colorer, Config, FileStyle
 pub use gradient::Gradient;
 pub use keybindings::Bindings;
 pub use oncelock_static::{
-    set_configurable_static, ARRAY_GRADIENT, COLORER, FILE_ATTRS, MENU_STYLES, MONOKAI_THEME,
+    set_configurable_static, ARRAY_GRADIENT, COLORER, FILE_STYLES, MENU_STYLES, MONOKAI_THEME,
     START_FOLDER,
 };

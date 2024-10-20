@@ -417,4 +417,8 @@ impl Display {
     pub fn is_preview(&self) -> bool {
         self.is(Self::Preview)
     }
+
+    pub fn is_fuzzy(&self) -> bool {
+        self.is(Self::Fuzzy)
+    }
 }

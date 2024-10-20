@@ -15,7 +15,6 @@ use ratatui::{
 };
 use walkdir::DirEntry;
 
-use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
@@ -29,6 +28,10 @@ use crate::{
 use crate::{
     common::{path_to_string, UtfWidth},
     modes::FuzzyFinder,
+};
+use crate::{
+    config::FILE_STYLES,
+    io::{read_last_log_line, DrawMenu},
 };
 use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
@@ -339,6 +342,12 @@ impl<'a> FuzzyDisplay<'a> {
         let Some(fuzzy) = &self.status.fuzzy else {
             return;
         };
+        let rect = Rect {
+            x: rect.x,
+            y: rect.y + 3,
+            width: rect.width,
+            height: rect.height.saturating_sub(3),
+        };
         let rects = Self::build_layout(rect);
         // Draw the match counts at the top
         let match_info = self.line_match_info(fuzzy);
@@ -351,24 +360,36 @@ impl<'a> FuzzyDisplay<'a> {
         self.draw_prompt(fuzzy, f, rects[2]);
     }
 
-    fn build_layout(area: &Rect) -> Vec<Rect> {
+    fn build_layout(area: Rect) -> Vec<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(1),
                 Constraint::Min(0),
-                Constraint::Min(0),
+                Constraint::Length(2),
             ])
-            .split(*area)
+            .split(area)
             .to_vec()
     }
 
     fn draw_prompt(&self, fuzzy: &FuzzyFinder<DirEntry>, f: &mut Frame, rect: Rect) {
         // Render the prompt string at the bottom
-        let prompt_view = fuzzy.input.string();
+        let input = fuzzy.input.string();
         let prompt_paragraph = Paragraph::new(vec![Line::from(vec![
-            Span::raw("> "),
-            Span::raw(prompt_view.to_string()),
+            Span::styled(
+                "> ",
+                MENU_STYLES
+                    .get()
+                    .expect("MENU_STYLES should be set")
+                    .palette_3,
+            ),
+            Span::styled(
+                input,
+                MENU_STYLES
+                    .get()
+                    .expect("MENU_STYLES should be set")
+                    .palette_2,
+            ),
         ])])
         .block(Block::default().borders(Borders::NONE));
 
@@ -432,16 +453,26 @@ impl<'a> FuzzyDisplay<'a> {
         Line::from(vec![
             Span::styled(
                 "▌ ",
-                Style::default()
-                    .fg(Color::Magenta)
-                    .add_modifier(Modifier::BOLD),
+                FILE_STYLES.get().expect("FILE_STYLES should be set").fifo,
             ),
-            Span::raw(render.to_owned()),
+            Span::styled(
+                render.to_owned(),
+                FILE_STYLES.get().expect("FILE_STYLES should be set").fifo,
+            ),
         ])
     }
 
     fn non_selected_line(render: &str) -> Line<'static> {
-        Line::from(vec![Span::raw("  "), Span::raw(render.to_owned())])
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                render.to_owned(),
+                MENU_STYLES
+                    .get()
+                    .expect("MENU_STYLES should be set")
+                    .inert_border,
+            ),
+        ])
     }
 }
 

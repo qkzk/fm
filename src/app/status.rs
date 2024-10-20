@@ -570,14 +570,15 @@ impl Status {
     /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
     fn attach_preview(&mut self, path: PathBuf, preview: Preview, index: usize) -> Result<()> {
         let compared_index = self.pick_correct_tab_from(index)?;
-        if self.preview_has_wrong_path(compared_index, path.as_path())? {
+        if self.preview_has_wrong_path(compared_index, path.as_path())?
+            && !self.tabs[0].display_mode.is_fuzzy()
+        {
             return Ok(());
         }
         self.tabs[index].preview = preview;
         self.tabs[index]
             .window
             .reset(self.tabs[index].preview.len());
-        log_info!("attached a preview !");
         Ok(())
     }
 
@@ -593,9 +594,15 @@ impl Status {
         Ok(self.tabs[compared_index].current_file()?.path.as_ref() != path)
     }
 
+    // TODO need a lot of refactoring, this is unreadable
     fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
+        if left_tab.display_mode.is_fuzzy() {
+            if let Some(selection) = self.fuzzy_current_selection() {
+                return FileInfo::new(Path::new(selection), users);
+            }
+        }
         match self.focus {
             Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::Marks(_))) => {
                 let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
@@ -887,6 +894,14 @@ impl Status {
         Ok(())
     }
 
+    fn fuzzy_current_selection(&self) -> Option<&String> {
+        if let Some(fuzzy) = &self.fuzzy {
+            fuzzy.selected()
+        } else {
+            None
+        }
+    }
+
     pub fn fuzzy_select(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -894,7 +909,7 @@ impl Status {
         if let Some(pick) = fuzzy.pick() {
             self.tabs[self.index].cd_to_file(pick.path())?;
         } else {
-            log_info!("picked nothing");
+            log_info!("Fuzzy had nothing to pick from");
         };
         self.fuzzy_leave()
     }
@@ -905,15 +920,41 @@ impl Status {
         self.refresh_view()
     }
 
-    pub fn fuzzy_up(&mut self) -> Result<()> {
+    pub fn fuzzy_backspace(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        fuzzy.select_next();
+        fuzzy.input.delete_char_left();
+        fuzzy.update_input(false);
         Ok(())
     }
 
-    pub fn fuzzy_down(&mut self) -> Result<()> {
+    pub fn fuzzy_delete(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.input.delete_chars_right();
+        fuzzy.update_input(false);
+        Ok(())
+    }
+
+    pub fn fuzzy_left(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.input.cursor_left();
+        Ok(())
+    }
+
+    pub fn fuzzy_right(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.input.cursor_right();
+        Ok(())
+    }
+
+    pub fn fuzzy_up(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
@@ -921,11 +962,20 @@ impl Status {
         Ok(())
     }
 
+    pub fn fuzzy_down(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.select_next();
+        self.update_second_pane_for_preview()?;
+        Ok(())
+    }
+
     pub fn fuzzy_page_up(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        fuzzy.page_down();
+        fuzzy.page_up();
         Ok(())
     }
 
@@ -933,8 +983,15 @@ impl Status {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        fuzzy.page_up();
+        fuzzy.page_down();
         Ok(())
+    }
+
+    pub fn fuzzy_tick(&mut self) {
+        match &mut self.fuzzy {
+            Some(fuzzy) => fuzzy.tick(),
+            None => (),
+        }
     }
 
     // fn skim_init(&mut self) {

@@ -21,7 +21,7 @@ pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 /// are greens or blues.
 ///
 /// Colors are setup on start and never change afterwards.
-pub static FILE_ATTRS: OnceLock<FileStyle> = OnceLock::new();
+pub static FILE_STYLES: OnceLock<FileStyle> = OnceLock::new();
 
 /// Menu color struct
 pub static MENU_STYLES: OnceLock<MenuStyle> = OnceLock::new();
@@ -46,7 +46,7 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
 }
 
 fn set_file_attrs() -> Result<()> {
-    FILE_ATTRS
+    FILE_STYLES
         .set(FileStyle::from_config())
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())

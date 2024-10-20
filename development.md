@@ -1259,7 +1259,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
-    - [ ] doubleclick
   - [ ] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...
@@ -1273,20 +1272,25 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::binary::printhex & printascii
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
-    - [ ] BUG: when height is low, menus overflows their rect
-    - [ ] BUG: menus aren't resized properly
   - [ ] skim replaced by...
     - [ ] don't use nucleo-picker, make my own picker
-      - [ ] struct nucleo-picker
-      - [ ] attach to status or tabs
-      - [ ] send key events
-      - [ ] parse key events
-      - [ ] execute key events
-      - [ ] send refresh events
-      - [ ] display for T
-      - [ ] ff file
+      - [x] struct nucleo-picker
+      - [x] attach to status
+      - [x] send key events
+      - [x] parse key events
+      - [x] execute key events
+      - [x] send refresh events
+      - [x] display for T
+      - [x] ff file
       - [ ] ff line
       - [ ] ff help
+      - [ ] previewing
+      - [ ] click on line
+      - [ ] BUG: flickering
+      - [ ] **IMPORTANT** don't export all content, only what will be displayed
+        - [ ] resize
+        - [ ] BUG: out of bounds when char are typed
+        - [ ] BUG: navigation is screwed
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
       - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
@@ -1296,11 +1300,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Once Nucleo is done
 
+- [ ] doubleclick
+- [ ] BUG: when height is low, menus overflows their rect
+- [ ] BUG: menus aren't resized properly
+- [ ] BUG: previewing large lines is out of window.
 - [ ] BUG: shortcut.rs : dedup out of bounds L170
 - [ ] crossterm enhancements: mouse capture. 2024-10-17 22:05:37 - MouseEvent { kind: Moved, column: 39, row: 45, modifiers: NONE }
   - [ ] focus gain (easiest)
   - selection follow mouse ? annoying
   - mouse over files to preview ? (what for ?)
+- [ ] ratatui component for progress bar for copymove
+- [ ] refactor status.get_correct_fileinfo_for_preview
 - [ ] shellcommand with redirection "< > >> |"
       `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
 

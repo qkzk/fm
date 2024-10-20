@@ -17,6 +17,8 @@ pub enum FmEvents {
     Term(Event),
     /// Action sent directly to be dispatched and executed
     Action(ActionMap),
-    /// Empty events, used to check if a new preview should be attached
-    CheckPreview,
+    /// Empty events. Used to:
+    /// - to check if a new preview should be attached
+    /// - to send a "tick" to the fuzzy matcher if it's set
+    UpdateTick,
 }

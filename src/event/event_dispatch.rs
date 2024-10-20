@@ -37,7 +37,7 @@ impl EventDispatcher {
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied => EventAction::file_copied(status),
-            FmEvents::CheckPreview => EventAction::check_preview(status),
+            FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             _ => Ok(()),
         }
@@ -98,11 +98,14 @@ impl EventDispatcher {
         };
         match key {
             KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: _,
+                code: KeyCode::Char(mut c),
+                modifiers,
                 kind: _,
                 state: _,
-            } => {
+            } if matches!(modifiers, KeyModifiers::NONE | KeyModifiers::SHIFT) => {
+                if matches!(modifiers, KeyModifiers::SHIFT) {
+                    c = c.to_ascii_uppercase()
+                };
                 fuzzy.input.insert(c);
                 fuzzy.update_input(true);
                 Ok(())
@@ -123,8 +126,14 @@ impl EventDispatcher {
             match code {
                 KeyCode::Enter => status.fuzzy_select()?,
                 KeyCode::Esc => status.fuzzy_leave()?,
+                KeyCode::Backspace => status.fuzzy_backspace()?,
+                KeyCode::Delete => status.fuzzy_delete()?,
+                KeyCode::Left => status.fuzzy_left()?,
+                KeyCode::Right => status.fuzzy_right()?,
                 KeyCode::Up => status.fuzzy_up()?,
                 KeyCode::Down => status.fuzzy_down()?,
+                KeyCode::PageUp => status.fuzzy_page_up()?,
+                KeyCode::PageDown => status.fuzzy_page_down()?,
                 _ => (),
             }
         }

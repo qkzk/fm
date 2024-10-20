@@ -10,7 +10,7 @@ use chrono::DateTime;
 use ratatui::style::Style;
 
 use crate::common::PERMISSIONS_STR;
-use crate::config::{extension_color, FILE_ATTRS};
+use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
 use crate::modes::{human_size, ToPath, Users, MAX_MODE};
 
@@ -328,7 +328,7 @@ impl FileInfo {
         if matches!(self.file_kind, FileKind::NormalFile) {
             return color_to_style(extension_color(&self.extension));
         }
-        let styles = FILE_ATTRS.get().expect("Colors should be set");
+        let styles = FILE_STYLES.get().expect("Colors should be set");
         match self.file_kind {
             FileKind::Directory => styles.directory,
             FileKind::BlockDevice => styles.block,

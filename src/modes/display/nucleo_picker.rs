@@ -78,7 +78,6 @@ mod inner {
             )
         }
 
-        // TODO call it from somewhere else
         pub fn tick(&mut self) {
             let status = self.matcher.tick(10);
             if status.changed {
@@ -160,7 +159,7 @@ pub mod direntry {
                 if self.index == 0 {
                     break;
                 }
-                self.select_prev()
+                self.select_next()
             }
         }
 
@@ -169,7 +168,7 @@ pub mod direntry {
                 if self.index >= self.len() {
                     break;
                 }
-                self.select_next()
+                self.select_prev()
             }
         }
     }
