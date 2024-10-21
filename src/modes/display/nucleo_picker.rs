@@ -150,13 +150,6 @@ pub mod nucleo_direntry {
 
     impl FuzzyFinder<DirEntry> {
         pub fn select_next(&mut self) {
-            crate::log_info!(
-                "index {index} len {len} height {height} item_count {item_count}",
-                index = self.index,
-                len = self.content.len(),
-                height = self.window.height,
-                item_count = self.item_count,
-            );
             self.next();
             self.window.scroll_to(self.index);
         }

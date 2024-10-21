@@ -113,7 +113,7 @@ pub struct Status {
     /// Index of the current selected tab
     pub index: usize,
 
-    // skimer: Option<Skimer>,
+    /// Fuzzy finder of files by name
     pub fuzzy: Option<FuzzyFinder<DirEntry>>,
     /// Navigable menu
     pub menu: MenuHolder,

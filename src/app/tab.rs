@@ -617,12 +617,6 @@ impl Tab {
 
     /// Move down one row if possible.
     pub fn normal_down_one_row(&mut self) {
-        crate::log_info!(
-            "index {index} len {len} height {height}",
-            index = self.directory.index,
-            len = self.directory.content.len(),
-            height = self.window.height,
-        );
         self.directory.next();
         self.window.scroll_down_one(self.directory.index)
     }
