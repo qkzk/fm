@@ -79,16 +79,16 @@ mod nucleo_struct {
             }
 
             let snapshot = self.matcher.snapshot();
-            let item_count = snapshot.item_count() as usize;
+            let item_stored = min(snapshot.item_count() as usize, self.window.height);
             self.matched_item_count = snapshot.matched_item_count() as usize;
-            self.index = self.index_clamped(item_count);
+            self.index = self.index_clamped(item_stored);
 
             // TODO use the range in matched_items to only parse displayed elements here not in display.
             self.content = snapshot
-                .matched_items(0..item_count as u32)
+                .matched_items(0..item_stored as u32)
                 .map(|t| format_display(&t.matcher_columns[0]))
                 .collect();
-            self.window.set_len(item_count);
+            self.window.set_len(item_stored);
             self.window.scroll_to(self.index);
         }
 
