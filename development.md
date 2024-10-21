@@ -1317,6 +1317,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Next version
 
+- [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop
