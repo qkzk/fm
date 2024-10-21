@@ -7,9 +7,7 @@ mod inner {
         LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
     };
     use crate::event::ActionMap;
-    use crate::modes::{
-        Content, Display, FileInfo, FilterKind, Preview, Search, Selectable, Text, TextKind,
-    };
+    use crate::modes::{Content, Display, FilterKind, Preview, Search, Selectable, Text, TextKind};
 
     #[derive(Clone, Copy)]
     pub enum Align {
@@ -539,32 +537,31 @@ mod inner {
             ]
         }
 
-        fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
+        fn _pick_previewed_fileinfo(status: &Status) -> String {
             if status.display_settings.dual() && status.display_settings.preview() {
-                status.tabs[0].current_file()
+                status.tabs[1].preview.filepath()
             } else {
-                status.current_tab().current_file()
+                status.current_tab().preview.filepath()
             }
         }
 
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
-            if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
-                let mut strings = vec![(" Preview ".to_owned(), Align::Left)];
-                if !tab.preview.is_empty() {
-                    let index = match &tab.preview {
-                        Preview::Ueberzug(image) => image.index + 1,
-                        _ => tab.window.bottom,
-                    };
-                    strings.push((
-                        format!(" {index} / {len} ", len = tab.preview.len()),
-                        Align::Right,
-                    ));
+            let filepath = Self::_pick_previewed_fileinfo(status);
+            let mut strings = vec![
+                (" Preview ".to_owned(), Align::Left),
+                (format!(" {} ", filepath), Align::Left),
+            ];
+            if !tab.preview.is_empty() {
+                let index = match &tab.preview {
+                    Preview::Ueberzug(image) => image.index + 1,
+                    _ => tab.window.bottom,
                 };
-                strings.push((format!(" {} ", fileinfo.path.display()), Align::Left));
-                strings
-            } else {
-                vec![("".to_owned(), Align::Left)]
-            }
+                strings.push((
+                    format!(" {index} / {len} ", len = tab.preview.len()),
+                    Align::Right,
+                ));
+            };
+            strings
         }
 
         /// Make a default preview header

@@ -182,6 +182,17 @@ impl Preview {
     pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
         ContentWindow::new(self.len(), height)
     }
+
+    pub fn filepath(&self) -> String {
+        match self {
+            Self::Empty => "".to_owned(),
+            Self::Syntaxed(preview) => preview.filepath().to_owned(),
+            Self::Text(preview) => preview.title.to_owned(),
+            Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
+            Self::Ueberzug(preview) => preview.identifier.to_owned(),
+            Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
+        }
+    }
 }
 
 pub struct PreviewBuilder {
@@ -315,8 +326,13 @@ impl PreviewBuilder {
     fn syntaxed_from_str(output: String, ext: &str) -> Option<Preview> {
         let ss = SyntaxSet::load_defaults_nonewlines();
         Some(Preview::Syntaxed(
-            HLContent::from_str(&output, ss.clone(), ss.find_syntax_by_extension(ext)?)
-                .unwrap_or_default(),
+            HLContent::from_str(
+                "command".to_owned(),
+                &output,
+                ss.clone(),
+                ss.find_syntax_by_extension(ext)?,
+            )
+            .unwrap_or_default(),
         ))
     }
 
@@ -561,6 +577,7 @@ impl Text {
 /// The file is colored propery and line numbers are shown.
 #[derive(Clone, Default)]
 pub struct HLContent {
+    path: String,
     content: Vec<Vec<SyntaxedString>>,
     length: usize,
 }
@@ -575,25 +592,37 @@ impl HLContent {
     /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
-        Self::build(raw_content, syntax_set, syntax_ref)
+        Self::build(
+            path.to_string_lossy().to_string(),
+            raw_content,
+            syntax_set,
+            syntax_ref,
+        )
     }
 
-    fn from_str(text: &str, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
+    fn from_str(
+        name: String,
+        text: &str,
+        syntax_set: SyntaxSet,
+        syntax_ref: &SyntaxReference,
+    ) -> Result<Self> {
         let raw_content = text
             .lines()
             .take(Self::SIZE_LIMIT)
             .map(|s| s.to_owned())
             .collect();
-        Self::build(raw_content, syntax_set, syntax_ref)
+        Self::build(name, raw_content, syntax_set, syntax_ref)
     }
 
     fn build(
+        path: String,
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Self> {
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
+            path,
             length: highlighted_content.len(),
             content: highlighted_content,
         })
@@ -601,6 +630,10 @@ impl HLContent {
 
     fn len(&self) -> usize {
         self.length
+    }
+
+    fn filepath(&self) -> &str {
+        &self.path
     }
 
     fn get_or_init_monokai() -> &'static Theme {

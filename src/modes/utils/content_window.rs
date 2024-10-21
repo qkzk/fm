@@ -25,7 +25,7 @@ impl Default for ContentWindow {
 
 impl ContentWindow {
     /// The padding around the last displayed filename
-    const WINDOW_PADDING: usize = 4;
+    pub const WINDOW_PADDING: usize = 4;
     /// The space of the top element
     pub const WINDOW_MARGIN_TOP: usize = 2;
     /// The space for the bottom row

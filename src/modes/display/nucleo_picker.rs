@@ -8,6 +8,7 @@ mod nucleo_struct {
     pub struct FuzzyFinder<T: Send + Sync + 'static> {
         matcher: Nucleo<T>,
         pub content: Vec<String>,
+        pub item_count: usize,
         pub matched_item_count: usize,
         pub index: usize,
         pub input: Input,
@@ -36,11 +37,17 @@ mod nucleo_struct {
             Self {
                 matcher: Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1),
                 content: vec![],
+                item_count: 0,
                 matched_item_count: 0,
                 index: 0,
                 input: Input::default(),
                 window: ContentWindow::default(),
             }
+        }
+
+        pub fn window(mut self, window: &ContentWindow) -> Self {
+            self.window = window.clone();
+            self
         }
 
         /// Get an [`Injector`] from the internal [`Nucleo`] instance.
@@ -73,13 +80,20 @@ mod nucleo_struct {
         }
 
         pub fn tick(&mut self) {
-            let status = self.matcher.tick(10);
-            if !status.changed {
-                return;
+            if self.matcher.tick(10).changed {
+                self.tick_forced();
             }
+        }
 
+        fn tick_forced(&mut self) {
             let snapshot = self.matcher.snapshot();
-            let item_stored = min(snapshot.item_count() as usize, self.window.height);
+            self.item_count = snapshot.item_count() as usize;
+            let item_stored = min(
+                self.item_count,
+                self.window
+                    .height
+                    .saturating_sub(ContentWindow::WINDOW_PADDING),
+            );
             self.matched_item_count = snapshot.matched_item_count() as usize;
             self.index = self.index_clamped(item_stored);
 
@@ -88,8 +102,14 @@ mod nucleo_struct {
                 .matched_items(0..item_stored as u32)
                 .map(|t| format_display(&t.matcher_columns[0]))
                 .collect();
+            crate::log_info!("tick stored {item_stored} items");
             self.window.set_len(item_stored);
             self.window.scroll_to(self.index);
+        }
+
+        pub fn resize(&mut self, height: usize) {
+            self.window.set_height(height);
+            self.tick_forced();
         }
 
         pub fn pick(&self) -> Option<&T> {
@@ -130,6 +150,13 @@ pub mod nucleo_direntry {
 
     impl FuzzyFinder<DirEntry> {
         pub fn select_next(&mut self) {
+            crate::log_info!(
+                "index {index} len {len} height {height} item_count {item_count}",
+                index = self.index,
+                len = self.content.len(),
+                height = self.window.height,
+                item_count = self.item_count,
+            );
             self.next();
             self.window.scroll_to(self.index);
         }
@@ -179,12 +206,12 @@ pub mod nucleo_string {
     impl FuzzyFinder<String> {
         pub fn select_next(&mut self) {
             self.next();
-            self.window.scroll_to(self.index);
+            self.window.scroll_down_one(self.index);
         }
 
         pub fn select_prev(&mut self) {
             self.prev();
-            self.window.scroll_to(self.index);
+            self.window.scroll_up_one(self.index);
         }
 
         pub fn select_clic(&mut self, index: usize) {

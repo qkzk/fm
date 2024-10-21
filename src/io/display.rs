@@ -417,7 +417,7 @@ impl<'a> FuzzyDisplay<'a> {
             ),
             Span::styled("/", Style::default().fg(Color::Yellow)),
             Span::styled(
-                format!("{}", fuzzy.len()),
+                format!("{}", fuzzy.item_count),
                 Style::default().fg(Color::Yellow),
             ),
         ])
@@ -432,13 +432,7 @@ impl<'a> FuzzyDisplay<'a> {
     fn paragraph_matches(&self, fuzzy: &FuzzyFinder<DirEntry>) -> Paragraph {
         let mut items: Vec<Line> = vec![];
 
-        for (index, item) in fuzzy
-            .content()
-            .iter()
-            .enumerate()
-            .skip(fuzzy.window.top)
-            .take(min(fuzzy.window.bottom, fuzzy.len()))
-        {
+        for (index, item) in fuzzy.content().iter().enumerate() {
             let item_spans = if index == fuzzy.index {
                 Self::selected_line(item)
             } else {

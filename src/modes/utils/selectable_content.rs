@@ -29,7 +29,7 @@ pub trait Content<T>: Selectable {
     /// add an element to the content
     fn push(&mut self, t: T);
     /// [`ratatui::style::Style`] used to display an element
-    fn style(&self, index: usize, attr: &Style) -> Style;
+    fn style(&self, index: usize, style: &Style) -> Style;
 }
 
 pub trait ToPath {

@@ -1281,22 +1281,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] execute key events
       - [x] send refresh events
       - [x] display for T
+      - [ ] variants.
       - [x] ff file
       - [ ] ff line
       - [ ] ff help
-      - [ ] previewing
+      - [x] previewing
       - [ ] click on line
       - [ ] BUG: flickering
-      - [ ] **IMPORTANT** don't export all content, only what will be displayed
-        - [ ] resize
-        - [ ] BUG: out of bounds when char are typed
-        - [ ] BUG: navigation is screwed
+      - [x] don't export all content, only what will be displayed
+        - [x] resize
+        - [x] FIX: out of bounds when char are typed
+        - [x] FIX: navigation is screwed
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-      - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
-      - [ ] adapt nucleo-picker.
-      - [ ] adapt previous methods
-      - [ ] search in text... display something
+    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+- [x] FIX: save a name for previews, use it to display
 
 #### Once Nucleo is done
 

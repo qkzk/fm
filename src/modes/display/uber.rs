@@ -60,7 +60,7 @@ impl std::fmt::Display for Kind {
 pub struct Ueber {
     since: Instant,
     kind: Kind,
-    identifier: String,
+    pub identifier: String,
     images: Vec<PathBuf>,
     length: usize,
     pub index: usize,

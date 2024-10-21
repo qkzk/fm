@@ -516,6 +516,7 @@ impl Status {
         self.set_dual_pane_if_wide_enough(width)?;
         self.tabs[0].set_height(height);
         self.tabs[1].set_height(height);
+        self.fuzzy_resize(height);
         self.refresh_status()
     }
 
@@ -867,7 +868,7 @@ impl Status {
     }
 
     pub fn fuzzy_init(&mut self) {
-        self.fuzzy = Some(FuzzyFinder::default());
+        self.fuzzy = Some(FuzzyFinder::default().window(&self.current_tab().window));
     }
 
     fn fuzzy_drop(&mut self) {
@@ -990,6 +991,13 @@ impl Status {
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
             Some(fuzzy) => fuzzy.tick(),
+            None => (),
+        }
+    }
+
+    pub fn fuzzy_resize(&mut self, height: usize) {
+        match &mut self.fuzzy {
+            Some(fuzzy) => fuzzy.resize(height),
             None => (),
         }
     }
