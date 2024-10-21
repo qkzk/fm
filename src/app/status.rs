@@ -877,14 +877,15 @@ impl Status {
         let current_path = self.current_tab().current_path().to_path_buf();
         let injector = fuzzy.injector();
         spawn(move || {
+            // TODO adapt to read from rg... output using a method from dev.md
             for entry in WalkDir::new(current_path)
                 .into_iter()
                 .filter_map(Result::ok)
             {
-                let entry = entry.path().display().to_string();
-                let _ = injector.push(entry, |e, cols| {
+                let value = entry.path().display().to_string();
+                let _ = injector.push(value, |value, cols| {
                     // the picker only has one column; fill it with the match text
-                    cols[0] = e.as_str().into();
+                    cols[0] = value.as_str().into();
                 });
             }
         });
