@@ -1,4 +1,4 @@
-use std::{cmp::min, io::Stdout, sync::MutexGuard};
+use std::{io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
 use crossterm::{
