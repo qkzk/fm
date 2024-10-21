@@ -13,7 +13,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
-use walkdir::DirEntry;
 
 use crate::log_info;
 use crate::modes::{
@@ -372,7 +371,7 @@ impl<'a> FuzzyDisplay<'a> {
             .to_vec()
     }
 
-    fn draw_prompt(&self, fuzzy: &FuzzyFinder<DirEntry>, f: &mut Frame, rect: Rect) {
+    fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
         // Render the prompt string at the bottom
         let input = fuzzy.input.string();
         let prompt_paragraph = Paragraph::new(vec![Line::from(vec![
@@ -406,7 +405,7 @@ impl<'a> FuzzyDisplay<'a> {
         });
     }
 
-    fn line_match_info(&self, fuzzy: &FuzzyFinder<DirEntry>) -> Line {
+    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line {
         Line::from(vec![
             Span::styled("  ", Style::default().fg(Color::Yellow)),
             Span::styled(
@@ -429,7 +428,7 @@ impl<'a> FuzzyDisplay<'a> {
             .block(Block::default().borders(Borders::NONE))
     }
 
-    fn paragraph_matches(&self, fuzzy: &FuzzyFinder<DirEntry>) -> Paragraph {
+    fn paragraph_matches(&self, fuzzy: &FuzzyFinder<String>) -> Paragraph {
         let mut items: Vec<Line> = vec![];
 
         for (index, item) in fuzzy.content().iter().enumerate() {

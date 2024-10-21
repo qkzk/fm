@@ -1252,6 +1252,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.31
 
 - [ ] replace tuikit by ratatui + crossterm
+
   - [x] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
   - [ ] NOT DISPLAY
     - [x] app, status, events, menus, colors, style, key...
@@ -1273,7 +1274,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
   - [ ] skim replaced by...
+
     - [ ] don't use nucleo-picker, make my own picker
+
       - [x] struct nucleo-picker
       - [x] attach to status
       - [x] send key events
@@ -1284,17 +1287,96 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] variants.
       - [x] ff file
       - [ ] ff line
-      - [ ] ff help
+
+        - [ ] rg writes to stdout it must be read async / non blocking
+        - [ ] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
+              Another way from brave IA
+
+              Rust Non-Blocking Process Output
+              To read the output of a child process without blocking in Rust, you can use the Command struct from the std::process module and modify its stdout and stderr handles to be non-blocking. Here’s an example:
+
+              ```rust
+              use std::process::{Command, Stdio};
+              use std::io::{Read, BufReader};
+              use std::thread;
+
+              fn main() -> Result<(), std::io::Error> {
+                  let mut child = Command::new("your_command")
+                      .stdin(Stdio::null()) // or Stdio::piped() if you need to write to stdin
+                      .stdout(Stdio::piped())
+                      .stderr(Stdio::piped())
+                      .spawn()?;
+
+                  let stdout = child.stdout.take().unwrap();
+                  let stderr = child.stderr.take().unwrap();
+
+                  let mut stdout_reader = BufReader::new(stdout);
+                  let mut stderr_reader = BufReader::new(stderr);
+
+                  let handle = thread::spawn(move || {
+                      loop {
+                          // Read from stdout and stderr in a non-blocking way
+                          let mut line = String::new();
+                          match stdout_reader.read_line(&mut line) {
+                              Ok(0) => break, // End of file, exit
+                              Ok(len) => {
+                                  println!("stdout: {}", line);
+                                  line.clear();
+                              }
+                              Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                  // WouldBlock means the read would block, so yield control back to the scheduler
+                                  thread::yield_now();
+                              }
+                              Err(e) => {
+                                  eprintln!("Error reading stdout: {}", e);
+                                  break;
+                              }
+                          }
+
+                          match stderr_reader.read_line(&mut line) {
+                              Ok(0) => break, // End of file, exit
+                              Ok(len) => {
+                                  println!("stderr: {}", line);
+                                  line.clear();
+                              }
+                              Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                  // WouldBlock means the read would block, so yield control back to the scheduler
+                                  thread::yield_now();
+                              }
+                              Err(e) => {
+                                  eprintln!("Error reading stderr: {}", e);
+                                  break;
+                              }
+                          }
+                      }
+                  });
+
+                  // Wait for the child process to finish
+                  let _ = child.wait()?;
+                  Ok(())
+              }
+              ```
+
+              In this example, we create a Command instance and spawn it as a child process. We then take the stdout and stderr handles and wrap them in BufReader instances. In the separate thread, we read from stdout and stderr in a non-blocking way using read_line. If a read would block, we yield control back to the scheduler using thread::yield_now().
+
+              Note that this example assumes your child process produces output line-by-line. If your process produces output in a different format, you may need to modify the reading logic accordingly.
+
+              Also, keep in mind that this is just one possible approach, and there are other ways to achieve non-blocking I/O with Rust’s std::process module. For example, you could use the poll method from the nix crate to poll the file descriptors for readability.
+
+      - [ ] ff files (help) : read the file send it to nucleo as a whole
       - [x] previewing
       - [ ] click on line
       - [ ] BUG: flickering
+      - [ ] send notifications from the fm_sender, instead of sending them blindlessly myself. See Nucleo::new ... notifier
       - [x] don't export all content, only what will be displayed
         - [x] resize
         - [x] FIX: out of bounds when char are typed
         - [x] FIX: navigation is screwed
+
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
     - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+
 - [x] FIX: save a name for previews, use it to display
 
 #### Once Nucleo is done

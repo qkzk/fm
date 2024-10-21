@@ -9,13 +9,8 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use ratatui::layout::Size;
-// use skim::SkimItem;
 use sysinfo::{Disk, Disks};
-// use tuikit::{
-//     prelude::{from_keyname, Event, Key},
-//     term::Term,
-// };
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
@@ -114,7 +109,7 @@ pub struct Status {
     pub index: usize,
 
     /// Fuzzy finder of files by name
-    pub fuzzy: Option<FuzzyFinder<DirEntry>>,
+    pub fuzzy: Option<FuzzyFinder<String>>,
     /// Navigable menu
     pub menu: MenuHolder,
     /// Display settings
@@ -886,9 +881,10 @@ impl Status {
                 .into_iter()
                 .filter_map(Result::ok)
             {
+                let entry = entry.path().display().to_string();
                 let _ = injector.push(entry, |e, cols| {
                     // the picker only has one column; fill it with the match text
-                    cols[0] = e.path().display().to_string().into();
+                    cols[0] = e.as_str().into();
                 });
             }
         });
@@ -908,7 +904,7 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         if let Some(pick) = fuzzy.pick() {
-            self.tabs[self.index].cd_to_file(pick.path())?;
+            self.tabs[self.index].cd_to_file(Path::new(pick))?;
         } else {
             log_info!("Fuzzy had nothing to pick from");
         };
