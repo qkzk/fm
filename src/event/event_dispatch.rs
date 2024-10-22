@@ -64,14 +64,14 @@ impl EventDispatcher {
             MouseEventKind::ScrollDown => {
                 EventAction::wheel_down(status, mouse_event.row, mouse_event.column, 1)
             }
-            MouseEventKind::Up(MouseButton::Left) => {
+            MouseEventKind::Down(MouseButton::Left) => {
                 EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
             // TODO! doubleclick
             // MouseEventKind::Up(MouseButton::Left, row, col) => {
             //     EventAction::double_click(status, row, col, &self.binds)
             // }
-            MouseEventKind::Up(MouseButton::Right) => {
+            MouseEventKind::Down(MouseButton::Right) => {
                 EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
             _ => {

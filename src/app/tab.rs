@@ -749,19 +749,8 @@ impl Tab {
         }
     }
 
-    /// Select a given row, if there's something in it.
-    /// Returns an error if the clicked row is above the headers margin.
-    pub fn select_row(&mut self, row: u16) -> Result<()> {
-        match self.display_mode {
-            Display::Directory => self.normal_select_row(row),
-            Display::Tree => self.tree_select_row(row)?,
-            _ => (),
-        }
-        Ok(())
-    }
-
     /// Select a clicked row in display directory
-    fn normal_select_row(&mut self, row: u16) {
+    pub fn normal_select_row(&mut self, row: u16) {
         let screen_index = row_to_window_index(row);
         let index = screen_index + self.window.top;
         self.directory.select_index(index);
@@ -769,7 +758,7 @@ impl Tab {
     }
 
     /// Select a clicked row in display tree
-    fn tree_select_row(&mut self, row: u16) -> Result<()> {
+    pub fn tree_select_row(&mut self, row: u16) -> Result<()> {
         let screen_index = row_to_window_index(row);
         let displayable = self.tree.displayable();
         let index = screen_index + self.window.top;

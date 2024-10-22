@@ -1282,13 +1282,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] execute key events
     - [x] send refresh events
     - [x] display for T
-    - [ ] variants.
     - [x] ff file
     - [x] ff line
       - [x] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
     - [x] ff files (help) : read the file send it to nucleo as a whole
     - [x] previewing
-    - [ ] click on line
+    - [x] click on line
     - [ ] BUG: flickering
     - [ ] send notifications from the fm_sender, instead of sending them blindlessly myself. See Nucleo::new ... notifier
     - [x] don't export all content, only what will be displayed

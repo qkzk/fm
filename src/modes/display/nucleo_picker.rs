@@ -129,7 +129,6 @@ where
         self.matched_item_count = snapshot.matched_item_count() as usize;
         self.index = self.index_clamped(item_stored);
 
-        // TODO use the range in matched_items to only parse displayed elements here not in display.
         self.content = snapshot
             .matched_items(0..item_stored as u32)
             .map(|t| format_display(&t.matcher_columns[0]))
@@ -168,8 +167,6 @@ fn format_display(display: &Utf32String) -> String {
         .collect()
 }
 
-use std::cmp::max;
-
 use crate::{impl_content, impl_selectable};
 
 type Ffs = FuzzyFinder<String>;
@@ -187,8 +184,11 @@ impl FuzzyFinder<String> {
         self.window.scroll_up_one(self.index);
     }
 
-    pub fn select_clic(&mut self, index: usize) {
-        self.index = max(index, self.len().saturating_sub(1));
+    pub fn select_clic(&mut self, row: u16) {
+        if row < 4 {
+            return;
+        }
+        self.index = min(row.saturating_sub(5) as usize, self.len().saturating_sub(1));
         self.window.scroll_to(self.index)
     }
 

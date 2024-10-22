@@ -305,13 +305,25 @@ impl Status {
                         self.focus = Focus::LeftFile;
                     }
                 } else {
-                    self.current_tab_mut().select_row(row)?
+                    self.tab_select_row(row)?
                 }
                 self.update_second_pane_for_preview()
             }
             Window::Footer => self.footer_action(col, binds),
             Window::Menu => self.menu_action(row),
         }
+    }
+
+    /// Select a given row, if there's something in it.
+    /// Returns an error if the clicked row is above the headers margin.
+    pub fn tab_select_row(&mut self, row: u16) -> Result<()> {
+        match self.current_tab().display_mode {
+            Display::Directory => self.current_tab_mut().normal_select_row(row),
+            Display::Tree => self.current_tab_mut().tree_select_row(row)?,
+            Display::Fuzzy => self.fuzzy_click(row)?,
+            _ => (),
+        }
+        Ok(())
     }
 
     fn set_focus_from_window_and_index(&mut self, window: &Window) {
@@ -1010,6 +1022,17 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.input.cursor_right();
+        Ok(())
+    }
+
+    pub fn fuzzy_click(&mut self, row: u16) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.select_clic(row);
+        if fuzzy.should_preview() {
+            self.update_second_pane_for_preview()?;
+        }
         Ok(())
     }
 
