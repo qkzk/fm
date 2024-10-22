@@ -506,17 +506,10 @@ impl<'a> DirectoryDisplay<'a> {
     }
 
     fn files_content(&self, f: &mut Frame, rect: &Rect) {
-        let (group_size, owner_size) = self.group_owner_size();
+        let group_owner_sizes = self.group_owner_size();
         let height = rect.height;
         for (index, file) in self.tab.dir_enum_skip_take() {
-            self.files_line(
-                f,
-                rect,
-                (group_size, owner_size),
-                index,
-                file,
-                height as usize,
-            );
+            self.files_line(f, rect, group_owner_sizes, index, file, height as usize);
         }
     }
 
@@ -535,7 +528,7 @@ impl<'a> DirectoryDisplay<'a> {
         &self,
         f: &mut Frame,
         rect: &Rect,
-        owner_sizes: (usize, usize),
+        group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
         height: usize,
@@ -548,7 +541,7 @@ impl<'a> DirectoryDisplay<'a> {
         if index == self.tab.directory.index {
             style.add_modifier |= Modifier::REVERSED;
         }
-        let content = Self::format_file_content(self.status, file, owner_sizes);
+        let content = Self::format_file_content(self.status, file, group_owner_sizes);
         Files::print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
         let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
         rect.print_with_style(f, row as u16, col as u16, &content, style);
@@ -560,7 +553,7 @@ impl<'a> DirectoryDisplay<'a> {
         owner_sizes: (usize, usize),
     ) -> String {
         if status.display_settings.metadata() {
-            file.format(owner_sizes.0, owner_sizes.1).unwrap()
+            file.format(owner_sizes.1, owner_sizes.0).unwrap()
         } else {
             file.format_simple().unwrap()
         }
