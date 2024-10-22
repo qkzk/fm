@@ -894,7 +894,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_command(&mut self, help: String) -> Result<()> {
+    pub fn fuzzy_help(&mut self, help: String) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
@@ -967,8 +967,9 @@ impl Status {
     /// Search a command with fuzzy finder, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
     fn fuzzy_select_command(&self, pick: &str) -> Result<()> {
-        let key = find_keybind_from_fuzzy(pick)?;
-        self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
+        if let Ok(key) = find_keybind_from_fuzzy(pick) {
+            self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
+        };
         Ok(())
     }
 
@@ -1973,41 +1974,12 @@ impl Status {
     }
 }
 
-#[must_use]
-fn parse_keyname(keyname: &str) -> Option<String> {
-    let mut split = keyname.split('(');
-    let mutator = split.next()?;
-    let mut mutator = mutator.to_lowercase();
-    let Some(param) = split.next() else {
-        return Some(mutator);
-    };
-    let mut param = param.trim().to_owned();
-    mutator = mutator.replace("char", "");
-    param = param.replace([')', '\''], "");
-    if param.chars().all(char::is_uppercase) {
-        if mutator.is_empty() {
-            mutator = "shift".to_owned();
-        } else {
-            mutator = format!("{mutator}-shift");
-        }
-    }
-
-    if mutator.is_empty() {
-        Some(param)
-    } else {
-        Some(format!("{mutator}-{param}"))
-    }
-}
-
 fn find_keybind_from_fuzzy(line: &str) -> Result<KeyEvent> {
     let Some(keybind) = line.split(':').next() else {
         bail!("No keybind found");
     };
-    let Some(keyname) = parse_keyname(keybind) else {
-        bail!("No keyname found for {keybind}");
-    };
-    let Some(key) = from_keyname(&keyname) else {
-        bail!("{keyname} isn't a valid Key name.");
+    let Some(key) = from_keyname(keybind.trim()) else {
+        bail!("{keybind} isn't a valid Key name.");
     };
     Ok(key)
 }

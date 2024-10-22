@@ -1177,7 +1177,7 @@ impl EventAction {
         status.fuzzy_config_help()?;
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         let help = help_string(binds, &status.internal_settings.opener);
-        status.fuzzy_command(help)?;
+        status.fuzzy_help(help)?;
         Ok(())
     }
 

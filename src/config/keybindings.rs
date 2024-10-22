@@ -372,7 +372,7 @@ impl Bindings {
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
         self.binds
             .iter()
-            .map(|(keybind, action)| (action.to_string(), format!("{keybind:?}")))
+            .map(|(keybind, action)| (action.to_string(), keybind.for_help().to_string()))
             .collect()
     }
 
@@ -442,5 +442,42 @@ impl Bindings {
 
         let keybinds_string = format!("fm keybindings \n\n{binds}");
         keybinds_string
+    }
+}
+
+trait ForHelp {
+    fn for_help(&self) -> String;
+}
+
+impl ForHelp for KeyEvent {
+    fn for_help(&self) -> String {
+        let KeyEvent{code, modifiers, kind: _, state: _} = self;
+        let prefix = match *modifiers {
+            KeyModifiers::SHIFT => "shift-",
+            KeyModifiers::CONTROL => "ctrl-",
+            KeyModifiers::ALT => "alt-",
+            _ => "",
+        };
+        let scode = match *code {
+            KeyCode::Char(c) => c.to_string(),
+            KeyCode::F(u) => format!("f{u}"),
+            KeyCode::Enter => "enter".to_string(),
+            KeyCode::Tab => "tab".to_string(),
+            KeyCode::Esc => "esc".to_string(),
+            KeyCode::BackTab => "shift-tab".to_string(),
+            KeyCode::Backspace => "bspace".to_string(),
+            KeyCode::Insert => "ins".to_string(),
+            KeyCode::Delete => "del".to_string(),
+            KeyCode::PageUp => "pgup".to_string(),
+            KeyCode::PageDown => "pgdn".to_string(),
+            KeyCode::Up => "up".to_string(),
+            KeyCode::Down => "down".to_string(),
+            KeyCode::Left => "left".to_string(),
+            KeyCode::Right => "right".to_string(),
+            KeyCode::Home => "home".to_string(),
+            KeyCode::End => "end".to_string(),
+            _ => "".to_string(),
+        };
+        format!("{prefix}{scode}")
     }
 }
