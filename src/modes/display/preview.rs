@@ -830,7 +830,6 @@ impl Line {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
-    // TODO!
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
     /// It uses BigEndian notation, regardless of platform usage.
     /// It tries to imitates the output of hexdump.
@@ -838,7 +837,6 @@ impl Line {
         rect.print(f, row as u16, offset as u16 + 2, &self.format_hex());
     }
 
-    // TODO!
     /// Print a line as an ASCII string
     /// Non ASCII printable bytes are replaced by dots.
     pub fn print_ascii(&self, f: &mut Frame, rect: &Rect, row: usize, offset: usize) {

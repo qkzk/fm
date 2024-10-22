@@ -1295,6 +1295,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] FIX: out of bounds when char are typed
       - [x] FIX: navigation is screwed
 
+    - [ ] testing: file, line, help
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
     - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
@@ -1303,10 +1304,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Once Nucleo is done
 
+- [x] FIX: line overflow their rect
 - [ ] doubleclick
 - [ ] BUG: when height is low, menus overflows their rect
 - [ ] BUG: menus aren't resized properly
-- [ ] BUG: previewing large lines is out of window.
 - [ ] BUG: shortcut.rs : dedup out of bounds L170
 - [ ] crossterm enhancements: mouse capture. 2024-10-17 22:05:37 - MouseEvent { kind: Moved, column: 39, row: 45, modifiers: NONE }
   - [ ] focus gain (easiest)

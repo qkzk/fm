@@ -186,24 +186,14 @@ impl DrawMenu<PathBuf> for Shortcut {
         Self: Content<PathBuf>,
     {
         let content = self.content();
-        for (letter, (row, path, style)) in
+        for (letter, (index, path, style)) in
             std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
         {
-            let attr = self.style(row, &style);
-            rect.print_with_style(
-                f,
-                (row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP) as u16,
-                2,
-                &format!("{letter} "),
-                attr,
-            );
-            rect.print_with_style(
-                f,
-                (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
-                4,
-                &path.cow_str(),
-                self.style(row, &attr),
-            );
+            let attr = self.style(index, &style);
+            let row =
+                (index + 1 + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(window.top) as u16;
+            rect.print_with_style(f, row, 2, &format!("{letter} "), attr);
+            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &attr));
         }
     }
 }

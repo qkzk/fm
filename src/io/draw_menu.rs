@@ -3,7 +3,6 @@ use std::cmp::min;
 
 use ratatui::layout::Rect;
 use ratatui::style::Color;
-use ratatui::text::{Line, Span};
 use ratatui::Frame;
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
@@ -81,16 +80,8 @@ pub trait DrawMenu<T: CowStr> {
         Self: Content<T>,
     {
         let content = self.content();
-        let mut spans = vec![];
         for (row, line, style) in colored_skip_take!(content, window) {
             let style = self.style(row, &style);
-            // TODO: why ??????????????????????????????????????????????
-            // let mut style = Style::default().fg(style.fg.unwrap_or(Color::Rgb(0, 0, 0)));
-            // if let Some(modifier) = &style.add_modifier {
-            //     style = style.add_modifier(modifier);
-            // }
-            let text = Line::from(Span::styled(line.cow_str(), style));
-            spans.push(text);
             rect.print_with_style(
                 f,
                 (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
@@ -98,7 +89,6 @@ pub trait DrawMenu<T: CowStr> {
                 &line.cow_str(),
                 self.style(row, &style),
             );
-            // Ok(Paragraph::new(spans).block(Block::default()));
         }
     }
 }

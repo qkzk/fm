@@ -13,6 +13,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::log_info;
 use crate::modes::{
@@ -37,6 +38,31 @@ use crate::{
     modes::Input,
 };
 
+trait LimitWidth {
+    fn limit_width(&self, width: usize) -> Self;
+}
+
+impl LimitWidth for &str {
+    /// Limit a string slice to the give width, stopping at a char boundary.
+    /// if the width is large enough, it's the width of the slice.
+    fn limit_width(&self, width: usize) -> Self {
+        let mut end = 0;
+        let mut current_width = 0;
+
+        for (index, grapheme) in self.grapheme_indices(true) {
+            let grapheme_width = grapheme.chars().count();
+
+            if current_width + grapheme_width > width {
+                break;
+            }
+            current_width += grapheme_width;
+            end = index + grapheme.len();
+        }
+
+        &self[..end]
+    }
+}
+
 pub trait Canvas: Sized {
     fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
 
@@ -49,12 +75,14 @@ impl Canvas for Rect {
         let area = Rect {
             x: self.x + col,
             y: self.y + row,
-            width: content.len() as u16, // Set width based on content length
-            height: 1,                   // One line of text
+            width: content.len() as u16,
+            height: 1,
         };
+        let available_width = self.width.saturating_sub(col) as usize;
+        let displayed = content.limit_width(available_width);
 
         // Render at the specified coordinates
-        f.render_widget(Span::styled(content, style), area);
+        f.render_widget(Span::styled(displayed, style), area);
     }
 
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
@@ -642,7 +670,7 @@ impl<'a> TreeDisplay<'a> {
     ) -> usize {
         if with_medatadata {
             let line = line_builder.metadata();
-            let len = line.len();
+            let len = line.utf_width();
             rect.print_with_style(f, row as u16, col as u16, line, style);
             len
         } else {
@@ -750,7 +778,6 @@ impl<'a> PreviewDisplay<'a> {
             let row_position = calc_line_row(i, window);
             Self::line_number(f, row_position, i + 1, rect);
             for token in vec_line.iter() {
-                // TODO! print method for syntaxed
                 token.print(f, rect, row_position, line_number_width);
             }
         }
@@ -1063,7 +1090,7 @@ impl<'a> Menu<'a> {
         let mut col = 11;
         for (text, is_valid) in &mode_parsed {
             let attr = if *is_valid { first } else { menu };
-            col += 1 + text.len();
+            col += 1 + text.utf_width();
             rect.print_with_style(f, 1, col as u16, text, attr);
         }
         col
@@ -1634,7 +1661,7 @@ fn draw_colored_strings(
             style.add_modifier |= Modifier::REVERSED;
         }
         rect.print_with_style(f, row as u16, (offset + col) as u16, text, style);
-        col += text.len();
+        col += text.utf_width();
     }
 }
 
