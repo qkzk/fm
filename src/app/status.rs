@@ -7,6 +7,7 @@ use std::thread::spawn;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
@@ -18,7 +19,7 @@ use crate::common::{
     args_is_empty, current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
     is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
 };
-use crate::config::{Bindings, START_FOLDER};
+use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
     execute_and_capture_output_with_path, execute_and_capture_output_without_check,
@@ -893,11 +894,35 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_config_default(&mut self) -> Result<()> {
+    pub fn fuzzy_command(&mut self, help: String) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        let injector = fuzzy.injector();
+        spawn(move || {
+            for line in help.lines() {
+                let _ = injector.push(line.to_owned(), |line, cols| {
+                    // the picker only has one column; fill it with the match text
+                    cols[0] = line.as_str().into();
+                });
+            }
+        });
+        Ok(())
+    }
+
+    pub fn fuzzy_config_line(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        fuzzy.config_default();
+        fuzzy.config_line();
+        Ok(())
+    }
+
+    pub fn fuzzy_config_help(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.config_help();
         Ok(())
     }
 
@@ -930,12 +955,21 @@ impl Status {
             match fuzzy.kind {
                 FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(pick))?,
                 FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(pick)?)?,
-                FuzzyKind::Action => todo!(),
+                FuzzyKind::Action => self.fuzzy_select_command(pick)?,
             }
         } else {
             log_info!("Fuzzy had nothing to pick from");
         };
         self.fuzzy_leave()
+    }
+
+    /// Run a command directly from help.
+    /// Search a command with fuzzy finder, if it's a keybinding, run it directly.
+    /// If the result can't be parsed, nothing is done.
+    fn fuzzy_select_command(&self, pick: &str) -> Result<()> {
+        let key = find_keybind_from_fuzzy(pick)?;
+        self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
+        Ok(())
     }
 
     pub fn fuzzy_leave(&mut self) -> Result<()> {
@@ -1965,19 +1999,15 @@ fn parse_keyname(keyname: &str) -> Option<String> {
     }
 }
 
-// fn find_keybind_from_skim(skim: Vec<Arc<dyn SkimItem>>) -> Result<Key> {
-//     let Some(output) = skim.first() else {
-//         bail!("Skim hasn't sent anything");
-//     };
-//     let line = output.output().into_owned();
-//     let Some(keybind) = line.split(':').next() else {
-//         bail!("No keybind found");
-//     };
-//     let Some(keyname) = parse_keyname(keybind) else {
-//         bail!("No keyname found for {keybind}");
-//     };
-//     let Some(key) = from_keyname(&keyname) else {
-//         bail!("{keyname} isn't a valid Key name.");
-//     };
-//     Ok(key)
-// }
+fn find_keybind_from_fuzzy(line: &str) -> Result<KeyEvent> {
+    let Some(keybind) = line.split(':').next() else {
+        bail!("No keybind found");
+    };
+    let Some(keyname) = parse_keyname(keybind) else {
+        bail!("No keyname found for {keybind}");
+    };
+    let Some(key) = from_keyname(&keyname) else {
+        bail!("{keyname} isn't a valid Key name.");
+    };
+    Ok(key)
+}

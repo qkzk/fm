@@ -83,8 +83,12 @@ where
         self.update_config(Config::DEFAULT.match_paths(), FuzzyKind::File);
     }
 
-    pub fn config_default(&mut self) {
+    pub fn config_line(&mut self) {
         self.update_config(Config::DEFAULT, FuzzyKind::Line);
+    }
+
+    pub fn config_help(&mut self) {
+        self.update_config(Config::DEFAULT, FuzzyKind::Action);
     }
 
     /// if insert char: append = true,

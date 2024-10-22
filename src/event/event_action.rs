@@ -1166,17 +1166,18 @@ impl EventAction {
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
         status.force_clear();
         status.fuzzy_init();
-        status.fuzzy_config_default()?;
+        status.fuzzy_config_line()?;
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         status.fuzzy_find_lines()
     }
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        // status.fuzzy_init();
-        // status.current_tab_mut().set_display_mode(Display::Fuzzy);
-        // let help = help_string(binds, &status.internal_settings.opener);
-        // status.fuzzy_command(help);
+        status.fuzzy_init();
+        status.fuzzy_config_help()?;
+        status.current_tab_mut().set_display_mode(Display::Fuzzy);
+        let help = help_string(binds, &status.internal_settings.opener);
+        status.fuzzy_command(help)?;
         Ok(())
     }
 
