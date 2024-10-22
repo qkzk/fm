@@ -1309,7 +1309,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] doubleclick
-- [ ] BUG: shortcut.rs : dedup out of bounds L170
+- [x] BUG ???: shortcut.rs : dedup out of bounds L170
 - [ ] crossterm enhancements: mouse capture. 2024-10-17 22:05:37 - MouseEvent { kind: Moved, column: 39, row: 45, modifiers: NONE }
   - [ ] focus gain (easiest)
   - selection follow mouse ? annoying
