@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -27,11 +26,11 @@ use crate::io::{
     reset_sudo_faillock, Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
-    CopyMove, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, InputCompleted, InputSimple,
-    IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation,
-    PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search,
-    Selectable, ShellCommandParser, Users,
+    copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
+    ContentWindow, CopyMove, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
+    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate,
+    NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview,
+    PreviewBuilder, Search, Selectable, ShellCommandParser, Users,
 };
 use crate::{log_info, log_line};
 
@@ -928,7 +927,11 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         if let Some(pick) = fuzzy.pick() {
-            self.tabs[self.index].cd_to_file(Path::new(pick))?;
+            match fuzzy.kind {
+                FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(pick))?,
+                FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(pick)?)?,
+                FuzzyKind::Action => todo!(),
+            }
         } else {
             log_info!("Fuzzy had nothing to pick from");
         };

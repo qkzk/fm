@@ -1,8 +1,15 @@
 use std::{cmp::min, sync::Arc, thread::available_parallelism};
 
+use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 
 use crate::modes::{ContentWindow, Input};
+
+pub enum FuzzyKind {
+    File,
+    Line,
+    Action,
+}
 
 pub struct FuzzyFinder<String: Sync + Send + 'static> {
     matcher: Nucleo<String>,
@@ -12,7 +19,7 @@ pub struct FuzzyFinder<String: Sync + Send + 'static> {
     pub index: usize,
     pub input: Input,
     pub window: ContentWindow,
-    should_preview: bool,
+    pub kind: FuzzyKind,
 }
 
 impl<String: Sync + Send + 'static> Default for FuzzyFinder<String>
@@ -21,7 +28,7 @@ where
 {
     fn default() -> Self {
         let config = Config::DEFAULT.match_paths();
-        Self::new(config, true)
+        Self::new(config, FuzzyKind::Line)
     }
 }
 
@@ -40,7 +47,7 @@ where
         Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1)
     }
 
-    pub fn new(config: Config, should_preview: bool) -> Self {
+    pub fn new(config: Config, kind: FuzzyKind) -> Self {
         Self {
             matcher: Self::build_nucleo(config),
             content: vec![],
@@ -49,7 +56,7 @@ where
             index: 0,
             input: Input::default(),
             window: ContentWindow::default(),
-            should_preview,
+            kind,
         }
     }
 
@@ -59,7 +66,7 @@ where
     }
 
     pub fn should_preview(&self) -> bool {
-        self.should_preview
+        matches!(self.kind, FuzzyKind::File)
     }
 
     /// Get an [`Injector`] from the internal [`Nucleo`] instance.
@@ -67,17 +74,17 @@ where
         self.matcher.injector()
     }
 
-    pub fn update_config(&mut self, config: Config, should_preview: bool) {
+    pub fn update_config(&mut self, config: Config, kind: FuzzyKind) {
         self.matcher = Self::build_nucleo(config);
-        self.should_preview = should_preview;
+        self.kind = kind;
     }
 
     pub fn config_match_path(&mut self) {
-        self.update_config(Config::DEFAULT.match_paths(), true);
+        self.update_config(Config::DEFAULT.match_paths(), FuzzyKind::File);
     }
 
     pub fn config_default(&mut self) {
-        self.update_config(Config::DEFAULT, false);
+        self.update_config(Config::DEFAULT, FuzzyKind::Line);
     }
 
     /// if insert char: append = true,
@@ -198,4 +205,10 @@ impl FuzzyFinder<String> {
             self.select_next()
         }
     }
+}
+
+pub fn parse_line_output(item: &str) -> Result<std::path::PathBuf> {
+    Ok(std::fs::canonicalize(std::path::PathBuf::from(
+        item.split_once(':').unwrap_or(("", "")).0.to_owned(),
+    ))?)
 }

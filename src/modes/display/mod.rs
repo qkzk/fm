@@ -10,7 +10,7 @@ pub use directory::{files_collection, human_size, Directory};
 pub use preview::{
     BinaryContent, ExtensionKind, HLContent, Preview, PreviewBuilder, Text, TextKind, Window,
 };
-// pub use skim::{parse_line_output, print_ansi_str, Skimer};
-pub use nucleo_picker::FuzzyFinder;
+// pub use skim::{parse_line_output, print_ansiq_str, Skimer};
+pub use nucleo_picker::{parse_line_output, FuzzyFinder, FuzzyKind};
 pub use tree::{Go, Node, TLine, To, Tree, TreeBuilder, TreeLines};
 pub use uber::{Ueber, UeberBuilder};

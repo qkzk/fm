@@ -1173,8 +1173,10 @@ impl EventAction {
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        // status.fuzzy_init();
+        // status.current_tab_mut().set_display_mode(Display::Fuzzy);
         // let help = help_string(binds, &status.internal_settings.opener);
-        // status.skim_find_keybinding_and_run(help);
+        // status.fuzzy_command(help);
         Ok(())
     }
 
