@@ -1306,8 +1306,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] FIX: line overflow their rect
 - [x] FIX: menus can overflows their rect
+- [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
 - [ ] BUG: when a resize occur, selection can be out of window
-- [ ] BUG: menu with shortcut. Shortcut letter is wrong when height is too low
 - [ ] doubleclick
 - [ ] BUG: shortcut.rs : dedup out of bounds L170
 - [ ] crossterm enhancements: mouse capture. 2024-10-17 22:05:37 - MouseEvent { kind: Moved, column: 39, row: 45, modifiers: NONE }
