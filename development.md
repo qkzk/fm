@@ -1307,11 +1307,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: line overflow their rect
 - [x] FIX: menus can overflows their rect
 - [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
+- [x] BUG ???: shortcut.rs : dedup out of bounds L170
+- [x] Focus follow mouse
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] doubleclick
-- [x] BUG ???: shortcut.rs : dedup out of bounds L170
-- [ ] crossterm enhancements: mouse capture. 2024-10-17 22:05:37 - MouseEvent { kind: Moved, column: 39, row: 45, modifiers: NONE }
-  - [ ] focus gain (easiest)
   - selection follow mouse ? annoying
   - mouse over files to preview ? (what for ?)
 - [ ] ratatui component for progress bar for copymove

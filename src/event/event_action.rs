@@ -925,6 +925,11 @@ impl EventAction {
         }
     }
 
+    pub fn focus_follow_cursor(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        status.set_focus_from_pos(row, col)?;
+        Ok(())
+    }
+
     /// Click a file at `row`, `col`. Gives the focus to the window container.
     pub fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         status.click(binds, row, col)

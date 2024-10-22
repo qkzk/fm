@@ -74,6 +74,9 @@ impl EventDispatcher {
             MouseEventKind::Down(MouseButton::Right) => {
                 EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
+            MouseEventKind::Moved => {
+                EventAction::focus_follow_cursor(status, mouse_event.row, mouse_event.column)
+            }
             _ => {
                 // TODO mouse over is now possible + modifiers...
                 // log_info!("{mouse_event:?}");
