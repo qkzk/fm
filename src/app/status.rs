@@ -464,7 +464,7 @@ impl Status {
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
         self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
-        self.set_edit_mode(self.index, Menu::Nothing)?;
+        self.set_menu_mode(self.index, Menu::Nothing)?;
         self.set_height_of_unfocused_menu()?;
         Ok(must_refresh)
     }
@@ -632,7 +632,7 @@ impl Status {
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
-    pub fn set_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+    pub fn set_menu_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
         }
@@ -641,6 +641,7 @@ impl Status {
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
+        self.menu.window.scroll_to(self.menu.index(edit_mode));
         self.set_focus_from_mode();
         self.menu.input_history.filter_by_mode(edit_mode);
         self.refresh_status()
@@ -1461,7 +1462,7 @@ impl Status {
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
-            self.set_edit_mode(self.index, Menu::Nothing)?;
+            self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
         }
         if let Some(files) = files {
@@ -1502,7 +1503,7 @@ impl Status {
         password_dest: PasswordUsage,
     ) -> Result<()> {
         log_info!("event ask password");
-        self.set_edit_mode(
+        self.set_menu_mode(
             self.index,
             Menu::InputSimple(InputSimple::Password(encrypted_action, password_dest)),
         )
@@ -1576,7 +1577,7 @@ impl Status {
 
     pub fn bulk_execute(&mut self) -> Result<()> {
         self.menu.bulk.get_new_names()?;
-        self.set_edit_mode(
+        self.set_menu_mode(
             self.index,
             Menu::NeedConfirmation(NeedConfirmation::BulkAction),
         )?;
@@ -1597,7 +1598,7 @@ impl Status {
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Menu::Nothing)?;
+        self.set_menu_mode(self.index, Menu::Nothing)?;
         reset_sudo_faillock()?;
         let Some(sudo_command) = self.menu.sudo_command.to_owned() else {
             return self.menu.clear_sudo_attributes();
@@ -1745,7 +1746,7 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         }
-        self.set_edit_mode(self.index, Menu::InputSimple(InputSimple::Chmod))
+        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))
     }
 
     /// Execute a custom event on the selected file
@@ -1761,7 +1762,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Flagged))
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Flagged))
     }
 
     /// Compress the flagged files into an archive.
@@ -1865,7 +1866,7 @@ impl Status {
             return Ok(());
         };
         self.menu.cloud = cloud;
-        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Cloud))
     }
 
     /// Open the cloud menu.
@@ -1873,7 +1874,7 @@ impl Status {
     /// if a cloud has been selected, it will open it.
     pub fn cloud_open(&mut self) -> Result<()> {
         if self.menu.cloud.is_set() {
-            self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))
+            self.set_menu_mode(self.index, Menu::Navigate(Navigate::Cloud))
         } else {
             self.cloud_picker()
         }
@@ -1886,7 +1887,7 @@ impl Status {
             Some("Pick a cloud provider".to_owned()),
             content,
         );
-        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Picker))
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Picker))
     }
 
     /// Disconnect from the current cloud and open the picker
@@ -1898,7 +1899,7 @@ impl Status {
     /// Enter the delete mode and ask confirmation.
     /// Only the currently selected file can be deleted.
     pub fn cloud_enter_delete_mode(&mut self) -> Result<()> {
-        self.set_edit_mode(
+        self.set_menu_mode(
             self.index,
             Menu::NeedConfirmation(NeedConfirmation::DeleteCloud),
         )
@@ -1907,7 +1908,7 @@ impl Status {
     /// Delete the selected file once a confirmation has been received from the user.
     pub fn cloud_confirm_delete(&mut self) -> Result<()> {
         self.menu.cloud.delete()?;
-        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))?;
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Cloud))?;
         self.menu.cloud.refresh_current()?;
         self.menu.window.scroll_to(self.menu.cloud.index);
         Ok(())
@@ -1920,7 +1921,7 @@ impl Status {
 
     /// Ask the user to enter a name for the new directory.
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Menu::InputSimple(InputSimple::CloudNewdir))?;
+        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::CloudNewdir))?;
         self.refresh_view()
     }
 

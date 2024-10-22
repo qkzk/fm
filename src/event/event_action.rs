@@ -14,7 +14,9 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display,
+    FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
+    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -88,7 +90,7 @@ impl EventAction {
         if status.display_settings.preview() {
             status.update_second_pane_for_preview()
         } else {
-            status.set_edit_mode(1, Menu::Nothing)?;
+            status.set_menu_mode(1, Menu::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
             status.tabs[1].refresh_view()
         }
@@ -149,7 +151,7 @@ impl EventAction {
         if matches!(edit_mode, Menu::Navigate(Navigate::Flagged)) {
             status.leave_menu_mode()?;
         } else if matches!(edit_mode, Menu::Nothing) {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
         }
         Ok(())
     }
@@ -248,7 +250,7 @@ impl EventAction {
             }
         }
         let old_name = &selected.filename;
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
         Ok(())
     }
@@ -289,7 +291,7 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
-        status.set_edit_mode(status.index, Menu::NeedConfirmation(copy_or_move))
+        status.set_menu_mode(status.index, Menu::NeedConfirmation(copy_or_move))
     }
 
     /// Creates a symlink of every flagged file to the current directory.
@@ -320,7 +322,7 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
-        status.set_edit_mode(
+        status.set_menu_mode(
             status.index,
             Menu::NeedConfirmation(NeedConfirmation::Delete),
         )
@@ -355,7 +357,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(input_kind))?;
+            status.set_menu_mode(status.index, Menu::InputSimple(input_kind))?;
         }
         Ok(())
     }
@@ -442,7 +444,7 @@ impl EventAction {
                 .flagged
                 .push(status.current_tab().current_file()?.path.to_path_buf());
         }
-        status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
+        status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
@@ -475,7 +477,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Tree | Display::Directory
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Filter))?;
+            status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Filter))?;
         }
         Ok(())
     }
@@ -502,7 +504,7 @@ impl EventAction {
         }
         let tab = status.current_tab_mut();
         tab.search = Search::empty();
-        status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Search))
+        status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Search))
     }
 
     /// Enter the regex mode.
@@ -518,7 +520,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Tree | Display::Directory
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::RegexMatch))
+            status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::RegexMatch))
         } else {
             Ok(())
         }
@@ -562,7 +564,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Cd))?;
+            status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Cd))?;
 
             status.tabs[status.index].save_origin_path();
             status.menu.completion.reset();
@@ -592,7 +594,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Shell))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Shell))
     }
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
@@ -603,7 +605,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
         }
         Ok(())
     }
@@ -617,7 +619,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
         }
         Ok(())
     }
@@ -634,7 +636,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::History))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::History))?;
         }
         Ok(())
     }
@@ -647,7 +649,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::New)),
             )?;
@@ -666,7 +668,7 @@ impl EventAction {
             if status.menu.marks.is_empty() {
                 return Ok(());
             }
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::Jump)),
             )?;
@@ -686,7 +688,7 @@ impl EventAction {
         } else {
             std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
             status.menu.shortcut.update_git_root();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
     }
@@ -731,7 +733,7 @@ impl EventAction {
             status.reset_menu_mode()?;
             return Ok(());
         };
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::SetNvimAddr))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::SetNvimAddr))
     }
 
     /// Move back in history to the last visited directory.
@@ -1244,7 +1246,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.trash.update()?;
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash),
             )?;
@@ -1264,7 +1266,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.trash.update()?;
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Trash))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Trash))?;
         }
         Ok(())
     }
@@ -1289,7 +1291,7 @@ impl EventAction {
             if status.menu.encrypted_devices.is_empty() {
                 status.menu.encrypted_devices.update()?;
             }
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
         }
         Ok(())
     }
@@ -1307,7 +1309,7 @@ impl EventAction {
                 return Ok(());
             }
             status.menu.removable_devices = RemovableDevices::find().unwrap_or_default();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
         }
         Ok(())
     }
@@ -1336,7 +1338,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Compress))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Compress))?;
         }
         Ok(())
     }
@@ -1350,7 +1352,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.context.reset();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Context))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Context))?;
         }
         Ok(())
     }
@@ -1364,7 +1366,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Action))?;
+            status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Action))?;
             status.menu.completion.reset();
         }
         Ok(())
@@ -1384,7 +1386,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Remote))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Remote))
     }
 
     pub fn cloud_drive(status: &mut Status) -> Result<()> {
