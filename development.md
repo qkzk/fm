@@ -1273,6 +1273,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::binary::printhex & printascii
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
+    - [x] FIX: cursor flickering
   - [ ] skim replaced by... nucleo, with my own picker
 
     - [x] struct nucleo-picker
@@ -1288,7 +1289,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] ff files (help) : read the file send it to nucleo as a whole
     - [x] previewing
     - [x] click on line
-    - [ ] BUG: flickering
     - [ ] send notifications from the fm_sender, instead of sending them blindlessly myself. See Nucleo::new ... notifier
     - [x] don't export all content, only what will be displayed
 

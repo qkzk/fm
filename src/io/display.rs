@@ -1016,7 +1016,7 @@ impl<'a> Draw for Menu<'a> {
             return;
         }
         let mode = self.tab.menu_mode;
-        self.cursor(f);
+        self.cursor(f, rect);
         MenuFirstLine::new(self.status).draw(f, rect);
         self.menu_line(f, rect);
         self.content_per_mode(f, rect, mode);
@@ -1038,12 +1038,12 @@ impl<'a> Menu<'a> {
     /// # Errors
     ///
     /// may fail if we can't display on the terminal.
-    fn cursor(&self, f: &mut Frame) {
+    fn cursor(&self, f: &mut Frame, rect: &Rect) {
         let offset = self.tab.menu_mode.cursor_offset();
         let index = self.status.menu.input.index();
-        let y = (offset + index) as u16;
+        let x = rect.x + (offset + index) as u16;
         if self.tab.menu_mode.show_cursor() {
-            f.set_cursor_position(Position::new(0, y));
+            f.set_cursor_position(Position::new(x, rect.y));
         }
     }
 
@@ -1397,7 +1397,6 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
-        self.hide_cursor().unwrap();
         if status.should_be_cleared() {
             self.term.clear().unwrap();
         }
@@ -1512,10 +1511,6 @@ impl Display {
     /// do it unless the shell won't display a cursor anymore.
     pub fn show_cursor(&mut self) -> Result<()> {
         Ok(self.term.show_cursor()?)
-    }
-
-    fn hide_cursor(&mut self) -> Result<()> {
-        Ok(self.term.hide_cursor()?)
     }
 
     pub fn height(&self) -> Result<usize> {
