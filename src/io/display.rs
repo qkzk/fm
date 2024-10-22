@@ -512,8 +512,7 @@ impl<'a> DirectoryDisplay<'a> {
             self.files_line(
                 f,
                 rect,
-                group_size,
-                owner_size,
+                (group_size, owner_size),
                 index,
                 file,
                 height as usize,
@@ -536,8 +535,7 @@ impl<'a> DirectoryDisplay<'a> {
         &self,
         f: &mut Frame,
         rect: &Rect,
-        group_size: usize,
-        owner_size: usize,
+        owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
         height: usize,
@@ -546,24 +544,23 @@ impl<'a> DirectoryDisplay<'a> {
         if row + 2 > height {
             return;
         }
-        let mut attr = file.style();
+        let mut style = file.style();
         if index == self.tab.directory.index {
-            attr.add_modifier |= Modifier::REVERSED;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        let content = Self::format_file_content(self.status, file, owner_size, group_size);
-        Files::print_flagged_symbol(f, self.status, rect, row, &file.path, &mut attr);
+        let content = Self::format_file_content(self.status, file, owner_sizes);
+        Files::print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
         let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
-        rect.print_with_style(f, row as u16, col as u16, &content, attr);
+        rect.print_with_style(f, row as u16, col as u16, &content, style);
     }
 
     fn format_file_content(
         status: &Status,
         file: &FileInfo,
-        owner_size: usize,
-        group_size: usize,
+        owner_sizes: (usize, usize),
     ) -> String {
         if status.display_settings.metadata() {
-            file.format(owner_size, group_size).unwrap()
+            file.format(owner_sizes.0, owner_sizes.1).unwrap()
         } else {
             file.format_simple().unwrap()
         }

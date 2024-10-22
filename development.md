@@ -1285,11 +1285,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] variants.
     - [x] ff file
     - [x] ff line
-
-      - [ ] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
-      - [ ] move when selected
-
-    - [ ] ff files (help) : read the file send it to nucleo as a whole
+      - [x] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
+    - [x] ff files (help) : read the file send it to nucleo as a whole
     - [x] previewing
     - [ ] click on line
     - [ ] BUG: flickering
