@@ -464,7 +464,7 @@ impl ForHelp for KeyEvent {
             KeyCode::Enter => "enter".to_string(),
             KeyCode::Tab => "tab".to_string(),
             KeyCode::Esc => "esc".to_string(),
-            KeyCode::BackTab => "shift-tab".to_string(),
+            KeyCode::BackTab => "tab".to_string(),
             KeyCode::Backspace => "bspace".to_string(),
             KeyCode::Insert => "ins".to_string(),
             KeyCode::Delete => "del".to_string(),
