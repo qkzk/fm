@@ -14,9 +14,7 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display,
-    InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation,
-    PreviewBuilder, RemovableDevices, Search, Selectable,
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable
 };
 
 /// Links events from tuikit to custom actions.
@@ -1156,7 +1154,7 @@ impl EventAction {
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
         status.force_clear();
-        status.fuzzy_init();
+        status.fuzzy_init(FuzzyKind::File);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         status.fuzzy_find_files()?;
         status.update_second_pane_for_preview()
@@ -1165,16 +1163,14 @@ impl EventAction {
     /// Start a fuzzy find for a specific line with skim.
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
         status.force_clear();
-        status.fuzzy_init();
-        status.fuzzy_config_line()?;
+        status.fuzzy_init(FuzzyKind::Line);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         status.fuzzy_find_lines()
     }
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        status.fuzzy_init();
-        status.fuzzy_config_help()?;
+        status.fuzzy_init(FuzzyKind::Action);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         let help = help_string(binds, &status.internal_settings.opener);
         status.fuzzy_help(help)?;

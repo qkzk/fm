@@ -1,9 +1,10 @@
-use std::{cmp::min, sync::Arc, thread::available_parallelism};
+use std::{cmp::min, fs::canonicalize, path::PathBuf, sync::Arc, thread::available_parallelism};
 
 use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 
 use crate::modes::{ContentWindow, Input};
+use crate::{impl_content, impl_selectable};
 
 pub enum FuzzyKind {
     File,
@@ -28,7 +29,7 @@ where
 {
     fn default() -> Self {
         let config = Config::DEFAULT.match_paths();
-        Self::new(config, FuzzyKind::Line)
+        Self::build(config, FuzzyKind::File)
     }
 }
 
@@ -42,12 +43,19 @@ where
             .ok()
     }
 
-    // TODO send the FMevent here..
     fn build_nucleo(config: Config) -> Nucleo<String> {
         Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1)
     }
 
-    pub fn new(config: Config, kind: FuzzyKind) -> Self {
+    pub fn new(kind: FuzzyKind) -> Self {
+        match kind {
+            FuzzyKind::File => Self::default(),
+            FuzzyKind::Line => Self::for_lines(),
+            FuzzyKind::Action => Self::for_help(),
+        }
+    }
+
+    fn build(config: Config, kind: FuzzyKind) -> Self {
         Self {
             matcher: Self::build_nucleo(config),
             content: vec![],
@@ -58,6 +66,14 @@ where
             window: ContentWindow::default(),
             kind,
         }
+    }
+
+    fn for_lines() -> Self {
+        Self::build(Config::DEFAULT, FuzzyKind::Line)
+    }
+
+    fn for_help() -> Self {
+        Self::build(Config::DEFAULT, FuzzyKind::Action)
     }
 
     pub fn window(mut self, window: &ContentWindow) -> Self {
@@ -72,23 +88,6 @@ where
     /// Get an [`Injector`] from the internal [`Nucleo`] instance.
     pub fn injector(&self) -> Injector<String> {
         self.matcher.injector()
-    }
-
-    pub fn update_config(&mut self, config: Config, kind: FuzzyKind) {
-        self.matcher = Self::build_nucleo(config);
-        self.kind = kind;
-    }
-
-    pub fn config_match_path(&mut self) {
-        self.update_config(Config::DEFAULT.match_paths(), FuzzyKind::File);
-    }
-
-    pub fn config_line(&mut self) {
-        self.update_config(Config::DEFAULT, FuzzyKind::Line);
-    }
-
-    pub fn config_help(&mut self) {
-        self.update_config(Config::DEFAULT, FuzzyKind::Action);
     }
 
     /// if insert char: append = true,
@@ -128,12 +127,10 @@ where
         );
         self.matched_item_count = snapshot.matched_item_count() as usize;
         self.index = self.index_clamped(item_stored);
-
         self.content = snapshot
             .matched_items(0..item_stored as u32)
             .map(|t| format_display(&t.matcher_columns[0]))
             .collect();
-        crate::log_info!("tick stored {item_stored} items");
         self.window.set_len(item_stored);
         self.window.scroll_to(self.index);
     }
@@ -151,6 +148,55 @@ where
     }
 }
 
+impl FuzzyFinder<String> {
+    pub fn select_next(&mut self) {
+        self.next();
+        self.window.scroll_down_one(self.index);
+    }
+
+    pub fn select_prev(&mut self) {
+        self.prev();
+        self.window.scroll_up_one(self.index);
+    }
+
+    pub fn select_clic(&mut self, row: u16) {
+        let row = row as usize;
+        if row < ContentWindow::WINDOW_PADDING {
+            return;
+        }
+        self.index = min(row.saturating_sub(5), self.len().saturating_sub(1));
+        self.window.scroll_to(self.index)
+    }
+
+    pub fn page_up(&mut self) {
+        for _ in 0..10 {
+            if self.index == 0 {
+                break;
+            }
+            self.select_prev()
+        }
+    }
+
+    pub fn page_down(&mut self) {
+        for _ in 0..10 {
+            if self.index + 1 >= self.len() {
+                break;
+            }
+            self.select_next()
+        }
+    }
+}
+
+type Ffs = FuzzyFinder<String>;
+impl_selectable!(Ffs);
+impl_content!(String, Ffs);
+
+pub fn parse_line_output(item: &str) -> Result<PathBuf> {
+    Ok(canonicalize(PathBuf::from(
+        item.split_once(':').unwrap_or(("", "")).0.to_owned(),
+    ))?)
+}
+
 /// Format a [`Utf32String`] for displaying. Currently:
 /// - Delete control characters.
 /// - Truncates the string to an appropriate length.
@@ -165,54 +211,4 @@ fn format_display(display: &Utf32String) -> String {
             s => s,
         })
         .collect()
-}
-
-use crate::{impl_content, impl_selectable};
-
-type Ffs = FuzzyFinder<String>;
-impl_selectable!(Ffs);
-impl_content!(String, Ffs);
-
-impl FuzzyFinder<String> {
-    pub fn select_next(&mut self) {
-        self.next();
-        self.window.scroll_down_one(self.index);
-    }
-
-    pub fn select_prev(&mut self) {
-        self.prev();
-        self.window.scroll_up_one(self.index);
-    }
-
-    pub fn select_clic(&mut self, row: u16) {
-        if row < 4 {
-            return;
-        }
-        self.index = min(row.saturating_sub(5) as usize, self.len().saturating_sub(1));
-        self.window.scroll_to(self.index)
-    }
-
-    pub fn page_down(&mut self) {
-        for _ in 0..10 {
-            if self.index == 0 {
-                break;
-            }
-            self.select_prev()
-        }
-    }
-
-    pub fn page_up(&mut self) {
-        for _ in 0..10 {
-            if self.index >= self.len() {
-                break;
-            }
-            self.select_next()
-        }
-    }
-}
-
-pub fn parse_line_output(item: &str) -> Result<std::path::PathBuf> {
-    Ok(std::fs::canonicalize(std::path::PathBuf::from(
-        item.split_once(':').unwrap_or(("", "")).0.to_owned(),
-    ))?)
 }

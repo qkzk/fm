@@ -1289,7 +1289,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] ff files (help) : read the file send it to nucleo as a whole
     - [x] previewing
     - [x] click on line
-    - [ ] send notifications from the fm_sender, instead of sending them blindlessly myself. See Nucleo::new ... notifier
     - [x] don't export all content, only what will be displayed
 
       - [x] resize

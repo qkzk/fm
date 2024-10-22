@@ -876,8 +876,8 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_init(&mut self) {
-        self.fuzzy = Some(FuzzyFinder::default().window(&self.current_tab().window));
+    pub fn fuzzy_init(&mut self, kind: FuzzyKind) {
+        self.fuzzy = Some(FuzzyFinder::new(kind).window(&self.current_tab().window));
     }
 
     fn fuzzy_drop(&mut self) {
@@ -919,22 +919,6 @@ impl Status {
                 });
             }
         });
-        Ok(())
-    }
-
-    pub fn fuzzy_config_line(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.config_line();
-        Ok(())
-    }
-
-    pub fn fuzzy_config_help(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.config_help();
         Ok(())
     }
 
