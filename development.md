@@ -1296,7 +1296,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] FIX: navigation is screwed
 
     - [ ] testing: file, line, help
-      - [ ] BUG outofbounds: 'a, ctrl+f, millenium...
+      - [x] FIX nucleo out of bounds
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
     - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm

@@ -118,7 +118,7 @@ where
 
     fn tick_forced(&mut self) {
         let snapshot = self.matcher.snapshot();
-        self.item_count = snapshot.item_count() as usize;
+        self.item_count = snapshot.matched_item_count() as usize;
         let item_stored = min(
             self.item_count,
             self.window
@@ -150,16 +150,19 @@ where
 
 impl FuzzyFinder<String> {
     pub fn select_next(&mut self) {
+        self.tick();
         self.next();
         self.window.scroll_down_one(self.index);
     }
 
     pub fn select_prev(&mut self) {
+        self.tick();
         self.prev();
         self.window.scroll_up_one(self.index);
     }
 
     pub fn select_clic(&mut self, row: u16) {
+        self.tick();
         let row = row as usize;
         if row < ContentWindow::WINDOW_PADDING {
             return;
