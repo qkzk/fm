@@ -8,6 +8,7 @@ use crossterm::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Position, Rect, Size},
+    prelude::*,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -371,9 +372,9 @@ impl<'a> FuzzyDisplay<'a> {
         };
         let rect = Rect {
             x: rect.x,
-            y: rect.y + 3,
+            y: rect.y + 2,
             width: rect.width,
-            height: rect.height.saturating_sub(3),
+            height: rect.height.saturating_sub(2),
         };
         let rects = Self::build_layout(rect);
         // Draw the match counts at the top
@@ -383,14 +384,15 @@ impl<'a> FuzzyDisplay<'a> {
 
         // Draw the matched items
         let items_paragraph = self.paragraph_matches(fuzzy);
-        f.render_widget(items_paragraph, rects[1]);
-        self.draw_prompt(fuzzy, f, rects[2]);
+        f.render_widget(items_paragraph, rects[2]);
+        self.draw_prompt(fuzzy, f, rects[3]);
     }
 
     fn build_layout(area: Rect) -> Vec<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
+                Constraint::Length(1),
                 Constraint::Length(1),
                 Constraint::Min(0),
                 Constraint::Length(2),
@@ -442,7 +444,7 @@ impl<'a> FuzzyDisplay<'a> {
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::ITALIC),
             ),
-            Span::styled("/", Style::default().fg(Color::Yellow)),
+            Span::styled(" / ", Style::default().fg(Color::Yellow)),
             Span::styled(
                 format!("{}", fuzzy.item_count),
                 Style::default().fg(Color::Yellow),
@@ -471,29 +473,18 @@ impl<'a> FuzzyDisplay<'a> {
     }
 
     fn selected_line(render: &str) -> Line<'static> {
-        Line::from(vec![
-            Span::styled(
-                "▌ ",
-                FILE_STYLES.get().expect("FILE_STYLES should be set").fifo,
-            ),
-            Span::styled(
-                render.to_owned(),
-                FILE_STYLES.get().expect("FILE_STYLES should be set").fifo,
-            ),
-        ])
+        Line::from(vec![Span::raw("> "), Span::raw(render.to_owned())])
+            .black()
+            .bg(MENU_STYLES
+                .get()
+                .expect("MENU_STYLES should be set")
+                .palette_1
+                .fg
+                .unwrap())
     }
 
     fn non_selected_line(render: &str) -> Line<'static> {
-        Line::from(vec![
-            Span::raw("  "),
-            Span::styled(
-                render.to_owned(),
-                MENU_STYLES
-                    .get()
-                    .expect("MENU_STYLES should be set")
-                    .inert_border,
-            ),
-        ])
+        Line::from(vec![Span::raw("  "), Span::raw(render.to_owned())]).gray()
     }
 }
 

@@ -1254,7 +1254,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] replace tuikit by ratatui + crossterm
 
   - [x] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
-  - [ ] NOT DISPLAY
+  - [x] NOT DISPLAY
     - [x] app, status, events, menus, colors, style, key...
     - [x] copy move
     - [x] dispatch mouse wheel events
@@ -1274,7 +1274,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
     - [x] FIX: cursor flickering
+    - [ ] rectify all u16 <-> usize conversions
   - [ ] skim replaced by... nucleo, with my own picker
+
+    - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+    - [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 
     - [x] struct nucleo-picker
     - [x] attach to status
@@ -1297,9 +1301,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
     - [ ] testing: file, line, help
       - [x] FIX nucleo out of bounds
-    - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
-    - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 
 - [x] FIX: save a name for previews, use it to display
 
