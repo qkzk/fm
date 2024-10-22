@@ -4,6 +4,10 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use nucleo::Injector;
+use tokio::{
+    io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
+};
 
 use crate::common::{current_username, is_in_path, SETSID};
 use crate::modes::PasswordHolder;
@@ -338,4 +342,28 @@ pub fn set_sudo_session(password: &PasswordHolder) -> Result<bool> {
         root_path,
     )?;
     Ok(success)
+}
+
+#[tokio::main]
+pub async fn inject(mut command: TokioCommand, injector: Injector<String>) {
+    let Ok(mut cmd) = command
+        .stdout(Stdio::piped()) // Can do the same for stderr
+        .spawn()
+    else {
+        log_info!("Cannot spawn command");
+        return;
+    };
+    let Some(stdout) = cmd.stdout.take() else {
+        log_info!("no stdout");
+        return;
+    };
+    let mut lines = TokioBufReader::new(stdout).lines();
+    while let Ok(opt_line) = lines.next_line().await {
+        let Some(line) = opt_line else {
+            break;
+        };
+        injector.push(line.clone(), |line, cols| {
+            cols[0] = line.as_str().into();
+        });
+    }
 }

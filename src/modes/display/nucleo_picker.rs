@@ -12,6 +12,7 @@ pub struct FuzzyFinder<String: Sync + Send + 'static> {
     pub index: usize,
     pub input: Input,
     pub window: ContentWindow,
+    should_preview: bool,
 }
 
 impl<String: Sync + Send + 'static> Default for FuzzyFinder<String>
@@ -20,7 +21,7 @@ where
 {
     fn default() -> Self {
         let config = Config::DEFAULT.match_paths();
-        Self::new(config)
+        Self::new(config, true)
     }
 }
 
@@ -39,7 +40,7 @@ where
         Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1)
     }
 
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, should_preview: bool) -> Self {
         Self {
             matcher: Self::build_nucleo(config),
             content: vec![],
@@ -48,6 +49,7 @@ where
             index: 0,
             input: Input::default(),
             window: ContentWindow::default(),
+            should_preview,
         }
     }
 
@@ -56,13 +58,26 @@ where
         self
     }
 
+    pub fn should_preview(&self) -> bool {
+        self.should_preview
+    }
+
     /// Get an [`Injector`] from the internal [`Nucleo`] instance.
     pub fn injector(&self) -> Injector<String> {
         self.matcher.injector()
     }
 
-    pub fn update_config(&mut self, config: Config) {
+    pub fn update_config(&mut self, config: Config, should_preview: bool) {
         self.matcher = Self::build_nucleo(config);
+        self.should_preview = should_preview;
+    }
+
+    pub fn config_match_path(&mut self) {
+        self.update_config(Config::DEFAULT.match_paths(), true);
+    }
+
+    pub fn config_default(&mut self) {
+        self.update_config(Config::DEFAULT, false);
     }
 
     /// if insert char: append = true,

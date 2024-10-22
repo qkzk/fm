@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -10,6 +11,7 @@ use clap::Parser;
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
+use tokio::process::Command as TokioCommand; // 0.2.4, features = ["full"]
 use walkdir::WalkDir;
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
@@ -21,8 +23,8 @@ use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
     execute_and_capture_output_with_path, execute_and_capture_output_without_check,
-    execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
-    Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    execute_sudo_command_with_password, get_cloud_token_names, google_drive, inject,
+    reset_sudo_faillock, Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
     copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
@@ -892,6 +894,27 @@ impl Status {
         Ok(())
     }
 
+    pub fn fuzzy_config_default(&mut self) -> Result<()> {
+        let Some(fuzzy) = &mut self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        fuzzy.config_default();
+        Ok(())
+    }
+
+    pub fn fuzzy_find_lines(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        let injector = fuzzy.injector();
+        spawn(move || {
+            let mut command = TokioCommand::new("/usr/bin/rg");
+            command.arg("--line-number").arg("--color=never").arg(".");
+            inject(command, injector);
+        });
+        Ok(())
+    }
+
     fn fuzzy_current_selection(&self) -> Option<&String> {
         if let Some(fuzzy) = &self.fuzzy {
             fuzzy.selected()
@@ -958,7 +981,10 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.select_prev();
-        self.update_second_pane_for_preview()
+        if fuzzy.should_preview() {
+            self.update_second_pane_for_preview()?;
+        }
+        Ok(())
     }
 
     pub fn fuzzy_down(&mut self) -> Result<()> {
@@ -966,7 +992,10 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.select_next();
-        self.update_second_pane_for_preview()
+        if fuzzy.should_preview() {
+            self.update_second_pane_for_preview()?;
+        }
+        Ok(())
     }
 
     pub fn fuzzy_page_up(&mut self) -> Result<()> {
@@ -974,7 +1003,10 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.page_up();
-        self.update_second_pane_for_preview()
+        if fuzzy.should_preview() {
+            self.update_second_pane_for_preview()?;
+        }
+        Ok(())
     }
 
     pub fn fuzzy_page_down(&mut self) -> Result<()> {
@@ -982,7 +1014,10 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         fuzzy.page_down();
-        self.update_second_pane_for_preview()
+        if fuzzy.should_preview() {
+            self.update_second_pane_for_preview()?;
+        }
+        Ok(())
     }
 
     pub fn fuzzy_tick(&mut self) {
