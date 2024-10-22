@@ -925,7 +925,7 @@ impl EventAction {
         }
     }
 
-    pub fn focus_follow_cursor(status: &mut Status, row: u16, col: u16) -> Result<()> {
+    pub fn focus_follow_mouse(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
         Ok(())
     }
