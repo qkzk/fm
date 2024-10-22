@@ -947,21 +947,15 @@ impl EventAction {
     }
 
     /// Wheel up moves the display up
-    pub fn wheel_up(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+    pub fn wheel_up(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
-        for _ in 0..nb_of_scrolls {
-            Self::move_up(status)?
-        }
-        Ok(())
+        Self::move_up(status)
     }
 
     /// Wheel down moves the display down
-    pub fn wheel_down(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+    pub fn wheel_down(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
-        for _ in 0..nb_of_scrolls {
-            Self::move_down(status)?
-        }
-        Ok(())
+        Self::move_down(status)
     }
 
     /// A double click opens a file or execute a menu item

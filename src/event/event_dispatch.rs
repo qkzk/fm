@@ -59,10 +59,10 @@ impl EventDispatcher {
     fn match_mouse_event(&self, status: &mut Status, mouse_event: MouseEvent) -> Result<()> {
         match mouse_event.kind {
             MouseEventKind::ScrollUp => {
-                EventAction::wheel_up(status, mouse_event.row, mouse_event.column, 1)
+                EventAction::wheel_up(status, mouse_event.row, mouse_event.column)
             }
             MouseEventKind::ScrollDown => {
-                EventAction::wheel_down(status, mouse_event.row, mouse_event.column, 1)
+                EventAction::wheel_down(status, mouse_event.row, mouse_event.column)
             }
             MouseEventKind::Down(MouseButton::Left) => {
                 EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
@@ -77,11 +77,7 @@ impl EventDispatcher {
             MouseEventKind::Moved => {
                 EventAction::focus_follow_mouse(status, mouse_event.row, mouse_event.column)
             }
-            _ => {
-                // TODO mouse over is now possible + modifiers...
-                // log_info!("{mouse_event:?}");
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
 
