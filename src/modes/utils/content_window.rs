@@ -13,7 +13,7 @@ pub struct ContentWindow {
     pub bottom: usize,
     /// The number of displayble elements.
     pub len: usize,
-    /// The height of the terminal.
+    /// The height of the rect containing the elements.
     pub height: usize,
 }
 
@@ -34,26 +34,24 @@ impl ContentWindow {
     pub const HEADER_ROWS: usize = 3;
     /// How many rows are reserved for the footer ?
     const FOOTER_ROWS: usize = 1;
-    /// Footer and bottom padding
-    const BOTTOM_ROWS: usize = 2;
 
     /// How many rows could be displayed with given height ?
     /// It's not the number of rows displayed since the content may
     /// not be long enough to fill the window.
-    fn nb_displayed_rows(height: usize) -> usize {
-        height.saturating_sub(Self::HEADER_ROWS + Self::FOOTER_ROWS)
+    fn nb_displayed_rows(rect_height: usize) -> usize {
+        rect_height.saturating_sub(Self::HEADER_ROWS + Self::FOOTER_ROWS)
     }
 
     /// Default value for the bottom index.
     /// minimum of terminal height minus reserved rows and the length of the content.
-    fn default_bottom(len: usize, height: usize) -> usize {
-        min(height.saturating_sub(Self::BOTTOM_ROWS), len)
+    fn default_bottom(len: usize, used_height: usize) -> usize {
+        min(len, used_height)
     }
 
     /// Returns a new `ContentWindow` instance with values depending of
     /// number of displayable elements and height of the terminal screen.
-    pub fn new(len: usize, terminal_height: usize) -> Self {
-        let height = Self::nb_displayed_rows(terminal_height);
+    pub fn new(len: usize, rect_height: usize) -> Self {
+        let height = Self::nb_displayed_rows(rect_height);
         let top = 0;
         let bottom = Self::default_bottom(len, height);
         ContentWindow {
@@ -105,12 +103,9 @@ impl ContentWindow {
             return;
         }
         if self.is_index_outside_window(index) {
-            let height = self.bottom.checked_sub(self.top).unwrap_or_default();
-            self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
-            self.bottom = (self.top + Self::default_bottom(self.height, self.len))
-                .checked_sub(Self::BOTTOM_ROWS)
-                .unwrap_or(2);
-            self.bottom = min(self.bottom, self.top + height);
+            let height = max(self.bottom.saturating_sub(self.top), self.height);
+            self.top = index.saturating_sub(Self::WINDOW_PADDING);
+            self.bottom = self.top + height;
         }
     }
 

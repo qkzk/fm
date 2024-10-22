@@ -190,8 +190,10 @@ impl DrawMenu<PathBuf> for Shortcut {
             std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
         {
             let attr = self.style(index, &style);
-            let row =
-                (index + 1 + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(window.top) as u16;
+            let row = (index + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16;
+            if row + 2 > rect.height {
+                return;
+            }
             rect.print_with_style(f, row, 2, &format!("{letter} "), attr);
             rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &attr));
         }

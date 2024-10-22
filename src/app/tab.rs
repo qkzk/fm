@@ -797,7 +797,7 @@ impl Tab {
         self.directory
             .enumerate()
             .skip(self.window.top)
-            .take(min(len, self.window.bottom))
+            .take(min(len, self.window.height))
     }
 
     pub fn cd_origin_path(&mut self) -> Result<()> {

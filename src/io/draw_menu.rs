@@ -41,7 +41,7 @@ macro_rules! colored_skip_take {
         )
         .map(|((index, line), attr)| (index, line, attr))
         .skip($u.top)
-        .take(min($u.bottom, $t.len()))
+        .take(min($u.len, $t.len()))
     };
 }
 
@@ -80,15 +80,13 @@ pub trait DrawMenu<T: CowStr> {
         Self: Content<T>,
     {
         let content = self.content();
-        for (row, line, style) in colored_skip_take!(content, window) {
-            let style = self.style(row, &style);
-            rect.print_with_style(
-                f,
-                (row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16,
-                4,
-                &line.cow_str(),
-                self.style(row, &style),
-            );
+        for (index, line, style) in colored_skip_take!(content, window) {
+            let style = self.style(index, &style);
+            let row = (index + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16;
+            if row + 2 > rect.height {
+                return;
+            }
+            rect.print_with_style(f, row, 4, &line.cow_str(), self.style(index, &style));
         }
     }
 }

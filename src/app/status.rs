@@ -349,7 +349,7 @@ impl Status {
 
     pub fn second_window_height(&self) -> Result<usize> {
         let (_, height) = self.term_size();
-        Ok(height / 2 + (height % 2))
+        Ok((height / 2).saturating_sub(2))
     }
 
     /// Execute a click on a menu item. Action depends on which menu was opened.
@@ -525,6 +525,7 @@ impl Status {
         self.set_dual_pane_if_wide_enough(width)?;
         self.tabs[0].set_height(height);
         self.tabs[1].set_height(height);
+        self.menu.window.set_height(self.second_window_height()?);
         self.fuzzy_resize(height);
         self.refresh_status()
     }
