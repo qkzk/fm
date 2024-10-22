@@ -43,7 +43,7 @@ pub trait MountRepr: MountCommands {
 
     /// Default attr.
     /// Using configurable colors. "first" when mounted, "inert border" otherwise
-    fn attr(&self) -> Style {
+    fn style(&self) -> Style {
         if self.is_mounted() {
             MENU_STYLES.get().expect("Menu colors should be set").first
         } else {

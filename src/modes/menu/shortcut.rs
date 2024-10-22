@@ -2,12 +2,16 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use ratatui::style::Color;
 use ratatui::{layout::Rect, Frame};
+use std::cmp::min;
 
+use crate::colored_skip_take;
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
-use crate::io::{git_root, DrawMenu};
+use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::io::{color_to_style, git_root, Canvas, CowStr, DrawMenu};
 use crate::modes::ContentWindow;
 use crate::{impl_content, impl_selectable, log_info};
 
@@ -171,14 +175,8 @@ where
     }
     elems
 }
-
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
-use crate::colored_skip_take;
-use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, Canvas, CowStr};
-use ratatui::style::Color;
-use std::cmp::min;
 
 impl DrawMenu<PathBuf> for Shortcut {
     fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
@@ -186,16 +184,17 @@ impl DrawMenu<PathBuf> for Shortcut {
         Self: Content<PathBuf>,
     {
         let content = self.content();
-        for (letter, (index, path, style)) in
-            std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
-        {
-            let attr = self.style(index, &style);
+        for (letter, (index, path, style)) in std::iter::zip(
+            ('a'..='z').cycle().skip(window.top),
+            colored_skip_take!(content, window),
+        ) {
+            let style = self.style(index, &style);
             let row = (index + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16;
             if row + 2 > rect.height {
                 return;
             }
-            rect.print_with_style(f, row, 2, &format!("{letter} "), attr);
-            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &attr));
+            rect.print_with_style(f, row, 2, &format!("{letter} "), style);
+            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &style));
         }
     }
 }

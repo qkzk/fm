@@ -4,7 +4,7 @@ use crate::config::{ARRAY_GRADIENT, COLORER};
 
 pub const MAX_GRADIENT_NORMAL: usize = 254;
 
-/// No attr but a method to color give a color for any extension.
+/// No style but a method to color give a color for any extension.
 /// Extension should be hashed to an usize first.
 pub struct NormalFileColorer {}
 

@@ -9,7 +9,7 @@ use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{color_to_style, Canvas};
 use crate::modes::{Content, ContentWindow};
 
-/// Iter over the content, returning a triplet of `(index, line, attr)`.
+/// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
 macro_rules! colored_skip_take {
     ($t:ident, $u:ident) => {
@@ -39,14 +39,14 @@ macro_rules! colored_skip_take {
             .gradient()
             .map(|color| color_to_style(color)),
         )
-        .map(|((index, line), attr)| (index, line, attr))
+        .map(|((index, line), style)| (index, line, style))
         .skip($u.top)
         .take(min($u.len, $t.len()))
     };
 }
 
 /// Converts itself into a [`std::borrow::Cow<str>`].
-/// It's used to call `print_with_attr` which requires an `&str`.
+/// It's used to call `print_with_style` which requires an `&str`.
 pub trait CowStr {
     fn cow_str(&self) -> Cow<str>;
 }

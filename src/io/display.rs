@@ -1,4 +1,4 @@
-use std::{io::Stdout, sync::MutexGuard};
+use std::{cmp::min, io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
 use crossterm::{
@@ -15,7 +15,6 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
     HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
@@ -25,6 +24,7 @@ use crate::{
     app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
     modes::AnsiString,
 };
+use crate::{colored_skip_take, log_info};
 use crate::{
     common::{path_to_string, UtfWidth},
     modes::FuzzyFinder,
@@ -113,7 +113,7 @@ impl ClearLine for Rect {
     }
 }
 
-/// Iter over the content, returning a triplet of `(index, line, attr)`.
+/// Iter over the content, returning a triplet of `(index, line, style)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
         std::iter::zip(
@@ -142,7 +142,7 @@ macro_rules! enumerated_colored_iter {
             .gradient()
             .map(|color| color_to_style(color)),
         )
-        .map(|((index, line), attr)| (index, line, attr))
+        .map(|((index, line), style)| (index, line, style))
     };
 }
 /// Draw every line of the preview
@@ -954,12 +954,12 @@ impl FilesSecondLine {
     fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = file.style();
-        attr.add_modifier ^= Modifier::REVERSED;
+        let mut style = file.style();
+        style.add_modifier ^= Modifier::REVERSED;
 
         Self {
             content: Some(file.format(owner_size, group_size).unwrap_or_default()),
-            style: Some(attr),
+            style: Some(style),
         }
     }
 }
@@ -1089,9 +1089,9 @@ impl<'a> Menu<'a> {
         let mode_parsed = parse_input_mode(&self.status.menu.input.string());
         let mut col = 11;
         for (text, is_valid) in &mode_parsed {
-            let attr = if *is_valid { first } else { menu };
+            let style = if *is_valid { first } else { menu };
             col += 1 + text.utf_width();
-            rect.print_with_style(f, 1, col as u16, text, attr);
+            rect.print_with_style(f, 1, col as u16, text, style);
         }
         col
     }
@@ -1121,7 +1121,7 @@ impl<'a> Menu<'a> {
 
     fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
         for (row, line, style) in enumerated_colored_iter!(lines) {
-            Self::content_line(f, rect, row, line, style);
+            Self::content_line(f, rect, row as u16, line, style);
         }
     }
 
@@ -1228,18 +1228,24 @@ impl<'a> Menu<'a> {
             MENU_STYLES.get().expect("Menu colors should be set").second,
         );
         let content = selectable.content();
-        for (letter, (row, desc, attr)) in
-            std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
-        {
-            let style = selectable.style(row, &attr);
+        let window = &self.status.menu.window;
+        for (letter, (index, desc, style)) in std::iter::zip(
+            ('a'..='z').cycle().skip(self.status.menu.window.top),
+            colored_skip_take!(content, window),
+        ) {
+            let row = (index + 1 - window.top) as u16;
+            if row + 2 + ContentWindow::WINDOW_MARGIN_TOP as u16 > rect.height {
+                return;
+            }
+            let style = selectable.style(index, &style);
             rect.print_with_style(
                 f,
-                (row + 1 + ContentWindow::WINDOW_MARGIN_TOP) as u16,
+                row + (ContentWindow::WINDOW_MARGIN_TOP) as u16,
                 2,
                 &format!("{letter} "),
                 style,
             );
-            Self::content_line(f, rect, row + 1, desc, style);
+            Self::content_line(f, rect, row, desc, style);
         }
     }
 
@@ -1251,7 +1257,7 @@ impl<'a> Menu<'a> {
         )
         .to_lines();
         for (row, text, style) in enumerated_colored_iter!(more_info) {
-            Self::content_line(f, rect, space_used + row + 1, text, style);
+            Self::content_line(f, rect, (space_used + row + 1) as u16, text, style);
         }
     }
 
@@ -1304,13 +1310,13 @@ impl<'a> Menu<'a> {
 
     fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
         let content = &self.status.menu.flagged.content;
-        for (row, path, attr) in enumerated_colored_iter!(content) {
+        for (row, path, style) in enumerated_colored_iter!(content) {
             Self::content_line(
                 f,
                 rect,
-                row + 2,
+                row as u16 + 2,
                 path.to_str().context("Unreadable filename").unwrap(),
-                attr,
+                style,
             );
         }
     }
@@ -1318,7 +1324,7 @@ impl<'a> Menu<'a> {
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
         for (row, line, style) in enumerated_colored_iter!(content) {
-            Self::content_line(f, rect, row + 2, line, style);
+            Self::content_line(f, rect, row as u16 + 2, line, style);
         }
     }
 
@@ -1339,7 +1345,7 @@ impl<'a> Menu<'a> {
             line,
             MENU_STYLES
                 .get()
-                .context("MENU_ATTRS should be set")
+                .context("MENU_STYLES should be set")
                 .unwrap()
                 .palette_4,
         );
@@ -1355,16 +1361,16 @@ impl<'a> Menu<'a> {
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.trash.content();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.menu.trash.style(row, &attr);
-            Self::content_line(f, rect, row + 4, &trashinfo.to_string(), attr);
+        for (row, trashinfo, style) in enumerated_colored_iter!(content) {
+            let style = self.status.menu.trash.style(row, &style);
+            Self::content_line(f, rect, row as u16 + 4, &trashinfo.to_string(), style);
         }
     }
 
-    fn content_line(f: &mut Frame, rect: &Rect, row: usize, text: &str, style: Style) -> usize {
+    fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) -> usize {
         rect.print_with_style(
             f,
-            (row + ContentWindow::WINDOW_MARGIN_TOP) as u16,
+            row + ContentWindow::WINDOW_MARGIN_TOP as u16,
             4,
             text,
             style,
@@ -1587,7 +1593,7 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Style; 4] {
-        let menu_styles = MENU_STYLES.get().expect("MENU_ATTRS should be set");
+        let menu_styles = MENU_STYLES.get().expect("MENU_STYLES should be set");
         let mut borders = [menu_styles.inert_border; 4];
         let selected_border = menu_styles.selected_border;
         borders[status.focus.index()] = selected_border;

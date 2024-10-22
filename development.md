@@ -1306,7 +1306,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] FIX: line overflow their rect
 - [x] FIX: menus can overflows their rect
-- [ ] BUG: menus aren't resized properly
+- [ ] BUG: when a resize occur, selection can be out of window
 - [ ] BUG: menu with shortcut. Shortcut letter is wrong when height is too low
 - [ ] doubleclick
 - [ ] BUG: shortcut.rs : dedup out of bounds L170

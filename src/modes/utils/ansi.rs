@@ -1,5 +1,5 @@
 /// Copied from skim. See [ansi.rs](https://github.com/lotabout/skim/blob/master/src/ansi.rs)
-// Parse ANSI attr code
+// Parse ANSI style code
 use std::default::Default;
 use std::mem;
 
@@ -12,12 +12,12 @@ use crate::log_info;
 
 /// An ANSI Parser, will parse one line at a time.
 ///
-/// It will cache the latest attribute used, that means if an attribute affect multiple
+/// It will cache the latest style used, that means if an style affect multiple
 /// lines, the parser will recognize it.
 #[derive(Default)]
 pub struct ANSIParser {
     partial_str: String,
-    last_attr: Style,
+    last_style: Style,
 
     stripped: String,
     stripped_char_count: usize,
@@ -74,23 +74,23 @@ impl Perform for ANSIParser {
         }
 
         // \[[m => means reset
-        let mut attr = if params.is_empty() {
+        let mut style = if params.is_empty() {
             Style::default()
         } else {
-            self.last_attr
+            self.last_style
         };
 
         let mut iter = params.iter();
         while let Some(code) = iter.next() {
             match code[0] {
-                0 => attr = Style::default(),
-                1 => attr.add_modifier |= Modifier::BOLD,
-                2 => attr.add_modifier |= !Modifier::BOLD,
-                4 => attr.add_modifier |= Modifier::UNDERLINED,
-                5 => attr.add_modifier |= Modifier::SLOW_BLINK,
-                7 => attr.add_modifier |= Modifier::REVERSED,
+                0 => style = Style::default(),
+                1 => style.add_modifier |= Modifier::BOLD,
+                2 => style.add_modifier |= !Modifier::BOLD,
+                4 => style.add_modifier |= Modifier::UNDERLINED,
+                5 => style.add_modifier |= Modifier::SLOW_BLINK,
+                7 => style.add_modifier |= Modifier::REVERSED,
                 num if (30..=37).contains(&num) => {
-                    attr.fg = Some(Color::Indexed((num - 30) as u8));
+                    style.fg = Some(Color::Indexed((num - 30) as u8));
                 }
                 38 => match iter.next() {
                     Some(&[2]) => {
@@ -103,7 +103,7 @@ impl Perform for ANSIParser {
                             }
                         };
 
-                        attr.fg = Some(Color::Rgb(r, g, b));
+                        style.fg = Some(Color::Rgb(r, g, b));
                     }
                     Some(&[5]) => {
                         // ESC[ 38;5;<n> m Select foreground color
@@ -115,15 +115,15 @@ impl Perform for ANSIParser {
                             }
                         };
 
-                        attr.fg = Some(Color::Indexed(color));
+                        style.fg = Some(Color::Indexed(color));
                     }
                     _ => {
                         log_info!("error on parsing CSI {:?} m", params);
                     }
                 },
-                39 => attr.fg = Some(Color::Black),
+                39 => style.fg = Some(Color::Black),
                 num if (40..=47).contains(&num) => {
-                    attr.bg = Some(Color::Indexed((num - 40) as u8));
+                    style.bg = Some(Color::Indexed((num - 40) as u8));
                 }
                 48 => match iter.next() {
                     Some(&[2]) => {
@@ -136,7 +136,7 @@ impl Perform for ANSIParser {
                             }
                         };
 
-                        attr.bg = Some(Color::Rgb(r, g, b));
+                        style.bg = Some(Color::Rgb(r, g, b));
                     }
                     Some(&[5]) => {
                         // ESC[ 48;5;<n> m Select background color
@@ -148,20 +148,20 @@ impl Perform for ANSIParser {
                             }
                         };
 
-                        attr.bg = Some(Color::Indexed(color));
+                        style.bg = Some(Color::Indexed(color));
                     }
                     _ => {
                         log_info!("ignore CSI {:?} m", params);
                     }
                 },
-                49 => attr.bg = Some(Color::Black),
+                49 => style.bg = Some(Color::Black),
                 _ => {
                     log_info!("ignore CSI {:?} m", params);
                 }
             }
         }
 
-        self.attr_change(attr);
+        self.style_change(style);
     }
 
     fn esc_dispatch(&mut self, _intermediates: &[u8], _ignore: bool, _byte: u8) {
@@ -172,7 +172,7 @@ impl Perform for ANSIParser {
 }
 
 impl ANSIParser {
-    /// save the partial_str into fragments with current attr
+    /// save the partial_str into fragments with current style
     fn save_str(&mut self) {
         if self.partial_str.is_empty() {
             return;
@@ -181,7 +181,7 @@ impl ANSIParser {
         let string = mem::take(&mut self.partial_str);
         let string_char_count = string.chars().count();
         self.fragments.push((
-            self.last_attr,
+            self.last_style,
             (
                 self.stripped_char_count as u32,
                 (self.stripped_char_count + string_char_count) as u32,
@@ -191,14 +191,14 @@ impl ANSIParser {
         self.stripped.push_str(&string);
     }
 
-    // accept a new attr
-    fn attr_change(&mut self, new_attr: Style) {
-        if new_attr == self.last_attr {
+    // accept a new style
+    fn style_change(&mut self, new_style: Style) {
+        if new_style == self.last_style {
             return;
         }
 
         self.save_str();
-        self.last_attr = new_attr;
+        self.last_style = new_style;
     }
 
     pub fn parse_ansi(&mut self, text: &str) -> AnsiString<'static> {
@@ -218,11 +218,11 @@ impl ANSIParser {
 
 /// A String that contains ANSI state (e.g. colors)
 ///
-/// It is internally represented as Vec<(attr, string)>
+/// It is internally represented as Vec<(style, string)>
 #[derive(Clone, Debug)]
 pub struct AnsiString<'a> {
     stripped: Cow<'a, str>,
-    // attr: start, end
+    // style: start, end
     fragments: Option<Vec<(Style, (u32, u32))>>,
 }
 
@@ -301,7 +301,7 @@ impl<'a> AnsiString<'a> {
         ))
     }
 
-    pub fn has_attrs(&self) -> bool {
+    pub fn has_styles(&self) -> bool {
         self.fragments.is_some()
     }
 
@@ -310,14 +310,14 @@ impl<'a> AnsiString<'a> {
         &self.stripped
     }
 
-    pub fn override_attrs(&mut self, attrs: Vec<(Style, (u32, u32))>) {
-        if attrs.is_empty() {
+    pub fn override_styles(&mut self, styles: Vec<(Style, (u32, u32))>) {
+        if styles.is_empty() {
             // pass
         } else if self.fragments.is_none() {
-            self.fragments = Some(attrs);
+            self.fragments = Some(styles);
         } else {
             let current_fragments = self.fragments.take().expect("unreachable");
-            let new_fragments = merge_fragments(&current_fragments, &attrs);
+            let new_fragments = merge_fragments(&current_fragments, &styles);
             self.fragments.replace(new_fragments);
         }
     }
@@ -335,18 +335,18 @@ impl From<String> for AnsiString<'static> {
     }
 }
 
-// (text, indices, highlight attribute) -> AnsiString
+// (text, indices, highlight styleibute) -> AnsiString
 impl<'a> From<(&'a str, &'a [usize], Style)> for AnsiString<'a> {
-    fn from((text, indices, attr): (&'a str, &'a [usize], Style)) -> Self {
+    fn from((text, indices, style): (&'a str, &'a [usize], Style)) -> Self {
         let fragments = indices
             .iter()
-            .map(|&idx| (attr, (idx as u32, 1 + idx as u32)))
+            .map(|&idx| (style, (idx as u32, 1 + idx as u32)))
             .collect();
         AnsiString::new_str(text, fragments)
     }
 }
 
-/// An iterator over all the (char, attr) characters.
+/// An iterator over all the (char, style) characters.
 pub struct AnsiStringIterator<'a> {
     fragments: &'a [(Style, (u32, u32))],
     fragment_idx: usize,
@@ -375,7 +375,7 @@ impl<'a> Iterator for AnsiStringIterator<'a> {
                         break;
                     }
 
-                    let (_attr, (_start, end)) = self.fragments[self.fragment_idx];
+                    let (_style, (_start, end)) = self.fragments[self.fragment_idx];
                     if char_idx < (end as usize) {
                         break;
                     } else {
@@ -383,14 +383,14 @@ impl<'a> Iterator for AnsiStringIterator<'a> {
                     }
                 }
 
-                let (attr, (start, end)) = if self.fragment_idx >= self.fragments.len() {
+                let (style, (start, end)) = if self.fragment_idx >= self.fragments.len() {
                     (Style::default(), (char_idx as u32, 1 + char_idx as u32))
                 } else {
                     self.fragments[self.fragment_idx]
                 };
 
                 if (start as usize) <= char_idx && char_idx < (end as usize) {
-                    Some((char, attr))
+                    Some((char, style))
                 } else {
                     Some((char, Style::default()))
                 }
@@ -458,14 +458,14 @@ mod tests {
         let input = "\x1B[48;2;5;10;15m\x1B[38;2;70;130;180mhi\x1B[0m";
         let ansistring = ANSIParser::default().parse_ansi(input);
         let mut it = ansistring.iter();
-        let attr = Style {
+        let style = Style {
             fg: Some(Color::Rgb(70, 130, 180)),
             bg: Some(Color::Rgb(5, 10, 15)),
             ..Style::default()
         };
 
-        assert_eq!(Some(('h', attr)), it.next());
-        assert_eq!(Some(('i', attr)), it.next());
+        assert_eq!(Some(('h', style)), it.next());
+        assert_eq!(Some(('i', style)), it.next());
         assert_eq!(None, it.next());
         assert_eq!(ansistring.stripped(), "hi");
     }
@@ -474,17 +474,17 @@ mod tests {
     fn test_highlight_indices() {
         let text = "abc";
         let indices: Vec<usize> = vec![1];
-        let attr = Style {
+        let style = Style {
             fg: Some(Color::Rgb(70, 130, 180)),
             bg: Some(Color::Rgb(5, 10, 15)),
             ..Style::default()
         };
 
-        let ansistring = AnsiString::from((text, &indices as &[usize], attr));
+        let ansistring = AnsiString::from((text, &indices as &[usize], style));
         let mut it = ansistring.iter();
 
         assert_eq!(Some(('a', Style::default())), it.next());
-        assert_eq!(Some(('b', attr)), it.next());
+        assert_eq!(Some(('b', style)), it.next());
         assert_eq!(Some(('c', Style::default())), it.next());
         assert_eq!(None, it.next());
     }
@@ -494,7 +494,7 @@ mod tests {
         let input = "ab";
         let ansistring = ANSIParser::default().parse_ansi(input);
 
-        assert!(!ansistring.has_attrs());
+        assert!(!ansistring.has_styles());
 
         let mut it = ansistring.iter();
         assert_eq!(Some(('a', Style::default())), it.next());
@@ -505,18 +505,18 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_attributes() {
+    fn test_multiple_styleibutes() {
         let input = "\x1B[1;31mhi";
         let ansistring = ANSIParser::default().parse_ansi(input);
         let mut it = ansistring.iter();
-        let attr = Style {
+        let style = Style {
             fg: Some(Color::Black),
             add_modifier: Modifier::BOLD,
             ..Style::default()
         };
 
-        assert_eq!(Some(('h', attr)), it.next());
-        assert_eq!(Some(('i', attr)), it.next());
+        assert_eq!(Some(('h', style)), it.next());
+        assert_eq!(Some(('i', style)), it.next());
         assert_eq!(None, it.next());
         assert_eq!(ansistring.stripped(), "hi");
     }
@@ -534,20 +534,20 @@ mod tests {
         let input = "中`\x1B[0m\x1B[1m\x1B[31mXYZ\x1B[0ms`";
         let ansistring = ANSIParser::default().parse_ansi(input);
         let mut it = ansistring.iter();
-        let default_attr = Style::default();
+        let default_style = Style::default();
         let annotated = Style {
             fg: Some(Color::Black),
             add_modifier: Modifier::BOLD,
-            ..default_attr
+            ..default_style
         };
 
-        assert_eq!(Some(('中', default_attr)), it.next());
-        assert_eq!(Some(('`', default_attr)), it.next());
+        assert_eq!(Some(('中', default_style)), it.next());
+        assert_eq!(Some(('`', default_style)), it.next());
         assert_eq!(Some(('X', annotated)), it.next());
         assert_eq!(Some(('Y', annotated)), it.next());
         assert_eq!(Some(('Z', annotated)), it.next());
-        assert_eq!(Some(('s', default_attr)), it.next());
-        assert_eq!(Some(('`', default_attr)), it.next());
+        assert_eq!(Some(('s', default_style)), it.next());
+        assert_eq!(Some(('`', default_style)), it.next());
         assert_eq!(None, it.next());
     }
 

@@ -15,7 +15,6 @@ use crate::io::{set_loggers, Args, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
-/// Most attributes holds an [`std::sync::Arc`] with [`tuikit::term::Term`].
 /// Dropping the instance of FM allows to write again to stdout.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
