@@ -1296,6 +1296,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] FIX: navigation is screwed
 
     - [ ] testing: file, line, help
+      - [ ] BUG outofbounds: 'a, ctrl+f, millenium...
     - [ ] ansi parser replacement [ansi-to-tui](https://github.com/RedIsGaming/rust-colors)
     - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
     - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
@@ -1311,8 +1312,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Focus follow mouse
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] doubleclick
-  - selection follow mouse ? annoying
-  - mouse over files to preview ? (what for ?)
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
 - [ ] shellcommand with redirection "< > >> |"
