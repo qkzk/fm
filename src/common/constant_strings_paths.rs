@@ -79,10 +79,8 @@ pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
-pub const BAT_EXECUTABLE: &str = "bat {} --color=always";
-pub const CAT_EXECUTABLE: &str = "cat {}";
-pub const RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
-pub const GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
+pub const RG_EXECUTABLE: &str = "rg --line-number --color=never .";
+pub const GREP_EXECUTABLE: &str = "grep -rI --line-number .";
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
 pub const EJECT_EXECUTABLE: &str = "eject";

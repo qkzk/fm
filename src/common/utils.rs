@@ -102,7 +102,11 @@ pub fn is_in_path<S>(program: S) -> bool
 where
     S: Into<String> + std::fmt::Display + AsRef<Path>,
 {
-    if program.as_ref().exists() {
+    let p = program.to_string();
+    let Some(program) = p.split_whitespace().next() else {
+        return false;
+    };
+    if Path::new(program).exists() {
         return true;
     }
     if let Ok(path) = std::env::var("PATH") {

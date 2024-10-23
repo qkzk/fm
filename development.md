@@ -1274,7 +1274,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
     - [x] FIX: cursor flickering
-    - [ ] rectify all u16 <-> usize conversions
   - [ ] skim replaced by... nucleo, with my own picker
 
     - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
@@ -1300,6 +1299,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] FIX: navigation is screwed
 
     - [ ] testing: file, line, help
+    - [x] ensure rg & grep can be run before executing fuzzy find of line
       - [x] FIX nucleo out of bounds
 
 - [x] FIX: save a name for previews, use it to display
@@ -1311,6 +1311,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
 - [x] BUG ???: shortcut.rs : dedup out of bounds L170
 - [x] Focus follow mouse
+- [ ] rectify all u16 <-> usize conversions
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] doubleclick
 - [ ] ratatui component for progress bar for copymove

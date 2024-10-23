@@ -9,7 +9,7 @@ use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
 };
 
-use crate::common::{current_username, is_in_path, SETSID};
+use crate::common::{current_username, is_in_path, GREP_EXECUTABLE, RG_EXECUTABLE, SETSID};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
@@ -366,4 +366,22 @@ pub async fn inject(mut command: TokioCommand, injector: Injector<String>) {
             cols[0] = line.as_str().into();
         });
     }
+}
+
+pub fn build_tokio_greper() -> Option<TokioCommand> {
+    let shell_command = if is_in_path(RG_EXECUTABLE) {
+        RG_EXECUTABLE
+    } else if is_in_path(GREP_EXECUTABLE) {
+        GREP_EXECUTABLE
+    } else {
+        return None;
+    };
+    let mut args: Vec<_> = shell_command.split_whitespace().collect();
+    if args.is_empty() {
+        return None;
+    }
+    let grep = args.remove(0);
+    let mut tokio_greper = TokioCommand::new(grep);
+    tokio_greper.args(&args);
+    Some(tokio_greper)
 }

@@ -11,7 +11,6 @@ use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
-use tokio::process::Command as TokioCommand; // 0.2.4, features = ["full"]
 use walkdir::WalkDir;
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
@@ -22,9 +21,10 @@ use crate::common::{
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
-    execute_and_capture_output_with_path, execute_and_capture_output_without_check,
-    execute_sudo_command_with_password, get_cloud_token_names, google_drive, inject,
-    reset_sudo_faillock, Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    build_tokio_greper, execute_and_capture_output_with_path,
+    execute_and_capture_output_without_check, execute_sudo_command_with_password,
+    get_cloud_token_names, google_drive, inject, reset_sudo_faillock, Args, Extension, Internal,
+    Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
@@ -926,11 +926,13 @@ impl Status {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
+        let Some(tokio_greper) = build_tokio_greper() else {
+            log_info!("ripgrep & grep aren't in $PATH");
+            return Ok(());
+        };
         let injector = fuzzy.injector();
         spawn(move || {
-            let mut command = TokioCommand::new("/usr/bin/rg");
-            command.arg("--line-number").arg("--color=never").arg(".");
-            inject(command, injector);
+            inject(tokio_greper, injector);
         });
         Ok(())
     }
