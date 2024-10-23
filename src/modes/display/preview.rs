@@ -21,11 +21,11 @@ use syntect::{
 };
 
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
-    TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, UtfWidth, BSDTAR, FFMPEG,
+    FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
+    RSVG_CONVERT, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
-use crate::config::MONOKAI_THEME;
+use crate::config::{MENU_STYLES, MONOKAI_THEME};
 use crate::io::{execute_and_capture_output_without_check, Canvas};
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
@@ -660,7 +660,7 @@ impl HLContent {
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
                     v_line.push(SyntaxedString::from_syntect(col, token, *style));
-                    col += token.len();
+                    col += token.utf_width_u16();
                 }
             }
             highlighted_content.push(v_line)
@@ -675,7 +675,7 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    col: usize,
+    col: u16,
     content: String,
     style: Style,
 }
@@ -684,7 +684,7 @@ impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: usize, content: &str, style: SyntectStyle) -> Self {
+    fn from_syntect(col: u16, content: &str, style: SyntectStyle) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
         let style = Style {
@@ -717,15 +717,9 @@ impl SyntaxedString {
         modifier
     }
 
-    // /// Prints itself on a tuikit canvas.
-    pub fn print(&self, f: &mut Frame, rect: &Rect, row: usize, offset: usize) {
-        rect.print_with_style(
-            f,
-            row as u16,
-            (self.col + offset + 2) as u16,
-            &self.content,
-            self.style,
-        );
+    // /// Prints itself on a ratatui window.
+    pub fn print(&self, f: &mut Frame, rect: &Rect, row: u16, offset: u16) {
+        rect.print_with_style(f, row, self.col + offset + 2, &self.content, self.style);
     }
 }
 
@@ -830,25 +824,44 @@ impl Line {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
+    /// Print the line number as hexadecimal
+    pub fn print_line_number_hex(
+        &self,
+        f: &mut Frame,
+        rect: &Rect,
+        row: u16,
+        top: usize,
+        i: usize,
+        line_number_width_hex: usize,
+    ) {
+        rect.print_with_style(
+            f,
+            row,
+            0,
+            &Self::format_line_nr_hex(i + 1 + top, line_number_width_hex),
+            MENU_STYLES.get().expect("Menu colors should be set").first,
+        );
+    }
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
     /// It uses BigEndian notation, regardless of platform usage.
     /// It tries to imitates the output of hexdump.
-    pub fn print_bytes(&self, f: &mut Frame, rect: &Rect, row: usize, offset: usize) {
-        rect.print(f, row as u16, offset as u16 + 2, &self.format_hex());
+    pub fn print_bytes(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
+        rect.print(f, row, offset as u16 + 2, &self.format_hex());
+    }
+
+    fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+        format!("{line_nr:0width$x}")
     }
 
     /// Print a line as an ASCII string
     /// Non ASCII printable bytes are replaced by dots.
-    pub fn print_ascii(&self, f: &mut Frame, rect: &Rect, row: usize, offset: usize) {
+    pub fn print_ascii(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
         rect.print_with_style(
             f,
-            row as u16,
+            row,
             offset as u16 + 2,
             &self.format_as_ascii(),
-            Style {
-                fg: Some(Color::LightYellow),
-                ..Default::default()
-            },
+            MENU_STYLES.get().expect("Menu colors should be set").second,
         );
     }
 }
@@ -856,8 +869,8 @@ impl Line {
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
-pub trait Window<T> {
-    fn window(
+pub trait TakeSkipEnum<T> {
+    fn take_skip_enum(
         &self,
         top: usize,
         bottom: usize,
@@ -865,10 +878,10 @@ pub trait Window<T> {
     ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-macro_rules! impl_window {
+macro_rules! impl_take_skip_enum {
     ($t:ident, $u:ident) => {
-        impl Window<$u> for $t {
-            fn window(
+        impl TakeSkipEnum<$u> for $t {
+            fn take_skip_enum(
                 &self,
                 top: usize,
                 bottom: usize,
@@ -887,7 +900,7 @@ macro_rules! impl_window {
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 
-impl_window!(HLContent, VecSyntaxedString);
-impl_window!(Text, String);
-impl_window!(BinaryContent, Line);
-impl_window!(TreeLines, TLine);
+impl_take_skip_enum!(HLContent, VecSyntaxedString);
+impl_take_skip_enum!(Text, String);
+impl_take_skip_enum!(BinaryContent, Line);
+impl_take_skip_enum!(TreeLines, TLine);

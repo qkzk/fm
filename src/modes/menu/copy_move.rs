@@ -84,10 +84,10 @@ impl CopyMove {
 
     fn setup_progress_bar(
         &self,
-        width: usize,
-        height: usize,
+        width: u16,
+        height: u16,
     ) -> Result<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        let in_mem = InMemoryTerm::new(height as u16, width as u16);
+        let in_mem = InMemoryTerm::new(height, width);
         let pb = ProgressBar::with_draw_target(
             Some(100),
             ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
@@ -132,8 +132,8 @@ pub fn copy_move<P>(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
     dest: P,
-    width: usize,
-    height: usize,
+    width: u16,
+    height: u16,
     fm_sender: Arc<Sender<FmEvents>>,
 ) -> Result<InMemoryTerm>
 where

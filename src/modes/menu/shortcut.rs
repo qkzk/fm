@@ -186,7 +186,7 @@ impl DrawMenu<PathBuf> for Shortcut {
             colored_skip_take!(content, window),
         ) {
             let style = self.style(index, &style);
-            let row = (index + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top) as u16;
+            let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16;
             if row + 2 > rect.height {
                 return;
             }

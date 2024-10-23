@@ -1312,6 +1312,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] BUG ???: shortcut.rs : dedup out of bounds L170
 - [x] Focus follow mouse
 - [ ] rectify all u16 <-> usize conversions
+- [ ] previewing text files with bat ?
+  - [ ] could remove the whole syntaxed stuff
+  - [ ] simplify previewing since half the methods are gone
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] doubleclick
 - [ ] ratatui component for progress bar for copymove

@@ -18,9 +18,9 @@ pub struct InternalSettings {
     /// The opener used by the application.
     pub opener: Opener,
     /// terminal width
-    pub width: usize,
+    pub width: u16,
     /// terminal height
-    pub height: usize,
+    pub height: u16,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub disks: Disks,
@@ -41,8 +41,8 @@ impl InternalSettings {
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let copy_progress = None;
-        let width = size.width as usize;
-        let height = size.height as usize;
+        let width = size.width;
+        let height = size.height;
         Self {
             force_clear,
             must_quit,
@@ -59,11 +59,11 @@ impl InternalSettings {
 
     // TODO: returns size
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> (usize, usize) {
+    pub fn term_size(&self) -> (u16, u16) {
         (self.width, self.height)
     }
 
-    pub fn update_size(&mut self, width: usize, height: usize) {
+    pub fn update_size(&mut self, width: u16, height: u16) {
         self.width = width;
         self.height = height;
     }

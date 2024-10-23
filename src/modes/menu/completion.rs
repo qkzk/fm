@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 
 use ratatui::style::{Modifier, Style};
 
-use crate::common::{is_in_path, tilde, ZOXIDE};
+use crate::common::{is_in_path, tilde, UtfWidth, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
 use crate::modes::Leave;
@@ -36,8 +36,8 @@ impl fmt::Display for InputCompleted {
 }
 
 impl InputCompleted {
-    pub fn cursor_offset(&self) -> usize {
-        self.to_string().len() + 2
+    pub fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 2
     }
 }
 

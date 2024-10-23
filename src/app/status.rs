@@ -150,7 +150,7 @@ impl Status {
             path.parent().context("")?
         };
         let disks = Disks::new_with_refreshed_list();
-        let display_settings = Session::new(size.width as usize);
+        let display_settings = Session::new(size.width);
         let mut internal_settings = InternalSettings::new(opener, size, disks);
         let mount_points = internal_settings.mount_points();
         let menu = MenuHolder::new(start_dir, &mount_points, binds, fm_sender.clone())?;
@@ -236,7 +236,7 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
         if self.display_settings.dual() {
-            if (col as usize) < self.term_width() / 2 {
+            if col < self.term_width() / 2 {
                 self.select_left();
             } else {
                 self.select_right();
@@ -247,18 +247,18 @@ impl Status {
         Ok(())
     }
 
-    fn window_from_row(&self, row: u16, height: usize) -> Window {
+    fn window_from_row(&self, row: u16, height: u16) -> Window {
         let win_height = if self.current_tab().menu_mode.is_nothing() {
             height
         } else {
             height / 2
         };
-        let w_index = row as usize / win_height;
+        let w_index = row / win_height;
         if w_index == 1 {
             Window::Menu
         } else if row == 1 {
             Window::Header
-        } else if row as usize == win_height - 2 {
+        } else if row == win_height - 2 {
             Window::Footer
         } else {
             Window::Files
@@ -345,7 +345,7 @@ impl Status {
         self.tabs[to].cd(&self.tabs[from].current_file()?.path)
     }
 
-    pub fn second_window_height(&self) -> Result<usize> {
+    pub fn second_window_height(&self) -> Result<u16> {
         let (_, height) = self.term_size();
         Ok((height / 2).saturating_sub(2))
     }
@@ -353,7 +353,7 @@ impl Status {
     /// Execute a click on a menu item. Action depends on which menu was opened.
     fn menu_action(&mut self, row: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
-        let offset = row as usize - second_window_height;
+        let offset = (row - second_window_height) as usize;
         if offset >= 4 {
             let index = offset - 4 + self.menu.window.top;
             match self.current_tab().menu_mode {
@@ -405,11 +405,11 @@ impl Status {
     }
 
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> (usize, usize) {
+    pub fn term_size(&self) -> (u16, u16) {
         self.internal_settings.term_size()
     }
 
-    fn term_width(&self) -> usize {
+    fn term_width(&self) -> u16 {
         self.term_size().0
     }
 
@@ -473,7 +473,7 @@ impl Status {
             Menu::Nothing => (),
             unfocused_mode => {
                 let len = self.menu.len(unfocused_mode);
-                let height = self.second_window_height()?;
+                let height = self.second_window_height()? as usize;
                 self.menu.window = ContentWindow::new(len, height);
             }
         }
@@ -518,12 +518,15 @@ impl Status {
     /// isn't sufficiant to display enough information.
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
-    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
+    pub fn resize(&mut self, width: u16, height: u16) -> Result<()> {
         self.internal_settings.update_size(width, height);
         self.set_dual_pane_if_wide_enough(width)?;
-        self.tabs[0].set_height(height);
-        self.tabs[1].set_height(height);
-        self.menu.window.set_height(self.second_window_height()?);
+        let height_usize = height as usize;
+        self.tabs[0].set_height(height_usize);
+        self.tabs[1].set_height(height_usize);
+        self.menu
+            .window
+            .set_height(self.second_window_height()? as usize);
         self.fuzzy_resize(height);
         self.refresh_status()
     }
@@ -637,7 +640,7 @@ impl Status {
         self.set_height_for_edit_mode(index, edit_mode)?;
         self.tabs[index].menu_mode = edit_mode;
         let len = self.menu.len(edit_mode);
-        let height = self.second_window_height()?;
+        let height = self.second_window_height()? as usize;
         self.menu.window = ContentWindow::new(len, height);
         self.menu.window.scroll_to(self.menu.index(edit_mode));
         self.set_focus_from_mode();
@@ -652,7 +655,9 @@ impl Status {
         } else {
             height / 2
         };
-        self.tabs[index].window.set_height(prim_window_height);
+        self.tabs[index]
+            .window
+            .set_height(prim_window_height as usize);
         self.tabs[index]
             .window
             .scroll_to(self.tabs[index].window.top);
@@ -660,7 +665,7 @@ impl Status {
     }
 
     /// Set dual pane if the term is big enough
-    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
+    pub fn set_dual_pane_if_wide_enough(&mut self, width: u16) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_left();
             self.display_settings.set_dual(false);
@@ -1074,9 +1079,9 @@ impl Status {
         }
     }
 
-    pub fn fuzzy_resize(&mut self, height: usize) {
+    pub fn fuzzy_resize(&mut self, height: u16) {
         match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.resize(height),
+            Some(fuzzy) => fuzzy.resize(height as usize),
             None => (),
         }
     }
@@ -1622,7 +1627,7 @@ impl Status {
             return Ok(());
         }
         Header::new(self, self.current_tab())?
-            .action(col as usize, !self.focus.is_left())
+            .action(col, !self.focus.is_left())
             .matcher(self, binds)
     }
 
@@ -1634,7 +1639,7 @@ impl Status {
             Display::Preview => return Ok(()),
             Display::Tree | Display::Directory => {
                 let footer = Footer::new(self, self.current_tab())?;
-                footer.action(col as usize, is_right).to_owned()
+                footer.action(col, is_right).to_owned()
             }
             Display::Fuzzy => return Ok(()),
         };
@@ -1711,14 +1716,14 @@ impl Status {
         self.set_height_for_edit_mode(self.index, Menu::Nothing)?;
         self.tabs[self.index].menu_mode = Menu::Nothing;
         let len = self.menu.len(Menu::Nothing);
-        let height = self.second_window_height()?;
+        let height = self.second_window_height()? as usize;
         self.menu.window = ContentWindow::new(len, height);
         self.focus = self.focus.to_parent();
         Ok(())
     }
 
     /// The width of a displayed canvas.
-    pub fn canvas_width(&self) -> Result<usize> {
+    pub fn canvas_width(&self) -> Result<u16> {
         let full_width = self.internal_settings.term_size().0;
         if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
@@ -1887,7 +1892,7 @@ impl Status {
 
     fn cloud_set_content_window_len(&mut self) -> Result<()> {
         let len = self.menu.cloud.content.len();
-        let height = self.second_window_height()?;
+        let height = self.second_window_height()? as usize;
         self.menu.window = ContentWindow::new(len, height);
         Ok(())
     }

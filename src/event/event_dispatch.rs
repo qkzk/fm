@@ -32,7 +32,7 @@ impl EventDispatcher {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
             FmEvents::Term(Event::Resize(width, height)) => {
-                EventAction::resize(status, width as usize, height as usize)
+                EventAction::resize(status, width, height)
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),

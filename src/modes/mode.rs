@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::common::{
-    CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
-    PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
-    SHELL_LINES, SORT_LINES,
+    UtfWidth, CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES,
+    NVIM_ADDRESS_LINES, PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES,
+    RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
 use crate::modes::BlockDeviceAction;
 use crate::modes::InputCompleted;
@@ -43,8 +43,8 @@ impl NeedConfirmation {
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
     #[must_use]
-    pub fn cursor_offset(&self) -> usize {
-        self.to_string().len() + 9
+    pub fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 9
     }
 
     /// A confirmation message to be displayed before executing the mode.
@@ -146,9 +146,9 @@ impl fmt::Display for InputSimple {
 }
 
 impl InputSimple {
-    const EDIT_BOX_OFFSET: usize = 11;
-    const SORT_CURSOR_OFFSET: usize = 8;
-    const PASSWORD_CURSOR_OFFSET: usize = 9;
+    const EDIT_BOX_OFFSET: u16 = 11;
+    const SORT_CURSOR_OFFSET: u16 = 8;
+    const PASSWORD_CURSOR_OFFSET: u16 = 9;
 
     /// Returns a vector of static &str describing what
     /// the mode does.
@@ -176,7 +176,7 @@ impl InputSimple {
         }
     }
 
-    fn cursor_offset(&self) -> usize {
+    fn cursor_offset(&self) -> u16 {
         match *self {
             Self::Sort => Self::SORT_CURSOR_OFFSET,
             Self::Password(_, _) => Self::PASSWORD_CURSOR_OFFSET,
@@ -323,7 +323,7 @@ impl fmt::Display for Menu {
 impl Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
-    pub fn cursor_offset(&self) -> usize {
+    pub fn cursor_offset(&self) -> u16 {
         match self {
             Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
             Self::InputSimple(input_simple) => input_simple.cursor_offset(),

@@ -314,12 +314,21 @@ where
 /// the horizontal space required for displaying
 /// a given text, which can be useful for layout purposes.
 pub trait UtfWidth {
+    /// Number of graphemes in the string.
+    /// Used to know the necessary width to print this text.
     fn utf_width(&self) -> usize;
+    /// Number of graphemes in the string as a, u16.
+    /// Used to know the necessary width to print this text.
+    fn utf_width_u16(&self) -> u16;
 }
 
 impl UtfWidth for String {
     fn utf_width(&self) -> usize {
         self.as_str().utf_width()
+    }
+
+    fn utf_width_u16(&self) -> u16 {
+        self.utf_width() as u16
     }
 }
 
@@ -329,6 +338,10 @@ impl UtfWidth for &str {
             .map(|s| s.to_string())
             .collect::<Vec<String>>()
             .len()
+    }
+
+    fn utf_width_u16(&self) -> u16 {
+        self.utf_width() as u16
     }
 }
 

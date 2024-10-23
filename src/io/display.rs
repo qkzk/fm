@@ -20,7 +20,7 @@ use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
     HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
-    Preview, SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
+    Preview, SecondLine, Selectable, TLine, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
 use crate::{
     app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
@@ -101,11 +101,15 @@ impl Canvas for Rect {
     }
 }
 
+/// Common trait all "window" should implement.
+/// It's mostly used as an entry point for the rendering and should call another method.
 trait Draw {
+    /// Entry point for window rendering.
     fn draw(&self, f: &mut Frame, rect: &Rect);
 }
 
 trait ClearLine {
+    /// Clear the current line, erasing its chars.
     fn clear_line(&self, f: &mut Frame, row: u16);
 }
 
@@ -147,21 +151,9 @@ macro_rules! enumerated_colored_iter {
         .map(|((index, line), style)| (index, line, style))
     };
 }
-/// Draw every line of the preview
-macro_rules! impl_preview {
-    ($f: ident, $text:ident, $tab:ident, $length:ident, $rect:ident, $line_number_width:ident, $window:ident, $height:ident) => {
-        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
-            let row = calc_line_row(i, $window);
-            if row as usize > $height as usize {
-                break;
-            }
-            $rect.print($f, row as u16, ($line_number_width + 3) as u16, line);
-        }
-    };
-}
 
 /// At least 120 chars width to display 2 tabs.
-pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
+pub const MIN_WIDTH_FOR_DUAL_PANE: u16 = 120;
 
 enum TabPosition {
     Left,
@@ -172,7 +164,7 @@ enum TabPosition {
 /// relatively to other windows
 struct FilesAttributes {
     /// horizontal position, in cells
-    x_position: usize,
+    x_position: u16,
     /// is this the left or right window ?
     tab_position: TabPosition,
     /// is this tab selected ?
@@ -183,7 +175,7 @@ struct FilesAttributes {
 
 impl FilesAttributes {
     fn new(
-        x_position: usize,
+        x_position: u16,
         tab_position: TabPosition,
         is_selected: bool,
         has_window_below: bool,
@@ -204,7 +196,7 @@ impl FilesAttributes {
 struct FilesBuilder;
 
 impl FilesBuilder {
-    fn dual(status: &Status, width: usize) -> (Files, Files) {
+    fn dual(status: &Status, width: u16) -> (Files, Files) {
         let first_selected = status.focus.is_left();
         let menu_selected = !first_selected;
         let attributes_left = FilesAttributes::new(
@@ -315,26 +307,6 @@ impl<'a> Files<'a> {
         )
     }
 
-    fn print_flagged_symbol(
-        f: &mut Frame,
-        status: &Status,
-        rect: &Rect,
-        row: usize,
-        path: &std::path::Path,
-        style: &mut Style,
-    ) {
-        if status.menu.flagged.contains(path) {
-            style.add_modifier |= Modifier::BOLD;
-            rect.print_with_style(
-                f,
-                row as u16,
-                0,
-                "█",
-                MENU_STYLES.get().expect("Menu colors should be set").second,
-            );
-        }
-    }
-
     fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
         let tab = &self.status.tabs[1];
         PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
@@ -343,7 +315,7 @@ impl<'a> Files<'a> {
             f,
             0,
             0,
-            &PreviewHeader::default_preview(self.status, tab, width as usize),
+            &PreviewHeader::default_preview(self.status, tab, width),
             rect,
             false,
         )
@@ -529,7 +501,7 @@ impl<'a> DirectoryDisplay<'a> {
         let group_owner_sizes = self.group_owner_size();
         let height = rect.height;
         for (index, file) in self.tab.dir_enum_skip_take() {
-            self.files_line(f, rect, group_owner_sizes, index, file, height as usize);
+            self.files_line(f, rect, group_owner_sizes, index, file, height);
         }
     }
 
@@ -551,9 +523,9 @@ impl<'a> DirectoryDisplay<'a> {
         group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
-        height: usize,
+        height: u16,
     ) {
-        let row = index + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
+        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - self.tab.window.top as u16;
         if row + 2 > height {
             return;
         }
@@ -562,9 +534,9 @@ impl<'a> DirectoryDisplay<'a> {
             style.add_modifier |= Modifier::REVERSED;
         }
         let content = Self::format_file_content(self.status, file, group_owner_sizes);
-        Files::print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
-        let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
-        rect.print_with_style(f, row as u16, col as u16, &content, style);
+        print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
+        let col = 1 + self.status.menu.flagged.contains(&file.path) as u16;
+        rect.print_with_style(f, row, col, &content, style);
     }
 
     fn format_file_content(
@@ -618,7 +590,7 @@ impl<'a> TreeDisplay<'a> {
                     left_margin,
                     top: self.tab.window.top,
                     index,
-                    height: height as usize,
+                    height,
                 },
                 self.status.display_settings.metadata(),
             );
@@ -633,45 +605,73 @@ impl<'a> TreeDisplay<'a> {
         position_param: TreeLinePosition,
         with_medatadata: bool,
     ) {
-        let (mut col, top, index, height) = position_param.export();
-        let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
+        let (col, top, index, height) = position_param.export();
+        let mut col = col as u16;
+        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - top as u16;
         if row + 2 > height {
             return;
         }
 
         let mut style = line_builder.style;
         let path = line_builder.path();
-        Files::print_flagged_symbol(f, status, rect, row, path, &mut style);
+        Self::print_flagged_symbol(f, status, rect, row, path, &mut style);
 
         col += Self::tree_metadata(f, rect, with_medatadata, row, col, line_builder, style);
-        col += if index == 0 { 2 } else { 1 };
-        rect.print(f, row as u16, col as u16, line_builder.prefix());
-        col += line_builder.prefix().utf_width();
+        col += Self::tree_lines(f, rect, row, col, index, line_builder);
         col += Self::tree_line_calc_flagged_offset(status, path);
-        rect.print_with_style(f, row as u16, col as u16, &line_builder.filename(), style);
+        rect.print_with_style(f, row, col, &line_builder.filename(), style);
+    }
+
+    fn print_flagged_symbol(
+        f: &mut Frame,
+        status: &Status,
+        rect: &Rect,
+        row: u16,
+        path: &std::path::Path,
+        style: &mut Style,
+    ) {
+        print_flagged_symbol(f, status, rect, row, path, style)
+    }
+
+    fn tree_lines(
+        f: &mut Frame,
+        rect: &Rect,
+        row: u16,
+        col: u16,
+        index: usize,
+        line_builder: &TLine,
+    ) -> u16 {
+        let width = Self::tree_offset_per_line(index);
+        let prefix = line_builder.prefix();
+        rect.print(f, row, col + width, prefix);
+        width + prefix.utf_width_u16()
+    }
+
+    fn tree_offset_per_line(index: usize) -> u16 {
+        2 - (index != 0) as u16
     }
 
     fn tree_metadata(
         f: &mut Frame,
         rect: &Rect,
         with_medatadata: bool,
-        row: usize,
-        col: usize,
+        row: u16,
+        col: u16,
         line_builder: &TLine,
         style: Style,
-    ) -> usize {
+    ) -> u16 {
         if with_medatadata {
             let line = line_builder.metadata();
-            let len = line.utf_width();
-            rect.print_with_style(f, row as u16, col as u16, line, style);
+            let len = line.utf_width_u16();
+            rect.print_with_style(f, row, col, line, style);
             len
         } else {
             0
         }
     }
 
-    fn tree_line_calc_flagged_offset(status: &Status, path: &std::path::Path) -> usize {
-        status.menu.flagged.contains(path) as usize
+    fn tree_line_calc_flagged_offset(status: &Status, path: &std::path::Path) -> u16 {
+        status.menu.flagged.contains(path) as u16
     }
 }
 
@@ -693,11 +693,11 @@ impl<'a> Draw for PreviewDisplay<'a> {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
-        let line_number_width = length.to_string().len();
         let height = rect.height;
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
-                self.syntaxed(f, syntaxed, length, rect, line_number_width, window)
+                let number_col_width = Self::number_width(length);
+                self.syntaxed(f, syntaxed, length, rect, number_col_width, window)
             }
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
             Preview::Ueberzug(image) => self.ueberzug(image, rect),
@@ -705,18 +705,7 @@ impl<'a> Draw for PreviewDisplay<'a> {
             Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CommandStdout) => {
                 self.colored_text(f, colored_text, length, rect, window)
             }
-            Preview::Text(text) => {
-                impl_preview!(
-                    f,
-                    text,
-                    tab,
-                    length,
-                    rect,
-                    line_number_width,
-                    window,
-                    height
-                )
-            }
+            Preview::Text(text) => self.normal_text(f, text, length, rect, window, height),
 
             Preview::Empty => (),
         };
@@ -742,19 +731,48 @@ impl<'a> PreviewDisplay<'a> {
 
     fn line_number(
         f: &mut Frame,
-        row_position_in_rect: usize,
+        row_position_in_rect: u16,
         line_number_to_print: usize,
         rect: &Rect,
     ) -> usize {
         let len = line_number_to_print.to_string().len();
         rect.print_with_style(
             f,
-            row_position_in_rect as u16,
+            row_position_in_rect,
             0,
             &line_number_to_print.to_string(),
             MENU_STYLES.get().expect("Menu colors should be set").first,
         );
         len
+    }
+
+    /// Number of digits in decimal representation
+    fn number_width(mut number: usize) -> u16 {
+        let mut width = 0;
+        while number != 0 {
+            width += 1;
+            number /= 10;
+        }
+        width
+    }
+
+    /// Draw every line of the text
+    fn normal_text(
+        &self,
+        f: &mut Frame,
+        text: &Text,
+        length: usize,
+        rect: &Rect,
+        window: &ContentWindow,
+        height: u16,
+    ) {
+        for (i, line) in text.take_skip_enum(window.top, window.bottom, length) {
+            let row = calc_line_row(i, window);
+            if row + 2 > height {
+                break;
+            }
+            rect.print(f, row, 3, line);
+        }
     }
 
     fn syntaxed(
@@ -763,14 +781,17 @@ impl<'a> PreviewDisplay<'a> {
         syntaxed: &HLContent,
         length: usize,
         rect: &Rect,
-        line_number_width: usize,
+        number_col_width: u16,
         window: &ContentWindow,
     ) {
-        for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
+        for (i, vec_line) in (*syntaxed).take_skip_enum(window.top, window.bottom, length) {
             let row_position = calc_line_row(i, window);
+            if row_position + 2 > rect.height {
+                break;
+            }
             Self::line_number(f, row_position, i + 1, rect);
             for token in vec_line.iter() {
-                token.print(f, rect, row_position, line_number_width);
+                token.print(f, rect, row_position, number_col_width);
             }
         }
     }
@@ -786,18 +807,12 @@ impl<'a> PreviewDisplay<'a> {
         let height = rect.height;
         let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
-        for (i, line) in (*bin).window(window.top, window.bottom, length) {
+        for (i, line) in (*bin).take_skip_enum(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-            if row as u16 > height {
+            if row + 2 > height {
                 break;
             }
-            rect.print_with_style(
-                f,
-                row as u16,
-                0,
-                &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                MENU_STYLES.get().expect("Menu colors should be set").first,
-            );
+            line.print_line_number_hex(f, rect, row, window.top, i, line_number_width_hex);
             line.print_bytes(f, rect, row, line_number_width_hex + 1);
             line.print_ascii(f, rect, row, line_number_width_hex + 43);
         }
@@ -806,13 +821,7 @@ impl<'a> PreviewDisplay<'a> {
     fn ueberzug(&self, image: &Ueber, rect: &Rect) {
         let width = rect.width;
         let height = rect.height;
-        // image.match_index()?;
-        image.draw(
-            self.attributes.x_position as u16 + 2,
-            3,
-            width - 2,
-            height - 2,
-        );
+        image.draw(self.attributes.x_position, 3, width - 2, height - 2);
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
@@ -822,7 +831,8 @@ impl<'a> PreviewDisplay<'a> {
         let length = content.len();
 
         for (index, tree_line_builder) in
-            tree.displayable().window(window.top, window.bottom, length)
+            tree.displayable()
+                .take_skip_enum(window.top, window.bottom, length)
         {
             TreeDisplay::tree_line(
                 f,
@@ -833,7 +843,7 @@ impl<'a> PreviewDisplay<'a> {
                     left_margin: 0,
                     top: window.top,
                     index,
-                    height: height as usize,
+                    height,
                 },
                 false,
             );
@@ -849,14 +859,14 @@ impl<'a> PreviewDisplay<'a> {
         window: &ContentWindow,
     ) {
         let height = rect.height;
-        for (i, line) in colored_text.window(window.top, window.bottom, length) {
+        for (i, line) in colored_text.take_skip_enum(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-            if row + 2 > height as usize {
+            if row + 2 > height {
                 break;
             }
             let offset = 3;
             for (i, (chr, style)) in AnsiString::parse(line).iter().enumerate() {
-                rect.print_with_style(f, row as u16, (offset + i) as u16, &chr.to_string(), style)
+                rect.print_with_style(f, row, offset + i as u16, &chr.to_string(), style)
             }
         }
     }
@@ -866,12 +876,12 @@ struct TreeLinePosition {
     left_margin: usize,
     top: usize,
     index: usize,
-    height: usize,
+    height: u16,
 }
 
 impl TreeLinePosition {
     /// left_margin, top, index, height
-    fn export(&self) -> (usize, usize, usize, usize) {
+    fn export(&self) -> (usize, usize, usize, u16) {
         (self.left_margin, self.top, self.index, self.height)
     }
 }
@@ -893,7 +903,7 @@ impl<'a> Draw for FilesHeader<'a> {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
         let width = rect.width;
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width as usize),
+            DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
             _ => Header::new(self.status, self.tab)
                 .unwrap()
                 .elems()
@@ -1010,7 +1020,7 @@ impl<'a> Draw for FilesFooter<'a> {
             background.add_modifier |= Modifier::REVERSED;
         };
         rect.print_with_style(f, height - 1, 0, &" ".repeat(width as usize), background);
-        draw_clickable_strings(f, height as usize - 1, 0, &content, rect, self.is_selected);
+        draw_clickable_strings(f, height - 1, 0, &content, rect, self.is_selected);
     }
 }
 
@@ -1059,8 +1069,8 @@ impl<'a> Menu<'a> {
     /// may fail if we can't display on the terminal.
     fn cursor(&self, f: &mut Frame, rect: &Rect) {
         let offset = self.tab.menu_mode.cursor_offset();
-        let index = self.status.menu.input.index();
-        let x = rect.x + (offset + index) as u16;
+        let index = self.status.menu.input.index() as u16;
+        let x = rect.x + offset + index;
         if self.tab.menu_mode.show_cursor() {
             f.set_cursor_position(Position::new(x, rect.y));
         }
@@ -1077,15 +1087,14 @@ impl<'a> Menu<'a> {
         };
     }
 
-    fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) -> usize {
+    fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
         let mode_parsed = parse_input_mode(&self.status.menu.input.string());
         let mut col = 11;
         for (text, is_valid) in &mode_parsed {
             let style = if *is_valid { first } else { menu };
-            col += 1 + text.utf_width();
-            rect.print_with_style(f, 1, col as u16, text, style);
+            col += 1 + text.utf_width_u16();
+            rect.print_with_style(f, 1, col, text, style);
         }
-        col
     }
 
     fn content_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
@@ -1226,13 +1235,13 @@ impl<'a> Menu<'a> {
             colored_skip_take!(content, window),
         ) {
             let row = (index + 1 - window.top) as u16;
-            if row + 2 + ContentWindow::WINDOW_MARGIN_TOP as u16 > rect.height {
+            if row + 2 + ContentWindow::WINDOW_MARGIN_TOP_U16 > rect.height {
                 return;
             }
             let style = selectable.style(index, &style);
             rect.print_with_style(
                 f,
-                row + (ContentWindow::WINDOW_MARGIN_TOP) as u16,
+                row + ContentWindow::WINDOW_MARGIN_TOP_U16,
                 2,
                 &format!("{letter} "),
                 style,
@@ -1362,7 +1371,7 @@ impl<'a> Menu<'a> {
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) -> usize {
         rect.print_with_style(
             f,
-            row + ContentWindow::WINDOW_MARGIN_TOP as u16,
+            row + ContentWindow::WINDOW_MARGIN_TOP_U16,
             4,
             text,
             style,
@@ -1431,7 +1440,7 @@ impl Display {
         let rect = Rect::new(0, 0, width, height);
         let inside_border_rect = Rect::new(1, 1, width.saturating_sub(2), height.saturating_sub(2));
         let borders = self.borders(status);
-        if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE as u16 {
+        if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
             self.draw_dual(rect, inside_border_rect, borders, status);
         } else {
             self.draw_single(rect, inside_border_rect, borders, status);
@@ -1445,7 +1454,7 @@ impl Display {
         borders: [Style; 4],
         status: &Status,
     ) {
-        let (file_left, file_right) = FilesBuilder::dual(status, rect.width as usize);
+        let (file_left, file_right) = FilesBuilder::dual(status, rect.width);
         let menu_left = Menu::new(status, 0);
         let menu_right = Menu::new(status, 1);
         let parent_wins = self.horizontal_split(rect);
@@ -1538,11 +1547,6 @@ impl Display {
         Ok(self.term.show_cursor()?)
     }
 
-    pub fn height(&self) -> Result<usize> {
-        let height = self.term.size()?.height as usize;
-        Ok(height)
-    }
-
     fn horizontal_split(&self, rect: Rect) -> Vec<Rect> {
         let left_rect = Rect::new(rect.x, rect.y, rect.width / 2, rect.height);
         let right_rect = Rect::new(rect.x + rect.width / 2, rect.y, rect.width / 2, rect.height);
@@ -1621,10 +1625,6 @@ impl Display {
     }
 }
 
-fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
-    format!("{line_nr:0width$x}")
-}
-
 #[inline]
 pub const fn color_to_style(color: Color) -> Style {
     Style {
@@ -1665,8 +1665,8 @@ fn draw_colored_strings(
 
 fn draw_clickable_strings(
     f: &mut Frame,
-    row: usize,
-    offset: usize,
+    row: u16,
+    offset: u16,
     elems: &[ClickableString],
     rect: &Rect,
     effect_reverse: bool,
@@ -1684,16 +1684,30 @@ fn draw_clickable_strings(
         if effect_reverse {
             style.add_modifier |= Modifier::REVERSED;
         }
-        rect.print_with_style(
-            f,
-            row as u16,
-            (offset + elem.col()) as u16,
-            elem.text(),
-            style,
-        );
+        rect.print_with_style(f, row, offset + elem.col(), elem.text(), style);
     }
 }
 
-fn calc_line_row(i: usize, window: &ContentWindow) -> usize {
-    i + ContentWindow::WINDOW_MARGIN_TOP - window.top
+fn calc_line_row(i: usize, window: &ContentWindow) -> u16 {
+    i as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - window.top as u16
+}
+
+fn print_flagged_symbol(
+    f: &mut Frame,
+    status: &Status,
+    rect: &Rect,
+    row: u16,
+    path: &std::path::Path,
+    style: &mut Style,
+) {
+    if status.menu.flagged.contains(path) {
+        style.add_modifier |= Modifier::BOLD;
+        rect.print_with_style(
+            f,
+            row,
+            0,
+            "█",
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
+    }
 }
