@@ -16,6 +16,7 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
     HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
@@ -29,10 +30,6 @@ use crate::{colored_skip_take, log_info};
 use crate::{
     common::{path_to_string, UtfWidth},
     modes::FuzzyFinder,
-};
-use crate::{
-    config::FILE_STYLES,
-    io::{read_last_log_line, DrawMenu},
 };
 use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
@@ -70,33 +67,37 @@ pub trait Canvas: Sized {
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str);
 }
 
+const FULL_WHITE: Color = Color::Rgb(255, 255, 255);
+
 impl Canvas for Rect {
+    /// Render the text content in the frame.
+    /// The text is displayed in `self` at `row`, `col` with given style.
+    ///
+    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
+    /// It will never overflow its parent rect.
     fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style) {
-        // Define the area for the text
+        let width = self.width.saturating_sub(col);
+        let displayed = content.limit_width(width as usize);
         let area = Rect {
             x: self.x + col,
             y: self.y + row,
-            width: content.len() as u16,
+            width,
             height: 1,
         };
-        let available_width = self.width.saturating_sub(col) as usize;
-        let displayed = content.limit_width(available_width);
-
-        // Render at the specified coordinates
         f.render_widget(Span::styled(displayed, style), area);
     }
 
+    /// Render the text content in the frame.
+    /// The text is displayed in `self` at `row`, `col` in white on default background color.
+    ///
+    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
+    /// It will never overflow its parent rect.
     fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
-        self.print_with_style(
-            f,
-            row,
-            col,
-            content,
-            Style {
-                fg: Some(Color::Rgb(255, 255, 255)),
-                ..Default::default()
-            },
-        )
+        let style = Style {
+            fg: Some(FULL_WHITE),
+            ..Default::default()
+        };
+        self.print_with_style(f, row, col, content, style)
     }
 }
 

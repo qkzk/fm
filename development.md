@@ -1298,9 +1298,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] FIX: out of bounds when char are typed
       - [x] FIX: navigation is screwed
 
-    - [ ] testing: file, line, help
     - [x] ensure rg & grep can be run before executing fuzzy find of line
-      - [x] FIX nucleo out of bounds
+    - [x] FIX nucleo out of bounds
+    - [ ] testing: file, line, help
 
 - [x] FIX: save a name for previews, use it to display
 
