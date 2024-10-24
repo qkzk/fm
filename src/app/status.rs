@@ -1665,7 +1665,8 @@ impl Status {
         }
         Ok(())
     }
-    pub fn sort(&mut self, c: char) -> Result<()> {
+
+    pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
         self.set_height_for_edit_mode(self.index, Menu::Nothing)?;

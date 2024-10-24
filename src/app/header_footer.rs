@@ -34,7 +34,7 @@ mod inner {
         /// If left aligned, the text size will be added to `col` and the text will span from col to col + width.
         /// otherwise, the text will spawn from col - width to col.
         fn new(text: String, align: Align, action: ActionMap, col: u16) -> Self {
-            let width = text.utf_width() as u16;
+            let width = text.utf_width_u16();
             let (left, right) = match align {
                 Align::Left => (col, col + width),
                 Align::Right => (col - width - 3, col - 3),
@@ -272,10 +272,11 @@ mod inner {
 
         /// Pad every string of `raw_strings` with enough space to fill a line.
         fn make_padded_strings(raw_strings: &[String], total_width: u16) -> Vec<String> {
-            let used_width: u16 = raw_strings.iter().map(|s| s.utf_width() as u16).sum();
+            let total_width = total_width as usize;
+            let used_width = raw_strings.iter().map(|s| s.utf_width()).sum();
             let available_width = total_width.checked_sub(used_width).unwrap_or_default();
-            let margin_width = available_width / (2 * raw_strings.len() as u16);
-            let margin = " ".repeat(margin_width as usize);
+            let margin_width = available_width / (2 * raw_strings.len());
+            let margin = " ".repeat(margin_width);
             raw_strings
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))

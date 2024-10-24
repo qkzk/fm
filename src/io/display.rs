@@ -403,7 +403,7 @@ impl<'a> FuzzyDisplay<'a> {
     fn set_cursor_position(&self, f: &mut Frame, rect: Rect, input: &Input) {
         // Move the cursor to the prompt
         f.set_cursor_position(Position {
-            x: rect.x + input.index() as u16 + 2, // Adjust the cursor position for "> "
+            x: rect.x + input.index() as u16 + 2,
             y: rect.y,
         });
     }

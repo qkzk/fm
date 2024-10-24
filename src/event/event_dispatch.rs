@@ -145,7 +145,7 @@ impl EventDispatcher {
     fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.menu_mode {
-            Menu::InputSimple(InputSimple::Sort) => status.sort(c),
+            Menu::InputSimple(InputSimple::Sort) => status.sort_by_char(c),
             Menu::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Menu::InputSimple(InputSimple::Filter) => status.input_filter(c),
             Menu::InputSimple(_) => status.menu.input_insert(c),
