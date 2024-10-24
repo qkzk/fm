@@ -1249,6 +1249,28 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Current dev
 
+### Summary
+
+- tuikit is replaced by crossterm & ratatui.
+- skim is replaced by nucleo.
+  tuikit and other crates created by the same author aren't maintened anymore.
+  fm relied a lot on the work of a single author: terminal events, rendering,
+  fuzzy finding, parsing of ANSI output etc. were all written by the same developper
+  and it created a lot of technology debt.
+
+  Maintaing this code required to fork the repository which was a lot of work.
+  It's been a pleasure to work with those crates but I believe it's the right move.
+
+  By switching to well maintened crates we ensure to be able to evolve the project
+  more safely.
+
+  Most of the code is adapted "as is". I did my best to keep everything as it was
+  and don't break anything.
+
+  The fuzzy finder looks really different but all its rendering is now much simpler.
+
+- double click is replaced by middleclick. Less intuitive but much more convenient in crossterm.
+
 ### Version 0.1.31
 
 - [ ] replace tuikit by ratatui + crossterm
@@ -1260,7 +1282,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
-    - [x] refactor fuzzy navigation
   - [ ] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...
@@ -1275,34 +1296,37 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview::colored string
     - [x] tree lines aren't placed properly
     - [x] FIX: cursor flickering
-  - [ ] skim replaced by... nucleo, with my own picker
 
-    - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-    - [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+- [ ] skim replaced by... nucleo, with my own picker
 
-    - [x] struct nucleo-picker
-    - [x] attach to status
-    - [x] send key events
-    - [x] parse key events
-    - [x] execute key events
-    - [x] send refresh events
-    - [x] display for T
-    - [x] ff file
-    - [x] ff line
-      - [x] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
-    - [x] ff files (help) : read the file send it to nucleo as a whole
-    - [x] previewing
-    - [x] click on line
-    - [x] don't export all content, only what will be displayed
+  - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+  - [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 
-      - [x] resize
-      - [x] FIX: out of bounds when char are typed
-      - [x] FIX: navigation is screwed
+  - [x] struct nucleo-picker
+  - [x] attach to status
+  - [x] send key events
+  - [x] parse key events
+  - [x] execute key events
+  - [x] send refresh events
+  - [x] display for T
+  - [x] ff file
+  - [x] ff line
+    - [x] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
+  - [x] ff files (help) : read the file send it to nucleo as a whole
+  - [x] previewing
+  - [x] click on line
+  - [x] don't export all content, only what will be displayed
 
-    - [x] ensure rg & grep can be run before executing fuzzy find of line
-    - [x] FIX nucleo out of bounds
-    - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
-    - [ ] testing: file, line, help
+    - [x] resize
+    - [x] FIX: out of bounds when char are typed
+    - [x] FIX: navigation is screwed
+
+  - [x] ensure rg & grep can be run before executing fuzzy find of line
+  - [x] FIX nucleo out of bounds
+  - [x] refactor fuzzy navigation
+  - [ ] navigation. Moving below the last element should scroll, not wrap around.
+  - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
+  - [ ] testing: file, line, help
 
 - [x] FIX: save a name for previews, use it to display
 
@@ -1327,6 +1351,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] parser of strings (statemachine ?)
   - [ ] shellcommand with redirection "< > >> |"
         `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
+- [ ] BUG **IMPORTANT** terminal reset after crash
 
 ## TODO
 
