@@ -129,7 +129,6 @@ where
         "cyan"          => Color::Cyan,
         "magenta"       => Color::Magenta,
         "black"         => Color::Black,
-        // TODO! light white
         "light_white"   => Color::White,
         "light_red"     => Color::LightRed,
         "light_green"   => Color::LightGreen,
@@ -137,7 +136,6 @@ where
         "light_yellow"  => Color::LightYellow,
         "light_cyan"    => Color::LightCyan,
         "light_magenta" => Color::LightMagenta,
-        // TODO! light black
         "light_black"   => Color::Black,
         color     => parse_text_triplet_unfaillible(color),
     }

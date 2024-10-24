@@ -154,7 +154,7 @@ impl Perform for ANSIParser {
                         log_info!("ignore CSI {:?} m", params);
                     }
                 },
-                49 => style.bg = Some(Color::Black),
+                49 => style.bg = Some(Color::Rgb(0, 0, 0)),
                 _ => {
                     log_info!("ignore CSI {:?} m", params);
                 }
