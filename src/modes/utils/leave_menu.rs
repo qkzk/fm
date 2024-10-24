@@ -170,8 +170,6 @@ impl LeaveMenu {
     /// Execute a shell command typed by the user.
     /// pipes and redirections aren't supported
     /// but expansions are supported
-    /// Returns `Ok(true)` if a refresh is required,
-    /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
     /// It won't return an `Err` if the command fail.
     fn shell(status: &mut Status) -> Result<()> {
         status.parse_shell_command_from_input()?;
