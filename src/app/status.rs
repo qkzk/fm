@@ -138,7 +138,6 @@ impl Status {
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
-        let height = size.height as usize;
         let fuzzy = None;
         let index = 0;
 
@@ -159,6 +158,7 @@ impl Status {
         let users_left = Users::default();
         let users_right = users_left.clone();
 
+        let height = size.height as usize;
         let tabs = [
             Tab::new(&args, height, users_left)?,
             Tab::new(&args, height, users_right)?,
@@ -527,7 +527,7 @@ impl Status {
         self.menu
             .window
             .set_height(self.second_window_height()? as usize);
-        self.fuzzy_resize(height);
+        self.fuzzy_resize(height_usize);
         self.refresh_status()
     }
 
@@ -1034,9 +1034,9 @@ impl Status {
         }
     }
 
-    pub fn fuzzy_resize(&mut self, height: u16) {
+    pub fn fuzzy_resize(&mut self, height: usize) {
         match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.resize(height as usize),
+            Some(fuzzy) => fuzzy.resize(height),
             None => (),
         }
     }
