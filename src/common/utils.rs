@@ -345,8 +345,8 @@ impl UtfWidth for &str {
     }
 }
 
-pub fn index_from_a(lettre: char) -> Option<usize> {
-    (lettre as usize).checked_sub('a' as usize)
+pub fn index_from_a(letter: char) -> Option<usize> {
+    (letter as usize).checked_sub('a' as usize)
 }
 
 /// A PathBuf of the current config folder.
