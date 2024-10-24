@@ -345,15 +345,15 @@ impl Status {
         self.tabs[to].cd(&self.tabs[from].current_file()?.path)
     }
 
-    pub fn second_window_height(&self) -> Result<u16> {
+    pub fn second_window_height(&self) -> Result<usize> {
         let (_, height) = self.term_size();
-        Ok((height / 2).saturating_sub(2))
+        Ok((height / 2).saturating_sub(2) as usize)
     }
 
     /// Execute a click on a menu item. Action depends on which menu was opened.
     fn menu_action(&mut self, row: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
-        let offset = (row - second_window_height) as usize;
+        let offset = row as usize - second_window_height;
         if offset >= 4 {
             let index = offset - 4 + self.menu.window.top;
             match self.current_tab().menu_mode {
@@ -473,7 +473,7 @@ impl Status {
             Menu::Nothing => (),
             unfocused_mode => {
                 let len = self.menu.len(unfocused_mode);
-                let height = self.second_window_height()? as usize;
+                let height = self.second_window_height()?;
                 self.menu.window = ContentWindow::new(len, height);
             }
         }
@@ -524,10 +524,8 @@ impl Status {
         let height_usize = height as usize;
         self.tabs[0].set_height(height_usize);
         self.tabs[1].set_height(height_usize);
-        self.menu
-            .window
-            .set_height(self.second_window_height()? as usize);
         self.fuzzy_resize(height_usize);
+        self.menu.window.set_height(self.second_window_height()?);
         self.refresh_status()
     }
 
@@ -640,7 +638,7 @@ impl Status {
         self.set_height_for_edit_mode(index, edit_mode)?;
         self.tabs[index].menu_mode = edit_mode;
         let len = self.menu.len(edit_mode);
-        let height = self.second_window_height()? as usize;
+        let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         self.menu.window.scroll_to(self.menu.index(edit_mode));
         self.set_focus_from_mode();
@@ -1672,7 +1670,7 @@ impl Status {
         self.set_height_for_edit_mode(self.index, Menu::Nothing)?;
         self.tabs[self.index].menu_mode = Menu::Nothing;
         let len = self.menu.len(Menu::Nothing);
-        let height = self.second_window_height()? as usize;
+        let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         self.focus = self.focus.to_parent();
         Ok(())
@@ -1848,7 +1846,7 @@ impl Status {
 
     fn cloud_set_content_window_len(&mut self) -> Result<()> {
         let len = self.menu.cloud.content.len();
-        let height = self.second_window_height()? as usize;
+        let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         Ok(())
     }

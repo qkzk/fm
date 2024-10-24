@@ -459,7 +459,7 @@ impl EventAction {
         status.set_height_for_edit_mode(status.index, Menu::Nothing)?;
         status.tabs[status.index].menu_mode = Menu::Nothing;
         let len = status.menu.len(Menu::Nothing);
-        let height = status.second_window_height()? as usize;
+        let height = status.second_window_height()?;
         status.menu.window = ContentWindow::new(len, height);
         status.tabs[status.index].menu_mode = Menu::InputSimple(InputSimple::Sort);
         status.set_focus_from_mode();

@@ -1261,7 +1261,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch menu key events
     - [x] preview
     - [x] refactor fuzzy navigation
-    - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
   - [ ] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...
@@ -1302,6 +1301,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
     - [x] ensure rg & grep can be run before executing fuzzy find of line
     - [x] FIX nucleo out of bounds
+    - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
     - [ ] testing: file, line, help
 
 - [x] FIX: save a name for previews, use it to display
