@@ -1313,12 +1313,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
 - [x] BUG ???: shortcut.rs : dedup out of bounds L170
 - [x] Focus follow mouse
-- [ ] rectify all u16 <-> usize conversions
+- [x] doubleclick replaced by middleclick
+- [x] rectify all u16 <-> usize conversions
 - [ ] previewing text files with bat ?
   - [ ] could remove the whole syntaxed stuff
   - [ ] simplify previewing since half the methods are gone
 - [ ] BUG: when a resize occur, selection can be out of window
-- [ ] doubleclick
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
 - [ ] shellcommand with redirection "< > >> |"

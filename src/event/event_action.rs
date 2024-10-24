@@ -959,8 +959,8 @@ impl EventAction {
         Self::move_down(status)
     }
 
-    /// A double click opens a file or execute a menu item
-    pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    /// A middle_click click opens a file or execute a menu item
+    pub fn middle_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         if Self::click(status, binds, row, col).is_ok() {
             if status.focus.is_file() {
                 Self::enter_file(status)?;

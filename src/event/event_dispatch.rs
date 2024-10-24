@@ -70,10 +70,9 @@ impl EventDispatcher {
             MouseEventKind::Down(MouseButton::Left) => {
                 EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
-            // TODO! doubleclick
-            // MouseEventKind::Up(MouseButton::Left, row, col) => {
-            //     EventAction::double_click(status, row, col, &self.binds)
-            // }
+            MouseEventKind::Down(MouseButton::Middle) => {
+                EventAction::middle_click(status, &self.binds, mouse_event.row, mouse_event.column)
+            }
             MouseEventKind::Down(MouseButton::Right) => {
                 EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
@@ -154,7 +153,7 @@ impl EventDispatcher {
             Menu::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Menu::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
-            Menu::Nothing => unreachable!("Focus can't be in menu if menu is Nothing"),
+            Menu::Nothing => Ok(()),
         }
     }
 
