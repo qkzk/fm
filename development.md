@@ -1319,11 +1319,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] previewing text files with bat ?
   - [ ] could remove the whole syntaxed stuff
   - [ ] simplify previewing since half the methods are gone
+  - [ ] heavilly rely on ansi string parsing
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
-- [ ] shellcommand with redirection "< > >> |"
-      `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
+- [ ] BUG **IMPORTANT** shell commands with strings aren't parsed correctly...
+  - [ ] parser of strings (statemachine ?)
+  - [ ] shellcommand with redirection "< > >> |"
+        `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
 
 ## TODO
 
