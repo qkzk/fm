@@ -7,7 +7,10 @@ use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
 use crate::log_info;
-use crate::modes::{Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate};
+use crate::modes::{
+    Direction as FuzzyDirection, Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu,
+    Navigate,
+};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -129,10 +132,10 @@ impl EventDispatcher {
                 KeyCode::Delete => status.fuzzy_delete()?,
                 KeyCode::Left => status.fuzzy_left()?,
                 KeyCode::Right => status.fuzzy_right()?,
-                KeyCode::Up => status.fuzzy_up()?,
-                KeyCode::Down => status.fuzzy_down()?,
-                KeyCode::PageUp => status.fuzzy_page_up()?,
-                KeyCode::PageDown => status.fuzzy_page_down()?,
+                KeyCode::Up => status.fuzzy_navigate(FuzzyDirection::Up)?,
+                KeyCode::Down => status.fuzzy_navigate(FuzzyDirection::Down)?,
+                KeyCode::PageUp => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
+                KeyCode::PageDown => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
                 _ => (),
             }
         }

@@ -28,10 +28,10 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
-    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate,
-    NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview,
-    PreviewBuilder, Search, Selectable, ShellCommandParser, Users,
+    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, ShellCommandParser, Users,
 };
 use crate::{log_info, log_line};
 
@@ -318,7 +318,7 @@ impl Status {
         match self.current_tab().display_mode {
             Display::Directory => self.current_tab_mut().normal_select_row(row),
             Display::Tree => self.current_tab_mut().tree_select_row(row)?,
-            Display::Fuzzy => self.fuzzy_click(row)?,
+            Display::Fuzzy => self.fuzzy_navigate(FuzzyDirection::Index(row))?,
             _ => (),
         }
         Ok(())
@@ -1016,56 +1016,11 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_click(&mut self, row: u16) -> Result<()> {
+    pub fn fuzzy_navigate(&mut self, direction: FuzzyDirection) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        fuzzy.select_clic(row);
-        if fuzzy.should_preview() {
-            self.update_second_pane_for_preview()?;
-        }
-        Ok(())
-    }
-
-    // TODO call fuzzy.navigate(Direction::something)
-    pub fn fuzzy_up(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.select_prev();
-        if fuzzy.should_preview() {
-            self.update_second_pane_for_preview()?;
-        }
-        Ok(())
-    }
-
-    pub fn fuzzy_down(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.select_next();
-        if fuzzy.should_preview() {
-            self.update_second_pane_for_preview()?;
-        }
-        Ok(())
-    }
-
-    pub fn fuzzy_page_up(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.page_up();
-        if fuzzy.should_preview() {
-            self.update_second_pane_for_preview()?;
-        }
-        Ok(())
-    }
-
-    pub fn fuzzy_page_down(&mut self) -> Result<()> {
-        let Some(fuzzy) = &mut self.fuzzy else {
-            bail!("Fuzzy should be set");
-        };
-        fuzzy.page_down();
+        fuzzy.navigate(direction);
         if fuzzy.should_preview() {
             self.update_second_pane_for_preview()?;
         }

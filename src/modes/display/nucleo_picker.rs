@@ -6,6 +6,14 @@ use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 use crate::modes::{ContentWindow, Input};
 use crate::{impl_content, impl_selectable};
 
+pub enum Direction {
+    Up,
+    Down,
+    PageUp,
+    PageDown,
+    Index(u16),
+}
+
 pub enum FuzzyKind {
     File,
     Line,
@@ -149,19 +157,19 @@ where
 }
 
 impl FuzzyFinder<String> {
-    pub fn select_next(&mut self) {
+    fn select_next(&mut self) {
         self.tick();
         self.next();
         self.window.scroll_down_one(self.index);
     }
 
-    pub fn select_prev(&mut self) {
+    fn select_prev(&mut self) {
         self.tick();
         self.prev();
         self.window.scroll_up_one(self.index);
     }
 
-    pub fn select_clic(&mut self, row: u16) {
+    fn select_clic(&mut self, row: u16) {
         self.tick();
         let row = row as usize;
         if row < ContentWindow::WINDOW_PADDING {
@@ -171,7 +179,7 @@ impl FuzzyFinder<String> {
         self.window.scroll_to(self.index)
     }
 
-    pub fn page_up(&mut self) {
+    fn page_up(&mut self) {
         for _ in 0..10 {
             if self.index == 0 {
                 break;
@@ -180,12 +188,22 @@ impl FuzzyFinder<String> {
         }
     }
 
-    pub fn page_down(&mut self) {
+    fn page_down(&mut self) {
         for _ in 0..10 {
             if self.index + 1 >= self.len() {
                 break;
             }
             self.select_next()
+        }
+    }
+
+    pub fn navigate(&mut self, direction: Direction) {
+        match direction {
+            Direction::Up => self.select_prev(),
+            Direction::Down => self.select_next(),
+            Direction::PageUp => self.page_up(),
+            Direction::PageDown => self.page_down(),
+            Direction::Index(index) => self.select_clic(index),
         }
     }
 }

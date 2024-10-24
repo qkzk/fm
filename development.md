@@ -1260,6 +1260,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
+    - [x] refactor fuzzy navigation
+    - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
   - [ ] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...

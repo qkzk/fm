@@ -14,9 +14,10 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display,
-    FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
-    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow,
+    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
+    MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search,
+    Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -844,7 +845,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev(),
-            Display::Fuzzy => status.fuzzy_up()?,
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Up)?,
         }
         Ok(())
     }
@@ -855,7 +856,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next(),
-            Display::Fuzzy => status.fuzzy_down()?,
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Down)?,
         }
         Ok(())
     }
@@ -1086,7 +1087,7 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Fuzzy => status.fuzzy_page_up()?,
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
         };
         Ok(())
     }
@@ -1123,7 +1124,7 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Fuzzy => status.fuzzy_page_down()?,
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
         };
         Ok(())
     }
