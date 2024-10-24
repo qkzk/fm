@@ -1527,7 +1527,9 @@ impl Display {
 
     fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
         for i in 0..n {
-            let bordered_block = Block::default().borders(Borders::ALL).style(borders[i]);
+            let bordered_block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(borders[i]);
             f.render_widget(bordered_block, wins[i]);
         }
     }

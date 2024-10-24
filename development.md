@@ -1315,6 +1315,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Focus follow mouse
 - [x] doubleclick replaced by middleclick
 - [x] rectify all u16 <-> usize conversions
+- [x] FIX border colors is applied to text styled with empty style.
 - [ ] previewing text files with bat ?
   - [ ] could remove the whole syntaxed stuff
   - [ ] simplify previewing since half the methods are gone
