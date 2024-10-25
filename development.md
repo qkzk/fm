@@ -1340,10 +1340,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] doubleclick replaced by middleclick
 - [x] rectify all u16 <-> usize conversions
 - [x] FIX border colors is applied to text styled with empty style.
-- [ ] previewing text files with bat ?
-  - [ ] could remove the whole syntaxed stuff
-  - [ ] simplify previewing since half the methods are gone
-  - [ ] heavilly rely on ansi string parsing
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
@@ -1357,6 +1353,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Next version
 
+- [ ] previewing text files with bat ? binaries with xxd
+  - [ ] could remove the whole syntaxed stuff
+  - [ ] simplify previewing since half the methods are gone
+  - [ ] heavilly rely on ansi string parsing
 - [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?

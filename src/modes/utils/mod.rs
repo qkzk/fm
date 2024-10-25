@@ -16,4 +16,4 @@ pub use menu_holder::MenuHolder;
 pub use mount_help::{MountCommands, MountParameters, MountRepr};
 pub use second_line::SecondLine;
 pub use selectable_content::{Content, IndexToIndex, Selectable, ToPath};
-pub use shell_parser::ShellCommandParser;
+pub use shell_parser::{test_lexer, ShellCommandParser};
