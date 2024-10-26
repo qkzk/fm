@@ -27,7 +27,6 @@ use crate::common::{
 };
 use crate::config::{MENU_STYLES, MONOKAI_THEME};
 use crate::io::{execute_and_capture_output_without_check, Canvas};
-use crate::log_info;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
     Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,

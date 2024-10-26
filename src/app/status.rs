@@ -21,10 +21,9 @@ use crate::common::{
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
-    build_tokio_greper, execute_and_capture_output, execute_and_capture_output_with_path,
-    execute_and_capture_output_without_check, execute_sudo_command_with_password,
-    get_cloud_token_names, google_drive, inject, reset_sudo_faillock, Args, Extension, Internal,
-    Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    build_tokio_greper, execute_and_capture_output, execute_and_capture_output_without_check,
+    execute_sudo_command_with_password, get_cloud_token_names, google_drive, inject,
+    reset_sudo_faillock, Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
