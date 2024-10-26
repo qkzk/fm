@@ -1364,7 +1364,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] run custom command
   - [x] cli info
 - [x] FIX: custom keybinds aren't displayed properly in help
-- [ ] BUG **IMPORTANT** terminal reset after crash
+- [x] FIX: terminal reset after panic. Enables a panic hook which remove the need to enable backtraces.
 
 ## TODO
 

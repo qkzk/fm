@@ -108,7 +108,7 @@ impl ColorG {
     }
 }
 
-/// Tries to parse a string color into a [`tuikit::attr::Color`].
+/// Tries to parse a string color into a [`ratatui::style::Color`].
 /// Ansi colors are converted to their corresponding version in tuikit.
 /// rgb and hexadecimal formats are parsed also.
 /// rgb( 123,   78,          0)     -> Color::Rgb(123, 78, 0)

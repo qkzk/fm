@@ -1,10 +1,19 @@
 use std::io::stdout;
+use std::panic;
 use std::process::exit;
 use std::sync::{mpsc, Arc, Mutex};
 
+#[cfg(debug_assertions)]
+use std::backtrace;
+
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use crossterm::{event::EnableMouseCapture, execute};
+use crossterm::{
+    cursor,
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
+    terminal::disable_raw_mode,
+};
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
@@ -16,6 +25,7 @@ use crate::log_info;
 
 /// Holds everything about the application itself.
 /// Dropping the instance of FM allows to write again to stdout.
+/// It should be ran like this : `crate::app::Fm::start().run().quit()`.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
     event_reader: EventReader,
@@ -24,8 +34,7 @@ pub struct FM {
     /// Current status of the application. Mostly the filetrees
     status: Arc<Mutex<Status>>,
     /// Refresher is used to force a refresh when a file has been modified externally.
-    /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
-    /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
+    /// It also has a [`std::mpsc::Sender`] to send a quit message and reset the cursor.
     refresher: Refresher,
     /// Used to handle every display on the screen, except from skim (fuzzy finds).
     /// It runs a single thread with an mpsc receiver to handle quit events.
@@ -35,6 +44,7 @@ pub struct FM {
 
 impl FM {
     /// Setup everything the application needs in its main loop :
+    /// a panic hook for graceful panic and displaying a traceback for debugging purpose,
     /// an `EventReader`,
     /// an `EventDispatcher`,
     /// a `Status`,
@@ -45,15 +55,49 @@ impl FM {
     ///
     /// # Errors
     ///
-    /// May fail if the [`tuikit::term`] can't be started or crashes
+    /// May fail if the [`ratatui::DefaultTerminal`] can't be started or crashes
     pub fn start() -> Result<Self> {
+        Self::set_panic_hook();
         let (config, start_folder) = Self::early_exit()?;
         log_info!("start folder: {start_folder}");
         set_configurable_static(&start_folder)?;
         Self::build(config)
     }
 
+    /// Set a panic hook for debugging the application.
+    /// In case of panic, we ensure to:
+    /// - erase temporary files
+    /// - restore the terminal as best as possible (show the cursor, disable the mouse capture)
+    /// - if in debug mode (target=debug), display a full traceback.
+    /// - if in release mode (target=release), display a sorry message.
+    fn set_panic_hook() {
+        panic::set_hook(Box::new(|traceback| {
+            clear_tmp_files();
+            let _ = disable_raw_mode();
+            let _ = execute!(stdout(), cursor::Show, DisableMouseCapture);
+
+            if cfg!(debug_assertions) {
+                if let Some(payload) = traceback.payload().downcast_ref::<&str>() {
+                    eprintln!("Traceback: {payload}",);
+                } else if let Some(payload) = traceback.payload().downcast_ref::<String>() {
+                    eprintln!("Traceback: {payload}",);
+                } else {
+                    eprintln!("Traceback:{traceback:?}");
+                }
+                if let Some(location) = traceback.location() {
+                    eprintln!("At {location}");
+                }
+                #[cfg(debug_assertions)]
+                eprintln!("{}", backtrace::Backtrace::capture());
+            } else {
+                eprintln!("fm exited unexpectedly.");
+            }
+        }));
+    }
+
     /// Read config and args, leaving immediatly if the arguments say so.
+    /// It will return the fully set [`crate::fm::config::Config`] and the starting path
+    /// as a String.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
         if args.log {
@@ -89,6 +133,7 @@ impl FM {
         exit(1)
     }
 
+    /// Internal builder. Builds an Fm instance from the config.
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
         let fm_sender = Arc::new(fm_sender);
@@ -118,7 +163,9 @@ impl FM {
         execute!(stdout(), EnableMouseCapture).unwrap();
         term
     }
+
     /// Update itself, changing its status.
+    /// It will dispatch every [`FmEvents`], updating [`Status`].
     fn update(&mut self, event: FmEvents) -> Result<()> {
         let Ok(mut status) = self.status.lock() else {
             bail!("Error locking status");
@@ -145,9 +192,18 @@ impl FM {
         Ok(self)
     }
 
-    /// Display the cursor,
-    /// drop itself, which allow us to print normally afterward
-    /// print the final path
+    /// Disable the mouse capture before normal exit.
+    fn disable_mouse_capture() -> Result<()> {
+        execute!(stdout(), DisableMouseCapture)?;
+        Ok(())
+    }
+
+    /// Reset everything as best as possible, stop any long thread in a loop and exit.
+    ///
+    /// More specifically :
+    /// - Display the cursor,
+    /// - drop itself, which allow us to print normally afterward
+    /// - print the final path
     ///
     /// # Errors
     ///
@@ -171,7 +227,7 @@ impl FM {
             status.previewer.quit()
         }
         drop(self.status);
-
+        Self::disable_mouse_capture()?;
         print_on_quit(final_path);
         Ok(())
     }

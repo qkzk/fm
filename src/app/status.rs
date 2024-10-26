@@ -1310,7 +1310,7 @@ impl Status {
     }
 
     /// Reads and parse a shell command. Some arguments may be expanded.
-    /// See [`crate::modes::ShellCommandParser`] for more information.
+    /// See [`crate::modes::shell_command_parser`] for more information.
     pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
         self.parse_shell_command(shell_command, None)
