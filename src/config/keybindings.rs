@@ -413,7 +413,7 @@ impl Bindings {
                 log_info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
-            let Some(keymap) = from_keyname(key_string) else {
+            let Some(key_event) = from_keyname(key_string) else {
                 log_info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
                 continue;
             };
@@ -421,9 +421,9 @@ impl Bindings {
                 continue;
             };
             let action = ActionMap::Custom(custom_str.to_owned());
-            log_info!("custom bind {keymap:?}, {custom_str}");
-            self.binds.insert(keymap, action.clone());
-            custom.push(format!("{keymap:?}:        {custom_str}\n"));
+            log_info!("custom bind {key_event:?}, {custom_str}");
+            self.binds.insert(key_event, action.clone());
+            custom.push(format!("{kmh}:        {custom_str}\n", kmh=key_event.for_help()));
         }
         self.custom = Some(custom);
     }

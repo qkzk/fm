@@ -1364,6 +1364,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         mount encrypted -> ask sudo -> ??? failure. It should ask for a passkey.
   - [x] run custom command
   - [x] cli info
+- [x] FIX: custom keybinds aren't displayed properly in help
 - [ ] BUG **IMPORTANT** terminal reset after crash
 
 ## TODO
