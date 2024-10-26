@@ -1287,7 +1287,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.31
 
-- [ ] replace tuikit by ratatui + crossterm
+- [x] replace tuikit by ratatui + crossterm
 
   - [x] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
   - [x] NOT DISPLAY
@@ -1296,7 +1296,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] dispatch mouse wheel events
     - [x] dispatch menu key events
     - [x] preview
-  - [ ] DISPLAY
+  - [x] DISPLAY
     - [x] create windows
     - [x] draw trait of canvas ??? won't work, borrow checker...
     - [x] draw trait working
@@ -1339,7 +1339,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX nucleo out of bounds
   - [x] refactor fuzzy navigation
   - [x] navigation. Moving below the last element should scroll, not wrap around.
-  - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
   - [ ] testing: file, line, help
 
 - [x] FIX: save a name for previews, use it to display
