@@ -1270,6 +1270,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   The fuzzy finder looks really different but all its rendering is now much simpler.
 
 - double click is replaced by middleclick. Less intuitive but much more convenient in crossterm.
+- redirection in shell commands.
+
+  You can enter a shell command by typing `!` then `ps -ef | grep %s` and see the if the selection is beeing executed.
+  It allows you to execute complex shell commands and see their output.
+
+  Expansion haven't change (%s selection, %p current path, %n filename, %e extension, %f flagegd files, %t terminal emulator)
+  Strings like `echo "Hello World"` or `echo 'Hello World'` should be processed correctly.
+  Tokens and shorcuts `~` and `*` etc. are recognized and dealt by sh.
+  Most environment variables aren't known since it's a new shell which run the command. You can still do `!` `export a=2; echo $a` and see... 2 on the output.
+  It also works for sudo commands : `sudo ls %s | grep pattern` will ask a password and execute `sudo ls your/selected/path | grep pattern`.
+
+  There's a lot of steps and it's surelly buggy, I'll have to simplify it as much as possible.
+  The interface won't change, the internal will surelly do.
+  Since this parser is used everywhere, it means you can define custom commands with redirections. I can't think of an usage but may be you will !
 
 ### Version 0.1.31
 
@@ -1343,7 +1357,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: when a resize occur, selection can be out of window
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
-- [ ] BUG **IMPORTANT** shell commands with strings aren't parsed correctly...
+- [x] FIX shell commands with strings aren't parsed correctly...
   - [x] lexer & parser of shell commands with sudo, redirection work
   - [x] output of shell commands (normal & sudo) is displayed properly
   - [x] FIX: password transition isn't done properly:
@@ -1351,24 +1365,30 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         mount encrypted -> ask sudo -> ??? failure. It should ask for a passkey.
   - [x] run custom command
   - [x] cli info
-  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
-  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 - [ ] BUG **IMPORTANT** terminal reset after crash
-- [ ] don't store shortcut. Always get them on the fly.
-  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
-- [ ] What is a menu in fm ?
-  - render
-  - actions
-- [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
+- [ ] new shell command expansion %c current clipboard
 
 ## TODO
 
 ### Next version
 
+- [ ] menu / rendering / widgets
+      What is a menu in fm ?
+
+  - render
+  - actions
+  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
+  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
+  - [ ] don't store shortcut. Always get them on the fly.
+  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
+  - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
+
 - [ ] previewing text files with bat ? binaries with xxd
+
   - [ ] could remove the whole syntaxed stuff
   - [ ] simplify previewing since half the methods are gone
   - [ ] heavilly rely on ansi string parsing
+
 - [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
