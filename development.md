@@ -1338,7 +1338,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] ensure rg & grep can be run before executing fuzzy find of line
   - [x] FIX nucleo out of bounds
   - [x] refactor fuzzy navigation
-  - [ ] **navigation. Moving below the last element should scroll, not wrap around.**
+  - [x] navigation. Moving below the last element should scroll, not wrap around.
   - [ ] move nucleo interaction from status as much as possible: init, drop, whatever doesn't require status
   - [ ] testing: file, line, help
 

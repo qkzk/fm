@@ -11,7 +11,6 @@ use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
-use walkdir::WalkDir;
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
@@ -904,19 +903,7 @@ impl Status {
             bail!("Fuzzy should be set");
         };
         let current_path = self.current_tab().current_path().to_path_buf();
-        let injector = fuzzy.injector();
-        spawn(move || {
-            for entry in WalkDir::new(current_path)
-                .into_iter()
-                .filter_map(Result::ok)
-            {
-                let value = entry.path().display().to_string();
-                let _ = injector.push(value, |value, cols| {
-                    // the picker only has one column; fill it with the match text
-                    cols[0] = value.as_str().into();
-                });
-            }
-        });
+        fuzzy.find_files(current_path);
         Ok(())
     }
 
@@ -924,15 +911,7 @@ impl Status {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        let injector = fuzzy.injector();
-        spawn(move || {
-            for line in help.lines() {
-                let _ = injector.push(line.to_owned(), |line, cols| {
-                    // the picker only has one column; fill it with the match text
-                    cols[0] = line.as_str().into();
-                });
-            }
-        });
+        fuzzy.find_action(help);
         Ok(())
     }
 
@@ -944,10 +923,7 @@ impl Status {
             log_info!("ripgrep & grep aren't in $PATH");
             return Ok(());
         };
-        let injector = fuzzy.injector();
-        spawn(move || {
-            inject(tokio_greper, injector);
-        });
+        fuzzy.find_line(tokio_greper);
         Ok(())
     }
 
@@ -967,7 +943,7 @@ impl Status {
             match fuzzy.kind {
                 FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(pick))?,
                 FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(pick)?)?,
-                FuzzyKind::Action => self.fuzzy_select_command(pick)?,
+                FuzzyKind::Action => self.fuzzy_send_event(pick)?,
             }
         } else {
             log_info!("Fuzzy had nothing to pick from");
@@ -978,7 +954,7 @@ impl Status {
     /// Run a command directly from help.
     /// Search a command with fuzzy finder, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
-    fn fuzzy_select_command(&self, pick: &str) -> Result<()> {
+    fn fuzzy_send_event(&self, pick: &str) -> Result<()> {
         if let Ok(key) = find_keybind_from_fuzzy(pick) {
             self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
         };

@@ -1,8 +1,17 @@
-use std::{cmp::min, fs::canonicalize, path::PathBuf, sync::Arc, thread::available_parallelism};
+use std::{
+    cmp::min,
+    fs::canonicalize,
+    path::PathBuf,
+    sync::Arc,
+    thread::{available_parallelism, spawn},
+};
 
 use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
+use tokio::process::Command as TokioCommand;
+use walkdir::WalkDir;
 
+use crate::io::inject;
 use crate::modes::{ContentWindow, Input};
 
 pub enum Direction {
@@ -279,6 +288,39 @@ impl FuzzyFinder<String> {
             Direction::PageDown => self.page_down(),
             Direction::Index(index) => self.select_clic(index),
         }
+    }
+
+    pub fn find_files(&self, current_path: PathBuf) {
+        let injector = self.injector();
+        spawn(move || {
+            for entry in WalkDir::new(current_path)
+                .into_iter()
+                .filter_map(Result::ok)
+            {
+                let value = entry.path().display().to_string();
+                let _ = injector.push(value, |value, cols| {
+                    cols[0] = value.as_str().into();
+                });
+            }
+        });
+    }
+
+    pub fn find_action(&self, help: String) {
+        let injector = self.injector();
+        spawn(move || {
+            for line in help.lines() {
+                let _ = injector.push(line.to_owned(), |line, cols| {
+                    cols[0] = line.as_str().into();
+                });
+            }
+        });
+    }
+
+    pub fn find_line(&self, tokio_greper: TokioCommand) {
+        let injector = self.injector();
+        spawn(move || {
+            inject(tokio_greper, injector);
+        });
     }
 }
 
