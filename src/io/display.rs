@@ -434,8 +434,8 @@ impl<'a> FuzzyDisplay<'a> {
     fn paragraph_matches(&self, fuzzy: &FuzzyFinder<String>) -> Paragraph {
         let mut items: Vec<Line> = vec![];
 
-        for (index, item) in fuzzy.content().iter().enumerate() {
-            let item_spans = if index == fuzzy.index {
+        for (index, item) in fuzzy.content.iter().enumerate() {
+            let item_spans = if index + fuzzy.top == fuzzy.index {
                 Self::selected_line(item)
             } else {
                 Self::non_selected_line(item)

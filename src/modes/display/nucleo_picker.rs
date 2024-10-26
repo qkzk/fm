@@ -4,7 +4,6 @@ use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 
 use crate::modes::{ContentWindow, Input};
-use crate::{impl_content, impl_selectable};
 
 pub enum Direction {
     Up,
@@ -21,14 +20,27 @@ pub enum FuzzyKind {
 }
 
 pub struct FuzzyFinder<String: Sync + Send + 'static> {
-    matcher: Nucleo<String>,
-    pub content: Vec<String>,
-    pub item_count: usize,
-    pub matched_item_count: usize,
-    pub index: usize,
-    pub input: Input,
-    pub window: ContentWindow,
+    /// kind of fuzzy:
+    /// Line (match lines into text file),
+    /// File (match file against their name),
+    /// Action (match an action)
     pub kind: FuzzyKind,
+    /// The fuzzy matcher
+    matcher: Nucleo<String>,
+    /// matched strings
+    pub content: Vec<String>,
+    /// typed input by the user
+    pub input: Input,
+    /// number of parsed item
+    pub item_count: usize,
+    /// number of matched item
+    pub matched_item_count: usize,
+    /// selected index. Should always been smaller than matched_item_count
+    pub index: usize,
+    /// index of the top displayed element in the matcher
+    pub top: usize,
+    /// height of the terminal window, header & footer included
+    pub height: usize,
 }
 
 impl<String: Sync + Send + 'static> Default for FuzzyFinder<String>
@@ -55,6 +67,7 @@ where
         Nucleo::new(config, Arc::new(|| {}), Self::default_thread_count(), 1)
     }
 
+    /// Creates a new fuzzy matcher for this kind.
     pub fn new(kind: FuzzyKind) -> Self {
         match kind {
             FuzzyKind::File => Self::default(),
@@ -71,7 +84,8 @@ where
             matched_item_count: 0,
             index: 0,
             input: Input::default(),
-            window: ContentWindow::default(),
+            height: 0,
+            top: 0,
             kind,
         }
     }
@@ -84,11 +98,15 @@ where
         Self::build(Config::DEFAULT, FuzzyKind::Action)
     }
 
-    pub fn window(mut self, window: &ContentWindow) -> Self {
-        self.window = window.clone();
+    /// Set the terminal height of the fuzzy picker.
+    /// It should always be called after new
+    pub fn set_height(mut self, height: usize) -> Self {
+        self.height = height;
         self
     }
 
+    /// True iff a preview should be built for this fuzzy finder.
+    /// It only makes sense to preview files not lines nor actions.
     pub fn should_preview(&self) -> bool {
         matches!(self.kind, FuzzyKind::File)
     }
@@ -110,73 +128,129 @@ where
         )
     }
 
-    fn index_clamped(&self, item_count: usize) -> usize {
-        if item_count == 0 {
+    fn index_clamped(&self, matched_item_count: usize) -> usize {
+        if matched_item_count == 0 {
             0
         } else {
-            min(self.index, item_count - 1)
+            min(self.index, matched_item_count.saturating_sub(1))
         }
     }
 
-    pub fn tick(&mut self) {
-        if self.matcher.tick(10).changed {
+    /// tick the matcher.
+    /// refresh the items if the status changed if force = true.
+    pub fn tick(&mut self, force: bool) {
+        if self.matcher.tick(10).changed || force {
             self.tick_forced();
         }
     }
 
+    /// Refresh the content, storing elements around the currently selected.
     fn tick_forced(&mut self) {
         let snapshot = self.matcher.snapshot();
-        self.item_count = snapshot.matched_item_count() as usize;
-        let item_stored = min(
-            self.item_count,
-            self.window
-                .height
-                .saturating_sub(ContentWindow::WINDOW_PADDING),
-        );
+        self.item_count = snapshot.item_count() as usize;
         self.matched_item_count = snapshot.matched_item_count() as usize;
-        self.index = self.index_clamped(item_stored);
+        self.index = self.index_clamped(self.matched_item_count);
+        let (top, bottom) = self.top_bottom();
+        self.top = top;
         self.content = snapshot
-            .matched_items(0..item_stored as u32)
+            .matched_items(top as u32..bottom as u32)
             .map(|t| format_display(&t.matcher_columns[0]))
             .collect();
-        self.window.set_len(item_stored);
-        self.window.scroll_to(self.index);
     }
 
+    /// Calculate the first & last matching index which should be stored in content.
+    /// It assumes the index can't change by more than one at a time.
+    ///
+    /// It should only be called after a refresh of the matcher to be sure
+    /// the matched_item_count is correct.
+    ///
+    /// Several cases :
+    /// - if there's not enough element to fill the display, take everything.
+    /// - if the selection is in the top 4 rows, scroll up if possible.
+    /// - if the selection is in the last 4 rows, scroll down if possible.
+    /// - otherwise, don't move.
+    ///
+    /// Scrolling is done only at top or bottom, not in the middle of the screen.
+    /// It feels more natural.
+    fn top_bottom(&self) -> (usize, usize) {
+        if self.matched_item_count + ContentWindow::WINDOW_PADDING < self.height {
+            // not enough items to fill the display, take everything
+            (0, self.matched_item_count)
+        } else if self.index < self.top + ContentWindow::WINDOW_PADDING {
+            // scroll up by one
+            (
+                self.top.saturating_sub(1),
+                min(
+                    self.top + self.height.saturating_sub(1),
+                    self.matched_item_count,
+                ),
+            )
+        } else if self.index + 2 * ContentWindow::WINDOW_PADDING > self.top + self.height {
+            // scroll down by one
+            (
+                self.top + 1,
+                min(self.top + self.height + 1, self.matched_item_count),
+            )
+        } else {
+            // don't move
+            (
+                self.top,
+                min(self.top + self.height, self.matched_item_count),
+            )
+        }
+    }
+
+    /// Set the new height and refresh the content.
     pub fn resize(&mut self, height: usize) {
-        self.window.set_height(height);
-        self.tick_forced();
+        self.height = height;
+        self.tick(true);
     }
 
+    /// Returns the selected element, if its index is valid.
+    /// It should never return `None` if the content isn't empty.
     pub fn pick(&self) -> Option<&String> {
-        self.matcher
-            .snapshot()
-            .get_matched_item(self.index as _)
-            .map(|item| item.data)
+        // TODO remove logging
+        self.log();
+        self.content.get(self.index.saturating_sub(self.top))
+    }
+
+    // TODO remove
+    fn log(&self) {
+        crate::log_info!(
+            "index {idx} top {top} offset {off} - matched {mic} - items {itc} - height {hei}",
+            idx = self.index,
+            top = self.top,
+            off = self.index.saturating_sub(self.top),
+            mic = self.matched_item_count,
+            itc = self.item_count,
+            hei = self.height,
+        );
     }
 }
 
 impl FuzzyFinder<String> {
     fn select_next(&mut self) {
-        self.tick();
-        self.next();
-        self.window.scroll_down_one(self.index);
+        self.index += 1;
+        self.tick(true);
+        // TODO remove logging
+        self.log()
     }
 
     fn select_prev(&mut self) {
-        self.tick();
-        self.prev();
-        self.window.scroll_up_one(self.index);
+        self.index = self.index.saturating_sub(1);
+        self.tick(true);
+        // TODO remove logging
+        self.log()
     }
 
     fn select_clic(&mut self, row: u16) {
-        self.tick();
         let row = row as usize;
-        if row < ContentWindow::WINDOW_PADDING {
+        if row <= ContentWindow::WINDOW_PADDING || row > self.height {
             return;
         }
-        self.index = min(row.saturating_sub(5), self.len().saturating_sub(1));
-        self.window.scroll_to(self.index)
+        self.index = self.top + row - ContentWindow::WINDOW_PADDING - 1;
+        // TODO remove logging
+        self.log()
     }
 
     fn page_up(&mut self) {
@@ -190,7 +264,7 @@ impl FuzzyFinder<String> {
 
     fn page_down(&mut self) {
         for _ in 0..10 {
-            if self.index + 1 >= self.len() {
+            if self.index + 1 >= self.content.len() {
                 break;
             }
             self.select_next()
@@ -207,10 +281,6 @@ impl FuzzyFinder<String> {
         }
     }
 }
-
-type Ffs = FuzzyFinder<String>;
-impl_selectable!(Ffs);
-impl_content!(String, Ffs);
 
 pub fn parse_line_output(item: &str) -> Result<PathBuf> {
     Ok(canonicalize(PathBuf::from(

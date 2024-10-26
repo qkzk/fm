@@ -892,7 +892,7 @@ impl Status {
     }
 
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {
-        self.fuzzy = Some(FuzzyFinder::new(kind).window(&self.current_tab().window));
+        self.fuzzy = Some(FuzzyFinder::new(kind).set_height(self.current_tab().window.height));
     }
 
     fn fuzzy_drop(&mut self) {
@@ -953,7 +953,7 @@ impl Status {
 
     fn fuzzy_current_selection(&self) -> Option<&String> {
         if let Some(fuzzy) = &self.fuzzy {
-            fuzzy.selected()
+            fuzzy.pick()
         } else {
             None
         }
@@ -1038,7 +1038,7 @@ impl Status {
 
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.tick(),
+            Some(fuzzy) => fuzzy.tick(false),
             None => (),
         }
     }
