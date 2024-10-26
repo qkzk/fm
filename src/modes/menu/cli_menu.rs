@@ -8,6 +8,7 @@ use serde_yml::Mapping;
 use crate::app::Status;
 use crate::common::{is_in_path, tilde};
 use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
+use crate::modes::shell_command_parser;
 // use crate::modes::ShellCommandParser;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -56,22 +57,20 @@ impl Execute<(String, String)> for CliCommand {
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
     fn execute(&self, status: &Status) -> Result<(String, String)> {
-        todo!();
-        // let args = ShellCommandParser::new(&self.parsable_command).compute(status)?;
-        // log_info!("execute. {args:?}");
-        // log_line!("Executed {args:?}");
-        //
-        // let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        // let command_output = execute_with_ansi_colors(&params)?;
-        // let text_output = String::from_utf8(command_output.stdout)?;
-        // if !command_output.status.success() {
-        //     log_info!(
-        //         "Command {a} exited with error code {e}",
-        //         a = args[0],
-        //         e = command_output.status
-        //     );
-        // };
-        // Ok((text_output, self.parsable_command.to_owned()))
+        let args = shell_command_parser(&self.parsable_command, status)?;
+        log_info!("execute. {args:?}");
+        log_line!("Executed {args:?}");
+
+        let command_output = execute_with_ansi_colors(&args)?;
+        let text_output = String::from_utf8(command_output.stdout)?;
+        if !command_output.status.success() {
+            log_info!(
+                "Command {a} exited with error code {e}",
+                a = args[0],
+                e = command_output.status
+            );
+        };
+        Ok((text_output, self.parsable_command.to_owned()))
     }
 }
 

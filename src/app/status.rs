@@ -21,7 +21,7 @@ use crate::common::{
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
-    build_tokio_greper, execute_and_capture_output_with_path,
+    build_tokio_greper, execute_and_capture_output, execute_and_capture_output_with_path,
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     get_cloud_token_names, google_drive, inject, reset_sudo_faillock, Args, Extension, Internal,
     Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
@@ -1347,12 +1347,10 @@ impl Status {
         shell_command: String,
         files: Option<Vec<String>>,
     ) -> Result<bool> {
-        // let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         let Ok(mut args) = shell_command_parser(&shell_command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
         };
-        log_info!("parse_shell_command {shell_command} - {args:?}");
         if let Some(mut files) = files {
             args.append(&mut files);
         }
@@ -1366,7 +1364,6 @@ impl Status {
     ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
-            log_info!("sudo command {args:?}");
             self.menu.sudo_command = Some(shell_command);
             self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
@@ -1374,9 +1371,8 @@ impl Status {
             if !is_in_path(&executable) {
                 return Ok(true);
             }
-            let current_directory = self.current_tab().directory_of_selected()?.to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            match execute_and_capture_output_with_path(executable, current_directory, &params) {
+            match execute_and_capture_output(executable, &params) {
                 Ok(output) => self.preview_command_output(output, shell_command),
                 Err(e) => log_info!("Error {e:?}"),
             }

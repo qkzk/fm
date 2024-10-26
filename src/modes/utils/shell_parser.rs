@@ -7,15 +7,16 @@ use crate::{log_info, log_line};
 /// Analyse, parse and builds arguments from a shell command.
 /// Normal commands are executed with `sh -c "command"` which allow redirection, pipes etc.
 /// Sudo commands are executed with `sudo` then `sh -c "rest of the command"`.
-/// The password will be asked, injected and dropped somewhere else.
+/// The password will be asked, injected into stdin and dropped somewhere else.
 /// The command isn't executed here, we just build a list of arguments to be passed to an executer.
 ///
-/// Some expansion can be made to allow interaction with the content of fm.
+/// Some expansion are allowed to interact with the content of fm.
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`
 /// %f is converted into a `Flagged`
 /// %e is converted into a `Extension`
 /// %n is converted into a `Filename`
+/// %t is converted into a `$TERM` + custom flag.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
@@ -115,8 +116,10 @@ impl FmExpansion {
     }
 
     fn term(status: &Status) -> Result<Vec<String>> {
+        // A space is needed unless $TERM & flags will be collapsed like "alacritty-e" (invalid) instead of "alacritty -e" (valid)
         Ok(vec![
             status.internal_settings.opener.terminal.to_owned(),
+            " ".to_owned(),
             status.internal_settings.opener.terminal_flag.to_owned(),
         ])
     }

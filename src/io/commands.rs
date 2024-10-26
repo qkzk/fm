@@ -104,13 +104,12 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     args: &[&str],
 ) -> Result<String> {
     log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
-    let child = Command::new(exe)
+    let output = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .spawn()?;
-    let output = child.wait_with_output()?;
+        .output()?;
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
@@ -133,16 +132,14 @@ pub fn execute_and_capture_output_with_path<
     path: P,
     args: &[&str],
 ) -> Result<String> {
-    log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
-    let mut command = Command::new(exe);
-    command
+    log_info!("execute_and_capture_output_with_path. executable: {exe:?}, arguments: {args:?}",);
+    let output = Command::new(exe)
         .args(args)
-        // .env("PATH", std::env::var("PATH")?)
+        .current_dir(path)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    log_info!("command {command:?}");
-    let output = command.output()?;
+        .stderr(Stdio::piped())
+        .output()?;
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {

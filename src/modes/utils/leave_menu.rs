@@ -168,9 +168,8 @@ impl LeaveMenu {
     }
 
     /// Execute a shell command typed by the user.
-    /// pipes and redirections aren't supported
     /// but expansions are supported
-    /// It won't return an `Err` if the command fail.
+    /// It won't return an `Err` if the command fail but log a message.
     fn shell_command(status: &mut Status) -> Result<()> {
         status.parse_shell_command_from_input()?;
         Ok(())
