@@ -1355,7 +1355,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] rectify all u16 <-> usize conversions
 - [x] FIX border colors is applied to text styled with empty style.
 - [ ] BUG: when a resize occur, selection can be out of window
-- [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
 - [x] FIX shell commands with strings aren't parsed correctly...
   - [x] lexer & parser of shell commands with sudo, redirection work
@@ -1366,22 +1365,25 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] run custom command
   - [x] cli info
 - [ ] BUG **IMPORTANT** terminal reset after crash
-- [ ] new shell command expansion %c current clipboard
 
 ## TODO
 
 ### Next version
 
+- [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
+  - [ ] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets
       What is a menu in fm ?
 
-  - render
-  - actions
+  - render : should be cached as much as possible. For many menus, it doesn't change much.
+  - actions : should be attached to menus in a way or another. Don't store everything in status
+  - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
   - [ ] don't store shortcut. Always get them on the fly.
   - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
-  - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
+
+- [ ] ratatui component for progress bar for copymove
 
 - [ ] previewing text files with bat ? binaries with xxd
 
