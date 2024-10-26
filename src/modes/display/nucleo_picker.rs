@@ -161,9 +161,21 @@ where
         self.index = self.index_clamped(self.matched_item_count);
         let (top, bottom) = self.top_bottom();
         self.top = top;
+        let mut indices = vec![];
+        let mut matcher = nucleo::Matcher::default();
         self.content = snapshot
             .matched_items(top as u32..bottom as u32)
-            .map(|t| format_display(&t.matcher_columns[0]))
+            .map(|t| {
+                snapshot.pattern().column_pattern(0).indices(
+                    t.matcher_columns[0].slice(..),
+                    &mut matcher,
+                    &mut indices,
+                );
+                indices.sort_unstable();
+                indices.dedup();
+                let highlights = indices.drain(..);
+                format_display(&t.matcher_columns[0], highlights)
+            })
             .collect();
     }
 
@@ -334,14 +346,20 @@ pub fn parse_line_output(item: &str) -> Result<PathBuf> {
 /// - Delete control characters.
 /// - Truncates the string to an appropriate length.
 /// - Replaces any newline characters with spaces.
-fn format_display(display: &Utf32String) -> String {
-    display
-        .slice(..)
-        .chars()
-        .filter(|ch| !ch.is_control())
-        .map(|ch| match ch {
-            '\n' => ' ',
-            s => s,
-        })
-        .collect()
+fn format_display(display: &Utf32String, highlights: std::vec::Drain<'_, u32>) -> String {
+    format!(
+        "{ind} {display}",
+        ind = &highlights
+            .map(|index| index.to_string() + " ")
+            .collect::<String>(),
+        display = display
+            .slice(..)
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .map(|ch| match ch {
+                '\n' => ' ',
+                s => s,
+            })
+            .collect::<String>()
+    )
 }

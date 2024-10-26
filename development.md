@@ -1340,6 +1340,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor fuzzy navigation
   - [x] navigation. Moving below the last element should scroll, not wrap around.
   - [ ] testing: file, line, help
+  - [ ] colors for nucleo matching see helix: [picker.rs](https://github.com/helix-editor/helix/blob/101a74bf6edbbfdf9b0628a0bdbbc307ebe10ff2/helix-term/src/ui/picker.rs#L720)
 
 - [x] FIX: save a name for previews, use it to display
 
