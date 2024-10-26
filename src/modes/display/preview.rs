@@ -27,6 +27,7 @@ use crate::common::{
 };
 use crate::config::{MENU_STYLES, MONOKAI_THEME};
 use crate::io::{execute_and_capture_output_without_check, Canvas};
+use crate::log_info;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
     Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
@@ -366,6 +367,7 @@ impl PreviewBuilder {
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
+        crate::log_info!("cli_info. command {command} - output\n{output}");
         Preview::Text(Text::command_stdout(output, command))
     }
 }
@@ -380,7 +382,7 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub enum TextKind {
     #[default]
     TEXTFILE,
@@ -400,7 +402,7 @@ pub enum TextKind {
 
 /// Holds a preview of a text content.
 /// It's a vector of strings (per line)
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Text {
     pub kind: TextKind,
     pub title: String,

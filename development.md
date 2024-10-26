@@ -1344,10 +1344,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] ratatui component for progress bar for copymove
 - [ ] refactor status.get_correct_fileinfo_for_preview
 - [ ] BUG **IMPORTANT** shell commands with strings aren't parsed correctly...
-  - [ ] parser of strings (statemachine ?)
-  - [ ] shellcommand with redirection "< > >> |"
-        `Command::new(shell).arg("-c").arg("ps -ef | grep python")`
+  - [x] lexer & parser of shell commands with sudo, redirection work
+  - [x] output of shell commands (normal & sudo) is displayed properly
+  - [x] FIX: password transition isn't done properly:
+        sudo ls -> ask password -> execute ok
+        mount encrypted -> ask sudo -> ??? failure. It should ask for a passkey.
+  - [x] run custom command
+  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
+  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 - [ ] BUG **IMPORTANT** terminal reset after crash
+- [ ] don't store shortcut. Always get them on the fly.
+  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
+- [ ] What is a menu in fm ?
+  - render
+  - actions
+- [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
 
 ## TODO
 

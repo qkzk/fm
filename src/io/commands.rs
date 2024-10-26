@@ -134,17 +134,19 @@ pub fn execute_and_capture_output_with_path<
     args: &[&str],
 ) -> Result<String> {
     log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
-    let child = Command::new(exe)
+    let mut command = Command::new(exe);
+    command
         .args(args)
+        // .env("PATH", std::env::var("PATH")?)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .current_dir(path)
-        .spawn()?;
-    let output = child.wait_with_output()?;
+        .stderr(Stdio::piped());
+    log_info!("command {command:?}");
+    let output = command.output()?;
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
+        log_info!("{err}", err = String::from_utf8(output.stderr)?);
         Err(anyhow!(
             "execute_and_capture_output: command didn't finish properly",
         ))
@@ -190,10 +192,10 @@ where
     Ok(Command::new(exe).args(args).stdin(Stdio::null()).output()?)
 }
 
-pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
+pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output> {
     log_info!("execute. {args:?}");
     log_line!("Executed {args:?}");
-    Ok(Command::new(args[0])
+    Ok(Command::new(&args[0])
         .args(&args[1..])
         .env("CLICOLOR_FORCE", "1")
         .env("COLORTERM", "ansi")
@@ -243,7 +245,7 @@ fn inject_password(password: &str, child: &mut std::process::Child) -> Result<()
     let child_stdin = child
         .stdin
         .as_mut()
-        .context("run_privileged_command: couldn't open child stdin")?;
+        .context("inject_password: couldn't open child stdin")?;
     child_stdin.write_all(format!("{password}\n").as_bytes())?;
     Ok(())
 }

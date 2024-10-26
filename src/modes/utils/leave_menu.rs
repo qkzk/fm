@@ -16,7 +16,7 @@ use crate::{log_info, log_line};
 pub struct LeaveMenu;
 
 impl LeaveMenu {
-    pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
+    pub fn leave_menu(status: &mut Status, binds: &Bindings) -> Result<()> {
         status
             .menu
             .input_history
@@ -30,9 +30,9 @@ impl LeaveMenu {
             Menu::InputSimple(InputSimple::Newfile) => LeaveMenu::new_file(status),
             Menu::InputSimple(InputSimple::Newdir) => LeaveMenu::new_dir(status),
             Menu::InputSimple(InputSimple::Chmod) => LeaveMenu::chmod(status),
-            Menu::InputSimple(InputSimple::RegexMatch) => LeaveMenu::regex(status),
+            Menu::InputSimple(InputSimple::RegexMatch) => LeaveMenu::regex_match(status),
             Menu::InputSimple(InputSimple::SetNvimAddr) => LeaveMenu::set_nvim_addr(status),
-            Menu::InputSimple(InputSimple::Shell) => LeaveMenu::shell(status),
+            Menu::InputSimple(InputSimple::ShellCommand) => LeaveMenu::shell_command(status),
             Menu::InputSimple(InputSimple::Sort) => LeaveMenu::sort(status),
             Menu::InputSimple(InputSimple::Filter) => LeaveMenu::filter(status),
             Menu::InputSimple(InputSimple::Password(action, usage)) => {
@@ -46,7 +46,7 @@ impl LeaveMenu {
             Menu::Navigate(Navigate::History) => LeaveMenu::history(status),
             Menu::Navigate(Navigate::Shortcut) => LeaveMenu::shortcut(status),
             Menu::Navigate(Navigate::Trash) => LeaveMenu::trash(status),
-            Menu::Navigate(Navigate::TuiApplication) => LeaveMenu::shellmenu(status),
+            Menu::Navigate(Navigate::TuiApplication) => LeaveMenu::tui_application(status),
             Menu::Navigate(Navigate::CliApplication) => LeaveMenu::cli_info(status),
             Menu::Navigate(Navigate::Cloud) => {
                 LeaveMenu::cloud_enter(status)?;
@@ -124,7 +124,7 @@ impl LeaveMenu {
 
     /// Execute a shell command picked from the tui_applications menu.
     /// It will be run an a spawned terminal
-    fn shellmenu(status: &mut Status) -> Result<()> {
+    fn tui_application(status: &mut Status) -> Result<()> {
         status.menu.tui_applications.execute(status)
     }
 
@@ -161,7 +161,7 @@ impl LeaveMenu {
     }
 
     /// Select the first file matching the typed regex in current dir.
-    fn regex(status: &mut Status) -> Result<()> {
+    fn regex_match(status: &mut Status) -> Result<()> {
         status.select_from_regex()?;
         status.menu.input.reset();
         Ok(())
@@ -171,7 +171,7 @@ impl LeaveMenu {
     /// pipes and redirections aren't supported
     /// but expansions are supported
     /// It won't return an `Err` if the command fail.
-    fn shell(status: &mut Status) -> Result<()> {
+    fn shell_command(status: &mut Status) -> Result<()> {
         status.parse_shell_command_from_input()?;
         Ok(())
     }

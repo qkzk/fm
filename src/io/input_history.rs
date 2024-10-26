@@ -108,7 +108,7 @@ impl HistoryKind {
             "Exec" => Self::InputCompleted(InputCompleted::Exec),
             "Action" => Self::InputCompleted(InputCompleted::Action),
 
-            "Shell" => Self::InputSimple(InputSimple::Shell),
+            "Shell" => Self::InputSimple(InputSimple::ShellCommand),
             "Chmod" => Self::InputSimple(InputSimple::Chmod),
             "Sort" => Self::InputSimple(InputSimple::Sort),
             "Rename" => Self::InputSimple(InputSimple::Rename),

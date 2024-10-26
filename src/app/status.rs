@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
-    args_is_empty, current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
+    current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
     is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
@@ -27,11 +27,11 @@ use crate::io::{
     Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, ShellCommandParser, Users,
+    copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
+    BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
+    FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
+    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
+    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
 };
 use crate::{log_info, log_line};
 
@@ -457,6 +457,14 @@ impl Status {
         self.current_tab_mut().refresh_and_reselect_file()
     }
 
+    // TODO useful ?
+    pub fn reset_menu_mode_no_refresh(&mut self) -> Result<()> {
+        self.menu.reset();
+        self.set_menu_mode_no_refresh(self.index, Menu::Nothing)?;
+        self.set_height_of_unfocused_menu()?;
+        Ok(())
+    }
+
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
@@ -632,6 +640,11 @@ impl Status {
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
     pub fn set_menu_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+        self.set_menu_mode_no_refresh(index, edit_mode)?;
+        self.refresh_status()
+    }
+
+    pub fn set_menu_mode_no_refresh(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
         }
@@ -643,7 +656,7 @@ impl Status {
         self.menu.window.scroll_to(self.menu.index(edit_mode));
         self.set_focus_from_mode();
         self.menu.input_history.filter_by_mode(edit_mode);
-        self.refresh_status()
+        Ok(())
     }
 
     pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
@@ -894,7 +907,6 @@ impl Status {
         let current_path = self.current_tab().current_path().to_path_buf();
         let injector = fuzzy.injector();
         spawn(move || {
-            // TODO adapt to read from rg... output using a method from dev.md
             for entry in WalkDir::new(current_path)
                 .into_iter()
                 .filter_map(Result::ok)
@@ -1335,25 +1347,26 @@ impl Status {
         shell_command: String,
         files: Option<Vec<String>>,
     ) -> Result<bool> {
-        let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
-        log_info!("command {shell_command} args: {args:?}");
-        if args_is_empty(&args) {
+        // let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
+        let Ok(mut args) = shell_command_parser(&shell_command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
+        };
+        log_info!("parse_shell_command {shell_command} - {args:?}");
+        if let Some(mut files) = files {
+            args.append(&mut files);
         }
-        if let Some(files) = files {
-            args.extend(files);
-        }
-        self.execute_parsed_command(shell_command, args)
+        self.execute_parsed_command(args, shell_command)
     }
 
     fn execute_parsed_command(
         &mut self,
-        shell_command: String,
         mut args: Vec<String>,
+        shell_command: String,
     ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
+            log_info!("sudo command {args:?}");
             self.menu.sudo_command = Some(shell_command);
             self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
@@ -1363,10 +1376,9 @@ impl Status {
             }
             let current_directory = self.current_tab().directory_of_selected()?.to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            if let Ok(output) =
-                execute_and_capture_output_with_path(executable, current_directory, &params)
-            {
-                self.preview_command_output(output, shell_command);
+            match execute_and_capture_output_with_path(executable, current_directory, &params) {
+                Ok(output) => self.preview_command_output(output, shell_command),
+                Err(e) => log_info!("Error {e:?}"),
             }
             Ok(true)
         }
@@ -1378,7 +1390,7 @@ impl Status {
         encrypted_action: Option<BlockDeviceAction>,
         password_dest: PasswordUsage,
     ) -> Result<()> {
-        log_info!("event ask password");
+        log_info!("ask_password");
         self.set_menu_mode(
             self.index,
             Menu::InputSimple(InputSimple::Password(encrypted_action, password_dest)),
@@ -1399,8 +1411,10 @@ impl Status {
         } else {
             self.menu.password_holder.set_sudo(password)
         };
+        let sudo_command = self.menu.sudo_command.to_owned();
         self.reset_menu_mode()?;
-        self.dispatch_password(action, dest)
+        self.dispatch_password(action, dest, sudo_command)?;
+        Ok(())
     }
 
     /// Execute a new mark, saving it to a config file for futher use.
@@ -1473,18 +1487,23 @@ impl Status {
         Ok(())
     }
 
-    fn run_sudo_command(&mut self) -> Result<()> {
-        self.set_menu_mode(self.index, Menu::Nothing)?;
-        reset_sudo_faillock()?;
-        let Some(sudo_command) = self.menu.sudo_command.to_owned() else {
+    fn run_sudo_command(&mut self, sudo_command: Option<String>) -> Result<()> {
+        let Some(sudo_command) = sudo_command else {
+            log_info!("No sudo_command received from args.");
             return self.menu.clear_sudo_attributes();
         };
-        let args = ShellCommandParser::new(&sudo_command).compute(self)?;
+        self.set_menu_mode(self.index, Menu::Nothing)?;
+        reset_sudo_faillock()?;
+        let Some(command) = sudo_command.strip_prefix("sudo ") else {
+            log_info!("run_sudo_command cannot run {sudo_command}. It doesn't start with 'sudo '");
+            return self.menu.clear_sudo_attributes();
+        };
+        let args = shell_command_parser(command, self)?;
         if args.is_empty() {
             return self.menu.clear_sudo_attributes();
         }
-        let (_, output, _) = execute_sudo_command_with_password(
-            &args[1..],
+        let (success, stdout, _stderr) = execute_sudo_command_with_password(
+            &args,
             self.menu
                 .password_holder
                 .sudo()
@@ -1492,8 +1511,9 @@ impl Status {
                 .context("sudo password isn't set")?,
             self.current_tab().directory_of_selected()?,
         )?;
+        log_info!("sudo command execution. success: {success}");
         self.menu.clear_sudo_attributes()?;
-        self.preview_command_output(output, sudo_command.to_owned());
+        self.preview_command_output(stdout, sudo_command.to_owned());
         Ok(())
     }
 
@@ -1503,6 +1523,7 @@ impl Status {
         &mut self,
         action: Option<BlockDeviceAction>,
         dest: PasswordUsage,
+        sudo_command: Option<String>,
     ) -> Result<()> {
         match dest {
             PasswordUsage::USB => match action {
@@ -1520,19 +1541,24 @@ impl Status {
                 Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
                 None => Ok(()),
             },
-            PasswordUsage::SUDOCOMMAND => self.run_sudo_command(),
+            PasswordUsage::SUDOCOMMAND => self.run_sudo_command(sudo_command),
         }
     }
 
     /// Set the display to preview a command output
     pub fn preview_command_output(&mut self, output: String, command: String) {
-        log_info!("output:\n {output}");
+        log_info!("preview_command_output for {command}:\n{output}");
         if output.is_empty() {
             return;
         }
         let _ = self.reset_menu_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = PreviewBuilder::cli_info(&output, command);
+        if let Preview::Text(text) = &preview {
+            log_info!("preview is Text with: {text:?}");
+        } else {
+            log_info!("preview is empty ? {empty}", empty = preview.is_empty());
+        }
         self.current_tab_mut().window.reset(preview.len());
         self.current_tab_mut().preview = preview;
     }
@@ -1628,8 +1654,7 @@ impl Status {
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
         log_info!("custom {string}");
-        let parser = ShellCommandParser::new(string);
-        let mut args = parser.compute(self)?;
+        let mut args = shell_command_parser(string, self)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
         let output = execute_and_capture_output_without_check(command, &args)?;

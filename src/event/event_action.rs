@@ -591,11 +591,11 @@ impl EventAction {
     pub fn shell_command(status: &mut Status) -> Result<()> {
         if matches!(
             status.current_tab().menu_mode,
-            Menu::InputSimple(InputSimple::Shell)
+            Menu::InputSimple(InputSimple::ShellCommand)
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Shell))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::ShellCommand))
     }
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
@@ -965,7 +965,7 @@ impl EventAction {
             if status.focus.is_file() {
                 Self::enter_file(status)?;
             } else {
-                LeaveMenu::leave_edit_mode(status, binds)?;
+                LeaveMenu::leave_menu(status, binds)?;
             }
         };
         Ok(())
@@ -1138,7 +1138,7 @@ impl EventAction {
         if status.focus.is_file() {
             Self::enter_file(status)
         } else {
-            LeaveMenu::leave_edit_mode(status, binds)
+            LeaveMenu::leave_menu(status, binds)
         }
     }
 

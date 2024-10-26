@@ -173,10 +173,6 @@ pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
     Ok(std::fs::canonicalize(expanded_target)?)
 }
 
-pub fn args_is_empty(args: &[String]) -> bool {
-    args.is_empty() || args[0] == *""
-}
-
 /// True if the executable is "sudo"
 pub fn is_sudo_command(executable: &str) -> bool {
     matches!(executable, "sudo")

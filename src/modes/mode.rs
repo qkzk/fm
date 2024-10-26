@@ -114,7 +114,7 @@ pub enum InputSimple {
     /// Input a password (chars a replaced by *)
     Password(Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
-    Shell,
+    ShellCommand,
     /// Mount a remote directory with sshfs
     Remote,
     /// Create a new file in the current cloud
@@ -131,7 +131,7 @@ impl fmt::Display for InputSimple {
             Self::RegexMatch => write!(f, "Regex:   "),
             Self::SetNvimAddr => write!(f, "Neovim:  "),
             Self::CloudNewdir => write!(f, "Newdir:  "),
-            Self::Shell => write!(f, "Shell:   "),
+            Self::ShellCommand => write!(f, "Shell:   "),
             Self::Sort => {
                 write!(f, "Sort: ")
             }
@@ -169,7 +169,7 @@ impl InputSimple {
             Self::RegexMatch => &REGEX_LINES,
             Self::Rename => &RENAME_LINES,
             Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
-            Self::Shell => &SHELL_LINES,
+            Self::ShellCommand => &SHELL_LINES,
             Self::Sort => &SORT_LINES,
             Self::Remote => &REMOTE_LINES,
             Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
@@ -189,12 +189,12 @@ impl Leave for InputSimple {
     fn must_refresh(&self) -> bool {
         !matches!(
             self,
-            Self::Shell | Self::Filter | Self::Password(_, _) | Self::Sort
+            Self::ShellCommand | Self::Filter | Self::Password(_, _) | Self::Sort
         )
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Shell | Self::Password(_, _) | Self::Sort)
+        !matches!(self, Self::ShellCommand | Self::Password(_, _) | Self::Sort)
     }
 }
 

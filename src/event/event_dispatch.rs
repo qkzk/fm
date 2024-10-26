@@ -173,11 +173,11 @@ impl EventDispatcher {
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
 
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
-                LeaveMenu::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_menu(status, &self.binds)
             }
 
             Navigate::Context if status.menu.context_from_char(c) => {
-                LeaveMenu::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_menu(status, &self.binds)
             }
 
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
