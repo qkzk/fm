@@ -1354,7 +1354,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] doubleclick replaced by middleclick
 - [x] rectify all u16 <-> usize conversions
 - [x] FIX border colors is applied to text styled with empty style.
-- [ ] BUG: when a resize occur, selection can be out of window
+- [x] FIX: when a resize occur, menu selection can be out of window
 - [ ] refactor status.get_correct_fileinfo_for_preview
 - [x] FIX shell commands with strings aren't parsed correctly...
   - [x] lexer & parser of shell commands with sudo, redirection work

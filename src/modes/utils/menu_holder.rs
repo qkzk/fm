@@ -103,6 +103,13 @@ impl MenuHolder {
         self.sudo_command = None;
     }
 
+    pub fn resize(&mut self, menu_mode: Menu, height: usize) {
+        self.window.set_height(height);
+        if let Menu::Navigate(_) = menu_mode {
+            self.window.scroll_to(self.index(menu_mode))
+        }
+    }
+
     /// Fill the input string with the currently selected completion.
     pub fn input_complete(&mut self, tab: &mut Tab) -> Result<()> {
         self.fill_completion(tab);

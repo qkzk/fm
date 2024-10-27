@@ -530,7 +530,10 @@ impl Status {
         self.tabs[0].set_height(height_usize);
         self.tabs[1].set_height(height_usize);
         self.fuzzy_resize(height_usize);
-        self.menu.window.set_height(self.second_window_height()?);
+        self.menu.resize(
+            self.tabs[self.index].menu_mode,
+            self.second_window_height()?,
+        );
         self.refresh_status()
     }
 
