@@ -1563,13 +1563,6 @@ impl Display {
         Self::draw_n_borders(2, borders, f, wins)
     }
 
-    /// Used to force a display of the cursor before leaving the application.
-    /// Most of the times we don't need a cursor and it's hidden. We have to
-    /// do it unless the shell won't display a cursor anymore.
-    pub fn show_cursor(&mut self) -> Result<()> {
-        Ok(self.term.show_cursor()?)
-    }
-
     fn horizontal_split(&self, rect: Rect) -> Vec<Rect> {
         let left_rect = Rect::new(rect.x, rect.y, rect.width / 2, rect.height);
         let right_rect = Rect::new(rect.x + rect.width / 2, rect.y, rect.width / 2, rect.height);

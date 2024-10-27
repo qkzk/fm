@@ -17,6 +17,10 @@ pub struct Displayer {
     handle: thread::JoinHandle<Result<()>>,
 }
 
+/// Is responsible for running the display thread.
+/// Rendering is done at 30 fps if possible.
+/// It holds a transmitter used to ask the thread to stop and an handle to this thread.
+/// It's usefull to ensure the terminal is reset properly which should always be the case.
 impl Displayer {
     const THIRTY_PER_SECONDS_IN_MILLIS: u64 = 33;
 
@@ -29,7 +33,6 @@ impl Displayer {
                 match rx.try_recv() {
                     Ok(_) | Err(TryRecvError::Disconnected) => {
                         crate::log_info!("terminating displayer");
-                        let _ = display.show_cursor();
                         display.restore_terminal()?;
                         drop(display);
                         break;
