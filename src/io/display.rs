@@ -5,6 +5,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
+use nucleo::Matcher;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Position, Rect, Size},
@@ -16,10 +17,12 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
-    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
-    HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
-    Preview, SecondLine, Selectable, TLine, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+    highlighted_text, parse_input_mode, BinaryContent, Content, ContentWindow,
+    Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
+    MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
+    Text, TextKind, Trash, Tree, Ueber,
 };
 use crate::{
     app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
@@ -33,10 +36,6 @@ use crate::{
 use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
     modes::Input,
-};
-use crate::{
-    io::{read_last_log_line, DrawMenu},
-    modes::highlight_line,
 };
 
 trait LimitWidth {
@@ -277,7 +276,7 @@ impl<'a> Files<'a> {
             DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, rect),
             DisplayMode::Tree => TreeDisplay::new(self).draw(f, rect),
             DisplayMode::Preview => PreviewDisplay::new(self).draw(f, rect),
-            DisplayMode::Fuzzy => FuzzyDisplay::new(self).draw(f, rect),
+            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, rect),
         }
     }
 
@@ -329,11 +328,11 @@ struct FuzzyDisplay<'a> {
     status: &'a Status,
 }
 
-impl<'a> Draw for FuzzyDisplay<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect) {
-        self.fuzzy(f, rect)
-    }
-}
+// impl<'a> Draw for FuzzyDisplay<'a> {
+//     fn draw(&self, f: &mut Frame, rect: &Rect) {
+//         self.fuzzy(f, rect)
+//     }
+// }
 
 impl<'a> FuzzyDisplay<'a> {
     fn new(files: &'a Files) -> Self {
@@ -342,7 +341,7 @@ impl<'a> FuzzyDisplay<'a> {
         }
     }
 
-    fn fuzzy(&self, f: &mut Frame, rect: &Rect) {
+    fn fuzzy(&mut self, f: &mut Frame, rect: &Rect) {
         let Some(fuzzy) = &self.status.fuzzy else {
             return;
         };
@@ -359,7 +358,7 @@ impl<'a> FuzzyDisplay<'a> {
         f.render_widget(match_count_paragraph, rects[0]);
 
         // Draw the matched items
-        self.paragraph_matches(f, rects[2], fuzzy);
+        self.render_matches(f, rects[2], fuzzy);
         // f.render_widget(items_paragraph, rects[2]);
         self.draw_prompt(fuzzy, f, rects[3]);
     }
@@ -434,13 +433,17 @@ impl<'a> FuzzyDisplay<'a> {
             .block(Block::default().borders(Borders::NONE))
     }
 
-    fn paragraph_matches(&self, f: &mut Frame, rect: Rect, fuzzy: &FuzzyFinder<String>) {
+    fn render_matches(&mut self, f: &mut Frame, rect: Rect, fuzzy: &FuzzyFinder<String>) {
         let snapshot = fuzzy.matcher.snapshot();
         let (top, bottom) = fuzzy.top_bottom();
         let mut indices = vec![];
-        let mut matcher = nucleo::Matcher::default();
+        // TODO: make matcher static. See helix for a complicated way.
+        let mut matcher = Matcher::default();
+        if fuzzy.kind.is_file() {
+            matcher.config.set_match_paths();
+        }
         snapshot
-            .matched_items(top as u32..bottom as u32)
+            .matched_items(top..bottom)
             .enumerate()
             .for_each(|(index, t)| {
                 snapshot.pattern().column_pattern(0).indices(
@@ -448,33 +451,26 @@ impl<'a> FuzzyDisplay<'a> {
                     &mut matcher,
                     &mut indices,
                 );
-                indices.sort_unstable();
-                indices.dedup();
-                let highlights = indices.drain(..);
                 let text = t.matcher_columns[0].to_string();
-                let mut line_rect = rect;
-                line_rect.y += index as u16;
-                let line = highlight_line(&text, highlights, index + top == fuzzy.index);
-
+                let highlights_usize = Self::highlights_indices(&mut indices);
+                let line =
+                    highlighted_text(&text, &highlights_usize, index as u32 + top == fuzzy.index);
+                let line_rect = Self::line_rect(rect, index);
                 line.render(line_rect, f.buffer_mut());
-                // let text = format_display(&t.matcher_columns[0], highlights);
-                // text
             });
     }
 
-    fn selected_line(render: &str) -> Line<'static> {
-        Line::from(vec![Span::raw("> "), Span::raw(render.to_owned())])
-            .black()
-            .bg(MENU_STYLES
-                .get()
-                .expect("MENU_STYLES should be set")
-                .palette_1
-                .fg
-                .unwrap())
+    fn highlights_indices(indices: &mut Vec<u32>) -> Vec<usize> {
+        indices.sort_unstable();
+        indices.dedup();
+        let highlights = indices.drain(..);
+        highlights.map(|index| index as usize).collect()
     }
 
-    fn non_selected_line(render: &str) -> Line<'static> {
-        Line::from(vec![Span::raw("  "), Span::raw(render.to_owned())]).gray()
+    fn line_rect(rect: Rect, index: usize) -> Rect {
+        let mut line_rect = rect;
+        line_rect.y += index as u16;
+        line_rect
     }
 }
 

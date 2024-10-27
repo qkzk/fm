@@ -1014,7 +1014,7 @@ impl Status {
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
             Some(fuzzy) => {
-                let _ = fuzzy.tick(false);
+                fuzzy.tick(false);
             }
             None => (),
         }

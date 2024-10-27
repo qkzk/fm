@@ -9,8 +9,7 @@ use std::{
 use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 use ratatui::{
-    prelude::Stylize,
-    style::Style,
+    style::{Color, Modifier, Style},
     text::{Line, Span},
 };
 use tokio::process::Command as TokioCommand;
@@ -34,6 +33,12 @@ pub enum FuzzyKind {
     Action,
 }
 
+impl FuzzyKind {
+    pub fn is_file(&self) -> bool {
+        matches!(self, Self::File)
+    }
+}
+
 pub struct FuzzyFinder<String: Sync + Send + 'static> {
     /// kind of fuzzy:
     /// Line (match lines into text file),
@@ -42,21 +47,20 @@ pub struct FuzzyFinder<String: Sync + Send + 'static> {
     pub kind: FuzzyKind,
     /// The fuzzy matcher
     pub matcher: Nucleo<String>,
-    pub selected: Option<std::string::String>,
-    /// matched strings
-    pub content: Vec<String>,
+    /// matched string
+    selected: Option<std::string::String>,
     /// typed input by the user
     pub input: Input,
     /// number of parsed item
-    pub item_count: usize,
+    pub item_count: u32,
     /// number of matched item
-    pub matched_item_count: usize,
+    pub matched_item_count: u32,
     /// selected index. Should always been smaller than matched_item_count
-    pub index: usize,
+    pub index: u32,
     /// index of the top displayed element in the matcher
-    pub top: usize,
+    top: u32,
     /// height of the terminal window, header & footer included
-    pub height: usize,
+    height: u32,
 }
 
 impl<String: Sync + Send + 'static> Default for FuzzyFinder<String>
@@ -95,7 +99,6 @@ where
     fn build(config: Config, kind: FuzzyKind) -> Self {
         Self {
             matcher: Self::build_nucleo(config),
-            content: vec![],
             selected: None,
             item_count: 0,
             matched_item_count: 0,
@@ -118,7 +121,7 @@ where
     /// Set the terminal height of the fuzzy picker.
     /// It should always be called after new
     pub fn set_height(mut self, height: usize) -> Self {
-        self.height = height;
+        self.height = height as u32;
         self
     }
 
@@ -145,7 +148,7 @@ where
         )
     }
 
-    fn index_clamped(&self, matched_item_count: usize) -> usize {
+    fn index_clamped(&self, matched_item_count: u32) -> u32 {
         if matched_item_count == 0 {
             0
         } else {
@@ -154,44 +157,22 @@ where
     }
 
     /// tick the matcher.
-    /// refresh the items if the status changed if force = true.
-    pub fn tick(&mut self, force: bool) -> Vec<String> {
+    /// refresh the selection if the status changed or if force = true.
+    pub fn tick(&mut self, force: bool) {
         if self.matcher.tick(10).changed || force {
             self.tick_forced()
-        } else {
-            vec![]
         }
     }
 
-    /// Refresh the content, storing elements around the currently selected.
-    fn tick_forced(&mut self) -> Vec<String> {
+    /// Refresh the content, storing selection.
+    fn tick_forced(&mut self) {
         let snapshot = self.matcher.snapshot();
-        self.item_count = snapshot.item_count() as usize;
-        self.matched_item_count = snapshot.matched_item_count() as usize;
+        self.item_count = snapshot.item_count();
+        self.matched_item_count = snapshot.matched_item_count();
         self.index = self.index_clamped(self.matched_item_count);
-        let (top, bottom) = self.top_bottom();
-        self.top = top;
-        let mut indices = vec![];
-        let mut matcher = nucleo::Matcher::default();
-        snapshot
-            .matched_items(top as u32..bottom as u32)
-            .enumerate()
-            .map(|(index, t)| {
-                snapshot.pattern().column_pattern(0).indices(
-                    t.matcher_columns[0].slice(..),
-                    &mut matcher,
-                    &mut indices,
-                );
-                indices.sort_unstable();
-                indices.dedup();
-                let highlights = indices.drain(..);
-                let text = format_display(&t.matcher_columns[0], highlights);
-                if index == self.index {
-                    self.selected = Some(text.to_owned());
-                }
-                text
-            })
-            .collect()
+        if let Some(item) = snapshot.get_matched_item(self.index) {
+            self.selected = Some(format_display(&item.matcher_columns[0]).to_owned());
+        };
     }
 
     /// Calculate the first & last matching index which should be stored in content.
@@ -208,61 +189,56 @@ where
     ///
     /// Scrolling is done only at top or bottom, not in the middle of the screen.
     /// It feels more natural.
-    pub fn top_bottom(&self) -> (usize, usize) {
-        if self.matched_item_count + ContentWindow::WINDOW_PADDING < self.height {
+    pub fn top_bottom(&self) -> (u32, u32) {
+        let used_height = self
+            .height
+            .saturating_sub(ContentWindow::WINDOW_PADDING_U32);
+        if self.matched_item_count < used_height {
             // not enough items to fill the display, take everything
             (0, self.matched_item_count)
-        } else if self.index < self.top + ContentWindow::WINDOW_PADDING {
+        } else if self.index < self.top + ContentWindow::WINDOW_PADDING_U32 {
             // scroll up by one
             (
                 self.top.saturating_sub(1),
-                min(
-                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING),
-                    self.matched_item_count,
-                ),
+                min(self.top + used_height, self.matched_item_count),
             )
-        } else if self.index + 2 * ContentWindow::WINDOW_PADDING > self.top + self.height {
+        } else if self.index + ContentWindow::WINDOW_PADDING_U32 > self.top + used_height {
             // scroll down by one
             (
                 self.top + 1,
-                min(
-                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING) + 1,
-                    self.matched_item_count,
-                ),
+                min(self.top + used_height + 1, self.matched_item_count),
             )
         } else {
             // don't move
             (
                 self.top,
-                min(
-                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING),
-                    self.matched_item_count,
-                ),
+                min(self.top + used_height, self.matched_item_count),
             )
         }
     }
 
     /// Set the new height and refresh the content.
     pub fn resize(&mut self, height: usize) {
-        self.height = height;
+        self.height = height as u32;
         self.tick(true);
     }
 
     /// Returns the selected element, if its index is valid.
     /// It should never return `None` if the content isn't empty.
     pub fn pick(&self) -> Option<std::string::String> {
-        // TODO remove logging
+        #[cfg(debug_assertions)]
         self.log();
         self.selected.to_owned()
     }
 
-    // TODO remove
+    #[cfg(debug_assertions)]
     fn log(&self) {
         crate::log_info!(
-            "index {idx} top {top} offset {off} - matched {mic} - items {itc} - height {hei}",
+            "index {idx} top {top} offset {off} - top_bot {top_bot:?} - matched {mic} - items {itc} - height {hei}",
             idx = self.index,
             top = self.top,
             off = self.index.saturating_sub(self.top),
+            top_bot = self.top_bottom(),
             mic = self.matched_item_count,
             itc = self.item_count,
             hei = self.height,
@@ -274,25 +250,25 @@ impl FuzzyFinder<String> {
     fn select_next(&mut self) {
         self.index += 1;
         self.tick(true);
-        // TODO remove logging
-        self.log()
+        #[cfg(debug_assertions)]
+        self.log();
     }
 
     fn select_prev(&mut self) {
         self.index = self.index.saturating_sub(1);
         self.tick(true);
-        // TODO remove logging
-        self.log()
+        #[cfg(debug_assertions)]
+        self.log();
     }
 
     fn select_clic(&mut self, row: u16) {
-        let row = row as usize;
-        if row <= ContentWindow::WINDOW_PADDING || row > self.height {
+        let row = row as u32;
+        if row <= ContentWindow::WINDOW_PADDING_U32 || row > self.height {
             return;
         }
-        self.index = self.top + row - ContentWindow::WINDOW_PADDING - 1;
-        // TODO remove logging
-        self.log()
+        self.index = self.top + row - (ContentWindow::WINDOW_PADDING_U32) - 1;
+        #[cfg(debug_assertions)]
+        self.log();
     }
 
     fn page_up(&mut self) {
@@ -306,9 +282,6 @@ impl FuzzyFinder<String> {
 
     fn page_down(&mut self) {
         for _ in 0..10 {
-            if self.index + 1 >= self.content.len() {
-                break;
-            }
             self.select_next()
         }
     }
@@ -342,9 +315,7 @@ impl FuzzyFinder<String> {
         let injector = self.injector();
         spawn(move || {
             for line in help.lines() {
-                let _ = injector.push(line.to_owned(), |line, cols| {
-                    cols[0] = line.as_str().into();
-                });
+                injector.push_line(line);
             }
         });
     }
@@ -363,11 +334,23 @@ pub fn parse_line_output(item: &str) -> Result<PathBuf> {
     ))?)
 }
 
+trait PushLine {
+    fn push_line(&self, line: &str);
+}
+
+impl PushLine for Injector<String> {
+    fn push_line(&self, line: &str) {
+        let _ = self.push(line.to_owned(), |line, cols| {
+            cols[0] = line.as_str().into();
+        });
+    }
+}
+
 /// Format a [`Utf32String`] for displaying. Currently:
 /// - Delete control characters.
 /// - Truncates the string to an appropriate length.
 /// - Replaces any newline characters with spaces.
-fn format_display(display: &Utf32String, highlights: std::vec::Drain<'_, u32>) -> String {
+fn format_display(display: &Utf32String) -> String {
     display
         .slice(..)
         .chars()
@@ -379,76 +362,97 @@ fn format_display(display: &Utf32String, highlights: std::vec::Drain<'_, u32>) -
         .collect::<String>()
 }
 
-pub fn highlight_line<'a>(
-    text: &'a str,
-    highlights: std::vec::Drain<'_, u32>,
-    is_match: bool,
-) -> Line<'a> {
-    let highlights_usize: Vec<usize> = highlights.map(|u_32| u_32 as usize).collect();
-    let default_style = Style::new().gray().on_black();
-    let highlighted_style = Style::new().cyan().on_black();
-    create_highlighted_text(
-        text,
-        &highlights_usize,
-        default_style,
-        highlighted_style,
-        is_match,
-    )
-}
-
-fn create_highlighted_text<'a>(
-    text: &'a str,
-    highlighted: &[usize],
-    default_style: Style,
-    highlighted_style: Style,
-    is_match: bool,
-) -> Line<'a> {
-    let mut spans = vec![];
-    let mut current_segment = String::new();
-    let mut current_style = default_style;
-
+pub fn highlighted_text<'a>(text: &'a str, highlighted: &[usize], is_selected: bool) -> Line<'a> {
+    let mut spans = create_spans(is_selected);
+    let mut curr_segment = String::new();
     let mut highlight_indices = highlighted.iter().copied().peekable();
     let mut next_highlight = highlight_indices.next();
 
-    for (i, grapheme) in text.graphemes(true).enumerate() {
-        if Some(i) == next_highlight {
-            // Ajouter le segment courant avec le style par défaut
-            if !current_segment.is_empty() {
-                let mut sp = Span::styled(current_segment.clone(), current_style);
-                if is_match {
-                    sp = sp.reversed();
-                }
-                spans.push(sp);
-                current_segment.clear();
+    for (index, grapheme) in text.graphemes(true).enumerate() {
+        if Some(index) == next_highlight {
+            if !curr_segment.is_empty() {
+                push_clear(&mut spans, &mut curr_segment, is_selected, false);
             }
-            // Passer au style "highlighted" pour ce graphème
-            current_segment.push_str(grapheme);
-            current_style = highlighted_style;
-            let mut sp = Span::styled(current_segment.clone(), current_style);
-            if is_match {
-                sp = sp.reversed();
-            }
-            spans.push(sp);
-            current_segment.clear();
-            current_style = default_style;
-
-            // Avancer vers le prochain indice
+            curr_segment.push_str(grapheme);
+            push_clear(&mut spans, &mut curr_segment, is_selected, true);
             next_highlight = highlight_indices.next();
         } else {
-            current_segment.push_str(grapheme);
+            curr_segment.push_str(grapheme);
         }
     }
 
-    // Ajouter tout segment restant
-    if !current_segment.is_empty() {
-        let mut sp = Span::styled(current_segment, current_style);
-        if is_match {
-            sp = sp.reversed();
-        }
-        spans.push(sp);
+    if !curr_segment.is_empty() {
+        spans.push(create_span(curr_segment, is_selected, false));
     }
 
-    let ret = Line::from(spans);
-    crate::log_info!("texte: {ret:?}");
-    ret
+    Line::from(spans)
+}
+
+fn push_clear(
+    spans: &mut Vec<Span>,
+    curr_segment: &mut String,
+    is_selected: bool,
+    is_highlighted: bool,
+) {
+    spans.push(create_span(
+        curr_segment.clone(),
+        is_selected,
+        is_highlighted,
+    ));
+    curr_segment.clear();
+}
+
+static DEFAULT_STYLE: Style = Style {
+    fg: Some(Color::Gray),
+    bg: None,
+    add_modifier: Modifier::empty(),
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static SELECTED: Style = Style {
+    fg: Some(Color::Black),
+    bg: Some(Color::Cyan),
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static HIGHLIGHTED: Style = Style {
+    fg: Some(Color::White),
+    bg: None,
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static HIGHLIGHTED_SELECTED: Style = Style {
+    fg: Some(Color::White),
+    bg: Some(Color::Cyan),
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+/// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
+static ARRAY_STYLES: [Style; 4] = [DEFAULT_STYLE, HIGHLIGHTED, SELECTED, HIGHLIGHTED_SELECTED];
+
+static SPACER_DEFAULT: &str = "  ";
+static SPACER_SELECTED: &str = "> ";
+
+fn create_spans(is_selected: bool) -> Vec<Span<'static>> {
+    vec![if is_selected {
+        Span::styled(SPACER_SELECTED, SELECTED)
+    } else {
+        Span::styled(SPACER_DEFAULT, DEFAULT_STYLE)
+    }]
+}
+
+fn choose_style(is_selected: bool, is_highlighted: bool) -> Style {
+    let index = ((is_selected as usize) << 1) + is_highlighted as usize;
+    ARRAY_STYLES[index]
+}
+
+fn create_span<'a>(curr_segment: String, is_selected: bool, is_highlighted: bool) -> Span<'a> {
+    Span::styled(curr_segment, choose_style(is_selected, is_highlighted))
 }
