@@ -16,7 +16,6 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
     HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
@@ -34,6 +33,10 @@ use crate::{
 use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
     modes::Input,
+};
+use crate::{
+    io::{read_last_log_line, DrawMenu},
+    modes::highlight_line,
 };
 
 trait LimitWidth {
@@ -356,8 +359,8 @@ impl<'a> FuzzyDisplay<'a> {
         f.render_widget(match_count_paragraph, rects[0]);
 
         // Draw the matched items
-        let items_paragraph = self.paragraph_matches(fuzzy);
-        f.render_widget(items_paragraph, rects[2]);
+        self.paragraph_matches(f, rects[2], fuzzy);
+        // f.render_widget(items_paragraph, rects[2]);
         self.draw_prompt(fuzzy, f, rects[3]);
     }
 
@@ -431,18 +434,32 @@ impl<'a> FuzzyDisplay<'a> {
             .block(Block::default().borders(Borders::NONE))
     }
 
-    fn paragraph_matches(&self, fuzzy: &FuzzyFinder<String>) -> Paragraph {
-        let mut items: Vec<Line> = vec![];
+    fn paragraph_matches(&self, f: &mut Frame, rect: Rect, fuzzy: &FuzzyFinder<String>) {
+        let snapshot = fuzzy.matcher.snapshot();
+        let (top, bottom) = fuzzy.top_bottom();
+        let mut indices = vec![];
+        let mut matcher = nucleo::Matcher::default();
+        snapshot
+            .matched_items(top as u32..bottom as u32)
+            .enumerate()
+            .for_each(|(index, t)| {
+                snapshot.pattern().column_pattern(0).indices(
+                    t.matcher_columns[0].slice(..),
+                    &mut matcher,
+                    &mut indices,
+                );
+                indices.sort_unstable();
+                indices.dedup();
+                let highlights = indices.drain(..);
+                let text = t.matcher_columns[0].to_string();
+                let mut line_rect = rect;
+                line_rect.y += index as u16;
+                let line = highlight_line(&text, highlights, index + top == fuzzy.index);
 
-        for (index, item) in fuzzy.content.iter().enumerate() {
-            let item_spans = if index + fuzzy.top == fuzzy.index {
-                Self::selected_line(item)
-            } else {
-                Self::non_selected_line(item)
-            };
-            items.push(item_spans);
-        }
-        Paragraph::new(items)
+                line.render(line_rect, f.buffer_mut());
+                // let text = format_display(&t.matcher_columns[0], highlights);
+                // text
+            });
     }
 
     fn selected_line(render: &str) -> Line<'static> {

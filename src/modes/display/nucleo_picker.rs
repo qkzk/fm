@@ -8,7 +8,13 @@ use std::{
 
 use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
+use ratatui::{
+    prelude::Stylize,
+    style::Style,
+    text::{Line, Span},
+};
 use tokio::process::Command as TokioCommand;
+use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
 use crate::io::inject;
@@ -35,7 +41,8 @@ pub struct FuzzyFinder<String: Sync + Send + 'static> {
     /// Action (match an action)
     pub kind: FuzzyKind,
     /// The fuzzy matcher
-    matcher: Nucleo<String>,
+    pub matcher: Nucleo<String>,
+    pub selected: Option<std::string::String>,
     /// matched strings
     pub content: Vec<String>,
     /// typed input by the user
@@ -89,6 +96,7 @@ where
         Self {
             matcher: Self::build_nucleo(config),
             content: vec![],
+            selected: None,
             item_count: 0,
             matched_item_count: 0,
             index: 0,
@@ -147,14 +155,16 @@ where
 
     /// tick the matcher.
     /// refresh the items if the status changed if force = true.
-    pub fn tick(&mut self, force: bool) {
+    pub fn tick(&mut self, force: bool) -> Vec<String> {
         if self.matcher.tick(10).changed || force {
-            self.tick_forced();
+            self.tick_forced()
+        } else {
+            vec![]
         }
     }
 
     /// Refresh the content, storing elements around the currently selected.
-    fn tick_forced(&mut self) {
+    fn tick_forced(&mut self) -> Vec<String> {
         let snapshot = self.matcher.snapshot();
         self.item_count = snapshot.item_count() as usize;
         self.matched_item_count = snapshot.matched_item_count() as usize;
@@ -163,9 +173,10 @@ where
         self.top = top;
         let mut indices = vec![];
         let mut matcher = nucleo::Matcher::default();
-        self.content = snapshot
+        snapshot
             .matched_items(top as u32..bottom as u32)
-            .map(|t| {
+            .enumerate()
+            .map(|(index, t)| {
                 snapshot.pattern().column_pattern(0).indices(
                     t.matcher_columns[0].slice(..),
                     &mut matcher,
@@ -174,9 +185,13 @@ where
                 indices.sort_unstable();
                 indices.dedup();
                 let highlights = indices.drain(..);
-                format_display(&t.matcher_columns[0], highlights)
+                let text = format_display(&t.matcher_columns[0], highlights);
+                if index == self.index {
+                    self.selected = Some(text.to_owned());
+                }
+                text
             })
-            .collect();
+            .collect()
     }
 
     /// Calculate the first & last matching index which should be stored in content.
@@ -193,7 +208,7 @@ where
     ///
     /// Scrolling is done only at top or bottom, not in the middle of the screen.
     /// It feels more natural.
-    fn top_bottom(&self) -> (usize, usize) {
+    pub fn top_bottom(&self) -> (usize, usize) {
         if self.matched_item_count + ContentWindow::WINDOW_PADDING < self.height {
             // not enough items to fill the display, take everything
             (0, self.matched_item_count)
@@ -202,7 +217,7 @@ where
             (
                 self.top.saturating_sub(1),
                 min(
-                    self.top + self.height.saturating_sub(1),
+                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING),
                     self.matched_item_count,
                 ),
             )
@@ -210,13 +225,19 @@ where
             // scroll down by one
             (
                 self.top + 1,
-                min(self.top + self.height + 1, self.matched_item_count),
+                min(
+                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING) + 1,
+                    self.matched_item_count,
+                ),
             )
         } else {
             // don't move
             (
                 self.top,
-                min(self.top + self.height, self.matched_item_count),
+                min(
+                    self.top + self.height.saturating_sub(ContentWindow::WINDOW_PADDING),
+                    self.matched_item_count,
+                ),
             )
         }
     }
@@ -229,10 +250,10 @@ where
 
     /// Returns the selected element, if its index is valid.
     /// It should never return `None` if the content isn't empty.
-    pub fn pick(&self) -> Option<&String> {
+    pub fn pick(&self) -> Option<std::string::String> {
         // TODO remove logging
         self.log();
-        self.content.get(self.index.saturating_sub(self.top))
+        self.selected.to_owned()
     }
 
     // TODO remove
@@ -347,19 +368,87 @@ pub fn parse_line_output(item: &str) -> Result<PathBuf> {
 /// - Truncates the string to an appropriate length.
 /// - Replaces any newline characters with spaces.
 fn format_display(display: &Utf32String, highlights: std::vec::Drain<'_, u32>) -> String {
-    format!(
-        "{ind} {display}",
-        ind = &highlights
-            .map(|index| index.to_string() + " ")
-            .collect::<String>(),
-        display = display
-            .slice(..)
-            .chars()
-            .filter(|ch| !ch.is_control())
-            .map(|ch| match ch {
-                '\n' => ' ',
-                s => s,
-            })
-            .collect::<String>()
+    display
+        .slice(..)
+        .chars()
+        .filter(|ch| !ch.is_control())
+        .map(|ch| match ch {
+            '\n' => ' ',
+            s => s,
+        })
+        .collect::<String>()
+}
+
+pub fn highlight_line<'a>(
+    text: &'a str,
+    highlights: std::vec::Drain<'_, u32>,
+    is_match: bool,
+) -> Line<'a> {
+    let highlights_usize: Vec<usize> = highlights.map(|u_32| u_32 as usize).collect();
+    let default_style = Style::new().gray().on_black();
+    let highlighted_style = Style::new().cyan().on_black();
+    create_highlighted_text(
+        text,
+        &highlights_usize,
+        default_style,
+        highlighted_style,
+        is_match,
     )
+}
+
+fn create_highlighted_text<'a>(
+    text: &'a str,
+    highlighted: &[usize],
+    default_style: Style,
+    highlighted_style: Style,
+    is_match: bool,
+) -> Line<'a> {
+    let mut spans = vec![];
+    let mut current_segment = String::new();
+    let mut current_style = default_style;
+
+    let mut highlight_indices = highlighted.iter().copied().peekable();
+    let mut next_highlight = highlight_indices.next();
+
+    for (i, grapheme) in text.graphemes(true).enumerate() {
+        if Some(i) == next_highlight {
+            // Ajouter le segment courant avec le style par défaut
+            if !current_segment.is_empty() {
+                let mut sp = Span::styled(current_segment.clone(), current_style);
+                if is_match {
+                    sp = sp.reversed();
+                }
+                spans.push(sp);
+                current_segment.clear();
+            }
+            // Passer au style "highlighted" pour ce graphème
+            current_segment.push_str(grapheme);
+            current_style = highlighted_style;
+            let mut sp = Span::styled(current_segment.clone(), current_style);
+            if is_match {
+                sp = sp.reversed();
+            }
+            spans.push(sp);
+            current_segment.clear();
+            current_style = default_style;
+
+            // Avancer vers le prochain indice
+            next_highlight = highlight_indices.next();
+        } else {
+            current_segment.push_str(grapheme);
+        }
+    }
+
+    // Ajouter tout segment restant
+    if !current_segment.is_empty() {
+        let mut sp = Span::styled(current_segment, current_style);
+        if is_match {
+            sp = sp.reversed();
+        }
+        spans.push(sp);
+    }
+
+    let ret = Line::from(spans);
+    crate::log_info!("texte: {ret:?}");
+    ret
 }

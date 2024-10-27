@@ -615,7 +615,7 @@ impl Status {
         let users = &left_tab.users;
         if left_tab.display_mode.is_fuzzy() {
             if let Some(selection) = self.fuzzy_current_selection() {
-                return FileInfo::new(Path::new(selection), users);
+                return FileInfo::new(Path::new(&selection), users);
             }
         }
         match self.focus {
@@ -926,7 +926,7 @@ impl Status {
         Ok(())
     }
 
-    fn fuzzy_current_selection(&self) -> Option<&String> {
+    fn fuzzy_current_selection(&self) -> Option<std::string::String> {
         if let Some(fuzzy) = &self.fuzzy {
             fuzzy.pick()
         } else {
@@ -940,9 +940,9 @@ impl Status {
         };
         if let Some(pick) = fuzzy.pick() {
             match fuzzy.kind {
-                FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(pick))?,
-                FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(pick)?)?,
-                FuzzyKind::Action => self.fuzzy_send_event(pick)?,
+                FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(&pick))?,
+                FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(&pick)?)?,
+                FuzzyKind::Action => self.fuzzy_send_event(&pick)?,
             }
         } else {
             log_info!("Fuzzy had nothing to pick from");
@@ -1013,7 +1013,9 @@ impl Status {
 
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.tick(false),
+            Some(fuzzy) => {
+                let _ = fuzzy.tick(false);
+            }
             None => (),
         }
     }
