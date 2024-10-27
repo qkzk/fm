@@ -1355,7 +1355,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] rectify all u16 <-> usize conversions
 - [x] FIX border colors is applied to text styled with empty style.
 - [x] FIX: when a resize occur, menu selection can be out of window
-- [ ] refactor status.get_correct_fileinfo_for_preview
 - [x] FIX shell commands with strings aren't parsed correctly...
   - [x] lexer & parser of shell commands with sudo, redirection work
   - [x] output of shell commands (normal & sudo) is displayed properly
@@ -1366,6 +1365,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] cli info
 - [x] FIX: custom keybinds aren't displayed properly in help
 - [x] FIX: terminal reset after panic. Enables a panic hook which remove the need to enable backtraces.
+- [x] FIX preview in second pane preview attachment
+  - [x] refactor status.get_correct_fileinfo_for_preview
+  - [x] preview isn't updated for navigation (history, shortcut, marks)
 
 ## TODO
 

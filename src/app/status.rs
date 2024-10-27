@@ -90,6 +90,10 @@ impl Focus {
     pub fn index(&self) -> usize {
         *self as usize
     }
+
+    pub fn is_left_menu(&self) -> bool {
+        matches!(self, Self::LeftMenu)
+    }
 }
 
 /// Holds every mutable parameter of the application itself, except for
@@ -562,9 +566,10 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].menu_mode = Menu::Nothing;
-        let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+        let Some(fileinfo) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
+        log_info!("sending preview request");
         self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
         Ok(())
     }
@@ -588,9 +593,7 @@ impl Status {
     /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
     fn attach_preview(&mut self, path: PathBuf, preview: Preview, index: usize) -> Result<()> {
         let compared_index = self.pick_correct_tab_from(index)?;
-        if self.preview_has_wrong_path(compared_index, path.as_path())?
-            && !self.tabs[0].display_mode.is_fuzzy()
-        {
+        if !self.preview_has_correct_path(compared_index, path.as_path())? {
             return Ok(());
         }
         self.tabs[index].preview = preview;
@@ -608,33 +611,52 @@ impl Status {
         }
     }
 
-    fn preview_has_wrong_path(&self, compared_index: usize, path: &Path) -> Result<bool> {
-        Ok(self.tabs[compared_index].current_file()?.path.as_ref() != path)
+    /// Ok(true) if the preview should be used.
+    /// We only check if one of 3 conditions are true :
+    /// - are we in fuzzy mode in the compared_index tab ?
+    /// - are we in navigate menu in the compared_index ?
+    /// - is the path the current path ?
+    fn preview_has_correct_path(&self, compared_index: usize, path: &Path) -> Result<bool> {
+        let tab = &self.tabs[compared_index];
+        Ok(tab.display_mode.is_fuzzy()
+            || tab.menu_mode.is_navigate()
+            || tab.current_file()?.path.as_ref() == path)
     }
 
-    // TODO need a lot of refactoring, this is unreadable
-    fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
+    /// Look for the correct file_info to preview.
+    /// It depends on what the left tab is doing :
+    /// fuzzy mode ? its selection,
+    /// navigation (shortcut, marks or history) ? the selection,
+    /// otherwise, it's the current selection.
+    fn get_correct_fileinfo_for_preview(&self) -> Option<FileInfo> {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
         if left_tab.display_mode.is_fuzzy() {
-            if let Some(selection) = self.fuzzy_current_selection() {
-                return FileInfo::new(Path::new(&selection), users);
-            }
+            FileInfo::new(Path::new(&self.fuzzy_current_selection()?), users).ok()
+        } else if self.focus.is_left_menu() {
+            self.fileinfo_from_navigate(left_tab, users)
+        } else {
+            left_tab.current_file().ok()
         }
-        match self.focus {
-            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::Marks(_))) => {
-                let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
-                FileInfo::new(mark_path, users)
+    }
+
+    /// FileInfo to be previewed depending of what is done in this tab.
+    /// If this tab is navigating in history, shortcut or marks, we return the selection.
+    /// Otherwise, we return the current file.
+    fn fileinfo_from_navigate(&self, tab: &Tab, users: &Users) -> Option<FileInfo> {
+        match tab.menu_mode {
+            Menu::Navigate(Navigate::History) => {
+                FileInfo::new(tab.history.content().get(tab.history.index())?, users).ok()
             }
-            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::Shortcut)) => {
-                let shortcut_path = &self.menu.shortcut.content()[self.menu.shortcut.index()];
-                FileInfo::new(shortcut_path, users)
+            Menu::Navigate(Navigate::Shortcut) => {
+                let short = &self.menu.shortcut;
+                FileInfo::new(short.content().get(short.index())?, users).ok()
             }
-            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::History)) => {
-                let history_path = &left_tab.history.content()[left_tab.history.index()];
-                FileInfo::new(history_path, users)
+            Menu::Navigate(Navigate::Marks(_)) => {
+                let (_, mark_path) = &self.menu.marks.content().get(self.menu.marks.index())?;
+                FileInfo::new(mark_path, users).ok()
             }
-            _ => left_tab.current_file(),
+            _ => tab.current_file().ok(),
         }
     }
 

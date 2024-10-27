@@ -358,6 +358,10 @@ impl Menu {
     pub fn is_nothing(&self) -> bool {
         matches!(self, Self::Nothing)
     }
+
+    pub fn is_navigate(&self) -> bool {
+        matches!(self, Self::Navigate(_))
+    }
 }
 
 impl Leave for Menu {
