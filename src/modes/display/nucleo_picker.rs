@@ -164,7 +164,9 @@ where
         }
     }
 
-    /// Refresh the content, storing selection.
+    /// Refresh the content, storing selection, number of items, matched items and updating the top index.
+    /// We need to store here the "top" since display can't update fuzzy (it receives a non mutable ref.).
+    /// Scrolling is impossible without the update of top once the new index is got.
     fn tick_forced(&mut self) {
         let snapshot = self.matcher.snapshot();
         self.item_count = snapshot.item_count();
@@ -173,10 +175,18 @@ where
         if let Some(item) = snapshot.get_matched_item(self.index) {
             self.selected = Some(format_display(&item.matcher_columns[0]).to_owned());
         };
+        self.update_top();
+    }
+
+    fn update_top(&mut self) {
+        let (top, _botom) = self.top_bottom();
+        self.top = top;
     }
 
     /// Calculate the first & last matching index which should be stored in content.
     /// It assumes the index can't change by more than one at a time.
+    /// Returning both values (top & bottom) allows to avoid mutating self here.
+    /// This method can be called in [`crate::io::Display`] to know what matches should be drawn.
     ///
     /// It should only be called after a refresh of the matcher to be sure
     /// the matched_item_count is correct.

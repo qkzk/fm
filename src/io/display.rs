@@ -328,11 +328,11 @@ struct FuzzyDisplay<'a> {
     status: &'a Status,
 }
 
-// impl<'a> Draw for FuzzyDisplay<'a> {
-//     fn draw(&self, f: &mut Frame, rect: &Rect) {
-//         self.fuzzy(f, rect)
-//     }
-// }
+impl<'a> Draw for FuzzyDisplay<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.fuzzy(f, rect)
+    }
+}
 
 impl<'a> FuzzyDisplay<'a> {
     fn new(files: &'a Files) -> Self {
@@ -341,29 +341,30 @@ impl<'a> FuzzyDisplay<'a> {
         }
     }
 
-    fn fuzzy(&mut self, f: &mut Frame, rect: &Rect) {
+    fn fuzzy(&self, f: &mut Frame, rect: &Rect) {
         let Some(fuzzy) = &self.status.fuzzy else {
             return;
         };
-        let rect = Rect {
+        let rects = Self::build_layout(rect);
+        self.draw_match_counts(fuzzy, f, rects[0]);
+        self.draw_matches(fuzzy, f, rects[2]);
+        self.draw_prompt(fuzzy, f, rects[3]);
+    }
+
+    fn build_layout(rect: &Rect) -> Vec<Rect> {
+        Self::split_layout(Self::build_main_rect(rect))
+    }
+
+    fn build_main_rect(rect: &Rect) -> Rect {
+        Rect {
             x: rect.x,
             y: rect.y + 2,
             width: rect.width,
             height: rect.height.saturating_sub(2),
-        };
-        let rects = Self::build_layout(rect);
-        // Draw the match counts at the top
-        let match_info = self.line_match_info(fuzzy);
-        let match_count_paragraph = Self::paragraph_match_count(match_info);
-        f.render_widget(match_count_paragraph, rects[0]);
-
-        // Draw the matched items
-        self.render_matches(f, rects[2], fuzzy);
-        // f.render_widget(items_paragraph, rects[2]);
-        self.draw_prompt(fuzzy, f, rects[3]);
+        }
     }
 
-    fn build_layout(area: Rect) -> Vec<Rect> {
+    fn split_layout(area: Rect) -> Vec<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -374,6 +375,13 @@ impl<'a> FuzzyDisplay<'a> {
             ])
             .split(area)
             .to_vec()
+    }
+
+    /// Draw the matched items
+    fn draw_match_counts(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+        let match_info = self.line_match_info(fuzzy);
+        let match_count_paragraph = Self::paragraph_match_count(match_info);
+        f.render_widget(match_count_paragraph, rect);
     }
 
     fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
@@ -433,7 +441,7 @@ impl<'a> FuzzyDisplay<'a> {
             .block(Block::default().borders(Borders::NONE))
     }
 
-    fn render_matches(&mut self, f: &mut Frame, rect: Rect, fuzzy: &FuzzyFinder<String>) {
+    fn draw_matches(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
         let snapshot = fuzzy.matcher.snapshot();
         let (top, bottom) = fuzzy.top_bottom();
         let mut indices = vec![];
