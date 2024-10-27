@@ -7,6 +7,17 @@ use sysinfo::Disks;
 use crate::common::{is_in_path, NVIM, SS};
 use crate::io::{execute_and_output, Args, Opener};
 
+/// Internal settings of the status.
+///
+/// Every setting which couldn't be attached elsewhere and is needed by the whole application.
+/// It knows:
+/// - if the content should be completely refreshed,
+/// - if the application has to quit,
+/// - the address of the nvim_server to send files to and if the application was launched from neovim,
+/// - which opener should be used for kind of files,
+/// - the height & width of the application,
+/// - basic informations about disks being used,
+/// - a copy queue to display informations about files beeing copied.
 pub struct InternalSettings {
     /// Do we have to clear the screen ?
     pub force_clear: bool,

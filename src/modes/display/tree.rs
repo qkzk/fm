@@ -202,6 +202,7 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
+/// A builder of [`Tree`] nodes.
 pub struct NodesBuilder<'a> {
     root_path: &'a Arc<Path>,
     max_depth: usize,

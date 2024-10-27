@@ -203,6 +203,14 @@ impl Internal {
     }
 }
 
+/// Used to open file externally (with other programs).
+/// Most of the files are "opened" this way, only archives which could be
+/// decompressed interally aren't.
+///
+/// It holds a path to the file (as a string, for convernience) and a
+/// flag set to true if the file is opened in a terminal.
+/// - without a terminal, the file is opened by its application,
+/// - with a terminal, it starts a new terminal (from configuration) and then the program.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct External(String, bool);
 

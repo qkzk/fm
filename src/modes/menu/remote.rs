@@ -2,6 +2,8 @@ use crate::common::{is_in_path, SSHFS_EXECUTABLE};
 use crate::io::execute_and_capture_output_with_path;
 use crate::{log_info, log_line};
 
+/// Used to remember the setting of this remote.
+/// it's used to mount the remote in the current directory using sshfs.
 pub struct Remote {
     username: String,
     hostname: String,

@@ -4,6 +4,8 @@ use crate::modes::{
     PasswordUsage,
 };
 
+/// Used by different kind of menu to display informations about the current menu.
+/// Most of the time it's a few lines describing the menu actions.
 pub trait LineDisplay {
     /// Returns a displayable representation of the object as a vector of `String`s
     fn line_display(&self, status: &Status) -> Vec<String>;

@@ -12,15 +12,15 @@ use crate::app::Status;
 use crate::io::Display;
 use crate::log_info;
 
+/// Is responsible for running the display thread.
+/// Rendering is done at 30 fps if possible.
+/// It holds a transmitter used to ask the thread to stop and an handle to this thread.
+/// It's usefull to ensure the terminal is reset properly which should always be the case.
 pub struct Displayer {
     tx: mpsc::Sender<()>,
     handle: thread::JoinHandle<Result<()>>,
 }
 
-/// Is responsible for running the display thread.
-/// Rendering is done at 30 fps if possible.
-/// It holds a transmitter used to ask the thread to stop and an handle to this thread.
-/// It's usefull to ensure the terminal is reset properly which should always be the case.
 impl Displayer {
     const THIRTY_PER_SECONDS_IN_MILLIS: u64 = 33;
 

@@ -11,17 +11,19 @@ enum PreviewRequest {
     Quit,
 }
 
+/// Non blocking preview builder.
+///
+/// Allow preview building without blocking status.
+/// The process is quite complicated but fast.
+/// We use 2 [`std::sync::mpsc`] :
+/// - one to ask a preview to be built, sent from [`crate::app::Status`] itself, it's received here in a separated thread and built outisde of status thread.
+/// - one to send the [`crate::modes::Preview`] out of the thread to status. It's the responsability of the application to force status to attach the preview.
+///
+/// ATM only the previews for the second pane are built here. It's useless if the user display previews in the current tab since navigation isn't possible.
 pub struct Previewer {
     tx: mpsc::Sender<PreviewRequest>,
 }
 
-/// Non blocking preview builder.
-///
-/// Allow preview building without blocking status.
-/// The process is quite complicated but quick.
-/// We use 2 [`std::sync::mpsc`] :
-/// - one to ask a preview to be built, sent from [`crate::app::Status`] itself, it's received here in a separated thread and built outisde of status thread.
-/// - one to send the [`crate::modes::Preview`] out of the thread to status. It's the responsability of the application to force status to attach the preview.
 impl Previewer {
     /// Starts the previewer loop in a thread and create a new instance with a [`std::sync::mpsc::Sender`].
     ///

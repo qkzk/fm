@@ -195,6 +195,8 @@ impl Preview {
     }
 }
 
+/// Builder of previews. It just knows what file asked a preview.
+/// Using a builder is useful since there's many kind of preview which all use a different method.
 pub struct PreviewBuilder {
     path: PathBuf,
 }
@@ -381,6 +383,8 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
+/// Different kind of text previewed.
+/// Wether it's a text file or the output of a command.
 #[derive(Clone, Default, Debug)]
 pub enum TextKind {
     #[default]

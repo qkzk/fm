@@ -2,6 +2,9 @@ use ratatui::style::Color;
 
 use crate::config::{ARRAY_GRADIENT, COLORER};
 
+/// How many colors are possible in a gradient.
+/// ATM it's 254 which should be enought to distinguish every
+/// displayed extension.
 pub const MAX_GRADIENT_NORMAL: usize = 254;
 
 /// No style but a method to color give a color for any extension.
@@ -36,6 +39,11 @@ pub fn extension_color(extension: &str) -> Color {
     COLORER.get().expect("Colorer should be set")(sum_hash(extension))
 }
 
+/// Describe a 24 bits rgb color.
+/// it's mostly used in gradients, since [`ratatui`] or [`crossterm`] colors
+/// also includes many more variants like `Color::Red` which I can't always figure.
+///
+/// This strict type allows infaillible calculations and so, gradients.
 #[derive(Debug, Clone, Copy)]
 pub struct ColorG {
     pub r: u8,

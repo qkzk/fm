@@ -9,6 +9,7 @@ mod inner {
     use crate::event::ActionMap;
     use crate::modes::{Content, Display, FilterKind, Preview, Search, Selectable, Text, TextKind};
 
+    /// Should the content be aligned left or right ? No centering.
     #[derive(Clone, Copy)]
     pub enum Align {
         Left,
@@ -319,6 +320,8 @@ mod inner {
         }
     }
 
+    /// Empty struct used to attach actions the first line of previews.
+    /// What content ? What kind of preview ?
     pub struct PreviewHeader;
 
     impl PreviewHeader {

@@ -19,6 +19,9 @@ use walkdir::WalkDir;
 use crate::io::inject;
 use crate::modes::{ContentWindow, Input};
 
+/// Directions for nucleo picker navigation.
+/// Usefull to avoid spreading too much the manipulation
+/// in status.
 pub enum Direction {
     Up,
     Down,
@@ -27,6 +30,9 @@ pub enum Direction {
     Index(u16),
 }
 
+/// What kind of content is beeing matched ?
+/// File: we match against paths,
+/// Line & Action we match against strings but actions differ.
 pub enum FuzzyKind {
     File,
     Line,
@@ -39,6 +45,21 @@ impl FuzzyKind {
     }
 }
 
+/// The fuzzy picker of file.
+/// it may be in one of 3 kinds:
+/// - for file, it will match against paths from current folder,
+/// - for lines, it will match against any text of a text files from current folder,
+/// - for actions, it will match against any text from help, allowing to run an action when you forgot the keybind.
+///
+/// Internally, it's just :
+/// - a [`Nucleo`] matcher,
+/// - a few `u32`: index, top (first displayed index), height of the window, item count, matched item count
+/// - and the current selection as a string.
+///
+/// The matcher is used externally by display to get the displayed matches and internally to update
+/// the selection when the user type something or move around.
+///
+/// The interface shouldn't change much, except to add more shortcut.
 pub struct FuzzyFinder<String: Sync + Send + 'static> {
     /// kind of fuzzy:
     /// Line (match lines into text file),

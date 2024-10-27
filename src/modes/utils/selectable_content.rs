@@ -3,6 +3,11 @@ use std::slice::Iter;
 
 use ratatui::style::Style;
 
+// TODO pick a more telling name. `Selectable` doesn't say what it does.
+/// Allow selection of a element and basic navigation.
+/// Its implementation is mostly made by the macro [`crate::impl_selectable`]
+/// which allows to manipulate all sort of content in a common manner.
+/// It simplifies a lot the creation of menus for any action and is used everywhere.
 pub trait Selectable {
     /// True iff the content is empty
     fn is_empty(&self) -> bool;
@@ -21,6 +26,16 @@ pub trait Selectable {
     fn selected_is_last(&self) -> bool;
 }
 
+/// Allow access to a content element of any type.
+/// It allows to access the selected element, the whole content,
+/// to push new elements and to get the style of an element for display.
+///
+/// Its implementation should be done using the [`crate::impl_content`] macro
+/// which allows to manipulate any kind of content.
+/// It's used for almost every menu or list of things, as long as the whole content
+/// is known at some point.
+///
+/// Major exception is [`crate::modes::FuzzyFinder`] which _doesn't store_ the matches.
 pub trait Content<T>: Selectable {
     /// Returns the selected element if content isn't empty
     fn selected(&self) -> Option<&T>;
@@ -32,6 +47,8 @@ pub trait Content<T>: Selectable {
     fn style(&self, index: usize, style: &Style) -> Style;
 }
 
+/// Returns a reference to itself as a `[std::path::Path]`.
+/// Usefull for different kind of strings (`&str` or `String`).
 pub trait ToPath {
     fn to_path(&self) -> &std::path::Path;
 }

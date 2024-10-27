@@ -177,18 +177,22 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
     Ok(new_names)
 }
 
-pub struct Bulk {
-    bulk: Option<BulkExecutor>,
-    fm_sender: Arc<Sender<FmEvents>>,
-}
-
-/// Bulk holds a `BulkExecutor` only when bulk actionmap, `None` otherwise.
+/// A [`BulkExecutor`] and a sender of [`FmEvents`].
+/// It's used to execute creation / renaming of multiple files at once.
+/// Obviously it's inspired by ranger.
+///
+/// Bulk holds a [`BulkExecutor`] only when bulk mode is present, `None` otherwise.
 ///
 /// Once `ask_filenames` is executed, a new tmp file is created. It's filled with every filename
 /// of flagged files in current directory.
 /// Modifications of this file are watched in a separate thread.
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
 /// Renaming or creating is execute in bulk with `execute`.
+pub struct Bulk {
+    bulk: Option<BulkExecutor>,
+    fm_sender: Arc<Sender<FmEvents>>,
+}
+
 impl Bulk {
     pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
         Self {

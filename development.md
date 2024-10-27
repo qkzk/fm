@@ -1311,7 +1311,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] tree lines aren't placed properly
     - [x] FIX: cursor flickering
 
-- [ ] skim replaced by... nucleo, with my own picker
+- [x] skim replaced by... nucleo, with my own picker
 
   - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
   - [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
@@ -1340,7 +1340,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor fuzzy navigation
   - [x] navigation. Moving below the last element should scroll, not wrap around.
   - [x] colors for nucleo matching. Inspired by helix
-  - [ ] testing: file, line, help
+  - [x] testing: file, line, help
 
 - [x] FIX: save a name for previews, use it to display
 
@@ -1368,11 +1368,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX preview in second pane preview attachment
   - [x] refactor status.get_correct_fileinfo_for_preview
   - [x] preview isn't updated for navigation (history, shortcut, marks)
+- [ ] prepare for new version
+  - [ ] test every mode
+  - [ ] doc
+  - [ ] ???
 
 ## TODO
 
 ### Next version
 
+- [ ] display preview of flagged files in menu flagged.
 - [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
   - [ ] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets

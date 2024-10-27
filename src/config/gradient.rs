@@ -3,6 +3,12 @@ use ratatui::style::Color;
 
 use crate::config::{ColorG, MAX_GRADIENT_NORMAL};
 
+/// A gradient between 2 colors with a number of steps.
+/// Colors are calculated on the fly with the `step` method.
+/// An array can be built with `as_array` since the number of steps
+/// is known at compile time.
+/// We can't hard code the whold gradient since we don't know what
+/// colors the user want to use for start and end.
 #[derive(Debug, Clone, Copy)]
 pub struct Gradient {
     start: ColorG,

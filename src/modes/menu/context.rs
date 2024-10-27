@@ -16,6 +16,8 @@ const CONTEXT: [(&str, ActionMap); 10] = [
     ("New Directory", ActionMap::NewDir),
 ];
 
+/// Context menu of a file.
+/// A few possible actions and some more information about this file.
 pub struct ContextMenu {
     pub content: Vec<&'static str>,
     index: usize,

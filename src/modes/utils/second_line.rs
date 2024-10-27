@@ -1,5 +1,6 @@
 use crate::modes::{InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation};
 
+/// Line describing the mode and its custom keybinds
 pub trait SecondLine {
     /// Line describing the mode and its custom keybinds
     fn second_line(&self) -> &'static str;

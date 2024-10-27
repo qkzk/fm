@@ -4,6 +4,8 @@ use crate::common::tilde;
 use crate::io::DrawMenu;
 use crate::{impl_content, impl_selectable};
 
+/// The flagged files and an index, allowing navigation when the flagged files are displayed.
+/// We record here every flagged file by its path, allowing deletion, renaming, copying, moving and other actions.
 #[derive(Default)]
 pub struct Flagged {
     /// Contains the different flagged files.

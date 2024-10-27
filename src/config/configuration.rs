@@ -213,6 +213,7 @@ impl Default for FileStyle {
     }
 }
 
+/// Different styles for decorating the menus.
 pub struct MenuStyle {
     pub first: Style,
     pub second: Style,

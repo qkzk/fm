@@ -10,6 +10,9 @@ use crate::common::{read_lines, tilde};
 use crate::io::Args;
 use crate::modes::{InputCompleted, InputSimple, Menu};
 
+/// The whole input history, read and written from and to a file.
+/// It's filtered by content.
+/// If the flag "log_are_enabled" is set to false, it will not be updated in the logs.
 pub struct InputHistory {
     file_path: std::path::PathBuf,
     content: Vec<HistoryElement>,
@@ -94,6 +97,8 @@ impl InputHistory {
     }
 }
 
+/// Different kind of histories, depending of the edit_mode.
+/// It has a few methods to record and filter methods from text input.
 #[derive(Display, Clone, PartialEq, Eq)]
 pub enum HistoryKind {
     InputSimple(InputSimple),
@@ -133,6 +138,9 @@ impl HistoryKind {
     }
 }
 
+/// Simple struct to record what kind of history is related to an input.
+/// Since we record most user inputs, they are messed up.
+/// Navigating in those elements can be confusing if we don't filter them by kind.
 #[derive(Clone)]
 pub struct HistoryElement {
     kind: HistoryKind,

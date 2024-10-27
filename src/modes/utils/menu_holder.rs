@@ -19,6 +19,16 @@ use crate::modes::{
     Shortcut, Trash, TuiApplications,
 };
 
+/// Holds almost every menu except for the history, which is tab specific.
+/// Only one instance is created and hold by status.
+/// It acts as an interface for basic methods (navigation, length, completion) etc.
+/// it also keeps track of the content window and user input (in menus only, not for the fuzzy finder).
+///
+/// The poor choices of architecture forced the creation of such a monster.
+/// For instance, even if you never use marks or cloud, their instance is saved here,
+/// waisting ressources.
+///
+/// Building them lazylly is on the todo list.
 pub struct MenuHolder {
     /// Window for scrollable menus
     pub window: ContentWindow,

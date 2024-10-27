@@ -396,6 +396,9 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
+/// What kind of content is displayed in the main window of this tab.
+/// Directory (all files of a directory), Tree (all files and children up to a certain depth),
+/// preview of a content (file, command output...) or fuzzy finder of file.
 #[derive(Default, PartialEq)]
 pub enum Display {
     #[default]

@@ -63,6 +63,12 @@ impl LimitWidth for &str {
     }
 }
 
+/// Basic methods to print in a [`ratatui::layout::Rect`].
+/// - `print_with_style`: allow to print a content at a position with given style,
+/// - `print`: the same but white on black.
+///
+/// It comes from tuikit and was almost the only way to display something back then.
+/// Future versions of fm will aim to remove this trait and build display in a more "ratatui" style.
 pub trait Canvas: Sized {
     fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
 
