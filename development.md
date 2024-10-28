@@ -1371,7 +1371,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] prepare for new version
   - [ ] test every mode
     - [ ] trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
-    - [ ] sort: when height is low, elements are out of the window
+    - [x] FIX: input_simple: when height is low, static elements are out of the window
     - [x] FIX: crash when deleting a file in tree mode
   - [x] doc
   - [ ] ???
@@ -1380,10 +1380,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Next version
 
-- [ ] "+" should enter chmod
-- [ ] chmod should detect text input and react to it.
-      typing rwxrwxrwx should be accepted
-      typing 777 also
+- [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
+- [ ] chmod is crap
+  - [ ] "+" should enter chmod
+  - [ ] chmod should detect text input and react to it.
+    - [x] 777 is accepted
+    - [ ] rwxrwxrwx should be accepted
+    - [ ] +x & all chmod syntax should be accepted too
 - [ ] display preview of flagged files in menu flagged.
 - [ ] why have a bottom line in menu if the binds are always explained ?
 - [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"

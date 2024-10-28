@@ -1148,7 +1148,15 @@ impl<'a> Menu<'a> {
     }
 
     fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
+        log_info!(
+            "len: {len}, height: {height} - rect {rect}",
+            len = lines.len(),
+            height = rect.height
+        );
         for (row, line, style) in enumerated_colored_iter!(lines) {
+            if row + 2 >= rect.height as usize {
+                break;
+            }
             Self::content_line(f, rect, row as u16, line, style);
         }
     }
@@ -1395,7 +1403,7 @@ impl<'a> Menu<'a> {
         }
     }
 
-    fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) -> usize {
+    fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
         rect.print_with_style(
             f,
             row + ContentWindow::WINDOW_MARGIN_TOP_U16,
@@ -1403,7 +1411,6 @@ impl<'a> Menu<'a> {
             text,
             style,
         );
-        text.len()
     }
 }
 
