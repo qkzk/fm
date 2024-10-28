@@ -125,6 +125,10 @@ macro_rules! impl_selectable {
     };
 }
 
+/// Implement an iterator from next index of content to the same index,
+/// starting back from 0 when the last element is reached.
+/// It's used to search an element in content below current and
+/// then from the first index to the current index.
 #[macro_export]
 macro_rules! impl_index_to_index {
     ($content_type:ident, $struct:ident) => {

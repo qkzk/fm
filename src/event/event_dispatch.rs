@@ -12,7 +12,7 @@ use crate::modes::{
     Navigate,
 };
 
-/// Struct which mutates `tabs.selected()..
+/// Struct which dispatch the received events according to the state of the application.
 /// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on tabs.selected().
 /// Keybindings are read from `Config`.

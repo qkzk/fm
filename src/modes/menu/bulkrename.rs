@@ -177,11 +177,11 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
     Ok(new_names)
 }
 
-/// A [`BulkExecutor`] and a sender of [`FmEvents`].
+/// A `BulkExecutor` and a sender of [`FmEvents`].
 /// It's used to execute creation / renaming of multiple files at once.
 /// Obviously it's inspired by ranger.
 ///
-/// Bulk holds a [`BulkExecutor`] only when bulk mode is present, `None` otherwise.
+/// Bulk holds a `BulkExecutor` only when bulk mode is present, `None` otherwise.
 ///
 /// Once `ask_filenames` is executed, a new tmp file is created. It's filled with every filename
 /// of flagged files in current directory.
