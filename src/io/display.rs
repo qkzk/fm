@@ -997,10 +997,11 @@ struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let height = rect.height;
+        let row = rect.height.saturating_sub(2);
+        rect.clear_line(f, row);
         rect.print_with_style(
             f,
-            height - 2,
+            row,
             4,
             &read_last_log_line(),
             MENU_STYLES.get().expect("Menu colors should be set").second,
