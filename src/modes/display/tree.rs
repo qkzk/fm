@@ -608,6 +608,24 @@ impl Tree {
         self.selected.borrow()
     }
 
+    pub fn selected_node_or_parent(&self) -> Result<&Node> {
+        if let Some(node) = self.selected_node() {
+            if node.path().exists() {
+                return Ok(node);
+            }
+            while let Some(parent_path) = node.path().parent() {
+                if let Some(parent_node) = self.nodes.get(parent_path) {
+                    if parent_node.path().exists() {
+                        return Ok(parent_node);
+                    }
+                }
+            }
+        };
+        self.nodes
+            .get(&self.root_path)
+            .context("root path should have a node")
+    }
+
     /// Selected node
     pub fn selected_node(&self) -> Option<&Node> {
         self.nodes.get(&self.selected)

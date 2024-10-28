@@ -423,7 +423,10 @@ impl Status {
     /// Reset the view of every tab.
     pub fn reset_tabs_view(&mut self) -> Result<()> {
         for tab in self.tabs.iter_mut() {
-            tab.refresh_and_reselect_file()?
+            match tab.refresh_and_reselect_file() {
+                Ok(()) => (),
+                Err(error) => log_info!("reset_tabs_view error: {error}"),
+            }
         }
         Ok(())
     }

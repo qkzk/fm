@@ -1370,14 +1370,24 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview isn't updated for navigation (history, shortcut, marks)
 - [ ] prepare for new version
   - [ ] test every mode
-  - [ ] doc
+    - [ ] trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
+    - [ ] sort: when height is low, elements are out of the window
+    - [x] FIX: crash when deleting a file in tree mode
+  - [x] doc
   - [ ] ???
 
 ## TODO
 
 ### Next version
 
+- [ ] "+" should enter chmod
+- [ ] chmod should detect text input and react to it.
+      typing rwxrwxrwx should be accepted
+      typing 777 also
 - [ ] display preview of flagged files in menu flagged.
+- [ ] why have a bottom line in menu if the binds are always explained ?
+- [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
+- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
 - [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
   - [ ] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets

@@ -174,13 +174,9 @@ impl Tab {
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
-            Display::Tree => FileInfo::new(
-                self.tree
-                    .selected_node()
-                    .context("no selected node")?
-                    .path(),
-                &self.users,
-            ),
+            Display::Tree => {
+                FileInfo::new(self.tree.selected_node_or_parent()?.path(), &self.users)
+            }
             _ => Ok(self
                 .directory
                 .selected()
