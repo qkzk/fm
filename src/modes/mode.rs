@@ -12,7 +12,7 @@ use crate::modes::{PasswordKind, PasswordUsage};
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
 /// In both case, we'll have to listen to the next char typed.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MarkAction {
     /// Jump to a selected mark (ie a path associated to a char)
     Jump,
@@ -22,7 +22,7 @@ pub enum MarkAction {
 
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NeedConfirmation {
     /// Copy flagged files
     Copy,
@@ -201,7 +201,7 @@ impl Leave for InputSimple {
 /// Different modes in which we display a bunch of possible actions.
 /// In all those mode we can select an action and execute it.
 /// For some of them, it's just moving there, for some it acts on some file.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Navigate {
     /// Navigate back to a visited path
     History,
@@ -285,7 +285,7 @@ impl Navigate {
 
 /// Different "menu" mode in which the application can be.
 /// It dictates the reaction to event and is displayed in the bottom window.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Menu {
     /// Do something that may be completed
     /// Completion may come from :
@@ -348,6 +348,7 @@ impl Menu {
             Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
             Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
+            Self::Navigate(Navigate::Trash) => "Up, Down: navigate.",
             Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",

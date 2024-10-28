@@ -1370,7 +1370,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview isn't updated for navigation (history, shortcut, marks)
 - [ ] prepare for new version
   - [ ] test every mode
-    - [ ] trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
+    - [x] FIX: trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
     - [x] FIX: input_simple: when height is low, static elements are out of the window
     - [x] FIX: crash when deleting a file in tree mode
   - [x] doc
@@ -1380,6 +1380,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Next version
 
+- [ ] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
 - [ ] chmod is crap
   - [ ] "+" should enter chmod

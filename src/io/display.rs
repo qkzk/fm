@@ -1135,6 +1135,11 @@ impl<'a> Menu<'a> {
     }
 
     fn binds_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
+        // TODO remove
+        // stupid hack to allow some help for the trash...
+        if mode == MenuMode::Navigate(Navigate::Trash) {
+            return;
+        }
         let height = rect.height;
 
         rect.clear_line(f, height.saturating_sub(2));
@@ -1196,7 +1201,7 @@ impl<'a> Menu<'a> {
         trash.draw_menu(f, rect, &self.status.menu.window);
         rect.print_with_style(
             f,
-            1,
+            rect.height.saturating_sub(2),
             2,
             &trash.help,
             MENU_STYLES.get().expect("Menu colors should be set").second,
