@@ -1374,6 +1374,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] FIX: input_simple: when height is low, static elements are out of the window
     - [x] FIX: crash when deleting a file in tree mode
     - [x] FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
+    - [x] FIX: Alt+c (open config file) should be betterly logged
   - [x] doc
   - [ ] ???
 

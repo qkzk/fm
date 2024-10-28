@@ -1324,7 +1324,7 @@ impl EventAction {
             .opener
             .open_single(&path::PathBuf::from(tilde(CONFIG_PATH).to_string()))
         {
-            Ok(_) => (),
+            Ok(_) => log_line!("Opened the config file {CONFIG_PATH}"),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
         Ok(())
