@@ -1249,7 +1249,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Current dev
 
-### Summary
+### Version 0.1.31
+
+#### Summary
 
 - tuikit is replaced by crossterm & ratatui.
 - skim is replaced by nucleo.
@@ -1285,7 +1287,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   The interface won't change, the internal will surelly do.
   Since this parser is used everywhere, it means you can define custom commands with redirections. I can't think of an usage but may be you will !
 
-### Version 0.1.31
+#### Changelog
 
 - [x] replace tuikit by ratatui + crossterm
 
@@ -1375,6 +1377,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] FIX: crash when deleting a file in tree mode
     - [x] FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
     - [x] FIX: Alt+c (open config file) should be betterly logged
+    - [x] FIX: shortcut. dedup_slow keeps crashing. Sort unstable + dedup will do the trick.
   - [x] doc
   - [ ] ???
 

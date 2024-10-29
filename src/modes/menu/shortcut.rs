@@ -90,8 +90,8 @@ impl Shortcut {
     }
 
     fn clear_doublons(&mut self) {
+        self.content.sort_unstable();
         self.content.dedup();
-        dedup_slow(&mut self.content);
     }
 
     pub fn update_git_root(&mut self) {
@@ -153,25 +153,6 @@ impl Shortcut {
     }
 }
 
-/// Remove duplicates from a vector and returns it.
-/// Elements should be `PartialEq`.
-/// It removes element than are not consecutives and is very slow.
-fn dedup_slow<T>(elems: &mut Vec<T>)
-where
-    T: PartialEq,
-{
-    let mut to_remove = vec![];
-    for i in 0..elems.len() {
-        for j in (i + 1)..elems.len() {
-            if elems[i] == elems[j] {
-                to_remove.push(j);
-            }
-        }
-    }
-    for j in to_remove.iter().rev() {
-        elems.remove(*j);
-    }
-}
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
 
