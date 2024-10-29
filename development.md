@@ -1255,15 +1255,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - tuikit is replaced by crossterm & ratatui.
 - skim is replaced by nucleo.
+
   tuikit and other crates created by the same author aren't maintened anymore.
   fm relied a lot on the work of a single author: terminal events, rendering,
   fuzzy finding, parsing of ANSI output etc. were all written by the same developper
   and it created a lot of technology debt.
 
-  Maintaing this code required to fork the repository which was a lot of work.
+  Maintaing this code required to fork some repositories which was a lot of work and could create more debt if someone took the project further.
+
   It's been a pleasure to work with those crates but I believe it's the right move.
 
-  By switching to well maintened crates we ensure to be able to evolve the project
+  By switching to maintened crates we ensure to be able to evolve the project
   more safely.
 
   Most of the code is adapted "as is". I did my best to keep everything as it was
@@ -1279,13 +1281,22 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   Expansion haven't change (%s selection, %p current path, %n filename, %e extension, %f flagegd files, %t terminal emulator)
   Strings like `echo "Hello World"` or `echo 'Hello World'` should be processed correctly.
-  Tokens and shorcuts `~` and `*` etc. are recognized and dealt by sh.
-  Most environment variables aren't known since it's a new shell which run the command. You can still do `!` `export a=2; echo $a` and see... 2 on the output.
+  Tokens like `*` and shorcuts like `~` are recognized and dealt by sh.
+  Most environment variables aren't known since it's a new shell which run the command. You can still do `!` `export a=2; echo $a` and see... `2` on the output.
   It also works for sudo commands : `sudo ls %s | grep pattern` will ask a password and execute `sudo ls your/selected/path | grep pattern`.
 
-  There's a lot of steps and it's surelly buggy, I'll have to simplify it as much as possible.
+  There's a lot of steps and it's surelly buggy, I'll have to simplify it as much as possible in a future version.
   The interface won't change, the internal will surelly do.
   Since this parser is used everywhere, it means you can define custom commands with redirections. I can't think of an usage but may be you will !
+
+- Bugfixes:
+  - FIX: trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
+  - FIX: input_simple: when height is low, static elements are out of the window
+  - FIX: crash when deleting a file in tree mode
+  - FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
+  - FIX: Alt+c (open config file) should be betterly logged
+  - FIX: shortcut. dedup_slow keeps crashing. Sort unstable + dedup will do the trick.
+  - FIX: second pane ueberzub 1 char too left
 
 #### Changelog
 
@@ -1371,7 +1382,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor status.get_correct_fileinfo_for_preview
   - [x] preview isn't updated for navigation (history, shortcut, marks)
 - [ ] prepare for new version
-  - [ ] test every mode
+  - [x] test every mode
     - [x] FIX: trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
     - [x] FIX: input_simple: when height is low, static elements are out of the window
     - [x] FIX: crash when deleting a file in tree mode
@@ -1386,6 +1397,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Next version
 
+- [ ] document every public function / method. Done for struct, enum & macros.
+  ```sh
+  % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
+  492
+  ```
 - [ ] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
 - [ ] chmod is crap
