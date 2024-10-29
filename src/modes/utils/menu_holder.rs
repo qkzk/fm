@@ -312,6 +312,11 @@ impl MenuHolder {
         self.window.scroll_to(self.index(Menu::Navigate(navigate)))
     }
 
+    pub fn select_last(&mut self, navigate: Navigate) {
+        let index = self.len(Menu::Navigate(navigate)).saturating_sub(1);
+        self.set_index(index, navigate);
+    }
+
     fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T
     where
         F: FnOnce(&mut dyn Selectable) -> T,

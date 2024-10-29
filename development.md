@@ -1395,16 +1395,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.32
 
-## TODO
-
-### Next version
-
+- [x] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
+- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
+- [ ] function for cd on quit doesn't capture the terminal and hangs
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
   492
   ```
-- [ ] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
 - [ ] chmod is crap
   - [ ] "+" should enter chmod
@@ -1415,7 +1413,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] display preview of flagged files in menu flagged.
 - [ ] why have a bottom line in menu if the binds are always explained ?
 - [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
-- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
 - [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
   - [ ] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets
@@ -1441,6 +1438,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop
+
+## TODO
 
 ### Other ideas
 

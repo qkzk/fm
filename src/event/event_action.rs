@@ -1033,7 +1033,11 @@ impl EventAction {
             };
             status.update_second_pane_for_preview()
         } else {
-            status.menu.input.cursor_start();
+            match status.current_tab().menu_mode {
+                Menu::InputSimple(_) | Menu::InputCompleted(_) => status.menu.input.cursor_start(),
+                Menu::Navigate(navigate) => status.menu.set_index(0, navigate),
+                _ => (),
+            }
             Ok(())
         }
     }
@@ -1050,7 +1054,11 @@ impl EventAction {
             };
             status.update_second_pane_for_preview()?;
         } else {
-            status.menu.input.cursor_end();
+            match status.current_tab().menu_mode {
+                Menu::InputSimple(_) | Menu::InputCompleted(_) => status.menu.input.cursor_end(),
+                Menu::Navigate(navigate) => status.menu.select_last(navigate),
+                _ => (),
+            }
         }
         Ok(())
     }
