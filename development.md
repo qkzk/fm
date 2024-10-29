@@ -1247,8 +1247,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Simplify display mode comparison with a few methods. Should make the code more readable
 - [ ] directory preview should just be a "directory" ?
 
-## Current dev
-
 ### Version 0.1.31
 
 #### Summary
@@ -1392,6 +1390,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] FIX: second pane ueberzub 1 char too left
   - [x] doc
   - [ ] ???
+
+## Current dev
+
+### Version 0.1.32
 
 ## TODO
 
