@@ -1378,6 +1378,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
     - [x] FIX: Alt+c (open config file) should be betterly logged
     - [x] FIX: shortcut. dedup_slow keeps crashing. Sort unstable + dedup will do the trick.
+    - [x] FIX: second pane ueberzub 1 char too left
   - [x] doc
   - [ ] ???
 

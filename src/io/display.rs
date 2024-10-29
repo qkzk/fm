@@ -848,7 +848,7 @@ impl<'a> PreviewDisplay<'a> {
     fn ueberzug(&self, image: &Ueber, rect: &Rect) {
         let width = rect.width;
         let height = rect.height;
-        image.draw(self.attributes.x_position, 3, width - 2, height - 2);
+        image.draw(self.attributes.x_position + 1, 3, width, height - 2);
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
