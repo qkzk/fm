@@ -48,11 +48,11 @@ impl Session {
     /// Creates a new instance of `DisplaySettings`.
     /// Tries to read them from the session file.
     /// Use default value if the file can't be read.
-    pub fn new(width: usize) -> Self {
+    pub fn new(width: u16) -> Self {
         Self::default().update_from_config(width)
     }
 
-    fn update_from_config(mut self, width: usize) -> Self {
+    fn update_from_config(mut self, width: u16) -> Self {
         let Ok(file) = File::open(&self.filepath) else {
             log_info!("Couldn't open file {file}", file = self.filepath);
             return self;
@@ -79,7 +79,7 @@ impl Session {
         self
     }
 
-    fn parse_dual_pane(session_bool: bool, width: usize) -> bool {
+    fn parse_dual_pane(session_bool: bool, width: u16) -> bool {
         if !Self::display_wide_enough(width) {
             return false;
         }
@@ -99,7 +99,7 @@ impl Session {
     }
 
     /// True iff the terminal is wide enough to display two panes
-    pub fn display_wide_enough(width: usize) -> bool {
+    pub fn display_wide_enough(width: u16) -> bool {
         width >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
@@ -107,7 +107,7 @@ impl Session {
     /// It requires two conditions:
     /// 1. The display should be wide enough, bigger than [`crate::io::MIN_WIDTH_FOR_DUAL_PANE`].
     /// 2. The `dual_tab` setting must be true.
-    pub fn use_dual_tab(&self, width: usize) -> bool {
+    pub fn use_dual_tab(&self, width: u16) -> bool {
         self.dual && Self::display_wide_enough(width)
     }
 

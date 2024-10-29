@@ -1,5 +1,6 @@
 use crate::modes::{InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation};
 
+/// Line describing the mode and its custom keybinds
 pub trait SecondLine {
     /// Line describing the mode and its custom keybinds
     fn second_line(&self) -> &'static str;
@@ -20,7 +21,7 @@ impl SecondLine for Menu {
 impl SecondLine for Navigate {
     fn second_line(&self) -> &'static str {
         match self {
-            Self::Trash => "",
+            Self::Trash => "Trash. Select an element to be restored or deleted.",
             Self::History => "Pick a destination",
             Self::Shortcut => "Pick a destination",
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",

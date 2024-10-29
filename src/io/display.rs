@@ -1,80 +1,167 @@
-use std::sync::{Arc, MutexGuard};
+use std::{cmp::min, io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
-use tuikit::{
-    attr::{Attr, Color},
+use crossterm::{
+    execute,
+    terminal::{disable_raw_mode, LeaveAlternateScreen},
+};
+use nucleo::Matcher;
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout, Position, Rect, Size},
     prelude::*,
-    term::Term,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
+    Frame, Terminal,
 };
+use unicode_segmentation::UnicodeSegmentation;
 
-use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
-use crate::common::path_to_string;
-use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::{read_last_log_line, DrawMenu};
-use crate::log_info;
 use crate::modes::{
-    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
-    HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
-    Preview, SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
+    highlighted_text, parse_input_mode, BinaryContent, Content, ContentWindow,
+    Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
+    MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
+    Text, TextKind, Trash, Tree, Ueber,
+};
+use crate::{
+    app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
+    modes::AnsiString,
+};
+use crate::{colored_skip_take, log_info};
+use crate::{
+    common::{path_to_string, UtfWidth},
+    modes::FuzzyFinder,
+};
+use crate::{
+    config::{ColorG, Gradient, MENU_STYLES},
+    modes::Input,
 };
 
-trait ClearLine {
-    fn clear_line(&mut self, row: usize) -> Result<()>;
+trait LimitWidth {
+    fn limit_width(&self, width: usize) -> Self;
 }
 
-impl ClearLine for dyn Canvas + '_ {
-    fn clear_line(&mut self, row: usize) -> Result<()> {
-        let (width, _) = self.size()?;
-        self.print(row, 0, &" ".repeat(width))?;
-        Ok(())
+impl LimitWidth for &str {
+    /// Limit a string slice to the give width, stopping at a char boundary.
+    /// if the width is large enough, it's the width of the slice.
+    fn limit_width(&self, width: usize) -> Self {
+        let mut end = 0;
+        let mut current_width = 0;
+
+        for (index, grapheme) in self.grapheme_indices(true) {
+            let grapheme_width = grapheme.chars().count();
+
+            if current_width + grapheme_width > width {
+                break;
+            }
+            current_width += grapheme_width;
+            end = index + grapheme.len();
+        }
+
+        &self[..end]
     }
 }
 
-/// Iter over the content, returning a triplet of `(index, line, attr)`.
+/// Basic methods to print in a [`ratatui::layout::Rect`].
+/// - `print_with_style`: allow to print a content at a position with given style,
+/// - `print`: the same but white on black.
+///
+/// It comes from tuikit and was almost the only way to display something back then.
+/// Future versions of fm will aim to remove this trait and build display in a more "ratatui" style.
+pub trait Canvas: Sized {
+    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
+
+    fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str);
+}
+
+const FULL_WHITE: Color = Color::Rgb(255, 255, 255);
+
+impl Canvas for Rect {
+    /// Render the text content in the frame.
+    /// The text is displayed in `self` at `row`, `col` with given style.
+    ///
+    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
+    /// It will never overflow its parent rect.
+    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style) {
+        let width = self.width.saturating_sub(col);
+        let displayed = content.limit_width(width as usize);
+        let area = Rect {
+            x: self.x + col,
+            y: self.y + row,
+            width,
+            height: 1,
+        };
+        f.render_widget(Span::styled(displayed, style), area);
+    }
+
+    /// Render the text content in the frame.
+    /// The text is displayed in `self` at `row`, `col` in white on default background color.
+    ///
+    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
+    /// It will never overflow its parent rect.
+    fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
+        let style = Style {
+            fg: Some(FULL_WHITE),
+            ..Default::default()
+        };
+        self.print_with_style(f, row, col, content, style)
+    }
+}
+
+/// Common trait all "window" should implement.
+/// It's mostly used as an entry point for the rendering and should call another method.
+trait Draw {
+    /// Entry point for window rendering.
+    fn draw(&self, f: &mut Frame, rect: &Rect);
+}
+
+trait ClearLine {
+    /// Clear the current line, erasing its chars.
+    fn clear_line(&self, f: &mut Frame, row: u16);
+}
+
+impl ClearLine for Rect {
+    fn clear_line(&self, f: &mut Frame, row: u16) {
+        self.print(f, row, 0, &" ".repeat(self.width as usize));
+    }
+}
+
+/// Iter over the content, returning a triplet of `(index, line, style)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
         std::iter::zip(
             $t.iter().enumerate(),
             Gradient::new(
-                ColorG::from_tuikit(
-                    MENU_ATTRS
+                ColorG::from_ratatui(
+                    MENU_STYLES
                         .get()
                         .expect("Menu colors should be set")
                         .first
-                        .fg,
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
                 )
                 .unwrap_or_default(),
-                ColorG::from_tuikit(
-                    MENU_ATTRS
+                ColorG::from_ratatui(
+                    MENU_STYLES
                         .get()
                         .expect("Menu colors should be set")
                         .palette_3
-                        .fg,
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
                 )
                 .unwrap_or_default(),
                 $t.len(),
             )
             .gradient()
-            .map(|color| color_to_attr(color)),
+            .map(|color| color_to_style(color)),
         )
-        .map(|((index, line), attr)| (index, line, attr))
-    };
-}
-/// Draw every line of the preview
-macro_rules! impl_preview {
-    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident, $height:ident) => {
-        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
-            let row = calc_line_row(i, $window);
-            if row > $height {
-                break;
-            }
-            $canvas.print(row, $line_number_width + 3, line)?;
-        }
+        .map(|((index, line), style)| (index, line, style))
     };
 }
 
 /// At least 120 chars width to display 2 tabs.
-pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
+pub const MIN_WIDTH_FOR_DUAL_PANE: u16 = 120;
 
 enum TabPosition {
     Left,
@@ -85,7 +172,7 @@ enum TabPosition {
 /// relatively to other windows
 struct FilesAttributes {
     /// horizontal position, in cells
-    x_position: usize,
+    x_position: u16,
     /// is this the left or right window ?
     tab_position: TabPosition,
     /// is this tab selected ?
@@ -96,7 +183,7 @@ struct FilesAttributes {
 
 impl FilesAttributes {
     fn new(
-        x_position: usize,
+        x_position: u16,
         tab_position: TabPosition,
         is_selected: bool,
         has_window_below: bool,
@@ -114,18 +201,10 @@ impl FilesAttributes {
     }
 }
 
-pub trait Height: Canvas {
-    fn height(&self) -> Result<usize> {
-        Ok(self.size()?.1)
-    }
-}
-
-impl Height for dyn Canvas + '_ {}
-
 struct FilesBuilder;
 
 impl FilesBuilder {
-    fn dual(status: &Status, width: usize) -> (Files, Files) {
+    fn dual(status: &Status, width: u16) -> (Files, Files) {
         let first_selected = status.focus.is_left();
         let menu_selected = !first_selected;
         let attributes_left = FilesAttributes::new(
@@ -163,20 +242,21 @@ struct Files<'a> {
 }
 
 impl<'a> Draw for Files<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
         if self.should_preview_in_right_tab() {
-            self.preview_in_right_tab(canvas)?;
-            return Ok(());
+            self.preview_in_right_tab(f, rect);
+            return;
         }
-        FilesHeader::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
-        self.copy_progress_bar(canvas)?;
-        self.content(canvas)?;
-        FilesFooter::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
-        Ok(())
+        FilesHeader::new(self.status, self.tab, self.attributes.is_selected)
+            .unwrap()
+            .draw(f, rect);
+        self.copy_progress_bar(f, rect);
+        self.content(f, rect);
+        FilesFooter::new(self.status, self.tab, self.attributes.is_selected)
+            .unwrap()
+            .draw(f, rect);
     }
 }
-
-impl<'a> Widget for Files<'a> {}
 
 impl<'a> Files<'a> {
     fn new(status: &'a Status, index: usize, attributes: FilesAttributes) -> Self {
@@ -197,23 +277,24 @@ impl<'a> Files<'a> {
         self.attributes.is_right()
     }
 
-    fn content(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+    fn content(&self, f: &mut Frame, rect: &Rect) {
         match &self.tab.display_mode {
-            DisplayMode::Directory => DirectoryDisplay::new(self).draw(canvas),
-            DisplayMode::Tree => TreeDisplay::new(self).draw(canvas),
-            DisplayMode::Preview => PreviewDisplay::new(self).draw(canvas),
+            DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, rect),
+            DisplayMode::Tree => TreeDisplay::new(self).draw(f, rect),
+            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, rect),
+            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, rect),
         }
     }
 
     /// Display a copy progress bar on the left tab.
     /// Nothing is drawn if there's no copy atm.
     /// If the copy file queue has length > 1, we also display its size.
-    fn copy_progress_bar(&self, canvas: &mut dyn Canvas) -> Result<usize> {
+    fn copy_progress_bar(&self, f: &mut Frame, rect: &Rect) {
         if self.is_right() {
-            return Ok(0);
+            return;
         }
         let Some(copy_progress) = &self.status.internal_settings.in_mem_progress else {
-            return Ok(0);
+            return;
         };
         let progress_bar = copy_progress.contents();
         let nb_copy_left = self.status.internal_settings.copy_file_queue.len();
@@ -222,47 +303,188 @@ impl<'a> Files<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        Ok(canvas.print_with_attr(
+        rect.print_with_style(
+            f,
             1,
             2,
             &content,
-            MENU_ATTRS
+            MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .palette_4,
-        )?)
+        )
     }
 
-    fn print_flagged_symbol(
-        status: &Status,
-        canvas: &mut dyn Canvas,
-        row: usize,
-        path: &std::path::Path,
-        attr: &mut Attr,
-    ) -> Result<()> {
-        if status.menu.flagged.contains(path) {
-            attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(
-                row,
-                0,
-                "█",
-                MENU_ATTRS.get().expect("Menu colors should be set").second,
-            )?;
-        }
-        Ok(())
-    }
-
-    fn preview_in_right_tab(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
         let tab = &self.status.tabs[1];
-        let _ = PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(canvas);
-        let (width, _) = canvas.size()?;
+        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
+        let width = rect.width;
         draw_clickable_strings(
+            f,
             0,
             0,
             &PreviewHeader::default_preview(self.status, tab, width),
-            canvas,
+            rect,
             false,
         )
+    }
+}
+
+struct FuzzyDisplay<'a> {
+    status: &'a Status,
+}
+
+impl<'a> Draw for FuzzyDisplay<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.fuzzy(f, rect)
+    }
+}
+
+impl<'a> FuzzyDisplay<'a> {
+    fn new(files: &'a Files) -> Self {
+        Self {
+            status: files.status,
+        }
+    }
+
+    fn fuzzy(&self, f: &mut Frame, rect: &Rect) {
+        let Some(fuzzy) = &self.status.fuzzy else {
+            return;
+        };
+        let rects = Self::build_layout(rect);
+        self.draw_match_counts(fuzzy, f, rects[0]);
+        self.draw_matches(fuzzy, f, rects[2]);
+        self.draw_prompt(fuzzy, f, rects[3]);
+    }
+
+    fn build_layout(rect: &Rect) -> Vec<Rect> {
+        Self::split_layout(Self::build_main_rect(rect))
+    }
+
+    fn build_main_rect(rect: &Rect) -> Rect {
+        Rect {
+            x: rect.x,
+            y: rect.y + 2,
+            width: rect.width,
+            height: rect.height.saturating_sub(2),
+        }
+    }
+
+    fn split_layout(area: Rect) -> Vec<Rect> {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Min(0),
+                Constraint::Length(2),
+            ])
+            .split(area)
+            .to_vec()
+    }
+
+    /// Draw the matched items
+    fn draw_match_counts(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+        let match_info = self.line_match_info(fuzzy);
+        let match_count_paragraph = Self::paragraph_match_count(match_info);
+        f.render_widget(match_count_paragraph, rect);
+    }
+
+    fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+        // Render the prompt string at the bottom
+        let input = fuzzy.input.string();
+        let prompt_paragraph = Paragraph::new(vec![Line::from(vec![
+            Span::styled(
+                "> ",
+                MENU_STYLES
+                    .get()
+                    .expect("MENU_STYLES should be set")
+                    .palette_3,
+            ),
+            Span::styled(
+                input,
+                MENU_STYLES
+                    .get()
+                    .expect("MENU_STYLES should be set")
+                    .palette_2,
+            ),
+        ])])
+        .block(Block::default().borders(Borders::NONE));
+
+        // Render the prompt at the bottom of the layout
+        f.render_widget(prompt_paragraph, rect);
+        self.set_cursor_position(f, rect, &fuzzy.input);
+    }
+
+    fn set_cursor_position(&self, f: &mut Frame, rect: Rect, input: &Input) {
+        // Move the cursor to the prompt
+        f.set_cursor_position(Position {
+            x: rect.x + input.index() as u16 + 2,
+            y: rect.y,
+        });
+    }
+
+    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line {
+        Line::from(vec![
+            Span::styled("  ", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                format!("{}", fuzzy.matched_item_count),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+            Span::styled(" / ", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                format!("{}", fuzzy.item_count),
+                Style::default().fg(Color::Yellow),
+            ),
+        ])
+    }
+
+    fn paragraph_match_count(match_info: Line) -> Paragraph {
+        Paragraph::new(match_info)
+            .style(Style::default())
+            .block(Block::default().borders(Borders::NONE))
+    }
+
+    fn draw_matches(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+        let snapshot = fuzzy.matcher.snapshot();
+        let (top, bottom) = fuzzy.top_bottom();
+        let mut indices = vec![];
+        // TODO: make matcher static. See helix for a complicated way.
+        let mut matcher = Matcher::default();
+        if fuzzy.kind.is_file() {
+            matcher.config.set_match_paths();
+        }
+        snapshot
+            .matched_items(top..bottom)
+            .enumerate()
+            .for_each(|(index, t)| {
+                snapshot.pattern().column_pattern(0).indices(
+                    t.matcher_columns[0].slice(..),
+                    &mut matcher,
+                    &mut indices,
+                );
+                let text = t.matcher_columns[0].to_string();
+                let highlights_usize = Self::highlights_indices(&mut indices);
+                let line =
+                    highlighted_text(&text, &highlights_usize, index as u32 + top == fuzzy.index);
+                let line_rect = Self::line_rect(rect, index);
+                line.render(line_rect, f.buffer_mut());
+            });
+    }
+
+    fn highlights_indices(indices: &mut Vec<u32>) -> Vec<usize> {
+        indices.sort_unstable();
+        indices.dedup();
+        let highlights = indices.drain(..);
+        highlights.map(|index| index as usize).collect()
+    }
+
+    fn line_rect(rect: Rect, index: usize) -> Rect {
+        let mut line_rect = rect;
+        line_rect.y += index as u16;
+        line_rect
     }
 }
 
@@ -273,9 +495,8 @@ struct DirectoryDisplay<'a> {
 }
 
 impl<'a> Draw for DirectoryDisplay<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        self.files(canvas)?;
-        Ok(())
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.files(f, rect)
     }
 }
 
@@ -295,22 +516,20 @@ impl<'a> DirectoryDisplay<'a> {
     /// We reverse the attributes of the selected one, underline the flagged files.
     /// When we display a simpler version, the menu line is used to display the
     /// metadata of the selected file.
-    fn files(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let _ = FilesSecondLine::new(self.status, self.tab).draw(canvas);
-        self.files_content(canvas)?;
+    fn files(&self, f: &mut Frame, rect: &Rect) {
+        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
+        self.files_content(f, rect);
         if !self.attributes.has_window_below && !self.attributes.is_right() {
-            let _ = LogLine.draw(canvas);
+            LogLine.draw(f, rect);
         }
-        Ok(())
     }
 
-    fn files_content(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let (group_size, owner_size) = self.group_owner_size();
-        let height = canvas.height()?;
+    fn files_content(&self, f: &mut Frame, rect: &Rect) {
+        let group_owner_sizes = self.group_owner_size();
+        let height = rect.height;
         for (index, file) in self.tab.dir_enum_skip_take() {
-            self.files_line(canvas, group_size, owner_size, index, file, height)?;
+            self.files_line(f, rect, group_owner_sizes, index, file, height);
         }
-        Ok(())
     }
 
     fn group_owner_size(&self) -> (usize, usize) {
@@ -326,38 +545,36 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn files_line(
         &self,
-        canvas: &mut dyn Canvas,
-        group_size: usize,
-        owner_size: usize,
+        f: &mut Frame,
+        rect: &Rect,
+        group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
-        height: usize,
-    ) -> Result<()> {
-        let row = index + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
-        if row > height {
-            return Ok(());
+        height: u16,
+    ) {
+        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - self.tab.window.top as u16;
+        if row + 2 > height {
+            return;
         }
-        let mut attr = file.attr();
+        let mut style = file.style();
         if index == self.tab.directory.index {
-            attr.effect |= Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        let content = Self::format_file_content(self.status, file, owner_size, group_size)?;
-        Files::print_flagged_symbol(self.status, canvas, row, &file.path, &mut attr)?;
-        let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
-        canvas.print_with_attr(row, col, &content, attr)?;
-        Ok(())
+        let content = Self::format_file_content(self.status, file, group_owner_sizes);
+        print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
+        let col = 1 + self.status.menu.flagged.contains(&file.path) as u16;
+        rect.print_with_style(f, row, col, &content, style);
     }
 
     fn format_file_content(
         status: &Status,
         file: &FileInfo,
-        owner_size: usize,
-        group_size: usize,
-    ) -> Result<String> {
+        owner_sizes: (usize, usize),
+    ) -> String {
         if status.display_settings.metadata() {
-            file.format(owner_size, group_size)
+            file.format(owner_sizes.1, owner_sizes.0).unwrap()
         } else {
-            file.format_simple()
+            file.format_simple().unwrap()
         }
     }
 }
@@ -368,9 +585,8 @@ struct TreeDisplay<'a> {
 }
 
 impl<'a> Draw for TreeDisplay<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        self.tree(canvas)?;
-        Ok(())
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.tree(f, rect)
     }
 }
 
@@ -382,19 +598,20 @@ impl<'a> TreeDisplay<'a> {
         }
     }
 
-    fn tree(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let _ = FilesSecondLine::new(self.status, self.tab).draw(canvas);
-        self.tree_content(canvas)
+    fn tree(&self, f: &mut Frame, rect: &Rect) {
+        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
+        self.tree_content(f, rect)
     }
 
-    fn tree_content(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn tree_content(&self, f: &mut Frame, rect: &Rect) {
         let left_margin = 1;
-        let height = canvas.height()?;
+        let height = rect.height;
 
         for (index, line_builder) in self.tab.tree.lines_enum_skip_take(&self.tab.window) {
             Self::tree_line(
+                f,
                 self.status,
-                canvas,
+                rect,
                 line_builder,
                 TreeLinePosition {
                     left_margin,
@@ -403,53 +620,85 @@ impl<'a> TreeDisplay<'a> {
                     height,
                 },
                 self.status.display_settings.metadata(),
-            )?;
+            );
         }
-        Ok(())
     }
 
     fn tree_line(
+        f: &mut Frame,
         status: &Status,
-        canvas: &mut dyn Canvas,
+        rect: &Rect,
         line_builder: &TLine,
         position_param: TreeLinePosition,
         with_medatadata: bool,
-    ) -> Result<()> {
-        let (mut col, top, index, height) = position_param.export();
-        let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
-        if row > height {
-            return Ok(());
+    ) {
+        let (col, top, index, height) = position_param.export();
+        let mut col = col as u16;
+        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - top as u16;
+        if row + 2 > height {
+            return;
         }
 
-        let mut attr = line_builder.attr;
+        let mut style = line_builder.style;
         let path = line_builder.path();
-        Files::print_flagged_symbol(status, canvas, row, path, &mut attr)?;
+        Self::print_flagged_symbol(f, status, rect, row, path, &mut style);
 
-        col += Self::tree_metadata(canvas, with_medatadata, row, col, line_builder, attr)?;
-        col += if index == 0 { 2 } else { 1 };
-        col += canvas.print(row, col, line_builder.prefix())?;
+        col += Self::tree_metadata(f, rect, with_medatadata, row, col, line_builder, style);
+        col += Self::tree_lines(f, rect, row, col, index, line_builder);
         col += Self::tree_line_calc_flagged_offset(status, path);
-        canvas.print_with_attr(row, col, &line_builder.filename(), attr)?;
-        Ok(())
+        rect.print_with_style(f, row, col, &line_builder.filename(), style);
+    }
+
+    fn print_flagged_symbol(
+        f: &mut Frame,
+        status: &Status,
+        rect: &Rect,
+        row: u16,
+        path: &std::path::Path,
+        style: &mut Style,
+    ) {
+        print_flagged_symbol(f, status, rect, row, path, style)
+    }
+
+    fn tree_lines(
+        f: &mut Frame,
+        rect: &Rect,
+        row: u16,
+        col: u16,
+        index: usize,
+        line_builder: &TLine,
+    ) -> u16 {
+        let width = Self::tree_offset_per_line(index);
+        let prefix = line_builder.prefix();
+        rect.print(f, row, col + width, prefix);
+        width + prefix.utf_width_u16()
+    }
+
+    fn tree_offset_per_line(index: usize) -> u16 {
+        2 - (index != 0) as u16
     }
 
     fn tree_metadata(
-        canvas: &mut dyn Canvas,
+        f: &mut Frame,
+        rect: &Rect,
         with_medatadata: bool,
-        row: usize,
-        col: usize,
+        row: u16,
+        col: u16,
         line_builder: &TLine,
-        attr: Attr,
-    ) -> Result<usize> {
+        style: Style,
+    ) -> u16 {
         if with_medatadata {
-            Ok(canvas.print_with_attr(row, col, line_builder.metadata(), attr)?)
+            let line = line_builder.metadata();
+            let len = line.utf_width_u16();
+            rect.print_with_style(f, row, col, line, style);
+            len
         } else {
-            Ok(0)
+            0
         }
     }
 
-    fn tree_line_calc_flagged_offset(status: &Status, path: &std::path::Path) -> usize {
-        status.menu.flagged.contains(path) as usize
+    fn tree_line_calc_flagged_offset(status: &Status, path: &std::path::Path) -> u16 {
+        status.menu.flagged.contains(path) as u16
     }
 }
 
@@ -467,29 +716,26 @@ struct PreviewDisplay<'a> {
 /// It may fail to recognize some usual extensions, notably `.toml`.
 /// It may fail to recognize small files (< 1024 bytes).
 impl<'a> Draw for PreviewDisplay<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
-        let line_number_width = length.to_string().len();
-        let height = canvas.height()?;
+        let height = rect.height;
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
-                self.syntaxed(syntaxed, length, canvas, line_number_width, window)?
+                let number_col_width = Self::number_width(length);
+                self.syntaxed(f, syntaxed, length, rect, number_col_width, window)
             }
-            Preview::Binary(bin) => self.binary(bin, length, canvas, window)?,
-            Preview::Ueberzug(image) => self.ueberzug(image, canvas)?,
-            Preview::Tree(tree_preview) => self.tree_preview(tree_preview, window, canvas)?,
+            Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
+            Preview::Ueberzug(image) => self.ueberzug(image, rect),
+            Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
             Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CommandStdout) => {
-                self.colored_text(colored_text, length, canvas, window)?
+                self.colored_text(f, colored_text, length, rect, window)
             }
-            Preview::Text(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
+            Preview::Text(text) => self.normal_text(f, text, length, rect, window, height),
 
             Preview::Empty => (),
-        }
-        Ok(())
+        };
     }
 }
 
@@ -511,92 +757,114 @@ impl<'a> PreviewDisplay<'a> {
     }
 
     fn line_number(
-        row_position_in_canvas: usize,
+        f: &mut Frame,
+        row_position_in_rect: u16,
         line_number_to_print: usize,
-        canvas: &mut dyn Canvas,
-    ) -> Result<usize> {
-        Ok(canvas.print_with_attr(
-            row_position_in_canvas,
+        rect: &Rect,
+    ) -> usize {
+        let len = line_number_to_print.to_string().len();
+        rect.print_with_style(
+            f,
+            row_position_in_rect,
             0,
             &line_number_to_print.to_string(),
-            MENU_ATTRS.get().expect("Menu colors should be set").first,
-        )?)
+            MENU_STYLES.get().expect("Menu colors should be set").first,
+        );
+        len
+    }
+
+    /// Number of digits in decimal representation
+    fn number_width(mut number: usize) -> u16 {
+        let mut width = 0;
+        while number != 0 {
+            width += 1;
+            number /= 10;
+        }
+        width
+    }
+
+    /// Draw every line of the text
+    fn normal_text(
+        &self,
+        f: &mut Frame,
+        text: &Text,
+        length: usize,
+        rect: &Rect,
+        window: &ContentWindow,
+        height: u16,
+    ) {
+        for (i, line) in text.take_skip_enum(window.top, window.bottom, length) {
+            let row = calc_line_row(i, window);
+            if row + 2 > height {
+                break;
+            }
+            rect.print(f, row, 3, line);
+        }
     }
 
     fn syntaxed(
         &self,
+        f: &mut Frame,
         syntaxed: &HLContent,
         length: usize,
-        canvas: &mut dyn Canvas,
-        line_number_width: usize,
+        rect: &Rect,
+        number_col_width: u16,
         window: &ContentWindow,
-    ) -> Result<()> {
-        for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
+    ) {
+        for (i, vec_line) in (*syntaxed).take_skip_enum(window.top, window.bottom, length) {
             let row_position = calc_line_row(i, window);
-            Self::line_number(row_position, i + 1, canvas)?;
+            if row_position + 2 > rect.height {
+                break;
+            }
+            Self::line_number(f, row_position, i + 1, rect);
             for token in vec_line.iter() {
-                token.print(canvas, row_position, line_number_width)?;
+                token.print(f, rect, row_position, number_col_width);
             }
         }
-        Ok(())
     }
 
     fn binary(
         &self,
+        f: &mut Frame,
         bin: &BinaryContent,
         length: usize,
-        canvas: &mut dyn Canvas,
+        rect: &Rect,
         window: &ContentWindow,
-    ) -> Result<()> {
-        let height = canvas.height()?;
+    ) {
+        let height = rect.height;
         let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
-        for (i, line) in (*bin).window(window.top, window.bottom, length) {
+        for (i, line) in (*bin).take_skip_enum(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-            if row > height {
+            if row + 2 > height {
                 break;
             }
-            canvas.print_with_attr(
-                row,
-                0,
-                &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                MENU_ATTRS.get().expect("Menu colors should be set").first,
-            )?;
-            line.print_bytes(canvas, row, line_number_width_hex + 1);
-            line.print_ascii(canvas, row, line_number_width_hex + 43);
+            line.print_line_number_hex(f, rect, row, window.top, i, line_number_width_hex);
+            line.print_bytes(f, rect, row, line_number_width_hex + 1);
+            line.print_ascii(f, rect, row, line_number_width_hex + 43);
         }
-        Ok(())
     }
 
-    fn ueberzug(&self, image: &Ueber, canvas: &mut dyn Canvas) -> Result<()> {
-        let (width, height) = canvas.size()?;
-        // image.match_index()?;
-        image.draw(
-            self.attributes.x_position as u16 + 2,
-            3,
-            width as u16 - 2,
-            height as u16 - 2,
-        );
-        Ok(())
+    fn ueberzug(&self, image: &Ueber, rect: &Rect) {
+        let width = rect.width;
+        let height = rect.height;
+        image.draw(self.attributes.x_position + 1, 3, width, height - 2);
     }
 
-    fn tree_preview(
-        &self,
-        tree: &Tree,
-        window: &ContentWindow,
-        canvas: &mut dyn Canvas,
-    ) -> Result<()> {
-        let height = canvas.height()?;
+    fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
+        let height = rect.height;
         let tree_content = tree.displayable();
         let content = tree_content.lines();
         let length = content.len();
 
         for (index, tree_line_builder) in
-            tree.displayable().window(window.top, window.bottom, length)
+            tree.displayable()
+                .take_skip_enum(window.top, window.bottom, length)
         {
             TreeDisplay::tree_line(
+                f,
                 self.status,
-                canvas,
+                rect,
                 tree_line_builder,
                 TreeLinePosition {
                     left_margin: 0,
@@ -605,30 +873,29 @@ impl<'a> PreviewDisplay<'a> {
                     height,
                 },
                 false,
-            )?;
+            );
         }
-        Ok(())
     }
 
     fn colored_text(
         &self,
+        f: &mut Frame,
         colored_text: &Text,
         length: usize,
-        canvas: &mut dyn Canvas,
+        rect: &Rect,
         window: &ContentWindow,
-    ) -> Result<()> {
-        let height = canvas.height()?;
-        for (i, line) in colored_text.window(window.top, window.bottom, length) {
+    ) {
+        let height = rect.height;
+        for (i, line) in colored_text.take_skip_enum(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-            if row > height {
+            if row + 2 > height {
                 break;
             }
-            let mut col = 3;
-            for (chr, attr) in skim::AnsiString::parse(line).iter() {
-                col += canvas.print_with_attr(row, col, &chr.to_string(), attr)?;
+            let offset = 3;
+            for (i, (chr, style)) in AnsiString::parse(line).iter().enumerate() {
+                rect.print_with_style(f, row, offset + i as u16, &chr.to_string(), style)
             }
         }
-        Ok(())
     }
 }
 
@@ -636,12 +903,12 @@ struct TreeLinePosition {
     left_margin: usize,
     top: usize,
     index: usize,
-    height: usize,
+    height: u16,
 }
 
 impl TreeLinePosition {
     /// left_margin, top, index, height
-    fn export(&self) -> (usize, usize, usize, usize) {
+    fn export(&self) -> (usize, usize, usize, u16) {
         (self.left_margin, self.top, self.index, self.height)
     }
 }
@@ -660,14 +927,16 @@ impl<'a> Draw for FilesHeader<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let (width, _) = canvas.size()?;
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        let width = rect.width;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
-            _ => Header::new(self.status, self.tab)?.elems().to_owned(),
+            _ => Header::new(self.status, self.tab)
+                .unwrap()
+                .elems()
+                .to_owned(),
         };
-        draw_clickable_strings(0, 0, &content, canvas, self.is_selected)?;
-        Ok(())
+        draw_clickable_strings(f, 0, 0, &content, rect, self.is_selected);
     }
 }
 
@@ -684,16 +953,18 @@ impl<'a> FilesHeader<'a> {
 #[derive(Default)]
 struct FilesSecondLine {
     content: Option<String>,
-    attr: Option<Attr>,
+    style: Option<Style>,
 }
 
 impl Draw for FilesSecondLine {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        match (&self.content, &self.attr) {
-            (Some(content), Some(attr)) => canvas.print_with_attr(1, 1, content, *attr)?,
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        match (&self.content, &self.style) {
+            (Some(content), Some(style)) => {
+                rect.print_with_style(f, 1, 1, content, *style);
+                content.len()
+            }
             _ => 0,
         };
-        Ok(())
     }
 }
 
@@ -712,12 +983,12 @@ impl FilesSecondLine {
     fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = file.attr();
-        attr.effect ^= Effect::REVERSE;
+        let mut style = file.style();
+        style.add_modifier ^= Modifier::REVERSED;
 
         Self {
             content: Some(file.format(owner_size, group_size).unwrap_or_default()),
-            attr: Some(attr),
+            style: Some(style),
         }
     }
 }
@@ -725,15 +996,16 @@ impl FilesSecondLine {
 struct LogLine;
 
 impl Draw for LogLine {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let height = canvas.height()?;
-        canvas.print_with_attr(
-            height - 2,
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        let row = rect.height.saturating_sub(2);
+        rect.clear_line(f, row);
+        rect.print_with_style(
+            f,
+            row,
             4,
             &read_last_log_line(),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
-        Ok(())
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
     }
 }
 
@@ -751,29 +1023,32 @@ impl<'a> Draw for FilesFooter<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let (width, height) = canvas.size()?;
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        let width = rect.width;
+        let height = rect.height;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
+            _ => Footer::new(self.status, self.tab)
+                .unwrap()
+                .elems()
+                .to_owned(),
         };
-        let mut attr = MENU_ATTRS.get().expect("Menu colors should be set").first;
+        let mut style = MENU_STYLES.get().expect("Menu colors should be set").first;
         let last_index = (content.len().saturating_sub(1))
-            % MENU_ATTRS
+            % MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .palette_size();
-        let mut background = MENU_ATTRS
+        let mut background = MENU_STYLES
             .get()
             .expect("Menu colors should be set")
             .palette()[last_index];
         if self.is_selected {
-            attr.effect |= Effect::REVERSE;
-            background.effect |= Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
+            background.add_modifier |= Modifier::REVERSED;
         };
-        canvas.print_with_attr(height - 1, 0, &" ".repeat(width), background)?;
-        draw_clickable_strings(height - 1, 0, &content, canvas, self.is_selected)?;
-        Ok(())
+        rect.print_with_style(f, height - 1, 0, &" ".repeat(width as usize), background);
+        draw_clickable_strings(f, height - 1, 0, &content, rect, self.is_selected);
     }
 }
 
@@ -793,14 +1068,16 @@ struct Menu<'a> {
 }
 
 impl<'a> Draw for Menu<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        if !self.tab.need_menu_window() {
+            return;
+        }
         let mode = self.tab.menu_mode;
-        self.cursor(canvas)?;
-        MenuFirstLine::new(self.status).draw(canvas)?;
-        self.menu_line(canvas)?;
-        self.content_per_mode(canvas, mode)?;
-        self.binds_per_mode(canvas, mode)?;
-        Ok(())
+        self.cursor(f, rect);
+        MenuFirstLine::new(self.status).draw(f, rect);
+        self.menu_line(f, rect);
+        self.content_per_mode(f, rect, mode);
+        self.binds_per_mode(f, rect, mode);
     }
 }
 
@@ -818,117 +1095,131 @@ impl<'a> Menu<'a> {
     /// # Errors
     ///
     /// may fail if we can't display on the terminal.
-    fn cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn cursor(&self, f: &mut Frame, rect: &Rect) {
         let offset = self.tab.menu_mode.cursor_offset();
-        let index = self.status.menu.input.index();
-        canvas.set_cursor(0, offset + index)?;
-        canvas.show_cursor(self.tab.menu_mode.show_cursor())?;
-        Ok(())
+        let index = self.status.menu.input.index() as u16;
+        let x = rect.x + offset + index;
+        if self.tab.menu_mode.show_cursor() {
+            f.set_cursor_position(Position::new(x, rect.y));
+        }
     }
 
-    fn menu_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let menu = MENU_ATTRS.get().expect("Menu colors should be set").second;
+    fn menu_line(&self, f: &mut Frame, rect: &Rect) {
+        let menu = MENU_STYLES.get().expect("Menu colors should be set").second;
         match self.tab.menu_mode {
             MenuMode::InputSimple(InputSimple::Chmod) => {
-                let first = MENU_ATTRS.get().expect("Menu colors should be set").first;
-                self.menu_line_chmod(canvas, first, menu)?
+                let first = MENU_STYLES.get().expect("Menu colors should be set").first;
+                self.menu_line_chmod(f, rect, first, menu);
             }
-            edit => canvas.print_with_attr(1, 2, edit.second_line(), menu)?,
+            edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
         };
-        Ok(())
     }
 
-    fn menu_line_chmod(&self, canvas: &mut dyn Canvas, first: Attr, menu: Attr) -> Result<usize> {
+    fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
         let mode_parsed = parse_input_mode(&self.status.menu.input.string());
         let mut col = 11;
         for (text, is_valid) in &mode_parsed {
-            let attr = if *is_valid { first } else { menu };
-            col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+            let style = if *is_valid { first } else { menu };
+            col += 1 + text.utf_width_u16();
+            rect.print_with_style(f, 1, col, text, style);
         }
-        Ok(col)
     }
 
-    fn content_per_mode(&self, canvas: &mut dyn Canvas, mode: MenuMode) -> Result<()> {
+    fn content_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
         match mode {
-            MenuMode::Navigate(mode) => self.navigate(mode, canvas),
-            MenuMode::NeedConfirmation(mode) => self.confirm(mode, canvas),
-            MenuMode::InputCompleted(_) => self.completion(canvas),
-            MenuMode::InputSimple(mode) => Self::static_lines(mode.lines(), canvas),
-            _ => Ok(()),
+            MenuMode::Navigate(mode) => self.navigate(mode, f, rect),
+            MenuMode::NeedConfirmation(mode) => self.confirm(mode, f, rect),
+            MenuMode::InputCompleted(_) => self.completion(f, rect),
+            MenuMode::InputSimple(mode) => Self::static_lines(mode.lines(), f, rect),
+            _ => (),
         }
     }
 
-    fn binds_per_mode(&self, canvas: &mut dyn Canvas, mode: MenuMode) -> Result<()> {
-        let height = canvas.height()?;
-        canvas.clear_line(height - 1)?;
-        canvas.print_with_attr(
-            height - 1,
+    fn binds_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
+        // TODO remove
+        // stupid hack to allow some help for the trash...
+        if mode == MenuMode::Navigate(Navigate::Trash) {
+            return;
+        }
+        let height = rect.height;
+
+        rect.clear_line(f, height.saturating_sub(2));
+        rect.print_with_style(
+            f,
+            height.saturating_sub(2),
             2,
             mode.binds_per_mode(),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
-        Ok(())
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
     }
 
-    fn static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
-        for (row, line, attr) in enumerated_colored_iter!(lines) {
-            Self::content_line(canvas, row, line, attr)?;
+    fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
+        log_info!(
+            "len: {len}, height: {height} - rect {rect}",
+            len = lines.len(),
+            height = rect.height
+        );
+        for (row, line, style) in enumerated_colored_iter!(lines) {
+            if row + 2 >= rect.height as usize {
+                break;
+            }
+            Self::content_line(f, rect, row as u16, line, style);
         }
-        Ok(())
     }
 
-    fn navigate(&self, navigate: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
+    fn navigate(&self, navigate: Navigate, f: &mut Frame, rect: &Rect) {
         if navigate.simple_draw_menu() {
-            return self.status.menu.draw_navigate(canvas, navigate);
+            return self.status.menu.draw_navigate(f, rect, navigate);
         }
         match navigate {
-            Navigate::Cloud => self.cloud(canvas),
-            Navigate::Context => self.context(canvas),
-            Navigate::Flagged => self.flagged(canvas),
-            Navigate::History => self.history(canvas),
-            Navigate::Picker => self.picker(canvas),
-            Navigate::Trash => self.trash(canvas),
+            Navigate::Cloud => self.cloud(f, rect),
+            Navigate::Context => self.context(f, rect),
+            Navigate::Flagged => self.flagged(f, rect),
+            Navigate::History => self.history(f, rect),
+            Navigate::Picker => self.picker(f, rect),
+            Navigate::Trash => self.trash(f, rect),
             _ => unreachable!("menu.simple_draw_menu should cover this mode"),
         }
     }
 
-    fn history(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn history(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.tab.history;
-        let mut window = ContentWindow::new(selectable.len(), canvas.height()?);
+        let mut window = ContentWindow::new(selectable.len(), rect.height as usize);
         window.scroll_to(selectable.index);
-        selectable.draw_menu(canvas, &window)
+        selectable.draw_menu(f, rect, &window)
     }
 
-    fn trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn trash(&self, f: &mut Frame, rect: &Rect) {
         let trash = &self.status.menu.trash;
         if trash.content().is_empty() {
-            self.trash_is_empty(canvas)
+            self.trash_is_empty(f, rect)
         } else {
-            self.trash_content(canvas, trash)
+            self.trash_content(f, rect, trash)
         };
-        Ok(())
     }
 
-    fn trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = trash.draw_menu(canvas, &self.status.menu.window);
-        let _ = canvas.print_with_attr(
-            1,
+    fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
+        trash.draw_menu(f, rect, &self.status.menu.window);
+        rect.print_with_style(
+            f,
+            rect.height.saturating_sub(2),
             2,
             &trash.help,
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
+            MENU_STYLES.get().expect("Menu colors should be set").second,
         );
     }
 
-    fn trash_is_empty(&self, canvas: &mut dyn Canvas) {
-        let _ = Self::content_line(
-            canvas,
+    fn trash_is_empty(&self, f: &mut Frame, rect: &Rect) {
+        Self::content_line(
+            f,
+            rect,
             0,
             "Trash is empty",
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
+            MENU_STYLES.get().expect("Menu colors should be set").second,
         );
     }
 
-    fn cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn cloud(&self, f: &mut Frame, rect: &Rect) {
         let cloud = &self.status.menu.cloud;
         let mut desc = cloud.desc();
         if let Some((index, metadata)) = &cloud.metadata_repr {
@@ -936,145 +1227,150 @@ impl<'a> Menu<'a> {
                 desc = format!("{desc} - {metadata}");
             }
         }
-        let _ = canvas.print_with_attr(
+        rect.print_with_style(
+            f,
             2,
             2,
             &desc,
-            MENU_ATTRS
+            MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .palette_4,
         );
-        cloud.draw_menu(canvas, &self.status.menu.window)
+        cloud.draw_menu(f, rect, &self.status.menu.window)
     }
 
-    fn picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn picker(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.status.menu.picker;
-        selectable.draw_menu(canvas, &self.status.menu.window)?;
+        selectable.draw_menu(f, rect, &self.status.menu.window);
         if let Some(desc) = &selectable.desc {
-            canvas.clear_line(1)?;
-            canvas.print_with_attr(
+            rect.clear_line(f, 1);
+            rect.print_with_style(
+                f,
                 1,
                 2,
                 desc,
-                MENU_ATTRS.get().expect("Menu colors should be set").second,
-            )?;
+                MENU_STYLES.get().expect("Menu colors should be set").second,
+            );
         }
-        Ok(())
     }
 
-    fn context(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.context_selectable(canvas)?;
-        self.context_more_infos(canvas)
+    fn context(&self, f: &mut Frame, rect: &Rect) {
+        self.context_selectable(f, rect);
+        self.context_more_infos(f, rect)
     }
 
-    fn context_selectable(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn context_selectable(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(
+        rect.print_with_style(
+            f,
             1,
             2,
             "Pick an action.",
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
         let content = selectable.content();
-        for (letter, (row, desc, attr)) in
-            std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
-        {
-            let attr = selectable.attr(row, &attr);
-            canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+        let window = &self.status.menu.window;
+        for (letter, (index, desc, style)) in std::iter::zip(
+            ('a'..='z').cycle().skip(self.status.menu.window.top),
+            colored_skip_take!(content, window),
+        ) {
+            let row = (index + 1 - window.top) as u16;
+            if row + 2 + ContentWindow::WINDOW_MARGIN_TOP_U16 > rect.height {
+                return;
+            }
+            let style = selectable.style(index, &style);
+            rect.print_with_style(
+                f,
+                row + ContentWindow::WINDOW_MARGIN_TOP_U16,
                 2,
                 &format!("{letter} "),
-                attr,
-            )?;
-            Self::content_line(canvas, row + 1, desc, attr)?;
+                style,
+            );
+            Self::content_line(f, rect, row, desc, style);
         }
-        Ok(())
     }
 
-    fn context_more_infos(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn context_more_infos(&self, f: &mut Frame, rect: &Rect) {
         let space_used = &self.status.menu.context.content.len();
         let more_info = MoreInfos::new(
-            &self.tab.current_file()?,
+            &self.tab.current_file().unwrap(),
             &self.status.internal_settings.opener,
         )
         .to_lines();
-        for (row, text, attr) in enumerated_colored_iter!(more_info) {
-            Self::content_line(canvas, space_used + row + 1, text, attr)?;
+        for (row, text, style) in enumerated_colored_iter!(more_info) {
+            Self::content_line(f, rect, (space_used + row + 1) as u16, text, style);
         }
-        Ok(())
     }
 
-    fn flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.flagged_files(canvas)?;
-        self.flagged_selected(canvas)
+    fn flagged(&self, f: &mut Frame, rect: &Rect) {
+        self.flagged_files(f, rect);
+        self.flagged_selected(f, rect);
     }
 
-    fn flagged_files(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn flagged_files(&self, f: &mut Frame, rect: &Rect) {
         self.status
             .menu
             .flagged
-            .draw_menu(canvas, &self.status.menu.window)
+            .draw_menu(f, rect, &self.status.menu.window);
     }
 
-    fn flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn flagged_selected(&self, f: &mut Frame, rect: &Rect) {
         if let Some(selected) = self.status.menu.flagged.selected() {
-            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+            let fileinfo = FileInfo::new(selected, &self.tab.users).unwrap();
+            rect.print_with_style(f, 2, 2, &fileinfo.format(6, 6).unwrap(), fileinfo.style());
         };
-        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn completion(&self, f: &mut Frame, rect: &Rect) {
         self.status
             .menu
             .completion
-            .draw_menu(canvas, &self.status.menu.window)
+            .draw_menu(f, rect, &self.status.menu.window)
     }
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
-    fn confirm(&self, confirmed_mode: NeedConfirmation, canvas: &mut dyn Canvas) -> Result<()> {
-        let dest = path_to_string(&self.tab.directory_of_selected()?);
+    fn confirm(&self, confirmed_mode: NeedConfirmation, f: &mut Frame, rect: &Rect) {
+        let dest = path_to_string(&self.tab.directory_of_selected().unwrap());
 
         Self::content_line(
-            canvas,
+            f,
+            rect,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
         match confirmed_mode {
-            NeedConfirmation::EmptyTrash => self.confirm_empty_trash(canvas)?,
-            NeedConfirmation::BulkAction => self.confirm_bulk(canvas)?,
-            NeedConfirmation::DeleteCloud => self.confirm_delete_cloud(canvas)?,
-            _ => self.confirm_default(canvas)?,
-        }
-        Ok(())
+            NeedConfirmation::EmptyTrash => self.confirm_empty_trash(f, rect),
+            NeedConfirmation::BulkAction => self.confirm_bulk(f, rect),
+            NeedConfirmation::DeleteCloud => self.confirm_delete_cloud(f, rect),
+            _ => self.confirm_default(f, rect),
+        };
     }
 
-    fn confirm_default(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
         let content = &self.status.menu.flagged.content;
-        for (row, path, attr) in enumerated_colored_iter!(content) {
+        for (row, path, style) in enumerated_colored_iter!(content) {
             Self::content_line(
-                canvas,
-                row + 2,
-                path.to_str().context("Unreadable filename")?,
-                attr,
-            )?;
+                f,
+                rect,
+                row as u16 + 2,
+                path.to_str().context("Unreadable filename").unwrap(),
+                style,
+            );
         }
-        Ok(())
     }
 
-    fn confirm_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
-        for (row, line, attr) in enumerated_colored_iter!(content) {
-            Self::content_line(canvas, row + 2, line, attr)?;
+        for (row, line, style) in enumerated_colored_iter!(content) {
+            Self::content_line(f, rect, row as u16 + 2, line, style);
         }
-        Ok(())
     }
 
-    fn confirm_delete_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn confirm_delete_cloud(&self, f: &mut Frame, rect: &Rect) {
         let line = if let Some(selected) = &self.status.menu.cloud.selected() {
             &format!(
                 "{desc}{sel}",
@@ -1085,55 +1381,52 @@ impl<'a> Menu<'a> {
             "No selected file"
         };
         Self::content_line(
-            canvas,
+            f,
+            rect,
             3,
             line,
-            MENU_ATTRS
+            MENU_STYLES
                 .get()
-                .context("MENU_ATTRS should be set")?
+                .context("MENU_STYLES should be set")
+                .unwrap()
                 .palette_4,
-        )?;
-        Ok(())
+        );
     }
 
-    fn confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn confirm_empty_trash(&self, f: &mut Frame, rect: &Rect) {
         if self.status.menu.trash.is_empty() {
-            self.trash_is_empty(canvas)
+            self.trash_is_empty(f, rect)
         } else {
-            self.confirm_non_empty_trash(canvas)?
+            self.confirm_non_empty_trash(f, rect)
         }
-        Ok(())
     }
 
-    fn confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.trash.content();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.menu.trash.attr(row, &attr);
-            Self::content_line(canvas, row + 4, &trashinfo.to_string(), attr)?;
+        for (row, trashinfo, style) in enumerated_colored_iter!(content) {
+            let style = self.status.menu.trash.style(row, &style);
+            Self::content_line(f, rect, row as u16 + 4, &trashinfo.to_string(), style);
         }
-        Ok(())
     }
 
-    fn content_line(
-        canvas: &mut dyn Canvas,
-        row: usize,
-        text: &str,
-        attr: tuikit::attr::Attr,
-    ) -> Result<usize> {
-        Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
+    fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
+        rect.print_with_style(
+            f,
+            row + ContentWindow::WINDOW_MARGIN_TOP_U16,
+            4,
+            text,
+            style,
+        );
     }
 }
-
-impl<'a> Widget for Menu<'a> {}
 
 struct MenuFirstLine {
     content: Vec<String>,
 }
 
 impl Draw for MenuFirstLine {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        draw_colored_strings(0, 1, &self.content, canvas, false)?;
-        Ok(())
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        draw_colored_strings(f, 0, 1, &self.content, rect, false);
     }
 }
 
@@ -1150,12 +1443,12 @@ impl MenuFirstLine {
 pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
-    term: Arc<Term>,
+    term: Terminal<CrosstermBackend<Stdout>>,
 }
 
 impl Display {
-    /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>) -> Self {
+    /// Returns a new `Display` instance from a terminal object.
+    pub fn new(term: Terminal<CrosstermBackend<Stdout>>) -> Self {
         log_info!("starting display...");
         Self { term }
     }
@@ -1177,194 +1470,279 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
-        self.hide_cursor()?;
-        self.term.clear()?;
-
-        let (width, _) = self.term.term_size()?;
+    pub fn display_all(&mut self, status: &MutexGuard<Status>) {
+        if status.should_be_cleared() {
+            self.term.clear().unwrap();
+        }
+        let Ok(Size { width, height }) = self.term.size() else {
+            return;
+        };
+        let rect = Rect::new(0, 0, width, height);
+        let inside_border_rect = Rect::new(1, 1, width.saturating_sub(2), height.saturating_sub(2));
+        let borders = self.borders(status);
         if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.dual_pane(status)?
+            self.draw_dual(rect, inside_border_rect, borders, status);
         } else {
-            self.single_pane(status)?
+            self.draw_single(rect, inside_border_rect, borders, status);
+        };
+    }
+
+    fn draw_dual(
+        &mut self,
+        rect: Rect,
+        inside_border_rect: Rect,
+        borders: [Style; 4],
+        status: &Status,
+    ) {
+        let (file_left, file_right) = FilesBuilder::dual(status, rect.width);
+        let menu_left = Menu::new(status, 0);
+        let menu_right = Menu::new(status, 1);
+        let parent_wins = self.horizontal_split(rect);
+        let have_menu_left = status.tabs[0].need_menu_window();
+        let have_menu_right = status.tabs[1].need_menu_window();
+        let bordered_wins = self.dual_bordered_rect(parent_wins, have_menu_left, have_menu_right);
+        let inside_wins =
+            self.dual_inside_rect(inside_border_rect, have_menu_left, have_menu_right);
+        self.render_dual(
+            borders,
+            bordered_wins,
+            inside_wins,
+            (file_left, file_right),
+            (menu_left, menu_right),
+        );
+    }
+
+    fn render_dual(
+        &mut self,
+        borders: [Style; 4],
+        bordered_wins: Vec<Rect>,
+        inside_wins: Vec<Rect>,
+        files: (Files, Files),
+        menus: (Menu, Menu),
+    ) {
+        self.term
+            .draw(|f| {
+                // 0 2
+                // 1 3
+                Self::draw_dual_borders(borders, f, &bordered_wins);
+                files.0.draw(f, &inside_wins[0]);
+                menus.0.draw(f, &inside_wins[1]);
+                files.1.draw(f, &inside_wins[2]);
+                menus.1.draw(f, &inside_wins[3]);
+            })
+            .unwrap();
+    }
+
+    fn draw_single(
+        &mut self,
+        rect: Rect,
+        inside_border_rect: Rect,
+        borders: [Style; 4],
+        status: &Status,
+    ) {
+        let file_left = FilesBuilder::single(status);
+        let menu_left = Menu::new(status, 0);
+        let need_menu = status.tabs[0].need_menu_window();
+        let bordered_wins = self.vertical_split_border(rect, need_menu);
+        let inside_wins = self.vertical_split_inner(inside_border_rect, need_menu);
+        self.render_single(borders, bordered_wins, inside_wins, file_left, menu_left)
+    }
+
+    fn render_single(
+        &mut self,
+        borders: [Style; 4],
+        bordered_wins: Vec<Rect>,
+        inside_wins: Vec<Rect>,
+        file_left: Files,
+        menu_left: Menu,
+    ) {
+        self.term
+            .draw(|f| {
+                Self::draw_single_borders(borders, f, &bordered_wins);
+                file_left.draw(f, &inside_wins[0]);
+                menu_left.draw(f, &inside_wins[1]);
+            })
+            .unwrap();
+    }
+
+    fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        for i in 0..n {
+            let bordered_block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(borders[i]);
+            f.render_widget(bordered_block, wins[i]);
         }
-
-        Ok(self.term.present()?)
     }
 
-    /// Hide the curose, clear the terminal and present.
-    pub fn force_clear(&mut self) -> Result<()> {
-        self.hide_cursor()?;
-        self.term.clear()?;
-        self.term.present()?;
-        Ok(())
+    fn draw_dual_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        Self::draw_n_borders(4, borders, f, wins)
     }
 
-    /// Used to force a display of the cursor before leaving the application.
-    /// Most of the times we don't need a cursor and it's hidden. We have to
-    /// do it unless the shell won't display a cursor anymore.
-    pub fn show_cursor(&self) -> Result<()> {
-        Ok(self.term.show_cursor(true)?)
+    fn draw_single_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
+        Self::draw_n_borders(2, borders, f, wins)
     }
 
-    fn hide_cursor(&self) -> Result<()> {
-        self.term.set_cursor(0, 0)?;
-        Ok(self.term.show_cursor(false)?)
+    fn horizontal_split(&self, rect: Rect) -> Vec<Rect> {
+        let left_rect = Rect::new(rect.x, rect.y, rect.width / 2, rect.height);
+        let right_rect = Rect::new(rect.x + rect.width / 2, rect.y, rect.width / 2, rect.height);
+        vec![left_rect, right_rect]
     }
 
-    /// Reads and returns the `tuikit::term::Term` height.
-    pub fn height(&self) -> Result<usize> {
-        let (_, height) = self.term.term_size()?;
-        Ok(height)
-    }
-
-    fn size_for_menu_window(&self, tab: &Tab) -> Result<usize> {
-        if tab.need_menu_window() {
-            Ok(self.height()? / 2)
-        } else {
-            Ok(0)
-        }
-    }
-
-    fn vertical_split<'a>(
+    fn dual_bordered_rect(
         &self,
-        files: &'a Files,
-        menu: &'a Menu,
-        file_border: Attr,
-        menu_border: Attr,
-        size: usize,
-    ) -> Result<VSplit<'a>> {
-        Ok(VSplit::default()
-            .split(
-                Win::new(files)
-                    .basis(self.height()? - size)
-                    .shrink(4)
-                    .border(true)
-                    .border_attr(file_border),
-            )
-            .split(
-                Win::new(menu)
-                    .basis(size)
-                    .shrink(0)
-                    .border(true)
-                    .border_attr(menu_border),
-            ))
+        parent_wins: Vec<Rect>,
+        have_menu_left: bool,
+        have_menu_right: bool,
+    ) -> Vec<Rect> {
+        let mut bordered_wins = self.vertical_split_border(parent_wins[0], have_menu_left);
+        bordered_wins.append(&mut self.vertical_split_border(parent_wins[1], have_menu_right));
+        bordered_wins
+    }
+
+    // TODO: do the horizontal split by hand
+    fn vertical_split_inner(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
+        let (top, bot) = if have_menu {
+            (parent_win.height / 2 - 1, parent_win.height / 2)
+        } else {
+            (parent_win.height, 0)
+        };
+        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
+        let bot_rect = Rect::new(parent_win.x, parent_win.y + top + 2, parent_win.width, bot);
+        vec![top_rect, bot_rect]
+    }
+
+    fn vertical_split_border(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
+        let (top, bot) = if have_menu {
+            (parent_win.height / 2, parent_win.height / 2)
+        } else {
+            (parent_win.height, 0)
+        };
+        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
+        let bot_rect = Rect::new(parent_win.x, parent_win.y + top, parent_win.width, bot);
+        vec![top_rect, bot_rect]
     }
 
     /// Left File, Left Menu, Right File, Right Menu
-    fn borders(&self, status: &Status) -> [Attr; 4] {
-        let menu_attrs = MENU_ATTRS.get().expect("MENU_ATTRS should be set");
-        let mut borders = [menu_attrs.inert_border; 4];
-        let selected_border = menu_attrs.selected_border;
+    fn borders(&self, status: &Status) -> [Style; 4] {
+        let menu_styles = MENU_STYLES.get().expect("MENU_STYLES should be set");
+        let mut borders = [menu_styles.inert_border; 4];
+        let selected_border = menu_styles.selected_border;
         borders[status.focus.index()] = selected_border;
         borders
     }
 
-    fn dual_pane(&mut self, status: &Status) -> Result<()> {
-        let (width, _) = self.term.term_size()?;
-        let (files_left, files_right) = FilesBuilder::dual(status, width);
-        let menu_left = Menu::new(status, 0);
-        let menu_right = Menu::new(status, 1);
-        let borders = self.borders(status);
-        let percent_left = self.size_for_menu_window(&status.tabs[0])?;
-        let percent_right = self.size_for_menu_window(&status.tabs[1])?;
-        let hsplit = HSplit::default()
-            .split(self.vertical_split(
-                &files_left,
-                &menu_left,
-                borders[0],
-                borders[1],
-                percent_left,
-            )?)
-            .split(self.vertical_split(
-                &files_right,
-                &menu_right,
-                borders[2],
-                borders[3],
-                percent_right,
-            )?);
-        Ok(self.term.draw(&hsplit)?)
+    fn dual_inside_rect(
+        &self,
+        rect: Rect,
+        have_menu_left: bool,
+        have_menu_right: bool,
+    ) -> Vec<Rect> {
+        let parent_wins = {
+            let left_rect = Rect::new(rect.x, rect.y, rect.width / 2 - 1, rect.height);
+            let right_rect = Rect::new(
+                rect.x + rect.width / 2 + 1,
+                rect.y,
+                rect.width / 2 - 2,
+                rect.height,
+            );
+            vec![left_rect, right_rect]
+        };
+        let mut areas = self.vertical_split_inner(parent_wins[0], have_menu_left);
+        areas.append(&mut self.vertical_split_inner(parent_wins[1], have_menu_right));
+        areas
     }
 
-    fn single_pane(&mut self, status: &Status) -> Result<()> {
-        let files_left = FilesBuilder::single(status);
-        let menu_left = Menu::new(status, 0);
-        let percent_left = self.size_for_menu_window(&status.tabs[0])?;
-        let borders = self.borders(status);
-        let win = self.vertical_split(
-            &files_left,
-            &menu_left,
-            borders[0],
-            borders[1],
-            percent_left,
-        )?;
-        Ok(self.term.draw(&win)?)
+    pub fn restore_terminal(&mut self) -> Result<()> {
+        disable_raw_mode()?;
+        execute!(self.term.backend_mut(), LeaveAlternateScreen)?;
+        self.term.show_cursor()?;
+        Ok(())
     }
-}
-
-fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
-    format!("{line_nr:0width$x}")
 }
 
 #[inline]
-pub const fn color_to_attr(color: Color) -> Attr {
-    Attr {
-        fg: color,
-        bg: Color::Default,
-        effect: Effect::empty(),
+pub const fn color_to_style(color: Color) -> Style {
+    Style {
+        fg: Some(color),
+        bg: None,
+        add_modifier: Modifier::empty(),
+        sub_modifier: Modifier::empty(),
+        underline_color: None,
     }
 }
 
 fn draw_colored_strings(
+    f: &mut Frame,
     row: usize,
     offset: usize,
     strings: &[String],
-    canvas: &mut dyn Canvas,
+    rect: &Rect,
     effect_reverse: bool,
-) -> Result<()> {
+) {
     let mut col = 1;
-    for (text, attr) in std::iter::zip(
+    for (text, style) in std::iter::zip(
         strings.iter(),
-        MENU_ATTRS
+        MENU_STYLES
             .get()
             .expect("Menu colors should be set")
             .palette()
             .iter()
             .cycle(),
     ) {
-        let mut attr = *attr;
+        let mut style = *style;
         if effect_reverse {
-            attr.effect |= Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        col += canvas.print_with_attr(row, offset + col, text, attr)?;
+        rect.print_with_style(f, row as u16, (offset + col) as u16, text, style);
+        col += text.utf_width();
     }
-    Ok(())
 }
 
 fn draw_clickable_strings(
-    row: usize,
-    offset: usize,
+    f: &mut Frame,
+    row: u16,
+    offset: u16,
     elems: &[ClickableString],
-    canvas: &mut dyn Canvas,
+    rect: &Rect,
     effect_reverse: bool,
-) -> Result<()> {
-    for (elem, attr) in std::iter::zip(
+) {
+    for (elem, style) in std::iter::zip(
         elems.iter(),
-        MENU_ATTRS
+        MENU_STYLES
             .get()
             .expect("Menu colors should be set")
             .palette()
             .iter()
             .cycle(),
     ) {
-        let mut attr = *attr;
+        let mut style = *style;
         if effect_reverse {
-            attr.effect |= Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        canvas.print_with_attr(row, offset + elem.col(), elem.text(), attr)?;
+        rect.print_with_style(f, row, offset + elem.col(), elem.text(), style);
     }
-    Ok(())
 }
 
-fn calc_line_row(i: usize, window: &ContentWindow) -> usize {
-    i + ContentWindow::WINDOW_MARGIN_TOP - window.top
+fn calc_line_row(i: usize, window: &ContentWindow) -> u16 {
+    i as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - window.top as u16
+}
+
+fn print_flagged_symbol(
+    f: &mut Frame,
+    status: &Status,
+    rect: &Rect,
+    row: u16,
+    path: &std::path::Path,
+    style: &mut Style,
+) {
+    if status.menu.flagged.contains(path) {
+        style.add_modifier |= Modifier::BOLD;
+        rect.print_with_style(
+            f,
+            row,
+            0,
+            "█",
+            MENU_STYLES.get().expect("Menu colors should be set").second,
+        );
+    }
 }

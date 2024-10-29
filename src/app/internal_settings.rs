@@ -1,14 +1,23 @@
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
+use ratatui::layout::Size;
 use sysinfo::Disks;
-use tuikit::term::Term;
 
 use crate::common::{is_in_path, NVIM, SS};
 use crate::io::{execute_and_output, Args, Opener};
 
+/// Internal settings of the status.
+///
+/// Every setting which couldn't be attached elsewhere and is needed by the whole application.
+/// It knows:
+/// - if the content should be completely refreshed,
+/// - if the application has to quit,
+/// - the address of the nvim_server to send files to and if the application was launched from neovim,
+/// - which opener should be used for kind of files,
+/// - the height & width of the application,
+/// - basic informations about disks being used,
+/// - a copy queue to display informations about files beeing copied.
 pub struct InternalSettings {
     /// Do we have to clear the screen ?
     pub force_clear: bool,
@@ -19,8 +28,10 @@ pub struct InternalSettings {
     pub nvim_server: String,
     /// The opener used by the application.
     pub opener: Opener,
-    /// terminal
-    pub term: Arc<Term>,
+    /// terminal width
+    pub width: u16,
+    /// terminal height
+    pub height: u16,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub disks: Disks,
@@ -33,7 +44,7 @@ pub struct InternalSettings {
 }
 
 impl InternalSettings {
-    pub fn new(opener: Opener, term: Arc<Term>, disks: Disks) -> Self {
+    pub fn new(opener: Opener, size: Size, disks: Disks) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
@@ -41,22 +52,31 @@ impl InternalSettings {
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let copy_progress = None;
+        let width = size.width;
+        let height = size.height;
         Self {
             force_clear,
             must_quit,
             nvim_server,
             opener,
             disks,
-            term,
+            width,
+            height,
             inside_neovim,
             copy_file_queue,
             in_mem_progress: copy_progress,
         }
     }
 
+    // TODO: returns size
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> Result<(usize, usize)> {
-        Ok(self.term.term_size()?)
+    pub fn term_size(&self) -> (u16, u16) {
+        (self.width, self.height)
+    }
+
+    pub fn update_size(&mut self, width: u16, height: u16) {
+        self.width = width;
+        self.height = height;
     }
 
     /// Set a "force clear" flag to true, which will reset the display.
@@ -64,6 +84,14 @@ impl InternalSettings {
     /// We ensure to clear it before displaying again.
     pub fn force_clear(&mut self) {
         self.force_clear = true;
+    }
+
+    pub fn reset_clear(&mut self) {
+        self.force_clear = false;
+    }
+
+    pub fn should_be_cleared(&self) -> bool {
+        self.force_clear
     }
 
     pub fn mount_points(&mut self) -> Vec<&std::path::Path> {

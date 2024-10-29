@@ -1,25 +1,18 @@
-use anyhow::Result;
-use tuikit::prelude::{Event, Key, MouseButton};
+use anyhow::{bail, Result};
+use crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
-use crate::modes::{Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate};
+use crate::log_info;
+use crate::modes::{
+    Direction as FuzzyDirection, Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu,
+    Navigate,
+};
 
-trait IsMouse {
-    fn is_mouse_event(&self) -> bool;
-}
-
-impl IsMouse for Key {
-    #[rustfmt::skip]
-    fn is_mouse_event(&self) -> bool {
-        matches!(
-            self,
-            Key::WheelUp(_, _, _) | Key::WheelDown(_, _, _) | Key::SingleClick(_, _, _) | Key::DoubleClick(_, _, _)
-        )
-    }
-}
-/// Struct which mutates `tabs.selected()..
+/// Struct which dispatch the received events according to the state of the application.
 /// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on tabs.selected().
 /// Keybindings are read from `Config`.
@@ -40,59 +33,118 @@ impl EventDispatcher {
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
-            FmEvents::Term(Event::Resize { width, height }) => {
+            FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
+            FmEvents::Term(Event::Resize(width, height)) => {
                 EventAction::resize(status, width, height)
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied => EventAction::file_copied(status),
-            FmEvents::CheckPreview => EventAction::check_preview(status),
+            FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             _ => Ok(()),
         }
     }
 
-    fn match_key_event(&self, status: &mut Status, key: Key) -> Result<()> {
+    fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         match key {
-            key if key.is_mouse_event() => self.mouse_event(status, key)?,
-            Key::Char(c) if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: _,
+                kind: _,
+                state: _,
+            } if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
     }
 
-    fn mouse_event(&self, status: &mut Status, mouse_event: Key) -> Result<()> {
-        match mouse_event {
-            Key::WheelUp(row, col, nb_of_scrolls) => {
-                EventAction::wheel_up(status, row, col, nb_of_scrolls)
+    fn match_mouse_event(&self, status: &mut Status, mouse_event: MouseEvent) -> Result<()> {
+        match mouse_event.kind {
+            MouseEventKind::ScrollUp => {
+                EventAction::wheel_up(status, mouse_event.row, mouse_event.column)
             }
-            Key::WheelDown(row, col, nb_of_scrolls) => {
-                EventAction::wheel_down(status, row, col, nb_of_scrolls)
+            MouseEventKind::ScrollDown => {
+                EventAction::wheel_down(status, mouse_event.row, mouse_event.column)
             }
-            Key::SingleClick(MouseButton::Left, row, col) => {
-                EventAction::left_click(status, &self.binds, row, col)
+            MouseEventKind::Down(MouseButton::Left) => {
+                EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
-            Key::DoubleClick(MouseButton::Left, row, col) => {
-                EventAction::double_click(status, row, col, &self.binds)
+            MouseEventKind::Down(MouseButton::Middle) => {
+                EventAction::middle_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
-            Key::SingleClick(MouseButton::Right, row, col) => {
-                EventAction::right_click(status, &self.binds, row, col)
+            MouseEventKind::Down(MouseButton::Right) => {
+                EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
-            _ => unreachable!("{mouse_event:?} should be a mouse event"),
+            MouseEventKind::Moved => {
+                EventAction::focus_follow_mouse(status, mouse_event.row, mouse_event.column)
+            }
+            _ => Ok(()),
         }
     }
 
-    fn file_key_matcher(&self, status: &mut Status, key: Key) -> Result<()> {
+    fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+            return self.fuzzy_matcher(status, key);
+        }
         let Some(action) = self.binds.get(&key) else {
             return Ok(());
         };
         action.matcher(status, &self.binds)
     }
 
+    fn fuzzy_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        let Some(fuzzy) = &mut status.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        match key {
+            KeyEvent {
+                code: KeyCode::Char(mut c),
+                modifiers,
+                kind: _,
+                state: _,
+            } if matches!(modifiers, KeyModifiers::NONE | KeyModifiers::SHIFT) => {
+                if matches!(modifiers, KeyModifiers::SHIFT) {
+                    c = c.to_ascii_uppercase()
+                };
+                fuzzy.input.insert(c);
+                fuzzy.update_input(true);
+                Ok(())
+            }
+            key => self.fuzzy_key_matcher(status, key),
+        }
+    }
+
+    fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        log_info!("fuzzy_key_matcher: {key:?}");
+        if let KeyEvent {
+            code,
+            modifiers: KeyModifiers::NONE,
+            kind: _,
+            state: _,
+        } = key
+        {
+            match code {
+                KeyCode::Enter => status.fuzzy_select()?,
+                KeyCode::Esc => status.fuzzy_leave()?,
+                KeyCode::Backspace => status.fuzzy_backspace()?,
+                KeyCode::Delete => status.fuzzy_delete()?,
+                KeyCode::Left => status.fuzzy_left()?,
+                KeyCode::Right => status.fuzzy_right()?,
+                KeyCode::Up => status.fuzzy_navigate(FuzzyDirection::Up)?,
+                KeyCode::Down => status.fuzzy_navigate(FuzzyDirection::Down)?,
+                KeyCode::PageUp => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
+                KeyCode::PageDown => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
+                _ => (),
+            }
+        }
+        Ok(())
+    }
+
     fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.menu_mode {
-            Menu::InputSimple(InputSimple::Sort) => status.sort(c),
+            Menu::InputSimple(InputSimple::Sort) => status.sort_by_char(c),
             Menu::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Menu::InputSimple(InputSimple::Filter) => status.input_filter(c),
             Menu::InputSimple(_) => status.menu.input_insert(c),
@@ -101,7 +153,7 @@ impl EventDispatcher {
             Menu::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Menu::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
-            Menu::Nothing => unreachable!("Focus can't be in menu if menu is Nothing"),
+            Menu::Nothing => Ok(()),
         }
     }
 
@@ -121,11 +173,11 @@ impl EventDispatcher {
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
 
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
-                LeaveMenu::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_menu(status, &self.binds)
             }
 
             Navigate::Context if status.menu.context_from_char(c) => {
-                LeaveMenu::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_menu(status, &self.binds)
             }
 
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),

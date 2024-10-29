@@ -14,9 +14,10 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display,
-    InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation,
-    PreviewBuilder, RemovableDevices, Search, Selectable,
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow,
+    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
+    MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search,
+    Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -47,7 +48,7 @@ impl EventAction {
         status.tabs[1].refresh_if_needed()
     }
 
-    pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
+    pub fn resize(status: &mut Status, width: u16, height: u16) -> Result<()> {
         status.resize(width, height)
     }
 
@@ -90,7 +91,7 @@ impl EventAction {
         if status.display_settings.preview() {
             status.update_second_pane_for_preview()
         } else {
-            status.set_edit_mode(1, Menu::Nothing)?;
+            status.set_menu_mode(1, Menu::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
             status.tabs[1].refresh_view()
         }
@@ -151,7 +152,7 @@ impl EventAction {
         if matches!(edit_mode, Menu::Navigate(Navigate::Flagged)) {
             status.leave_menu_mode()?;
         } else if matches!(edit_mode, Menu::Nothing) {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
         }
         Ok(())
     }
@@ -250,7 +251,7 @@ impl EventAction {
             }
         }
         let old_name = &selected.filename;
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
         Ok(())
     }
@@ -291,7 +292,7 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
-        status.set_edit_mode(status.index, Menu::NeedConfirmation(copy_or_move))
+        status.set_menu_mode(status.index, Menu::NeedConfirmation(copy_or_move))
     }
 
     /// Creates a symlink of every flagged file to the current directory.
@@ -322,7 +323,7 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
-        status.set_edit_mode(
+        status.set_menu_mode(
             status.index,
             Menu::NeedConfirmation(NeedConfirmation::Delete),
         )
@@ -357,7 +358,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(input_kind))?;
+            status.set_menu_mode(status.index, Menu::InputSimple(input_kind))?;
         }
         Ok(())
     }
@@ -444,7 +445,7 @@ impl EventAction {
                 .flagged
                 .push(status.current_tab().current_file()?.path.to_path_buf());
         }
-        status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
+        status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
@@ -477,7 +478,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Tree | Display::Directory
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Filter))?;
+            status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Filter))?;
         }
         Ok(())
     }
@@ -504,7 +505,7 @@ impl EventAction {
         }
         let tab = status.current_tab_mut();
         tab.search = Search::empty();
-        status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Search))
+        status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Search))
     }
 
     /// Enter the regex mode.
@@ -520,7 +521,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Tree | Display::Directory
         ) {
-            status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::RegexMatch))
+            status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::RegexMatch))
         } else {
             Ok(())
         }
@@ -564,7 +565,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Cd))?;
+            status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Cd))?;
 
             status.tabs[status.index].save_origin_path();
             status.menu.completion.reset();
@@ -590,11 +591,11 @@ impl EventAction {
     pub fn shell_command(status: &mut Status) -> Result<()> {
         if matches!(
             status.current_tab().menu_mode,
-            Menu::InputSimple(InputSimple::Shell)
+            Menu::InputSimple(InputSimple::ShellCommand)
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Shell))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::ShellCommand))
     }
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
@@ -605,7 +606,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
         }
         Ok(())
     }
@@ -619,7 +620,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
         }
         Ok(())
     }
@@ -636,7 +637,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::History))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::History))?;
         }
         Ok(())
     }
@@ -649,7 +650,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::New)),
             )?;
@@ -668,7 +669,7 @@ impl EventAction {
             if status.menu.marks.is_empty() {
                 return Ok(());
             }
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::Jump)),
             )?;
@@ -688,7 +689,7 @@ impl EventAction {
         } else {
             std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
             status.menu.shortcut.update_git_root();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
     }
@@ -733,7 +734,7 @@ impl EventAction {
             status.reset_menu_mode()?;
             return Ok(());
         };
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::SetNvimAddr))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::SetNvimAddr))
     }
 
     /// Move back in history to the last visited directory.
@@ -785,7 +786,7 @@ impl EventAction {
                 .search
                 .tree(&mut status.tabs[status.index].tree),
             Display::Directory => status.current_tab_mut().directory_search_next(),
-            Display::Preview => {
+            Display::Preview | Display::Fuzzy => {
                 return Ok(());
             }
         }
@@ -844,6 +845,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev(),
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Up)?,
         }
         Ok(())
     }
@@ -854,6 +856,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next(),
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Down)?,
         }
         Ok(())
     }
@@ -923,6 +926,11 @@ impl EventAction {
         }
     }
 
+    pub fn focus_follow_mouse(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        status.set_focus_from_pos(row, col)?;
+        Ok(())
+    }
+
     /// Click a file at `row`, `col`. Gives the focus to the window container.
     pub fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         status.click(binds, row, col)
@@ -940,30 +948,24 @@ impl EventAction {
     }
 
     /// Wheel up moves the display up
-    pub fn wheel_up(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+    pub fn wheel_up(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
-        for _ in 0..nb_of_scrolls {
-            Self::move_up(status)?
-        }
-        Ok(())
+        Self::move_up(status)
     }
 
     /// Wheel down moves the display down
-    pub fn wheel_down(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+    pub fn wheel_down(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
-        for _ in 0..nb_of_scrolls {
-            Self::move_down(status)?
-        }
-        Ok(())
+        Self::move_down(status)
     }
 
-    /// A double click opens a file or execute a menu item
-    pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    /// A middle_click click opens a file or execute a menu item
+    pub fn middle_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         if Self::click(status, binds, row, col).is_ok() {
             if status.focus.is_file() {
                 Self::enter_file(status)?;
             } else {
-                LeaveMenu::leave_edit_mode(status, binds)?;
+                LeaveMenu::leave_menu(status, binds)?;
             }
         };
         Ok(())
@@ -1027,6 +1029,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
+                Display::Fuzzy => todo!(),
             };
             status.update_second_pane_for_preview()
         } else {
@@ -1043,6 +1046,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf(),
+                Display::Fuzzy => todo!(),
             };
             status.update_second_pane_for_preview()?;
         } else {
@@ -1083,6 +1087,7 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
         };
         Ok(())
     }
@@ -1119,6 +1124,7 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
         };
         Ok(())
     }
@@ -1132,7 +1138,7 @@ impl EventAction {
         if status.focus.is_file() {
             Self::enter_file(status)
         } else {
-            LeaveMenu::leave_edit_mode(status, binds)
+            LeaveMenu::leave_menu(status, binds)
         }
     }
 
@@ -1149,20 +1155,27 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
-        status.skim_output_to_tab();
+        status.force_clear();
+        status.fuzzy_init(FuzzyKind::File);
+        status.current_tab_mut().set_display_mode(Display::Fuzzy);
+        status.fuzzy_find_files()?;
         status.update_second_pane_for_preview()
     }
 
     /// Start a fuzzy find for a specific line with skim.
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
-        status.skim_line_output_to_tab();
-        status.update_second_pane_for_preview()
+        status.force_clear();
+        status.fuzzy_init(FuzzyKind::Line);
+        status.current_tab_mut().set_display_mode(Display::Fuzzy);
+        status.fuzzy_find_lines()
     }
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        status.fuzzy_init(FuzzyKind::Action);
+        status.current_tab_mut().set_display_mode(Display::Fuzzy);
         let help = help_string(binds, &status.internal_settings.opener);
-        status.skim_find_keybinding_and_run(help);
+        status.fuzzy_help(help)?;
         Ok(())
     }
 
@@ -1233,7 +1246,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.trash.update()?;
-            status.set_edit_mode(
+            status.set_menu_mode(
                 status.index,
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash),
             )?;
@@ -1253,7 +1266,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.trash.update()?;
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Trash))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Trash))?;
         }
         Ok(())
     }
@@ -1278,7 +1291,7 @@ impl EventAction {
             if status.menu.encrypted_devices.is_empty() {
                 status.menu.encrypted_devices.update()?;
             }
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
         }
         Ok(())
     }
@@ -1296,7 +1309,7 @@ impl EventAction {
                 return Ok(());
             }
             status.menu.removable_devices = RemovableDevices::find().unwrap_or_default();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
         }
         Ok(())
     }
@@ -1311,7 +1324,7 @@ impl EventAction {
             .opener
             .open_single(&path::PathBuf::from(tilde(CONFIG_PATH).to_string()))
         {
-            Ok(_) => (),
+            Ok(_) => log_line!("Opened the config file {CONFIG_PATH}"),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
         Ok(())
@@ -1325,7 +1338,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Compress))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Compress))?;
         }
         Ok(())
     }
@@ -1339,7 +1352,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.menu.context.reset();
-            status.set_edit_mode(status.index, Menu::Navigate(Navigate::Context))?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Context))?;
         }
         Ok(())
     }
@@ -1353,7 +1366,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.set_edit_mode(status.index, Menu::InputCompleted(InputCompleted::Action))?;
+            status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Action))?;
             status.menu.completion.reset();
         }
         Ok(())
@@ -1373,7 +1386,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_edit_mode(status.index, Menu::InputSimple(InputSimple::Remote))
+        status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Remote))
     }
 
     pub fn cloud_drive(status: &mut Status) -> Result<()> {
@@ -1489,7 +1502,8 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn check_preview(status: &mut Status) -> Result<()> {
+    pub fn check_preview_fuzzy_tick(status: &mut Status) -> Result<()> {
+        status.fuzzy_tick();
         status.check_preview()
     }
 }

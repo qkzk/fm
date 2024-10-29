@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::common::{
-    CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
-    PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
-    SHELL_LINES, SORT_LINES,
+    UtfWidth, CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES,
+    NVIM_ADDRESS_LINES, PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES,
+    RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
 use crate::modes::BlockDeviceAction;
 use crate::modes::InputCompleted;
@@ -12,7 +12,7 @@ use crate::modes::{PasswordKind, PasswordUsage};
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
 /// In both case, we'll have to listen to the next char typed.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MarkAction {
     /// Jump to a selected mark (ie a path associated to a char)
     Jump,
@@ -22,7 +22,7 @@ pub enum MarkAction {
 
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NeedConfirmation {
     /// Copy flagged files
     Copy,
@@ -43,8 +43,8 @@ impl NeedConfirmation {
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
     #[must_use]
-    pub fn cursor_offset(&self) -> usize {
-        self.to_string().len() + 9
+    pub fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 9
     }
 
     /// A confirmation message to be displayed before executing the mode.
@@ -114,7 +114,7 @@ pub enum InputSimple {
     /// Input a password (chars a replaced by *)
     Password(Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
-    Shell,
+    ShellCommand,
     /// Mount a remote directory with sshfs
     Remote,
     /// Create a new file in the current cloud
@@ -131,7 +131,7 @@ impl fmt::Display for InputSimple {
             Self::RegexMatch => write!(f, "Regex:   "),
             Self::SetNvimAddr => write!(f, "Neovim:  "),
             Self::CloudNewdir => write!(f, "Newdir:  "),
-            Self::Shell => write!(f, "Shell:   "),
+            Self::ShellCommand => write!(f, "Shell:   "),
             Self::Sort => {
                 write!(f, "Sort: ")
             }
@@ -146,9 +146,9 @@ impl fmt::Display for InputSimple {
 }
 
 impl InputSimple {
-    const EDIT_BOX_OFFSET: usize = 11;
-    const SORT_CURSOR_OFFSET: usize = 8;
-    const PASSWORD_CURSOR_OFFSET: usize = 9;
+    const EDIT_BOX_OFFSET: u16 = 11;
+    const SORT_CURSOR_OFFSET: u16 = 8;
+    const PASSWORD_CURSOR_OFFSET: u16 = 9;
 
     /// Returns a vector of static &str describing what
     /// the mode does.
@@ -169,14 +169,14 @@ impl InputSimple {
             Self::RegexMatch => &REGEX_LINES,
             Self::Rename => &RENAME_LINES,
             Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
-            Self::Shell => &SHELL_LINES,
+            Self::ShellCommand => &SHELL_LINES,
             Self::Sort => &SORT_LINES,
             Self::Remote => &REMOTE_LINES,
             Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
         }
     }
 
-    fn cursor_offset(&self) -> usize {
+    fn cursor_offset(&self) -> u16 {
         match *self {
             Self::Sort => Self::SORT_CURSOR_OFFSET,
             Self::Password(_, _) => Self::PASSWORD_CURSOR_OFFSET,
@@ -189,19 +189,19 @@ impl Leave for InputSimple {
     fn must_refresh(&self) -> bool {
         !matches!(
             self,
-            Self::Shell | Self::Filter | Self::Password(_, _) | Self::Sort
+            Self::ShellCommand | Self::Filter | Self::Password(_, _) | Self::Sort
         )
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Shell | Self::Password(_, _) | Self::Sort)
+        !matches!(self, Self::ShellCommand | Self::Password(_, _) | Self::Sort)
     }
 }
 
 /// Different modes in which we display a bunch of possible actions.
 /// In all those mode we can select an action and execute it.
 /// For some of them, it's just moving there, for some it acts on some file.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Navigate {
     /// Navigate back to a visited path
     History,
@@ -285,7 +285,7 @@ impl Navigate {
 
 /// Different "menu" mode in which the application can be.
 /// It dictates the reaction to event and is displayed in the bottom window.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Menu {
     /// Do something that may be completed
     /// Completion may come from :
@@ -323,7 +323,7 @@ impl fmt::Display for Menu {
 impl Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
-    pub fn cursor_offset(&self) -> usize {
+    pub fn cursor_offset(&self) -> u16 {
         match self {
             Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
             Self::InputSimple(input_simple) => input_simple.cursor_offset(),
@@ -348,6 +348,7 @@ impl Menu {
             Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
             Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
+            Self::Navigate(Navigate::Trash) => "Up, Down: navigate.",
             Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",
@@ -357,6 +358,10 @@ impl Menu {
     /// True if the edit mode is "Nothing" aka no menu is opened in this tab.
     pub fn is_nothing(&self) -> bool {
         matches!(self, Self::Nothing)
+    }
+
+    pub fn is_navigate(&self) -> bool {
+        matches!(self, Self::Navigate(_))
     }
 }
 
@@ -392,6 +397,9 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
+/// What kind of content is displayed in the main window of this tab.
+/// Directory (all files of a directory), Tree (all files and children up to a certain depth),
+/// preview of a content (file, command output...) or fuzzy finder of file.
 #[derive(Default, PartialEq)]
 pub enum Display {
     #[default]
@@ -401,6 +409,8 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+    /// Fuzzy finder of something
+    Fuzzy,
 }
 
 impl Display {
@@ -414,5 +424,9 @@ impl Display {
 
     pub fn is_preview(&self) -> bool {
         self.is(Self::Preview)
+    }
+
+    pub fn is_fuzzy(&self) -> bool {
+        self.is(Self::Fuzzy)
     }
 }

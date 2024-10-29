@@ -94,6 +94,10 @@ where
     write_last_log_line(log_line);
 }
 
+/// Writes the message to the global variable `LAST_LOG_LINE` and a the special log.
+/// It can be displayed with the default bind ALt+l and at the last line of the display.
+/// Every action which change the filetree, execute an external command or which returns an
+/// error should be logged this way.
 #[macro_export]
 macro_rules! log_line {
     ($($arg:tt)+) => (

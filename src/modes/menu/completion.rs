@@ -1,7 +1,9 @@
 use std::fmt;
 use std::fs::{self, ReadDir};
 
-use crate::common::{is_in_path, tilde, ZOXIDE};
+use ratatui::style::{Modifier, Style};
+
+use crate::common::{is_in_path, tilde, UtfWidth, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
 use crate::modes::Leave;
@@ -34,8 +36,8 @@ impl fmt::Display for InputCompleted {
 }
 
 impl InputCompleted {
-    pub fn cursor_offset(&self) -> usize {
-        self.to_string().len() + 2
+    pub fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 2
     }
 }
 
@@ -237,12 +239,12 @@ impl Completion {
     }
 
     /// Reverse the received effect if the index match the selected index.
-    pub fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr {
-        let mut attr = *attr;
+    pub fn style(&self, index: usize, style: &Style) -> Style {
+        let mut style = *style;
         if index == self.index {
-            attr.effect |= tuikit::attr::Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
-        attr
+        style
     }
 }
 

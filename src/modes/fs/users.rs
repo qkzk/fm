@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+/// Holds 2 hashmaps, one for users, one for groups.
+/// it looks into `/etc/passwd` and `/etc/group` to map `uid` & `gid` to user name or group name.
+/// Holding them avoid to access the files every time.
 #[derive(Clone, Debug)]
 pub struct Users {
     users: HashMap<u32, String>,

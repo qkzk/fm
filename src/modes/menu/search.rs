@@ -5,6 +5,10 @@ use anyhow::Result;
 use crate::app::Tab;
 use crate::modes::{Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
 
+/// The current search term.
+/// it records the regex used, the matched paths and where we are in those pathes.
+/// The pathes are refreshed every time we jump to another match, allowing the
+/// display to stay updated.
 pub struct Search {
     pub regex: regex::Regex,
     pub paths: Vec<PathBuf>,

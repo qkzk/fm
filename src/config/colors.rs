@@ -1,10 +1,13 @@
-use tuikit::attr::Color;
+use ratatui::style::Color;
 
 use crate::config::{ARRAY_GRADIENT, COLORER};
 
+/// How many colors are possible in a gradient.
+/// ATM it's 254 which should be enought to distinguish every
+/// displayed extension.
 pub const MAX_GRADIENT_NORMAL: usize = 254;
 
-/// No attr but a method to color give a color for any extension.
+/// No style but a method to color give a color for any extension.
 /// Extension should be hashed to an usize first.
 pub struct NormalFileColorer {}
 
@@ -36,6 +39,11 @@ pub fn extension_color(extension: &str) -> Color {
     COLORER.get().expect("Colorer should be set")(sum_hash(extension))
 }
 
+/// Describe a 24 bits rgb color.
+/// it's mostly used in gradients, since [`ratatui`] or [`crossterm`] colors
+/// also includes many more variants like `Color::Red` which I can't always figure.
+///
+/// This strict type allows infaillible calculations and so, gradients.
 #[derive(Debug, Clone, Copy)]
 pub struct ColorG {
     pub r: u8,
@@ -59,14 +67,14 @@ impl ColorG {
     }
     /// Parse a tuikit color into it's rgb values.
     /// Non parsable colors returns None.
-    pub fn from_tuikit(color: Color) -> Option<Self> {
+    pub fn from_ratatui(color: Color) -> Option<Self> {
         match color {
             Color::Rgb(r, g, b) => Some(Self { r, g, b }),
             _ => None,
         }
     }
 
-    pub fn as_tuikit(&self) -> Color {
+    pub fn as_ratatui(&self) -> Color {
         Color::Rgb(self.r, self.g, self.b)
     }
 
@@ -108,7 +116,7 @@ impl ColorG {
     }
 }
 
-/// Tries to parse a string color into a [`tuikit::attr::Color`].
+/// Tries to parse a string color into a [`ratatui::style::Color`].
 /// Ansi colors are converted to their corresponding version in tuikit.
 /// rgb and hexadecimal formats are parsed also.
 /// rgb( 123,   78,          0)     -> Color::Rgb(123, 78, 0)
@@ -116,27 +124,27 @@ impl ColorG {
 /// Other formats are unknown.
 /// Unreadable colors are replaced by `Color::default()` which is white.
 #[rustfmt::skip]
-pub fn str_to_tuikit<S>(color: S) -> Color
+pub fn str_to_ratatui<S>(color: S) -> Color
 where
     S: AsRef<str>,
 {
     match color.as_ref() {
-        "white"         => Color::WHITE,
-        "red"           => Color::RED,
-        "green"         => Color::GREEN,
-        "blue"          => Color::BLUE,
-        "yellow"        => Color::YELLOW,
-        "cyan"          => Color::CYAN,
-        "magenta"       => Color::MAGENTA,
-        "black"         => Color::BLACK,
-        "light_white"   => Color::LIGHT_WHITE,
-        "light_red"     => Color::LIGHT_RED,
-        "light_green"   => Color::LIGHT_GREEN,
-        "light_blue"    => Color::LIGHT_BLUE,
-        "light_yellow"  => Color::LIGHT_YELLOW,
-        "light_cyan"    => Color::LIGHT_CYAN,
-        "light_magenta" => Color::LIGHT_MAGENTA,
-        "light_black"   => Color::LIGHT_BLACK,
+        "white"         => Color::White,
+        "red"           => Color::Red,
+        "green"         => Color::Green,
+        "blue"          => Color::Blue,
+        "yellow"        => Color::Yellow,
+        "cyan"          => Color::Cyan,
+        "magenta"       => Color::Magenta,
+        "black"         => Color::Black,
+        "light_white"   => Color::White,
+        "light_red"     => Color::LightRed,
+        "light_green"   => Color::LightGreen,
+        "light_blue"    => Color::LightBlue,
+        "light_yellow"  => Color::LightYellow,
+        "light_cyan"    => Color::LightCyan,
+        "light_magenta" => Color::LightMagenta,
+        "light_black"   => Color::Black,
         color     => parse_text_triplet_unfaillible(color),
     }
 }
@@ -144,7 +152,7 @@ where
 fn parse_text_triplet_unfaillible(color: &str) -> Color {
     match parse_text_triplet(color) {
         Some((r, g, b)) => Color::Rgb(r, g, b),
-        None => Color::default(),
+        None => Color::Rgb(0, 0, 0),
     }
 }
 

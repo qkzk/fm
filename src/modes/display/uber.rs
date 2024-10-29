@@ -12,6 +12,10 @@ use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
 use crate::modes::ExtensionKind;
 
+/// Different kind of ueberzug previews.
+/// it's used to know which program should be run to build the images.
+/// pdfs, or office documents can't be displayed directly in the terminal and require
+/// to be converted first.
 #[derive(Default)]
 pub enum Kind {
     Font,
@@ -57,10 +61,12 @@ impl std::fmt::Display for Kind {
     }
 }
 
+/// Holds an instance of [`ueberzug::Ueberzug`] and a few information about the display.
+/// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
 pub struct Ueber {
     since: Instant,
     kind: Kind,
-    identifier: String,
+    pub identifier: String,
     images: Vec<PathBuf>,
     length: usize,
     pub index: usize,
@@ -141,6 +147,8 @@ impl Ueber {
     }
 }
 
+/// Build an [`Ueber`] instance for a given source.
+/// All thumbnails are built here.
 pub struct UeberBuilder {
     kind: Kind,
     source: PathBuf,

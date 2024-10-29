@@ -7,7 +7,6 @@ use std::thread;
 use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
-use tuikit::prelude::Term;
 
 use crate::common::{is_in_path, random_name, NOTIFY_EXECUTABLE};
 use crate::event::FmEvents;
@@ -15,6 +14,7 @@ use crate::io::execute;
 use crate::modes::human_size;
 use crate::{log_info, log_line};
 
+// TODO replace with ratatui component
 /// Send the progress bar to event dispatcher, allowing its display
 fn handle_progress_display(
     pb: &ProgressBar,
@@ -84,10 +84,10 @@ impl CopyMove {
 
     fn setup_progress_bar(
         &self,
-        size: (usize, usize),
+        width: u16,
+        height: u16,
     ) -> Result<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        let (height, width) = size;
-        let in_mem = InMemoryTerm::new(height as u16, width as u16);
+        let in_mem = InMemoryTerm::new(height, width);
         let pb = ProgressBar::with_draw_target(
             Some(100),
             ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
@@ -132,13 +132,14 @@ pub fn copy_move<P>(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
     dest: P,
-    term: Arc<Term>,
+    width: u16,
+    height: u16,
     fm_sender: Arc<Sender<FmEvents>>,
 ) -> Result<InMemoryTerm>
 where
     P: AsRef<std::path::Path>,
 {
-    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
+    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(width, height)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&progress_bar, process_info)
     };

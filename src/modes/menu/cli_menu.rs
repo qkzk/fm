@@ -8,9 +8,11 @@ use serde_yml::Mapping;
 use crate::app::Status;
 use crate::common::{is_in_path, tilde};
 use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
-use crate::modes::ShellCommandParser;
+use crate::modes::shell_command_parser;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
+/// Simple method used to execute a command.
+/// All static command should implemtant it (cli_menu, tui_menu).
 pub trait Execute<T> {
     fn execute(&self, status: &Status) -> Result<T>;
 }
@@ -56,12 +58,11 @@ impl Execute<(String, String)> for CliCommand {
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
     fn execute(&self, status: &Status) -> Result<(String, String)> {
-        let args = ShellCommandParser::new(&self.parsable_command).compute(status)?;
+        let args = shell_command_parser(&self.parsable_command, status)?;
         log_info!("execute. {args:?}");
         log_line!("Executed {args:?}");
 
-        let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        let command_output = execute_with_ansi_colors(&params)?;
+        let command_output = execute_with_ansi_colors(&args)?;
         let text_output = String::from_utf8(command_output.stdout)?;
         if !command_output.status.success() {
             log_info!(
@@ -74,6 +75,12 @@ impl Execute<(String, String)> for CliCommand {
     }
 }
 
+/// Common methods of terminal applications. Wether they require interaction
+/// and are opened in a new terminal or not and are previewed.
+/// All those applications are configurable from a config file and share their
+/// configuration.
+/// Only the yaml parsing should be implemented specifically since more
+/// information is required for some application.
 pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
     fn new(config_file: &str) -> Self {
         Self::default().update_from_config(config_file)

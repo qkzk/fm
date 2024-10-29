@@ -174,13 +174,9 @@ impl Tab {
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
-            Display::Tree => FileInfo::new(
-                self.tree
-                    .selected_node()
-                    .context("no selected node")?
-                    .path(),
-                &self.users,
-            ),
+            Display::Tree => {
+                FileInfo::new(self.tree.selected_node_or_parent()?.path(), &self.users)
+            }
             _ => Ok(self
                 .directory
                 .selected()
@@ -195,6 +191,7 @@ impl Tab {
             Display::Tree => self.tree.display_len(),
             Display::Preview => self.preview.len(),
             Display::Directory => self.directory.len(),
+            Display::Fuzzy => 0,
         }
     }
 
@@ -251,6 +248,7 @@ impl Tab {
                 has_last_modification_happened_less_than(&self.directory.path, 10)?
             }
             Display::Tree => self.tree.has_modified_dirs(),
+            Display::Fuzzy => false,
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -369,6 +367,7 @@ impl Tab {
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
             }
+            Display::Fuzzy => (),
         }
     }
 
@@ -545,6 +544,7 @@ impl Tab {
             Display::Preview => return Ok(()),
             Display::Directory => self.jump_directory(&jump_target, target_dir)?,
             Display::Tree => self.jump_tree(&jump_target, target_dir)?,
+            Display::Fuzzy => return Ok(()),
         }
         Ok(())
     }
@@ -745,19 +745,8 @@ impl Tab {
         }
     }
 
-    /// Select a given row, if there's something in it.
-    /// Returns an error if the clicked row is above the headers margin.
-    pub fn select_row(&mut self, row: u16) -> Result<()> {
-        match self.display_mode {
-            Display::Directory => self.normal_select_row(row),
-            Display::Tree => self.tree_select_row(row)?,
-            _ => (),
-        }
-        Ok(())
-    }
-
     /// Select a clicked row in display directory
-    fn normal_select_row(&mut self, row: u16) {
+    pub fn normal_select_row(&mut self, row: u16) {
         let screen_index = row_to_window_index(row);
         let index = screen_index + self.window.top;
         self.directory.select_index(index);
@@ -765,7 +754,7 @@ impl Tab {
     }
 
     /// Select a clicked row in display tree
-    fn tree_select_row(&mut self, row: u16) -> Result<()> {
+    pub fn tree_select_row(&mut self, row: u16) -> Result<()> {
         let screen_index = row_to_window_index(row);
         let displayable = self.tree.displayable();
         let index = screen_index + self.window.top;
@@ -784,6 +773,7 @@ impl Tab {
             Display::Directory => self.search.matches_from(self.directory.content()),
             Display::Tree => self.search.matches_from(self.tree.displayable().content()),
             Display::Preview => vec![],
+            Display::Fuzzy => vec![],
         }
     }
 
@@ -803,7 +793,7 @@ impl Tab {
         self.directory
             .enumerate()
             .skip(self.window.top)
-            .take(min(len, self.window.bottom))
+            .take(min(len, self.window.height))
     }
 
     pub fn cd_origin_path(&mut self) -> Result<()> {

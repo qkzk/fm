@@ -1150,8 +1150,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
 
-## Current dev
-
 ### Version 0.1.30
 
 #### Summary
@@ -1249,14 +1247,195 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Simplify display mode comparison with a few methods. Should make the code more readable
 - [ ] directory preview should just be a "directory" ?
 
+## Current dev
+
+### Version 0.1.31
+
+#### Summary
+
+- tuikit is replaced by crossterm & ratatui.
+- skim is replaced by nucleo.
+
+  tuikit and other crates created by the same author aren't maintened anymore.
+  fm relied a lot on the work of a single author: terminal events, rendering,
+  fuzzy finding, parsing of ANSI output etc. were all written by the same developper
+  and it created a lot of technology debt.
+
+  Maintaing this code required to fork some repositories which was a lot of work and could create more debt if someone took the project further.
+
+  It's been a pleasure to work with those crates but I believe it's the right move.
+
+  By switching to maintened crates we ensure to be able to evolve the project
+  more safely.
+
+  Most of the code is adapted "as is". I did my best to keep everything as it was
+  and don't break anything.
+
+  The fuzzy finder looks really different but all its rendering is now much simpler.
+
+- double click is replaced by middleclick. Less intuitive but much more convenient in crossterm.
+- redirection in shell commands.
+
+  You can enter a shell command by typing `!` then `ps -ef | grep %s` and see the if the selection is beeing executed.
+  It allows you to execute complex shell commands and see their output.
+
+  Expansion haven't change (%s selection, %p current path, %n filename, %e extension, %f flagegd files, %t terminal emulator)
+  Strings like `echo "Hello World"` or `echo 'Hello World'` should be processed correctly.
+  Tokens like `*` and shorcuts like `~` are recognized and dealt by sh.
+  Most environment variables aren't known since it's a new shell which run the command. You can still do `!` `export a=2; echo $a` and see... `2` on the output.
+  It also works for sudo commands : `sudo ls %s | grep pattern` will ask a password and execute `sudo ls your/selected/path | grep pattern`.
+
+  There's a lot of steps and it's surelly buggy, I'll have to simplify it as much as possible in a future version.
+  The interface won't change, the internal will surelly do.
+  Since this parser is used everywhere, it means you can define custom commands with redirections. I can't think of an usage but may be you will !
+
+- Bugfixes:
+  - FIX: trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
+  - FIX: input_simple: when height is low, static elements are out of the window
+  - FIX: crash when deleting a file in tree mode
+  - FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
+  - FIX: Alt+c (open config file) should be betterly logged
+  - FIX: shortcut. dedup_slow keeps crashing. Sort unstable + dedup will do the trick.
+  - FIX: second pane ueberzub 1 char too left
+
+#### Changelog
+
+- [x] replace tuikit by ratatui + crossterm
+
+  - [x] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
+  - [x] NOT DISPLAY
+    - [x] app, status, events, menus, colors, style, key...
+    - [x] copy move
+    - [x] dispatch mouse wheel events
+    - [x] dispatch menu key events
+    - [x] preview
+  - [x] DISPLAY
+    - [x] create windows
+    - [x] draw trait of canvas ??? won't work, borrow checker...
+    - [x] draw trait working
+    - [x] display splits etc.
+    - [x] term must be mut to display something, can't mutate in arc without mutex: only one term
+    - [x] drawmenu should display
+    - [x] shortcut drawmenu
+    - [x] windows are offset by one: do the splits by hand
+    - [x] preview::syntaxedstring::print method
+    - [x] preview::binary::printhex & printascii
+    - [x] preview::colored string
+    - [x] tree lines aren't placed properly
+    - [x] FIX: cursor flickering
+
+- [x] skim replaced by... nucleo, with my own picker
+
+  - [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+  - [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+
+  - [x] struct nucleo-picker
+  - [x] attach to status
+  - [x] send key events
+  - [x] parse key events
+  - [x] execute key events
+  - [x] send refresh events
+  - [x] display for T
+  - [x] ff file
+  - [x] ff line
+    - [x] use tokio to read from a bufreader. IT should work. [SO](https://stackoverflow.com/questions/34611742/how-do-i-read-the-output-of-a-child-process-without-blocking-in-rust)
+  - [x] ff files (help) : read the file send it to nucleo as a whole
+  - [x] previewing
+  - [x] click on line
+  - [x] don't export all content, only what will be displayed
+
+    - [x] resize
+    - [x] FIX: out of bounds when char are typed
+    - [x] FIX: navigation is screwed
+
+  - [x] ensure rg & grep can be run before executing fuzzy find of line
+  - [x] FIX nucleo out of bounds
+  - [x] refactor fuzzy navigation
+  - [x] navigation. Moving below the last element should scroll, not wrap around.
+  - [x] colors for nucleo matching. Inspired by helix
+  - [x] testing: file, line, help
+
+- [x] FIX: save a name for previews, use it to display
+
+#### Once Nucleo is done
+
+- [x] FIX: line overflow their rect
+- [x] FIX: menus can overflows their rect
+- [x] FIX: menu with shortcut. Shortcut letter is wrong when height is too low
+- [x] BUG ???: shortcut.rs : dedup out of bounds L170
+- [x] Focus follow mouse
+- [x] doubleclick replaced by middleclick
+- [x] rectify all u16 <-> usize conversions
+- [x] FIX border colors is applied to text styled with empty style.
+- [x] FIX: when a resize occur, menu selection can be out of window
+- [x] FIX shell commands with strings aren't parsed correctly...
+  - [x] lexer & parser of shell commands with sudo, redirection work
+  - [x] output of shell commands (normal & sudo) is displayed properly
+  - [x] FIX: password transition isn't done properly:
+        sudo ls -> ask password -> execute ok
+        mount encrypted -> ask sudo -> ??? failure. It should ask for a passkey.
+  - [x] run custom command
+  - [x] cli info
+- [x] FIX: custom keybinds aren't displayed properly in help
+- [x] FIX: terminal reset after panic. Enables a panic hook which remove the need to enable backtraces.
+- [x] FIX preview in second pane preview attachment
+  - [x] refactor status.get_correct_fileinfo_for_preview
+  - [x] preview isn't updated for navigation (history, shortcut, marks)
+- [ ] prepare for new version
+  - [x] test every mode
+    - [x] FIX: trash: bottom line is wrong "Enter" doesn't select but restore - refresh & reselect
+    - [x] FIX: input_simple: when height is low, static elements are out of the window
+    - [x] FIX: crash when deleting a file in tree mode
+    - [x] FIX: diplay directory last line shouldn't be printed - erase the last line before printing log.
+    - [x] FIX: Alt+c (open config file) should be betterly logged
+    - [x] FIX: shortcut. dedup_slow keeps crashing. Sort unstable + dedup will do the trick.
+    - [x] FIX: second pane ueberzub 1 char too left
+  - [x] doc
+  - [ ] ???
+
 ## TODO
 
 ### Next version
 
-- [ ] replace tuikit by ratatui + crossterm
-  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
-  - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+- [ ] document every public function / method. Done for struct, enum & macros.
+  ```sh
+  % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
+  492
+  ```
+- [ ] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
+- [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
+- [ ] chmod is crap
+  - [ ] "+" should enter chmod
+  - [ ] chmod should detect text input and react to it.
+    - [x] 777 is accepted
+    - [ ] rwxrwxrwx should be accepted
+    - [ ] +x & all chmod syntax should be accepted too
+- [ ] display preview of flagged files in menu flagged.
+- [ ] why have a bottom line in menu if the binds are always explained ?
+- [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
+- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
+- [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
+  - [ ] new shell command expansion %c current clipboard
+- [ ] menu / rendering / widgets
+      What is a menu in fm ?
+
+  - render : should be cached as much as possible. For many menus, it doesn't change much.
+  - actions : should be attached to menus in a way or another. Don't store everything in status
+  - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
+  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
+  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
+  - [ ] don't store shortcut. Always get them on the fly.
+  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
+
+- [ ] ratatui component for progress bar for copymove
+
+- [ ] previewing text files with bat ? binaries with xxd
+
+  - [ ] could remove the whole syntaxed stuff
+  - [ ] simplify previewing since half the methods are gone
+  - [ ] heavilly rely on ansi string parsing
+
+- [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop

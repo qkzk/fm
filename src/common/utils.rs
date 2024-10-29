@@ -9,7 +9,6 @@ use std::str::FromStr;
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::Disk;
-use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
@@ -17,11 +16,11 @@ use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
-pub fn init_term() -> Result<Term> {
-    let term: Term<()> = Term::new()?;
-    term.enable_mouse_support()?;
-    Ok(term)
-}
+// pub fn init_term() -> Result<Term> {
+//     let term: Term<()> = Term::new()?;
+//     term.enable_mouse_support()?;
+//     Ok(term)
+// }
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
@@ -56,7 +55,7 @@ pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
 }
 
 /// Print the path on the stdout.
-pub fn print_on_quit<S: std::fmt::Display>(path_string: S) {
+pub fn print_on_quit(path_string: String) {
     log_info!("print on quit {path_string}");
     println!("{path_string}")
 }
@@ -103,7 +102,11 @@ pub fn is_in_path<S>(program: S) -> bool
 where
     S: Into<String> + std::fmt::Display + AsRef<Path>,
 {
-    if program.as_ref().exists() {
+    let p = program.to_string();
+    let Some(program) = p.split_whitespace().next() else {
+        return false;
+    };
+    if Path::new(program).exists() {
         return true;
     }
     if let Ok(path) = std::env::var("PATH") {
@@ -168,10 +171,6 @@ pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
     let expanded_cow_path = tilde(path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)
-}
-
-pub fn args_is_empty(args: &[String]) -> bool {
-    args.is_empty() || args[0] == *""
 }
 
 /// True if the executable is "sudo"
@@ -311,12 +310,21 @@ where
 /// the horizontal space required for displaying
 /// a given text, which can be useful for layout purposes.
 pub trait UtfWidth {
+    /// Number of graphemes in the string.
+    /// Used to know the necessary width to print this text.
     fn utf_width(&self) -> usize;
+    /// Number of graphemes in the string as a, u16.
+    /// Used to know the necessary width to print this text.
+    fn utf_width_u16(&self) -> u16;
 }
 
 impl UtfWidth for String {
     fn utf_width(&self) -> usize {
         self.as_str().utf_width()
+    }
+
+    fn utf_width_u16(&self) -> u16 {
+        self.utf_width() as u16
     }
 }
 
@@ -327,10 +335,14 @@ impl UtfWidth for &str {
             .collect::<Vec<String>>()
             .len()
     }
+
+    fn utf_width_u16(&self) -> u16 {
+        self.utf_width() as u16
+    }
 }
 
-pub fn index_from_a(lettre: char) -> Option<usize> {
-    (lettre as usize).checked_sub('a' as usize)
+pub fn index_from_a(letter: char) -> Option<usize> {
+    (letter as usize).checked_sub('a' as usize)
 }
 
 /// A PathBuf of the current config folder.

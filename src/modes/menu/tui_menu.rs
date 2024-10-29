@@ -50,6 +50,7 @@ impl Execute<()> for String {
     }
 }
 
+/// Tui applications which requires a new terminal for interaction.
 #[derive(Clone)]
 pub struct TuiApplications {
     pub content: Vec<String>,

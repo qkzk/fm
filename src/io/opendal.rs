@@ -11,6 +11,10 @@ use crate::io::{CowStr, DrawMenu};
 use crate::modes::{human_size, FileInfo};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
+/// Configuration of an Opendal Google Drive.
+/// it holds every configured information from the token file.
+/// it's used to read a token file (and build itself), to connect to it,
+/// or to create a token file from user input.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GoogleDriveConfig {
     drive_name: String,

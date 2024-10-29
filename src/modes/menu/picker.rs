@@ -1,11 +1,15 @@
 use crate::io::DrawMenu;
 use crate::{impl_content, impl_selectable};
 
+/// Which part of fm asked a picker ?
+/// Only cloud uses a picker atm.
 pub enum PickerCaller {
     Cloud,
     Unknown,
 }
 
+/// A basic picker, allowing to display some text and pick one element.
+/// It records a [`PickerCaller`], used to call it back.
 #[derive(Default)]
 pub struct Picker {
     pub caller: Option<PickerCaller>,

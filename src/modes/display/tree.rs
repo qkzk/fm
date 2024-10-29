@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tuikit::attr::{Attr, Effect};
+use ratatui::style::{Modifier, Style};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::impl_index_to_index;
@@ -202,6 +202,7 @@ impl<'a> TreeBuilder<'a> {
     }
 }
 
+/// A builder of [`Tree`] nodes.
 pub struct NodesBuilder<'a> {
     root_path: &'a Arc<Path>,
     max_depth: usize,
@@ -505,17 +506,17 @@ pub struct TLine {
     folded: bool,
     prefix: Arc<str>,
     pub path: Arc<Path>,
-    pub attr: Attr,
+    pub style: Style,
     metadata: String,
 }
 
 impl TLine {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
     fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let mut attr = fileinfo.attr();
+        let mut style = fileinfo.style();
         // required for some edge cases when opening the tree while "." is the selected file
         if node.selected() {
-            attr.effect |= Effect::REVERSE;
+            style.add_modifier |= Modifier::REVERSED;
         }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
@@ -528,7 +529,7 @@ impl TLine {
             folded,
             prefix,
             path,
-            attr,
+            style,
             metadata,
         }
     }
@@ -558,13 +559,13 @@ impl TLine {
     /// Change the current effect to Empty, displaying
     /// the file as not selected
     pub fn unselect(&mut self) {
-        self.attr.effect = Effect::empty();
+        self.style.add_modifier = Modifier::empty();
     }
 
-    /// Change the current effect to `REVERSE`, displaying
+    /// Change the current effect to `REVERSED`, displaying
     /// the file as selected.
     pub fn select(&mut self) {
-        self.attr.effect |= Effect::REVERSE;
+        self.style.add_modifier |= Modifier::REVERSED;
     }
 }
 
@@ -605,6 +606,24 @@ impl Tree {
     /// Selected path
     pub fn selected_path(&self) -> &Path {
         self.selected.borrow()
+    }
+
+    pub fn selected_node_or_parent(&self) -> Result<&Node> {
+        if let Some(node) = self.selected_node() {
+            if node.path().exists() {
+                return Ok(node);
+            }
+            while let Some(parent_path) = node.path().parent() {
+                if let Some(parent_node) = self.nodes.get(parent_path) {
+                    if parent_node.path().exists() {
+                        return Ok(parent_node);
+                    }
+                }
+            }
+        };
+        self.nodes
+            .get(&self.root_path)
+            .context("root path should have a node")
     }
 
     /// Selected node

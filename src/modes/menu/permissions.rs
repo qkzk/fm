@@ -7,6 +7,7 @@ use crate::modes::{convert_octal_mode, Flagged};
 
 type Mode = u32;
 
+/// Empty struct used to regroup some methods.
 pub struct Permissions;
 
 /// Maximum possible mode, 0o777 = 511 (decimal)

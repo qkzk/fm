@@ -1,17 +1,17 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
+use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
-use tuikit::attr::{Attr, Color};
 
 use crate::common::{
     is_in_path, tilde, CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION, DEFAULT_TERMINAL_FLAG,
 };
 use crate::config::{Bindings, ColorG};
-use crate::io::color_to_attr;
+use crate::io::color_to_style;
 
 /// Holds every configurable aspect of the application.
-/// All attributes are hardcoded then updated from optional values
+/// All styles are hardcoded then updated from optional values
 /// of the config file.
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
 #[derive(Debug, Clone)]
@@ -134,10 +134,10 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
     };
     (start_color, stop_color)
 }
-macro_rules! update_attr {
-    ($self_attr:expr, $yaml:ident, $key:expr) => {
+macro_rules! update_style {
+    ($self_style:expr, $yaml:ident, $key:expr) => {
         if let Some(color) = read_yaml_value($yaml, $key) {
-            $self_attr = color_to_attr(crate::config::str_to_tuikit(color));
+            $self_style = color_to_style(crate::config::str_to_ratatui(color));
         }
     };
 }
@@ -149,45 +149,45 @@ fn read_yaml_value(yaml: &Value, key: &str) -> Option<String> {
 /// Holds configurable colors for every kind of file.
 /// "Normal" files are displayed with a different color by extension.
 #[derive(Debug, Clone)]
-pub struct FileAttr {
+pub struct FileStyle {
     /// Color for `directory` files.
-    pub directory: Attr,
-    /// Attr for `block` files.
-    pub block: Attr,
-    /// Attr for `char` files.
-    pub char: Attr,
-    /// Attr for `fifo` files.
-    pub fifo: Attr,
-    /// Attr for `socket` files.
-    pub socket: Attr,
-    /// Attr for `symlink` files.
-    pub symlink: Attr,
-    /// Attr for broken `symlink` files.
-    pub broken: Attr,
+    pub directory: Style,
+    /// Style for `block` files.
+    pub block: Style,
+    /// Style for `char` files.
+    pub char: Style,
+    /// Style for `fifo` files.
+    pub fifo: Style,
+    /// Style for `socket` files.
+    pub socket: Style,
+    /// Style for `symlink` files.
+    pub symlink: Style,
+    /// Style for broken `symlink` files.
+    pub broken: Style,
 }
 
-impl FileAttr {
+impl FileStyle {
     fn new() -> Self {
         Self {
-            directory: color_to_attr(Color::RED),
-            block: color_to_attr(Color::YELLOW),
-            char: color_to_attr(Color::GREEN),
-            fifo: color_to_attr(Color::BLUE),
-            socket: color_to_attr(Color::CYAN),
-            symlink: color_to_attr(Color::MAGENTA),
-            broken: color_to_attr(Color::WHITE),
+            directory: color_to_style(Color::Red),
+            block: color_to_style(Color::Yellow),
+            char: color_to_style(Color::Green),
+            fifo: color_to_style(Color::Blue),
+            socket: color_to_style(Color::Cyan),
+            symlink: color_to_style(Color::Magenta),
+            broken: color_to_style(Color::White),
         }
     }
 
     /// Update every color from a yaml value (read from the config file).
     fn update_values(&mut self, yaml: &Value) {
-        update_attr!(self.directory, yaml, "directory");
-        update_attr!(self.block, yaml, "block");
-        update_attr!(self.char, yaml, "char");
-        update_attr!(self.fifo, yaml, "fifo");
-        update_attr!(self.socket, yaml, "socket");
-        update_attr!(self.symlink, yaml, "symlink");
-        update_attr!(self.broken, yaml, "broken");
+        update_style!(self.directory, yaml, "directory");
+        update_style!(self.block, yaml, "block");
+        update_style!(self.char, yaml, "char");
+        update_style!(self.fifo, yaml, "fifo");
+        update_style!(self.socket, yaml, "socket");
+        update_style!(self.symlink, yaml, "symlink");
+        update_style!(self.broken, yaml, "broken");
     }
 
     fn update_from_config(&mut self) {
@@ -201,64 +201,65 @@ impl FileAttr {
     }
 
     pub fn from_config() -> Self {
-        let mut attrs = Self::default();
-        attrs.update_from_config();
-        attrs
+        let mut style = Self::default();
+        style.update_from_config();
+        style
     }
 }
 
-impl Default for FileAttr {
+impl Default for FileStyle {
     fn default() -> Self {
         Self::new()
     }
 }
 
-pub struct MenuAttrs {
-    pub first: Attr,
-    pub second: Attr,
-    pub selected_border: Attr,
-    pub inert_border: Attr,
-    pub palette_1: Attr,
-    pub palette_2: Attr,
-    pub palette_3: Attr,
-    pub palette_4: Attr,
+/// Different styles for decorating the menus.
+pub struct MenuStyle {
+    pub first: Style,
+    pub second: Style,
+    pub selected_border: Style,
+    pub inert_border: Style,
+    pub palette_1: Style,
+    pub palette_2: Style,
+    pub palette_3: Style,
+    pub palette_4: Style,
 }
 
-impl Default for MenuAttrs {
+impl Default for MenuStyle {
     fn default() -> Self {
         Self {
-            first: color_to_attr(Color::Rgb(45, 250, 209)),
-            second: color_to_attr(Color::Rgb(230, 189, 87)),
-            selected_border: color_to_attr(Color::Rgb(45, 250, 209)),
-            inert_border: color_to_attr(Color::Rgb(248, 248, 248)),
-            palette_1: color_to_attr(Color::Rgb(45, 250, 209)),
-            palette_2: color_to_attr(Color::Rgb(230, 189, 87)),
-            palette_3: color_to_attr(Color::Rgb(230, 167, 255)),
-            palette_4: color_to_attr(Color::Rgb(59, 204, 255)),
+            first: color_to_style(Color::Rgb(45, 250, 209)),
+            second: color_to_style(Color::Rgb(230, 189, 87)),
+            selected_border: color_to_style(Color::Rgb(45, 250, 209)),
+            inert_border: color_to_style(Color::Rgb(248, 248, 248)),
+            palette_1: color_to_style(Color::Rgb(45, 250, 209)),
+            palette_2: color_to_style(Color::Rgb(230, 189, 87)),
+            palette_3: color_to_style(Color::Rgb(230, 167, 255)),
+            palette_4: color_to_style(Color::Rgb(59, 204, 255)),
         }
     }
 }
 
-impl MenuAttrs {
+impl MenuStyle {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {
                 let menu_colors = &yaml["colors"];
-                update_attr!(self.first, menu_colors, "header_first");
-                update_attr!(self.second, menu_colors, "header_second");
-                update_attr!(self.selected_border, menu_colors, "selected_border");
-                update_attr!(self.inert_border, menu_colors, "inert_border");
-                update_attr!(self.palette_1, menu_colors, "palette_1");
-                update_attr!(self.palette_2, menu_colors, "palette_2");
-                update_attr!(self.palette_3, menu_colors, "palette_3");
-                update_attr!(self.palette_4, menu_colors, "palette_4");
+                update_style!(self.first, menu_colors, "header_first");
+                update_style!(self.second, menu_colors, "header_second");
+                update_style!(self.selected_border, menu_colors, "selected_border");
+                update_style!(self.inert_border, menu_colors, "inert_border");
+                update_style!(self.palette_1, menu_colors, "palette_1");
+                update_style!(self.palette_2, menu_colors, "palette_2");
+                update_style!(self.palette_3, menu_colors, "palette_3");
+                update_style!(self.palette_4, menu_colors, "palette_4");
             }
         }
         self
     }
 
     #[inline]
-    pub const fn palette(&self) -> [Attr; 4] {
+    pub const fn palette(&self) -> [Style; 4] {
         [
             self.palette_1,
             self.palette_2,

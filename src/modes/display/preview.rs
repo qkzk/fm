@@ -9,20 +9,24 @@ use std::slice::Iter;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    Frame,
+};
 use syntect::{
     easy::HighlightLines,
-    highlighting::{FontStyle, Style, Theme, ThemeSet},
+    highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
     parsing::{SyntaxReference, SyntaxSet},
 };
-use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
-    TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, UtfWidth, BSDTAR, FFMPEG,
+    FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
+    RSVG_CONVERT, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
-use crate::config::MONOKAI_THEME;
-use crate::io::execute_and_capture_output_without_check;
+use crate::config::{MENU_STYLES, MONOKAI_THEME};
+use crate::io::{execute_and_capture_output_without_check, Canvas};
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
     Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
@@ -178,8 +182,21 @@ impl Preview {
     pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
         ContentWindow::new(self.len(), height)
     }
+
+    pub fn filepath(&self) -> String {
+        match self {
+            Self::Empty => "".to_owned(),
+            Self::Syntaxed(preview) => preview.filepath().to_owned(),
+            Self::Text(preview) => preview.title.to_owned(),
+            Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
+            Self::Ueberzug(preview) => preview.identifier.to_owned(),
+            Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
+        }
+    }
 }
 
+/// Builder of previews. It just knows what file asked a preview.
+/// Using a builder is useful since there's many kind of preview which all use a different method.
 pub struct PreviewBuilder {
     path: PathBuf,
 }
@@ -311,8 +328,13 @@ impl PreviewBuilder {
     fn syntaxed_from_str(output: String, ext: &str) -> Option<Preview> {
         let ss = SyntaxSet::load_defaults_nonewlines();
         Some(Preview::Syntaxed(
-            HLContent::from_str(&output, ss.clone(), ss.find_syntax_by_extension(ext)?)
-                .unwrap_or_default(),
+            HLContent::from_str(
+                "command".to_owned(),
+                &output,
+                ss.clone(),
+                ss.find_syntax_by_extension(ext)?,
+            )
+            .unwrap_or_default(),
         ))
     }
 
@@ -346,6 +368,7 @@ impl PreviewBuilder {
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
+        crate::log_info!("cli_info. command {command} - output\n{output}");
         Preview::Text(Text::command_stdout(output, command))
     }
 }
@@ -360,7 +383,9 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
-#[derive(Clone, Default)]
+/// Different kind of text previewed.
+/// Wether it's a text file or the output of a command.
+#[derive(Clone, Default, Debug)]
 pub enum TextKind {
     #[default]
     TEXTFILE,
@@ -380,7 +405,7 @@ pub enum TextKind {
 
 /// Holds a preview of a text content.
 /// It's a vector of strings (per line)
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Text {
     pub kind: TextKind,
     pub title: String,
@@ -557,6 +582,7 @@ impl Text {
 /// The file is colored propery and line numbers are shown.
 #[derive(Clone, Default)]
 pub struct HLContent {
+    path: String,
     content: Vec<Vec<SyntaxedString>>,
     length: usize,
 }
@@ -571,25 +597,37 @@ impl HLContent {
     /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
-        Self::build(raw_content, syntax_set, syntax_ref)
+        Self::build(
+            path.to_string_lossy().to_string(),
+            raw_content,
+            syntax_set,
+            syntax_ref,
+        )
     }
 
-    fn from_str(text: &str, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
+    fn from_str(
+        name: String,
+        text: &str,
+        syntax_set: SyntaxSet,
+        syntax_ref: &SyntaxReference,
+    ) -> Result<Self> {
         let raw_content = text
             .lines()
             .take(Self::SIZE_LIMIT)
             .map(|s| s.to_owned())
             .collect();
-        Self::build(raw_content, syntax_set, syntax_ref)
+        Self::build(name, raw_content, syntax_set, syntax_ref)
     }
 
     fn build(
+        path: String,
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Self> {
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
+            path,
             length: highlighted_content.len(),
             content: highlighted_content,
         })
@@ -597,6 +635,10 @@ impl HLContent {
 
     fn len(&self) -> usize {
         self.length
+    }
+
+    fn filepath(&self) -> &str {
+        &self.path
     }
 
     fn get_or_init_monokai() -> &'static Theme {
@@ -623,7 +665,7 @@ impl HLContent {
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
                     v_line.push(SyntaxedString::from_syntect(col, token, *style));
-                    col += token.len();
+                    col += token.utf_width_u16();
                 }
             }
             highlighted_content.push(v_line)
@@ -638,51 +680,51 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    col: usize,
+    col: u16,
     content: String,
-    attr: Attr,
+    style: Style,
 }
 
 impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: usize, content: &str, style: Style) -> Self {
+    fn from_syntect(col: u16, content: &str, style: SyntectStyle) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
-        let attr = Attr {
-            fg: Color::Rgb(fg.r, fg.g, fg.b),
-            bg: Color::default(),
-            effect: Self::fontstyle_to_effect(&style.font_style),
+        let style = Style {
+            fg: Some(Color::Rgb(fg.r, fg.g, fg.b)),
+            bg: None,
+            add_modifier: Self::font_style_to_effect(&style.font_style),
+            sub_modifier: Modifier::empty(),
+            underline_color: None,
         };
-        Self { col, content, attr }
+        Self {
+            col,
+            content,
+            style,
+        }
     }
 
-    fn fontstyle_to_effect(font_style: &FontStyle) -> Effect {
-        let mut effect = Effect::empty();
+    fn font_style_to_effect(font_style: &FontStyle) -> Modifier {
+        let mut modifier = Modifier::empty();
 
         // If the FontStyle has the bold bit set, add bold to the Effect
         if font_style.contains(FontStyle::BOLD) {
-            effect |= Effect::BOLD;
+            modifier |= Modifier::BOLD;
         }
 
-        // If the FontStyle has the underline bit set, add underline to the Effect
+        // If the FontStyle has the underline bit set, add underline to the Modifier
         if font_style.contains(FontStyle::UNDERLINE) {
-            effect |= Effect::UNDERLINE;
+            modifier |= Modifier::UNDERLINED;
         }
 
-        effect
+        modifier
     }
 
-    /// Prints itself on a tuikit canvas.
-    pub fn print(
-        &self,
-        canvas: &mut dyn tuikit::canvas::Canvas,
-        row: usize,
-        offset: usize,
-    ) -> Result<()> {
-        canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
-        Ok(())
+    // /// Prints itself on a ratatui window.
+    pub fn print(&self, f: &mut Frame, rect: &Rect, row: u16, offset: u16) {
+        rect.print_with_style(f, row, self.col + offset + 2, &self.content, self.style);
     }
 }
 
@@ -787,24 +829,44 @@ impl Line {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
+    /// Print the line number as hexadecimal
+    pub fn print_line_number_hex(
+        &self,
+        f: &mut Frame,
+        rect: &Rect,
+        row: u16,
+        top: usize,
+        i: usize,
+        line_number_width_hex: usize,
+    ) {
+        rect.print_with_style(
+            f,
+            row,
+            0,
+            &Self::format_line_nr_hex(i + 1 + top, line_number_width_hex),
+            MENU_STYLES.get().expect("Menu colors should be set").first,
+        );
+    }
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
     /// It uses BigEndian notation, regardless of platform usage.
     /// It tries to imitates the output of hexdump.
-    pub fn print_bytes(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print(row, offset + 2, &self.format_hex());
+    pub fn print_bytes(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
+        rect.print(f, row, offset as u16 + 2, &self.format_hex());
+    }
+
+    fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+        format!("{line_nr:0width$x}")
     }
 
     /// Print a line as an ASCII string
     /// Non ASCII printable bytes are replaced by dots.
-    pub fn print_ascii(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print_with_attr(
+    pub fn print_ascii(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
+        rect.print_with_style(
+            f,
             row,
-            offset + 2,
+            offset as u16 + 2,
             &self.format_as_ascii(),
-            Attr {
-                fg: Color::LIGHT_YELLOW,
-                ..Default::default()
-            },
+            MENU_STYLES.get().expect("Menu colors should be set").second,
         );
     }
 }
@@ -812,8 +874,8 @@ impl Line {
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
-pub trait Window<T> {
-    fn window(
+pub trait TakeSkipEnum<T> {
+    fn take_skip_enum(
         &self,
         top: usize,
         bottom: usize,
@@ -821,10 +883,10 @@ pub trait Window<T> {
     ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-macro_rules! impl_window {
+macro_rules! impl_take_skip_enum {
     ($t:ident, $u:ident) => {
-        impl Window<$u> for $t {
-            fn window(
+        impl TakeSkipEnum<$u> for $t {
+            fn take_skip_enum(
                 &self,
                 top: usize,
                 bottom: usize,
@@ -843,7 +905,7 @@ macro_rules! impl_window {
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 
-impl_window!(HLContent, VecSyntaxedString);
-impl_window!(Text, String);
-impl_window!(BinaryContent, Line);
-impl_window!(TreeLines, TLine);
+impl_take_skip_enum!(HLContent, VecSyntaxedString);
+impl_take_skip_enum!(Text, String);
+impl_take_skip_enum!(BinaryContent, Line);
+impl_take_skip_enum!(TreeLines, TLine);

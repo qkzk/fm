@@ -2,12 +2,18 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use ratatui::style::Color;
+use ratatui::{layout::Rect, Frame};
+use std::cmp::min;
+
+use crate::colored_skip_take;
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
-use crate::io::{git_root, DrawMenu};
+use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::io::{color_to_style, git_root, Canvas, CowStr, DrawMenu};
 use crate::modes::ContentWindow;
-use crate::{colored_skip_take, impl_content, impl_selectable, log_info};
+use crate::{impl_content, impl_selectable, log_info};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -84,8 +90,8 @@ impl Shortcut {
     }
 
     fn clear_doublons(&mut self) {
+        self.content.sort_unstable();
         self.content.dedup();
-        self.content = dedup_slow(self.content.clone());
     }
 
     pub fn update_git_root(&mut self) {
@@ -147,62 +153,26 @@ impl Shortcut {
     }
 }
 
-/// Remove duplicates from a vector and returns it.
-/// Elements should be `PartialEq`.
-/// It removes element than are not consecutives and is very slow.
-fn dedup_slow<T>(mut elems: Vec<T>) -> Vec<T>
-where
-    T: PartialEq,
-{
-    let mut to_remove = vec![];
-    for i in 0..elems.len() {
-        for j in (i + 1)..elems.len() {
-            if elems[i] == elems[j] {
-                to_remove.push(j);
-            }
-        }
-    }
-    for i in to_remove.iter().rev() {
-        elems.remove(*i);
-    }
-    elems
-}
-
-// impl_selectable_content!(PathBuf, Shortcut);
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
-use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::color_to_attr;
-use crate::io::CowStr;
-use std::cmp::min;
 
 impl DrawMenu<PathBuf> for Shortcut {
-    fn draw_menu(
-        &self,
-        canvas: &mut dyn tuikit::prelude::Canvas,
-        window: &ContentWindow,
-    ) -> anyhow::Result<()>
+    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
     where
         Self: Content<PathBuf>,
     {
         let content = self.content();
-        for (letter, (row, path, attr)) in
-            std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
-        {
-            let attr = self.attr(row, &attr);
-            canvas.print_with_attr(
-                row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP,
-                2,
-                &format!("{letter} "),
-                attr,
-            )?;
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
-                4,
-                &path.cow_str(),
-                self.attr(row, &attr),
-            )?;
+        for (letter, (index, path, style)) in std::iter::zip(
+            ('a'..='z').cycle().skip(window.top),
+            colored_skip_take!(content, window),
+        ) {
+            let style = self.style(index, &style);
+            let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16;
+            if row + 2 > rect.height {
+                return;
+            }
+            rect.print_with_style(f, row, 2, &format!("{letter} "), style);
+            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &style));
         }
-        Ok(())
     }
 }

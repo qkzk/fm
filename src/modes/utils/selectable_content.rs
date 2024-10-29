@@ -1,6 +1,13 @@
 use std::iter::{Chain, Skip, Take};
 use std::slice::Iter;
-use tuikit::attr::Attr;
+
+use ratatui::style::Style;
+
+// TODO pick a more telling name. `Selectable` doesn't say what it does.
+/// Allow selection of a element and basic navigation.
+/// Its implementation is mostly made by the macro [`crate::impl_selectable`]
+/// which allows to manipulate all sort of content in a common manner.
+/// It simplifies a lot the creation of menus for any action and is used everywhere.
 pub trait Selectable {
     /// True iff the content is empty
     fn is_empty(&self) -> bool;
@@ -19,6 +26,16 @@ pub trait Selectable {
     fn selected_is_last(&self) -> bool;
 }
 
+/// Allow access to a content element of any type.
+/// It allows to access the selected element, the whole content,
+/// to push new elements and to get the style of an element for display.
+///
+/// Its implementation should be done using the [`crate::impl_content`] macro
+/// which allows to manipulate any kind of content.
+/// It's used for almost every menu or list of things, as long as the whole content
+/// is known at some point.
+///
+/// Major exception is [`crate::modes::FuzzyFinder`] which _doesn't store_ the matches.
 pub trait Content<T>: Selectable {
     /// Returns the selected element if content isn't empty
     fn selected(&self) -> Option<&T>;
@@ -26,10 +43,12 @@ pub trait Content<T>: Selectable {
     fn content(&self) -> &Vec<T>;
     /// add an element to the content
     fn push(&mut self, t: T);
-    /// [`tuikit::prelude::Attr`] used to display an element
-    fn attr(&self, index: usize, attr: &Attr) -> Attr;
+    /// [`ratatui::style::Style`] used to display an element
+    fn style(&self, index: usize, style: &Style) -> Style;
 }
 
+/// Returns a reference to itself as a `[std::path::Path]`.
+/// Usefull for different kind of strings (`&str` or `String`).
 pub trait ToPath {
     fn to_path(&self) -> &std::path::Path;
 }
@@ -106,6 +125,10 @@ macro_rules! impl_selectable {
     };
 }
 
+/// Implement an iterator from next index of content to the same index,
+/// starting back from 0 when the last element is reached.
+/// It's used to search an element in content below current and
+/// then from the first index to the current index.
 #[macro_export]
 macro_rules! impl_index_to_index {
     ($content_type:ident, $struct:ident) => {
@@ -135,7 +158,6 @@ macro_rules! impl_index_to_index {
 #[macro_export]
 macro_rules! impl_content {
     ($content_type:ident, $struct:ident) => {
-        use tuikit::attr::{Attr, Effect};
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.
@@ -157,12 +179,12 @@ macro_rules! impl_content {
             }
 
             /// Reverse the received effect if the index match the selected index.
-            fn attr(&self, index: usize, attr: &Attr) -> Attr {
-                let mut attr = *attr;
+            fn style(&self, index: usize, style: &ratatui::style::Style) -> ratatui::style::Style {
+                let mut style = *style;
                 if index == self.index() {
-                    attr.effect |= Effect::REVERSE;
+                    style.add_modifier |= ratatui::style::Modifier::REVERSED;
                 }
-                attr
+                style
             }
 
             /// Push a new element at the end of content

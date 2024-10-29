@@ -7,11 +7,11 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
-use tuikit::prelude::Attr;
+use ratatui::style::Style;
 
 use crate::common::PERMISSIONS_STR;
-use crate::config::{extension_color, FILE_ATTRS};
-use crate::io::color_to_attr;
+use crate::config::{extension_color, FILE_STYLES};
+use crate::io::color_to_style;
 use crate::modes::{human_size, ToPath, Users, MAX_MODE};
 
 type Valid = bool;
@@ -324,19 +324,19 @@ impl FileInfo {
     }
 
     #[inline]
-    pub fn attr(&self) -> Attr {
+    pub fn style(&self) -> Style {
         if matches!(self.file_kind, FileKind::NormalFile) {
-            return color_to_attr(extension_color(&self.extension));
+            return color_to_style(extension_color(&self.extension));
         }
-        let attrs = FILE_ATTRS.get().expect("Colors should be set");
+        let styles = FILE_STYLES.get().expect("Colors should be set");
         match self.file_kind {
-            FileKind::Directory => attrs.directory,
-            FileKind::BlockDevice => attrs.block,
-            FileKind::CharDevice => attrs.char,
-            FileKind::Fifo => attrs.fifo,
-            FileKind::Socket => attrs.socket,
-            FileKind::SymbolicLink(true) => attrs.symlink,
-            FileKind::SymbolicLink(false) => attrs.broken,
+            FileKind::Directory => styles.directory,
+            FileKind::BlockDevice => styles.block,
+            FileKind::CharDevice => styles.char,
+            FileKind::Fifo => styles.fifo,
+            FileKind::Socket => styles.socket,
+            FileKind::SymbolicLink(true) => styles.symlink,
+            FileKind::SymbolicLink(false) => styles.broken,
             _ => unreachable!("Should be done already"),
         }
     }

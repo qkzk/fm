@@ -1,122 +1,288 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use crate::app::Status;
 use crate::common::path_to_string;
+use crate::{log_info, log_line};
 
+/// Analyse, parse and builds arguments from a shell command.
+/// Normal commands are executed with `sh -c "command"` which allow redirection, pipes etc.
+/// Sudo commands are executed with `sudo` then `sh -c "rest of the command"`.
+/// The password will be asked, injected into stdin and dropped somewhere else.
+/// The command isn't executed here, we just build a list of arguments to be passed to an executer.
+///
+/// Some expansion are allowed to interact with the content of fm.
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`
 /// %f is converted into a `Flagged`
 /// %e is converted into a `Extension`
 /// %n is converted into a `Filename`
+/// %t is converted into a `$TERM` + custom flag.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
-#[derive(Debug, Clone)]
-pub enum Token {
-    Arg(String),
-    Extension,
-    Filename,
-    Flagged,
-    Path,
+///
+/// # Errors
+///
+/// It can fail if the command can't be analysed or the expansion aren't valid (see above).
+pub fn shell_command_parser(command: &str, status: &Status) -> Result<Vec<String>> {
+    let Ok(tokens) = Lexer::new(command).lexer() else {
+        return shell_command_parser_error("Syntax error in the command", command);
+    };
+    let Ok(args) = Parser::new(tokens).parse(status) else {
+        return shell_command_parser_error("Couldn't parse the command", command);
+    };
+    build_args(args)
+}
+
+fn shell_command_parser_error(message: &str, command: &str) -> Result<Vec<String>> {
+    log_info!("{message} {command}");
+    log_line!("{message} {command}");
+    bail!("{message} {command}");
+}
+
+#[derive(Debug)]
+enum Tkn {
+    Identifier(String),
+    StringLiteral((char, String)),
+    FmExpansion(FmExpansion),
+}
+
+#[derive(Debug)]
+enum FmExpansion {
     Selected,
+    SelectedFilename,
+    SelectedPath,
+    Extension,
+    Flagged,
     Term,
+    Invalid,
 }
 
-impl Token {
-    fn from(arg: &str) -> Self {
-        match arg {
-            "%s" => Self::Selected,
-            "%e" => Self::Extension,
-            "%n" => Self::Filename,
-            "%f" => Self::Flagged,
-            "%d" => Self::Path,
-            "%t" => Self::Term,
-            _ => Self::Arg(arg.to_owned()),
-        }
-    }
-}
-
-/// Parse a command defined in the config file into a list of tokens
-/// Those tokens are converted back into a list of arguments to be run
-#[derive(Debug, Clone)]
-pub struct ShellCommandParser {
-    parsed: Vec<Token>,
-}
-
-impl ShellCommandParser {
-    /// Parse a command into a list of tokens
-    #[must_use]
-    pub fn new(command: &str) -> Self {
-        Self {
-            parsed: Self::parse(command),
+impl FmExpansion {
+    fn from(c: char) -> Self {
+        match c {
+            's' => Self::Selected,
+            'n' => Self::SelectedFilename,
+            'd' => Self::SelectedPath,
+            'e' => Self::Extension,
+            'f' => Self::Flagged,
+            't' => Self::Term,
+            _ => Self::Invalid,
         }
     }
 
-    fn parse(command: &str) -> Vec<Token> {
-        command.split(' ').map(Token::from).collect()
-    }
-
-    /// Compute the command back into an arg list to be executed.
-    ///
-    /// # Errors
-    ///
-    /// May fail if :
-    /// - The current directory name can't be decoded to utf-8
-    /// - The selected filename can't be decoded to utf-8
-    /// - The directory is empty
-    /// - The file extention can't be decoded to utf-8
-    pub fn compute(&self, status: &Status) -> Result<Vec<String>> {
-        let mut computed = vec![];
-        for token in &self.parsed {
-            match token {
-                Token::Arg(string) => computed.push(string.clone()),
-                Token::Selected => {
-                    computed.push(Self::selected(status)?);
-                }
-                Token::Path => {
-                    computed.push(Self::path(status));
-                }
-                Token::Filename => {
-                    computed.push(Self::filename(status)?);
-                }
-                Token::Extension => {
-                    computed.push(Self::extension(status)?);
-                }
-                Token::Flagged => computed.extend_from_slice(&Self::flagged(status)),
-                Token::Term => computed.extend_from_slice(&Self::term(status)),
-            }
+    fn parse(&self, status: &Status) -> Result<Vec<String>> {
+        match self {
+            Self::Invalid => bail!("Invalid Fm Expansion"),
+            Self::Term => Self::term(status),
+            Self::Selected => Self::selected(status),
+            Self::Flagged => Self::flagged(status),
+            Self::SelectedPath => Self::path(status),
+            Self::SelectedFilename => Self::filename(status),
+            Self::Extension => Self::extension(status),
         }
-        Ok(computed)
     }
 
-    fn selected(status: &Status) -> Result<String> {
-        status.current_tab().current_file_string()
+    fn selected(status: &Status) -> Result<Vec<String>> {
+        Ok(vec![status.current_tab().current_file_string()?])
     }
 
-    fn path(status: &Status) -> String {
-        status.current_tab().directory_str()
+    fn path(status: &Status) -> Result<Vec<String>> {
+        Ok(vec![status.current_tab().directory_str()])
     }
 
-    fn filename(status: &Status) -> Result<String> {
-        Ok(status.current_tab().current_file()?.filename.to_string())
+    fn filename(status: &Status) -> Result<Vec<String>> {
+        Ok(vec![status
+            .current_tab()
+            .current_file()?
+            .filename
+            .to_string()])
     }
 
-    fn extension(status: &Status) -> Result<String> {
-        Ok(status.current_tab().current_file()?.extension.to_string())
+    fn extension(status: &Status) -> Result<Vec<String>> {
+        Ok(vec![status
+            .current_tab()
+            .current_file()?
+            .extension
+            .to_string()])
     }
 
-    fn flagged(status: &Status) -> Vec<String> {
-        status
+    fn flagged(status: &Status) -> Result<Vec<String>> {
+        Ok(status
             .menu
             .flagged
             .content
             .iter()
             .map(path_to_string)
-            .collect()
+            .collect())
     }
 
-    fn term(status: &Status) -> [String; 2] {
-        [
+    fn term(status: &Status) -> Result<Vec<String>> {
+        // A space is needed unless $TERM & flags will be collapsed like "alacritty-e" (invalid) instead of "alacritty -e" (valid)
+        Ok(vec![
             status.internal_settings.opener.terminal.to_owned(),
+            " ".to_owned(),
             status.internal_settings.opener.terminal_flag.to_owned(),
-        ]
+        ])
     }
 }
+
+enum State {
+    Start,
+    Arg,
+    StringLiteral(char),
+    FmExpansion,
+}
+
+struct Lexer {
+    command: String,
+}
+
+impl Lexer {
+    fn new(command: &str) -> Self {
+        Self {
+            command: command.trim().to_owned(),
+        }
+    }
+
+    fn lexer(&self) -> Result<Vec<Tkn>> {
+        let mut tokens = vec![];
+        let mut state = State::Start;
+        let mut current = String::new();
+
+        for c in self.command.chars() {
+            match &state {
+                State::Start => {
+                    if c == '"' || c == '\'' {
+                        state = State::StringLiteral(c);
+                    } else if c == '%' {
+                        state = State::FmExpansion;
+                    } else {
+                        state = State::Arg;
+                        current.push(c);
+                    }
+                }
+                State::Arg => {
+                    if c == '%' {
+                        tokens.push(Tkn::Identifier(current.clone()));
+                        current.clear();
+                        state = State::FmExpansion;
+                    } else if c == '"' || c == '\'' {
+                        tokens.push(Tkn::Identifier(current.clone()));
+                        current.clear();
+                        state = State::StringLiteral(c);
+                    } else {
+                        current.push(c);
+                    }
+                }
+                State::StringLiteral(quote_type) => {
+                    if c == *quote_type {
+                        tokens.push(Tkn::StringLiteral((c, current.clone())));
+                        current.clear();
+                        state = State::Start;
+                    } else {
+                        current.push(c);
+                    }
+                }
+                State::FmExpansion => {
+                    if c.is_alphanumeric() {
+                        let expansion = FmExpansion::from(c);
+                        if let FmExpansion::Invalid = expansion {
+                            bail!("Invalid FmExpansion %{c}")
+                        }
+                        tokens.push(Tkn::FmExpansion(expansion));
+                        current.clear();
+                        state = State::Start;
+                    } else {
+                        bail!("Invalid FmExpansion %{c}.")
+                    }
+                }
+            }
+        }
+
+        match &state {
+            State::Arg => tokens.push(Tkn::Identifier(current)),
+            State::StringLiteral(quote) => tokens.push(Tkn::StringLiteral((*quote,current))),
+            State::FmExpansion => bail!("Invalid syntax for {command}. Matching an FmExpansion with {current} which is impossible.", command=self.command),
+            State::Start => (),
+        }
+
+        Ok(tokens)
+    }
+}
+
+struct Parser {
+    tokens: Vec<Tkn>,
+}
+
+impl Parser {
+    fn new(tokens: Vec<Tkn>) -> Self {
+        Self { tokens }
+    }
+
+    fn parse(&self, status: &Status) -> Result<Vec<String>> {
+        if self.tokens.is_empty() {
+            bail!("Empty tokens")
+        }
+        let mut args: Vec<String> = vec![];
+        for token in self.tokens.iter() {
+            match token {
+                Tkn::Identifier(identifier) => args.push(identifier.to_owned()),
+                Tkn::FmExpansion(fm_expansion) => {
+                    let Ok(mut expansion) = fm_expansion.parse(status) else {
+                        log_line!("Invalid expansion {fm_expansion:?}");
+                        log_info!("Invalid expansion {fm_expansion:?}");
+                        bail!("Invalid expansion {fm_expansion:?}")
+                    };
+                    args.append(&mut expansion)
+                }
+                Tkn::StringLiteral((quote, string)) => args.push(format!("{quote}{string}{quote}")),
+            };
+        }
+        Ok(args)
+    }
+}
+
+fn build_args(args: Vec<String>) -> Result<Vec<String>> {
+    if args.is_empty() {
+        bail!("Empty command");
+    }
+    if args[0].starts_with("sudo") {
+        Ok(build_sudo_args(args))
+    } else {
+        Ok(build_normal_args(args))
+    }
+}
+
+fn build_sudo_args(args: Vec<String>) -> Vec<String> {
+    let rebuild = args.join("");
+    rebuild.split_whitespace().map(|s| s.to_owned()).collect()
+}
+
+fn build_normal_args(args: Vec<String>) -> Vec<String> {
+    vec!["sh".to_owned(), "-c".to_owned(), args.join("")]
+}
+// fn test_shell_parser(status: &Status) {
+//     let commands = vec![
+//         r#"echo "Hello World" | grep "World""#, // Commande simple avec pipe et chaîne avec espaces
+//         r#"ls -l /home/user && echo "Done""#, // Commande avec opérateur logique `&&` et chaîne avec espaces
+//         r#"cat file.txt > output.txt"#,       // Redirection de sortie vers un fichier
+//         r#"grep 'pattern' < input.txt | sort >> output.txt"#, // Redirections d'entrée et de sortie avec pipe
+//         r#"echo "Unfinished quote"#,                          // Cas avec guillemet non fermé
+//         r#"echo "Special chars: $HOME, * and ?""#, // Commande avec variables et jokers dans une chaîne
+//         r#"rm -rf /some/directory || echo "Failed to delete""#, // Commande avec opérateur logique `||`
+//         r#"find . -name "*.txt" | xargs grep "Hello""#, // Recherche de fichiers avec pipe et argument contenant `*`
+//         r#"echo "Spaces   between   words""#,           // Chaîne avec plusieurs espaces
+//         r#"echo Hello\ World"#, // Utilisation de `\` pour échapper un espace
+//         r#"ls %s"#,
+//         r#"bat %s --color=never | rg "main" --line-numbers"#,
+//     ];
+//
+//     for command in &commands {
+//         let tokens = Lexer::new(command).lexer();
+//         // crate::log_info!("{command}\n--lexer-->\n{:?}\n", tokens);
+//         if let Ok(tokens) = tokens {
+//             let p = Parser::new(tokens).parse(status);
+//             let c = build_command(p);
+//             crate::log_info!("command: {c:?}\n");
+//         }
+//     }
+// }
