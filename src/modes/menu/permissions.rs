@@ -2,8 +2,8 @@ use std::os::unix::fs::PermissionsExt;
 
 use anyhow::Result;
 
-use crate::log_line;
 use crate::modes::{convert_octal_mode, Flagged};
+use crate::{log_info, log_line};
 
 type Mode = u32;
 
@@ -56,7 +56,10 @@ type IsValid = bool;
 /// It also returns a flag for any char, set to true if the char
 /// is a valid permission.
 /// It's used to display a valid mode or not.
-pub fn parse_input_mode(mode_str: &str) -> Vec<(&'static str, IsValid)> {
+pub fn parse_input_mode(mode_str: &str) -> Vec<(&str, IsValid)> {
+    if mode_str.chars().any(|c| c.is_alphabetic()) {
+        return vec![("", true)];
+    }
     if mode_str.len() > 3 {
         return vec![("Mode is too long", false)];
     }
@@ -75,6 +78,8 @@ pub fn parse_input_mode(mode_str: &str) -> Vec<(&'static str, IsValid)> {
 struct _Mode(Mode);
 
 impl _Mode {
+    const VALID: [char; 3] = ['r', 'w', 'x'];
+    const ACCEPTED: [char; 2] = ['.', '-'];
     /// Max valid mode, ie `0o777`.
 
     const fn octal(&self) -> Mode {
@@ -82,11 +87,52 @@ impl _Mode {
     }
 
     fn from_str(mode_str: &str) -> Option<Self> {
+        if let Some(mode) = Self::from_numeric(mode_str) {
+            return Some(mode);
+        }
+        Self::from_alphabetic(mode_str)
+    }
+
+    fn from_numeric(mode_str: &str) -> Option<Self> {
         if let Ok(mode) = Mode::from_str_radix(mode_str, 8) {
             if Self::is_valid_permissions(mode) {
                 return Some(Self(mode));
             }
         }
+        None
+    }
+
+    fn from_alphabetic(mode_str: &str) -> Option<Self> {
+        // rwxrwxrwx
+        if mode_str.len() != 9 {
+            return None;
+        }
+        let mut exponent;
+        let mut current_index: usize;
+        let mut current_char: char;
+        let mut mode: u32 = 0;
+
+        let chars: Vec<_> = mode_str.chars().collect();
+        for part in 0..3 {
+            mode <<= 3;
+            exponent = 4;
+            for (index, valid) in Self::VALID.iter().enumerate() {
+                current_index = part * 3 + index;
+                current_char = chars[current_index];
+                if current_char == *valid {
+                    mode += exponent;
+                } else if current_char != Self::ACCEPTED[0] && current_char != Self::ACCEPTED[1] {
+                    log_info!("Invalid char in permissions {current_char}");
+                    return None;
+                }
+                exponent >>= 1;
+            }
+            crate::log_info!("mode {mode} - part {part} - {mode_str}")
+        }
+        if Self::is_valid_permissions(mode) {
+            return Some(Self(mode));
+        }
+
         None
     }
 

@@ -298,6 +298,8 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::NONE), ActionMap::Delete),
             (KeyEvent::new(KeyCode::Char('z'),    KeyModifiers::NONE), ActionMap::TreeFold),
 
+            (KeyEvent::new(KeyCode::Char('+'),    KeyModifiers::NONE), ActionMap::Chmod),
+
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::OpenConfig),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),

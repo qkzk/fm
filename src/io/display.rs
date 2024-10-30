@@ -1116,12 +1116,17 @@ impl<'a> Menu<'a> {
     }
 
     fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
-        let mode_parsed = parse_input_mode(&self.status.menu.input.string());
+        let input = self.status.menu.input.string();
+        let mode_parsed = parse_input_mode(&input);
         let mut col = 11;
-        for (text, is_valid) in &mode_parsed {
-            let style = if *is_valid { first } else { menu };
-            col += 1 + text.utf_width_u16();
-            rect.print_with_style(f, 1, col, text, style);
+        if mode_parsed.len() == 1 {
+            rect.print_with_style(f, 1, col, mode_parsed[0].0, first);
+        } else {
+            for (text, is_valid) in &mode_parsed {
+                let style = if *is_valid { first } else { menu };
+                col += 1 + text.utf_width_u16();
+                rect.print_with_style(f, 1, col, text, style);
+            }
         }
     }
 
@@ -1154,11 +1159,6 @@ impl<'a> Menu<'a> {
     }
 
     fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
-        log_info!(
-            "len: {len}, height: {height} - rect {rect}",
-            len = lines.len(),
-            height = rect.height
-        );
         for (row, line, style) in enumerated_colored_iter!(lines) {
             if row + 2 >= rect.height as usize {
                 break;
@@ -1471,6 +1471,8 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
+        use std::io::{self, Write};
+        io::stdout().flush().unwrap();
         if status.should_be_cleared() {
             self.term.clear().unwrap();
         }
