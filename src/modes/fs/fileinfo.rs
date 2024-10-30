@@ -375,7 +375,7 @@ fn extract_permissions_string(metadata: &Metadata) -> Arc<str> {
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    Arc::from(format!("{s_o}{s_a}{s_g}").as_str())
+    Arc::from(format!("{s_o}{s_g}{s_a}").as_str())
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
