@@ -171,7 +171,6 @@ impl FM {
             bail!("Error locking status");
         };
         self.event_dispatcher.dispatch(&mut status, event)?;
-        status.refresh_shortcuts();
 
         Ok(())
     }

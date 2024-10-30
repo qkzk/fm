@@ -687,8 +687,8 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            status.refresh_shortcuts();
             std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
-            status.menu.shortcut.update_git_root();
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
