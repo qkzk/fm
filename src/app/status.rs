@@ -1,4 +1,3 @@
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -659,6 +658,9 @@ impl Status {
             Menu::Navigate(Navigate::Marks(_)) => {
                 let (_, mark_path) = &self.menu.marks.content().get(self.menu.marks.index())?;
                 FileInfo::new(mark_path, users).ok()
+            }
+            Menu::Navigate(Navigate::Flagged) => {
+                FileInfo::new(self.menu.flagged.selected()?, users).ok()
             }
             _ => tab.current_file().ok(),
         }

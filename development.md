@@ -1442,6 +1442,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] set readonly, remove readonly... see fs unix fs set_readonly
     - [ ] would calling chmod directly be for practical ?
   - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
+- [x] display preview of flagged files in menu flagged.
 - [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
@@ -1449,7 +1450,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   492
   ```
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
-- [ ] display preview of flagged files in menu flagged.
 - [ ] why have a bottom line in menu if the binds are always explained ?
 - [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
 - [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
