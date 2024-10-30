@@ -32,6 +32,18 @@ impl Kind {
     fn allow_multiples(&self) -> bool {
         matches!(self, Self::Pdf)
     }
+
+    pub fn for_first_line(&self) -> &str {
+        match self {
+            Self::Font => "a font",
+            Self::Image => "an image",
+            Self::Office => "an office document",
+            Self::Pdf => "a pdf",
+            Self::Svg => "an svg image",
+            Self::Video => "a video",
+            Self::Unknown => "Unknown",
+        }
+    }
 }
 
 impl From<ExtensionKind> for Kind {
@@ -65,7 +77,7 @@ impl std::fmt::Display for Kind {
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
 pub struct Ueber {
     since: Instant,
-    kind: Kind,
+    pub kind: Kind,
     pub identifier: String,
     images: Vec<PathBuf>,
     length: usize,

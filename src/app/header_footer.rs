@@ -3,8 +3,8 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::common::{
-        PathShortener, UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LAZYGIT,
-        LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
+        PathShortener, UtfWidth, ACTION_LOG_PATH, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
+        LAZYGIT, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
     };
     use crate::event::ActionMap;
     use crate::modes::{Content, Display, FilterKind, Preview, Search, Selectable, Text, TextKind};
@@ -381,13 +381,14 @@ mod inner {
         fn make_log() -> Vec<(String, Align)> {
             vec![
                 (LOG_FIRST_SENTENCE.to_owned(), Align::Left),
+                (ACTION_LOG_PATH.to_owned(), Align::Left),
                 (LOG_SECOND_SENTENCE.to_owned(), Align::Right),
             ]
         }
 
         fn make_colored_text(colored_text: &Text) -> Vec<(String, Align)> {
             vec![
-                (" Command: ".to_owned(), Align::Left),
+                (" Command output: ".to_owned(), Align::Left),
                 (
                     format!(" {command} ", command = colored_text.title),
                     Align::Right,
@@ -406,7 +407,10 @@ mod inner {
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             let filepath = Self::_pick_previewed_fileinfo(status);
             let mut strings = vec![
-                (" Preview ".to_owned(), Align::Left),
+                (
+                    format!(" Preview as {kind} ", kind = tab.preview.kind_display()),
+                    Align::Left,
+                ),
                 (format!(" {} ", filepath), Align::Left),
             ];
             if !tab.preview.is_empty() {

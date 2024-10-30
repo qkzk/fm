@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::convert::Into;
-use std::fmt::Write as _;
+use std::fmt::{Display, Write as _};
 use std::fs::symlink_metadata;
 use std::io::{BufRead, BufReader, Cursor, Read};
 use std::iter::{Enumerate, Skip, Take};
@@ -170,6 +170,17 @@ impl Preview {
             Self::Binary(preview) => preview.len(),
             Self::Ueberzug(preview) => preview.len(),
             Self::Tree(tree) => tree.displayable().lines().len(),
+        }
+    }
+
+    pub fn kind_display(&self) -> &str {
+        match self {
+            Self::Empty => "empty",
+            Self::Syntaxed(_) => "an highlighted text",
+            Self::Text(text) => text.kind.for_first_line(),
+            Self::Binary(_) => "a binary file",
+            Self::Ueberzug(uber) => uber.kind.for_first_line(),
+            Self::Tree(_) => "a tree",
         }
     }
 
@@ -401,6 +412,32 @@ pub enum TextKind {
     Mediacontent,
     Socket,
     Torrent,
+}
+
+impl TextKind {
+    /// Used to display the kind of content in this file.
+    pub fn for_first_line(&self) -> &'static str {
+        match self {
+            Self::TEXTFILE => "a textfile",
+            Self::Archive => "an archive",
+            Self::Blockdevice => "a Blockdevice file",
+            Self::CommandStdout => "a command stdout",
+            Self::Epub => "an epub",
+            Self::FifoChardevice => "a Fifo or Chardevice file",
+            Self::Help => "Help",
+            Self::Iso => "Iso",
+            Self::Log => "Log",
+            Self::Mediacontent => "a media content",
+            Self::Socket => "a Socket file",
+            Self::Torrent => "a torrent",
+        }
+    }
+}
+
+impl Display for TextKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{kind_str}", kind_str = self.for_first_line())
+    }
 }
 
 /// Holds a preview of a text content.

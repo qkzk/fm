@@ -717,6 +717,28 @@ struct PreviewDisplay<'a> {
 /// It may fail to recognize small files (< 1024 bytes).
 impl<'a> Draw for PreviewDisplay<'a> {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
+        self.preview(f, rect)
+    }
+}
+
+impl<'a> PreviewDisplay<'a> {
+    fn new(files: &'a Files) -> Self {
+        Self {
+            status: files.status,
+            tab: files.tab,
+            attributes: &files.attributes,
+        }
+    }
+
+    fn new_with_args(status: &'a Status, tab: &'a Tab, attributes: &'a FilesAttributes) -> Self {
+        Self {
+            status,
+            tab,
+            attributes,
+        }
+    }
+
+    fn preview(&self, f: &mut Frame, rect: &Rect) {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
@@ -736,24 +758,6 @@ impl<'a> Draw for PreviewDisplay<'a> {
 
             Preview::Empty => (),
         };
-    }
-}
-
-impl<'a> PreviewDisplay<'a> {
-    fn new(files: &'a Files) -> Self {
-        Self {
-            status: files.status,
-            tab: files.tab,
-            attributes: &files.attributes,
-        }
-    }
-
-    fn new_with_args(status: &'a Status, tab: &'a Tab, attributes: &'a FilesAttributes) -> Self {
-        Self {
-            status,
-            tab,
-            attributes,
-        }
     }
 
     fn line_number(
