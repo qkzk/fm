@@ -1,3 +1,4 @@
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -1648,7 +1649,8 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         }
-        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))
+        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))?;
+        self.menu.replace_input_by_permissions()
     }
 
     /// Execute a custom event on the selected file

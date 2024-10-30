@@ -102,6 +102,10 @@ impl _Mode {
         None
     }
 
+    /// Convert a 9 char len long string into a mode.
+    /// It will only accept basic strings like "rw.r...." or "rw-r----".
+    /// It won't accept specific chmod syntax like a+x or +X or s or t.
+    /// User can execute a command like !chmod a+x %s and use chmod directly.
     fn from_alphabetic(mode_str: &str) -> Option<Self> {
         // rwxrwxrwx
         if mode_str.len() != 9 {
@@ -127,7 +131,6 @@ impl _Mode {
                 }
                 exponent >>= 1;
             }
-            crate::log_info!("mode {mode} - part {part} - {mode_str}")
         }
         if Self::is_valid_permissions(mode) {
             return Some(Self(mode));

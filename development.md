@@ -1434,11 +1434,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] chmod improvment
   - [x] "+" should enter chmod
-  - [ ] chmod should detect text input and react to it.
+  - [ ] chmod should detect alphabetic input
     - [x] 777 is accepted
     - [x] rwxrwxrwx should be accepted
-    - [ ] +x & all chmod syntax should be accepted too... user can type "!chmod g+x %s" and voilà...
+    - [x] replace input by current mode when entering
+    - [ ] +x & all chmod syntax ??? ... user can type "!chmod g+x %s" and voilà...
     - [ ] set readonly, remove readonly... see fs unix fs set_readonly
+    - [ ] would calling chmod directly be for practical ?
   - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
 - [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
 - [ ] document every public function / method. Done for struct, enum & macros.

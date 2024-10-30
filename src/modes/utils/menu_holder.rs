@@ -1,7 +1,8 @@
+use std::os::unix::fs::MetadataExt;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
@@ -118,6 +119,32 @@ impl MenuHolder {
         if let Menu::Navigate(_) = menu_mode {
             self.window.scroll_to(self.index(menu_mode))
         }
+    }
+
+    /// Replace the current input by the permission of the first flagged file as an octal value.
+    /// If the flagged has permission "rwxrw.r.." or 764 in octal, "764" will be the current input.
+    /// Only the last 3 octal digits are kept.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if
+    /// - there's no flagged file, it's the responsability of the caller to ensure there's always a flagged file.
+    /// - metadata can't be accessed. It's also the responsability of the caller.
+    ///
+    /// Those situations should never happen since:
+    /// This method should be called after flagging the selected file,
+    /// The file which metadata can't be read are filtered out while reading the directories.
+    pub fn replace_input_by_permissions(&mut self) -> Result<()> {
+        let mode = &self
+            .flagged
+            .content
+            .first()
+            .context("There should be at least a flagged file")?
+            .metadata()?
+            .mode()
+            & 0o777;
+        self.input.replace(&format!("{mode:o}"));
+        Ok(())
     }
 
     /// Fill the input string with the currently selected completion.
