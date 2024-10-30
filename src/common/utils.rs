@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
-use std::fs::metadata;
-use std::io::BufRead;
+use std::fs::{metadata, File};
+use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -54,10 +54,14 @@ pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
-/// Print the path on the stdout.
-pub fn print_on_quit(path_string: String) {
-    log_info!("print on quit {path_string}");
-    println!("{path_string}")
+/// Print the final path & save it to a temporary file.
+/// Must be called last since we erase temporary with similar name
+/// before leaving.
+pub fn save_final_path(final_path: &str) {
+    let mut file = File::create("/tmp/fm_output.txt").expect("Failed to create file");
+    writeln!(file, "{final_path}").expect("Failed to write to file");
+    log_info!("print on quit {final_path}");
+    println!("{final_path}")
 }
 
 /// Returns the buffered lines from a text file.

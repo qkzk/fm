@@ -137,21 +137,21 @@ If you add this function to your `zshrc` / `bashrc`, it will listen to stdout an
 
 ```bash
 function f() {
-  # start the fm filemanager, enabling cd on quit.
-  dest=$(fm $@)
-  if [[ ! -z $dest ]]
-  then
-   cd $dest
+  fm $@
+  dest=$(cat /tmp/fm_output.txt)
+  if [[ -n $dest ]]; then
+    cd "$dest"
   fi
 }
 ```
 
 For fish users, this is the function to add to your `config.fish`
 
-```bash
+```fish
 function f
   # start the fm filemanager, enabling cd on quit.
-  set dest (fm $argv)
+  fm $argv
+  set dest (cat /tmp/fm_output.txt)
   if not test -z $dest
     cd $dest
   end

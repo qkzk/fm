@@ -17,7 +17,7 @@ use crossterm::{
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
+use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{set_loggers, Args, Opener};
@@ -228,7 +228,7 @@ impl FM {
         }
         drop(self.status);
         Self::disable_mouse_capture()?;
-        print_on_quit(final_path);
+        save_final_path(&final_path);
         Ok(())
     }
 }

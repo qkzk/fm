@@ -1395,21 +1395,58 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.32
 
+#### Summary
+
+- print on quit doesn't work anymore in bash / zsh and surelly in fish also (not tested.)
+
+  I tried to make environement variables to work but couldn't.
+  The alternative uses a temporary file :
+
+  Put this in your bashrc / zshrc and use it as you did already.
+
+  ```sh
+  function f() {
+    fm $@
+    dest=$(cat /tmp/fm_output.txt)
+    if [[ -n $dest ]]; then
+      cd "$dest"
+    fi
+  }
+  ```
+
+#### Changelog
+
 - [x] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
+- [x] function for cd on quit doesn't capture the terminal and hangs
+      Use a temporary file since I no environement variable seems to be set anywhere.
+
+      Update the new function in readme.
+
+  ```sh
+  function f() {
+    fm $@
+    dest=$(cat /tmp/fm_output.txt)
+    if [[ -n $dest ]]; then
+      cd "$dest"
+    fi
+  }
+  ```
+
+- [ ] chmod improvment
+  - [x] "+" should enter chmod
+  - [ ] chmod should detect text input and react to it.
+    - [x] 777 is accepted
+    - [x] rwxrwxrwx should be accepted
+    - [ ] +x & all chmod syntax should be accepted too... user can type "!chmod g+x %s" and voilà...
+    - [ ] set readonly, remove readonly... see fs unix fs set_readonly
+  - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
 - [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
-- [ ] function for cd on quit doesn't capture the terminal and hangs
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
   492
   ```
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
-- [ ] chmod is crap
-  - [ ] "+" should enter chmod
-  - [ ] chmod should detect text input and react to it.
-    - [x] 777 is accepted
-    - [ ] rwxrwxrwx should be accepted
-    - [ ] +x & all chmod syntax should be accepted too
 - [ ] display preview of flagged files in menu flagged.
 - [ ] why have a bottom line in menu if the binds are always explained ?
 - [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
