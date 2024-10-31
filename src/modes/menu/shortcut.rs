@@ -8,7 +8,7 @@ use ratatui::{
     layout::{Offset, Rect},
     prelude::Widget,
     style::Color,
-    text::{Line, Span},
+    text::Line,
     widgets::Paragraph,
     Frame,
 };
@@ -18,7 +18,7 @@ use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, git_root, CowStr, DrawMenu, LimitWidth};
+use crate::io::{color_to_style, git_root, CowStr, DrawMenu};
 use crate::modes::ContentWindow;
 use crate::{impl_content, impl_selectable, log_info};
 

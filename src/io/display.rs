@@ -66,14 +66,6 @@ impl LimitWidth for &str {
     }
 }
 
-impl LimitWidth for String {
-    /// Limit an owned slice to the give width, stopping at a char boundary.
-    /// if the width is large enough, it's the width of the string.
-    fn limit_width(&self, width: usize) -> Self {
-        self.as_str().limit_width(width).to_owned()
-    }
-}
-
 /// Basic methods to print in a [`ratatui::layout::Rect`].
 /// - `print_with_style`: allow to print a content at a position with given style,
 /// - `print`: the same but white on black.
@@ -761,8 +753,8 @@ impl<'a> PreviewDisplay<'a> {
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
             Preview::Ueberzug(image) => self.ueberzug(image, rect),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
-            Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CommandStdout) => {
-                self.colored_text(f, colored_text, length, rect, window)
+            Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
+                self.ansi_text(f, ansi_text, length, rect, window)
             }
             Preview::Text(text) => self.normal_text(f, text, length, rect, window),
 
@@ -917,25 +909,33 @@ impl<'a> PreviewDisplay<'a> {
         }
     }
 
-    fn colored_text(
+    fn ansi_text(
         &self,
         f: &mut Frame,
-        colored_text: &Text,
+        ansi_text: &Text,
         length: usize,
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let height = rect.height;
-        for (i, line) in colored_text.take_skip_enum(window.top, window.bottom, length) {
-            let row = calc_line_row(i, window);
-            if row + 2 > height {
-                break;
-            }
-            let offset = 3;
-            for (i, (chr, style)) in AnsiString::parse(line).iter().enumerate() {
-                rect.print_with_style(f, row, offset + i as u16, &chr.to_string(), style)
-            }
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 3,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let lines: Vec<_> = ansi_text
+            .take_skip(window.top, window.bottom, length)
+            .map(|line| {
+                Line::from(
+                    AnsiString::parse(line)
+                        .iter()
+                        .map(|(chr, style)| Span::styled(chr.to_string(), style))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 }
 
@@ -1763,10 +1763,6 @@ fn draw_clickable_strings(
         }
         rect.print_with_style(f, row, offset + elem.col(), elem.text(), style);
     }
-}
-
-fn calc_line_row(i: usize, window: &ContentWindow) -> u16 {
-    i as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - window.top as u16
 }
 
 fn print_flagged_symbol(

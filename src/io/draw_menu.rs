@@ -14,8 +14,6 @@ use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::color_to_style;
 use crate::modes::{Content, ContentWindow};
 
-use super::LimitWidth;
-
 /// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
 macro_rules! colored_skip_take {
