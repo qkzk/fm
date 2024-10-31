@@ -529,10 +529,19 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn files_content(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
-        let height = rect.height;
-        for (index, file) in self.tab.dir_enum_skip_take() {
-            self.files_line(f, rect, group_owner_sizes, index, file, height);
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 2,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let lines: Vec<_> = self
+            .tab
+            .dir_enum_skip_take()
+            .map(|(index, file)| self.files_line(group_owner_sizes, index, file))
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn group_owner_size(&self) -> (usize, usize) {
@@ -546,27 +555,37 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn files_line(
+    fn files_line<'b>(
         &self,
-        f: &mut Frame,
-        rect: &Rect,
         group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
-        height: u16,
-    ) {
-        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - self.tab.window.top as u16;
-        if row + 2 > height {
-            return;
-        }
+    ) -> Line<'b> {
         let mut style = file.style();
+        self.reverse_selected(index, &mut style);
+        let content = Self::format_file_content(self.status, file, group_owner_sizes);
+        Line::from(vec![
+            self.span_flagged_symbol(file, &mut style),
+            Span::styled(content, style),
+        ])
+    }
+
+    fn reverse_selected(&self, index: usize, style: &mut Style) {
         if index == self.tab.directory.index {
             style.add_modifier |= Modifier::REVERSED;
         }
-        let content = Self::format_file_content(self.status, file, group_owner_sizes);
-        print_flagged_symbol(f, self.status, rect, row, &file.path, &mut style);
-        let col = 1 + self.status.menu.flagged.contains(&file.path) as u16;
-        rect.print_with_style(f, row, col, &content, style);
+    }
+
+    fn span_flagged_symbol<'b>(&self, file: &FileInfo, style: &mut Style) -> Span<'b> {
+        if self.status.menu.flagged.contains(&file.path) {
+            style.add_modifier |= Modifier::BOLD;
+            Span::styled(
+                "█",
+                MENU_STYLES.get().expect("Menu colors should be set").second,
+            )
+        } else {
+            Span::raw("")
+        }
     }
 
     fn format_file_content(

@@ -1466,6 +1466,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] syntaxed
     - [x] binary
     - [x] command output (ansi colored text)
+  - [ ] display top window
+    - [x] directory
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
