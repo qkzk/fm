@@ -622,105 +622,85 @@ impl<'a> TreeDisplay<'a> {
 
     fn tree(&self, f: &mut Frame, rect: &Rect) {
         FilesSecondLine::new(self.status, self.tab).draw(f, rect);
-        self.tree_content(f, rect)
+        Self::tree_content(
+            self.status,
+            &self.tab.tree,
+            &self.tab.window,
+            self.status.display_settings.metadata(),
+            f,
+            rect,
+        )
     }
 
-    fn tree_content(&self, f: &mut Frame, rect: &Rect) {
-        let left_margin = 1;
-        let height = rect.height;
-
-        for (index, line_builder) in self.tab.tree.lines_enum_skip_take(&self.tab.window) {
-            Self::tree_line(
-                f,
-                self.status,
-                rect,
-                line_builder,
-                TreeLinePosition {
-                    left_margin,
-                    top: self.tab.window.top,
-                    index,
-                    height,
-                },
-                self.status.display_settings.metadata(),
-            );
-        }
-    }
-
-    fn tree_line(
-        f: &mut Frame,
+    fn tree_content(
         status: &Status,
+        tree: &Tree,
+        window: &ContentWindow,
+        with_metadata: bool,
+        f: &mut Frame,
         rect: &Rect,
-        line_builder: &TLine,
-        position_param: TreeLinePosition,
-        with_medatadata: bool,
     ) {
-        let (col, top, index, height) = position_param.export();
-        let mut col = col as u16;
-        let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 - top as u16;
-        if row + 2 > height {
-            return;
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 1,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let lines: Vec<_> = tree
+            .lines_enum_skip_take(window)
+            .map(|(index, line_builder)| {
+                Self::tree_line(status, index == 0, line_builder, with_metadata)
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
 
+    fn tree_line<'b>(
+        status: &Status,
+        with_offset: bool,
+        line_builder: &'b TLine,
+        with_medatadata: bool,
+    ) -> Line<'b> {
         let mut style = line_builder.style;
         let path = line_builder.path();
-        Self::print_flagged_symbol(f, status, rect, row, path, &mut style);
-
-        col += Self::tree_metadata(f, rect, with_medatadata, row, col, line_builder, style);
-        col += Self::tree_lines(f, rect, row, col, index, line_builder);
-        col += Self::tree_line_calc_flagged_offset(status, path);
-        rect.print_with_style(f, row, col, &line_builder.filename(), style);
+        Line::from(vec![
+            Self::span_flagged_symbol(status, path, &mut style),
+            Self::tree_metadata_line(with_medatadata, line_builder, style),
+            Span::raw(line_builder.prefix()),
+            Span::raw(" ".repeat(Self::tree_line_calc_flagged_offset_line(status, path))),
+            Span::raw(" ".repeat(with_offset as usize)),
+            Span::styled(line_builder.filename(), style),
+        ])
     }
 
-    fn print_flagged_symbol(
-        f: &mut Frame,
+    fn span_flagged_symbol<'b>(
         status: &Status,
-        rect: &Rect,
-        row: u16,
         path: &std::path::Path,
         style: &mut Style,
-    ) {
-        print_flagged_symbol(f, status, rect, row, path, style)
-    }
-
-    fn tree_lines(
-        f: &mut Frame,
-        rect: &Rect,
-        row: u16,
-        col: u16,
-        index: usize,
-        line_builder: &TLine,
-    ) -> u16 {
-        let width = Self::tree_offset_per_line(index);
-        let prefix = line_builder.prefix();
-        rect.print(f, row, col + width, prefix);
-        width + prefix.utf_width_u16()
-    }
-
-    fn tree_offset_per_line(index: usize) -> u16 {
-        2 - (index != 0) as u16
-    }
-
-    fn tree_metadata(
-        f: &mut Frame,
-        rect: &Rect,
-        with_medatadata: bool,
-        row: u16,
-        col: u16,
-        line_builder: &TLine,
-        style: Style,
-    ) -> u16 {
-        if with_medatadata {
-            let line = line_builder.metadata();
-            let len = line.utf_width_u16();
-            rect.print_with_style(f, row, col, line, style);
-            len
+    ) -> Span<'b> {
+        if status.menu.flagged.contains(path) {
+            style.add_modifier |= Modifier::BOLD;
+            Span::styled(
+                "█",
+                MENU_STYLES.get().expect("Menu colors should be set").second,
+            )
         } else {
-            0
+            Span::raw(" ")
         }
     }
 
-    fn tree_line_calc_flagged_offset(status: &Status, path: &std::path::Path) -> u16 {
-        status.menu.flagged.contains(path) as u16
+    fn tree_metadata_line(with_medatadata: bool, line_builder: &TLine, style: Style) -> Span {
+        if with_medatadata {
+            let line = line_builder.metadata();
+            Span::styled(line, style)
+        } else {
+            Span::raw("")
+        }
+    }
+
+    fn tree_line_calc_flagged_offset_line(status: &Status, path: &std::path::Path) -> usize {
+        status.menu.flagged.contains(path) as usize
     }
 }
 
@@ -903,29 +883,7 @@ impl<'a> PreviewDisplay<'a> {
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
-        let height = rect.height;
-        let tree_content = tree.displayable();
-        let content = tree_content.lines();
-        let length = content.len();
-
-        for (index, tree_line_builder) in
-            tree.displayable()
-                .take_skip_enum(window.top, window.bottom, length)
-        {
-            TreeDisplay::tree_line(
-                f,
-                self.status,
-                rect,
-                tree_line_builder,
-                TreeLinePosition {
-                    left_margin: 0,
-                    top: window.top,
-                    index,
-                    height,
-                },
-                false,
-            );
-        }
+        TreeDisplay::tree_content(self.status, tree, window, false, f, rect)
     }
 
     fn ansi_text(
@@ -955,20 +913,6 @@ impl<'a> PreviewDisplay<'a> {
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
-    }
-}
-
-struct TreeLinePosition {
-    left_margin: usize,
-    top: usize,
-    index: usize,
-    height: u16,
-}
-
-impl TreeLinePosition {
-    /// left_margin, top, index, height
-    fn export(&self) -> (usize, usize, usize, u16) {
-        (self.left_margin, self.top, self.index, self.height)
     }
 }
 
@@ -1781,25 +1725,5 @@ fn draw_clickable_strings(
             style.add_modifier |= Modifier::REVERSED;
         }
         rect.print_with_style(f, row, offset + elem.col(), elem.text(), style);
-    }
-}
-
-fn print_flagged_symbol(
-    f: &mut Frame,
-    status: &Status,
-    rect: &Rect,
-    row: u16,
-    path: &std::path::Path,
-    style: &mut Style,
-) {
-    if status.menu.flagged.contains(path) {
-        style.add_modifier |= Modifier::BOLD;
-        rect.print_with_style(
-            f,
-            row,
-            0,
-            "█",
-            MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
     }
 }

@@ -1460,14 +1460,22 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - render : should be cached as much as possible. For many menus, it doesn't change much.
   - actions : should be attached to menus in a way or another. Don't store everything in status
-  - [x] draw menu using ratatui widgets
-  - [x] preview:
-    - [x] text
-    - [x] syntaxed
-    - [x] binary
-    - [x] command output (ansi colored text)
-  - [ ] display top window
+  - [ ] rendering with ratatui widgets
+  - [ ] menu
+    - [x] navigate: draw menu using ratatui widgets
+    - [ ] input simple
+    - [ ] input completed
+    - [ ] input need confirmation
+  - [x] display top window
     - [x] directory
+    - [x] tree
+    - [x] preview:
+      - [x] text
+      - [x] syntaxed
+      - [x] binary
+      - [x] command output (ansi colored text)
+  - [ ] header & footer
+
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
