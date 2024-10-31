@@ -810,6 +810,10 @@ impl BinaryContent {
     pub fn is_empty(&self) -> bool {
         self.length == 0
     }
+
+    pub fn number_width_hex(&self) -> usize {
+        format!("{:x}", self.len() * 16).len()
+    }
 }
 
 /// Holds a `Vec` of "bytes" (`u8`).
@@ -826,7 +830,7 @@ impl Line {
 
     /// Format a line of 16 bytes as BigEndian, separated by spaces.
     /// Every byte is zero filled if necessary.
-    fn format_hex(&self) -> String {
+    pub fn format_hex(&self) -> String {
         let mut hex_repr = String::new();
         for (i, byte) in self.line.iter().enumerate() {
             let _ = write!(hex_repr, "{byte:02x}");
@@ -850,7 +854,7 @@ impl Line {
 
     /// Format a line of 16 bytes as an ASCII string.
     /// Non ASCII printable bytes are replaced by dots.
-    fn format_as_ascii(&self) -> String {
+    pub fn format_as_ascii(&self) -> String {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
@@ -879,8 +883,8 @@ impl Line {
         rect.print(f, row, offset as u16 + 2, &self.format_hex());
     }
 
-    fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
-        format!("{line_nr:0width$x}")
+    pub fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+        format!("{line_nr:0width$x}  ")
     }
 
     /// Print a line as an ASCII string

@@ -18,7 +18,7 @@ use ratatui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::modes::{
-    highlighted_text, parse_input_mode, BinaryContent, Content, ContentWindow,
+    highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
     Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
     MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
     Text, TextKind, Trash, Tree, Ueber,
@@ -856,18 +856,33 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let height = rect.height;
-        let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
-
-        for (i, line) in (*bin).take_skip_enum(window.top, window.bottom, length) {
-            let row = calc_line_row(i, window);
-            if row + 2 > height {
-                break;
-            }
-            line.print_line_number_hex(f, rect, row, window.top, i, line_number_width_hex);
-            line.print_bytes(f, rect, row, line_number_width_hex + 1);
-            line.print_ascii(f, rect, row, line_number_width_hex + 43);
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 3,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let line_number_width_hex = bin.number_width_hex();
+        let (style_number, style_ascii) = {
+            let ms = MENU_STYLES.get().expect("Menu colors should be set");
+            (ms.first, ms.second)
+        };
+        let lines: Vec<_> = (*bin)
+            .take_skip_enum(window.top, window.bottom, length)
+            .map(|(index, bin_line)| {
+                Line::from(vec![
+                    Span::styled(
+                        BinLine::format_line_nr_hex(index + 1 + window.top, line_number_width_hex),
+                        style_number,
+                    ),
+                    Span::raw(bin_line.format_hex()),
+                    Span::raw(" "),
+                    Span::styled(bin_line.format_as_ascii(), style_ascii),
+                ])
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn ueberzug(&self, image: &Ueber, rect: &Rect) {
