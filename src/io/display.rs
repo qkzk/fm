@@ -961,12 +961,10 @@ struct FilesSecondLine {
 
 impl Draw for FilesSecondLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        match (&self.content, &self.style) {
-            (Some(content), Some(style)) => {
-                rect.print_with_style(f, 1, 1, content, *style);
-                content.len()
-            }
-            _ => 0,
+        let mut p_rect = rect.offset(Offset { x: 1, y: 1 }).intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        if let (Some(content), Some(style)) = (&self.content, &self.style) {
+            Span::styled(content, *style).render(p_rect, f.buffer_mut());
         };
     }
 }
@@ -1000,15 +998,14 @@ struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let row = rect.height.saturating_sub(2);
-        rect.clear_line(f, row);
-        rect.print_with_style(
-            f,
-            row,
-            4,
-            &read_last_log_line(),
+        let y = rect.height.saturating_sub(2) as i32;
+        let p_rect = rect.offset(Offset { x: 4, y }).intersection(*rect);
+        let log = &read_last_log_line();
+        Span::styled(
+            log,
             MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
+        )
+        .render(p_rect, f.buffer_mut());
     }
 }
 
