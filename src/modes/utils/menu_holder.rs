@@ -78,7 +78,6 @@ pub struct MenuHolder {
 impl MenuHolder {
     pub fn new(
         start_dir: &std::path::Path,
-        mount_points: &[&std::path::Path],
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
@@ -99,7 +98,7 @@ impl MenuHolder {
             password_holder: PasswordHolder::default(),
             picker: Picker::default(),
             removable_devices: RemovableDevices::default(),
-            shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
+            shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),

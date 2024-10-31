@@ -38,7 +38,7 @@ use crate::{
     modes::Input,
 };
 
-trait LimitWidth {
+pub trait LimitWidth {
     fn limit_width(&self, width: usize) -> Self;
 }
 
@@ -60,6 +60,14 @@ impl LimitWidth for &str {
         }
 
         &self[..end]
+    }
+}
+
+impl LimitWidth for String {
+    /// Limit an owned slice to the give width, stopping at a char boundary.
+    /// if the width is large enough, it's the width of the string.
+    fn limit_width(&self, width: usize) -> Self {
+        self.as_str().limit_width(width).to_owned()
     }
 }
 

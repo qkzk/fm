@@ -1,17 +1,24 @@
 use std::borrow::Borrow;
+use std::cmp::min;
+use std::iter::zip;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use ratatui::style::Color;
-use ratatui::{layout::Rect, Frame};
-use std::cmp::min;
+use ratatui::{
+    layout::{Offset, Rect},
+    prelude::Widget,
+    style::Color,
+    text::{Line, Span},
+    widgets::Paragraph,
+    Frame,
+};
 
 use crate::colored_skip_take;
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, git_root, Canvas, CowStr, DrawMenu};
+use crate::io::{color_to_style, git_root, CowStr, DrawMenu, LimitWidth};
 use crate::modes::ContentWindow;
 use crate::{impl_content, impl_selectable, log_info};
 
@@ -31,7 +38,7 @@ impl Shortcut {
     /// Creates empty shortcuts.
     /// content won't be initiated before the first opening of the menu.
     #[must_use]
-    pub fn new(start_folder: &Path) -> Self {
+    pub fn empty(start_folder: &Path) -> Self {
         let content = vec![];
         Self {
             content,
@@ -165,18 +172,24 @@ impl DrawMenu<PathBuf> for Shortcut {
     where
         Self: Content<PathBuf>,
     {
+        let mut p_rect = rect.offset(Offset { x: 2, y: 3 }).intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
         let content = self.content();
-        for (letter, (index, path, style)) in std::iter::zip(
+        let lines: Vec<_> = zip(
             ('a'..='z').cycle().skip(window.top),
             colored_skip_take!(content, window),
-        ) {
-            let style = self.style(index, &style);
-            let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16;
-            if row + 2 > rect.height {
-                return;
-            }
-            rect.print_with_style(f, row, 2, &format!("{letter} "), style);
-            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &style));
-        }
+        )
+        .filter(|(_, (index, _, _))| {
+            (*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16 + 2
+                <= rect.height
+        })
+        .map(|(letter, (index, path, style))| {
+            Line::styled(
+                format!("{letter} {path}", path = path.cow_str()),
+                self.style(index, &style),
+            )
+        })
+        .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 }

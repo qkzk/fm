@@ -151,9 +151,8 @@ impl Status {
         };
         let disks = Disks::new_with_refreshed_list();
         let display_settings = Session::new(size.width);
-        let mut internal_settings = InternalSettings::new(opener, size, disks);
-        let mount_points = internal_settings.mount_points();
-        let menu = MenuHolder::new(start_dir, &mount_points, binds, fm_sender.clone())?;
+        let internal_settings = InternalSettings::new(opener, size, disks);
+        let menu = MenuHolder::new(start_dir, binds, fm_sender.clone())?;
         let focus = Focus::default();
 
         let users_left = Users::default();
