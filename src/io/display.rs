@@ -8,7 +8,7 @@ use crossterm::{
 use nucleo::Matcher;
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Position, Rect, Size},
+    layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
     prelude::*,
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -17,7 +17,6 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     highlighted_text, parse_input_mode, BinaryContent, Content, ContentWindow,
     Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
@@ -36,6 +35,10 @@ use crate::{
 use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
     modes::Input,
+};
+use crate::{
+    io::{read_last_log_line, DrawMenu},
+    modes::TakeSkip,
 };
 
 pub trait LimitWidth {
@@ -750,7 +753,6 @@ impl<'a> PreviewDisplay<'a> {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
-        let height = rect.height;
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 let number_col_width = Self::number_width(length);
@@ -762,31 +764,22 @@ impl<'a> PreviewDisplay<'a> {
             Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CommandStdout) => {
                 self.colored_text(f, colored_text, length, rect, window)
             }
-            Preview::Text(text) => self.normal_text(f, text, length, rect, window, height),
+            Preview::Text(text) => self.normal_text(f, text, length, rect, window),
 
             Preview::Empty => (),
         };
     }
 
-    fn line_number(
-        f: &mut Frame,
-        row_position_in_rect: u16,
-        line_number_to_print: usize,
-        rect: &Rect,
-    ) -> usize {
-        let len = line_number_to_print.to_string().len();
-        rect.print_with_style(
-            f,
-            row_position_in_rect,
-            0,
-            &line_number_to_print.to_string(),
-            MENU_STYLES.get().expect("Menu colors should be set").first,
-        );
-        len
+    fn line_number_span<'b>(
+        line_number_to_print: &usize,
+        number_col_width: usize,
+        style: Style,
+    ) -> Span<'b> {
+        Span::styled(format!("{line_number_to_print:>number_col_width$} "), style)
     }
 
     /// Number of digits in decimal representation
-    fn number_width(mut number: usize) -> u16 {
+    fn number_width(mut number: usize) -> usize {
         let mut width = 0;
         while number != 0 {
             width += 1;
@@ -803,15 +796,19 @@ impl<'a> PreviewDisplay<'a> {
         length: usize,
         rect: &Rect,
         window: &ContentWindow,
-        height: u16,
     ) {
-        for (i, line) in text.take_skip_enum(window.top, window.bottom, length) {
-            let row = calc_line_row(i, window);
-            if row + 2 > height {
-                break;
-            }
-            rect.print(f, row, 3, line);
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 3,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let lines: Vec<_> = text
+            .take_skip(window.top, window.bottom, length)
+            .map(Line::raw)
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn syntaxed(
@@ -820,19 +817,35 @@ impl<'a> PreviewDisplay<'a> {
         syntaxed: &HLContent,
         length: usize,
         rect: &Rect,
-        number_col_width: u16,
+        number_col_width: usize,
         window: &ContentWindow,
     ) {
-        for (i, vec_line) in (*syntaxed).take_skip_enum(window.top, window.bottom, length) {
-            let row_position = calc_line_row(i, window);
-            if row_position + 2 > rect.height {
-                break;
-            }
-            Self::line_number(f, row_position, i + 1, rect);
-            for token in vec_line.iter() {
-                token.print(f, rect, row_position, number_col_width);
-            }
-        }
+        let mut p_rect = rect
+            .offset(Offset {
+                x: 3,
+                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
+            })
+            .intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let number_col_style = MENU_STYLES.get().expect("").first;
+        let lines: Vec<_> = syntaxed
+            .take_skip_enum(window.top, window.bottom, length)
+            .map(|(index, vec_line)| {
+                let mut line = vec![Self::line_number_span(
+                    &index,
+                    number_col_width,
+                    number_col_style,
+                )];
+                line.append(
+                    &mut vec_line
+                        .iter()
+                        .map(|token| Span::styled(&token.content, token.style))
+                        .collect::<Vec<_>>(),
+                );
+                Line::from(line)
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn binary(

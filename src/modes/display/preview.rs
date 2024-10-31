@@ -21,9 +21,9 @@ use syntect::{
 };
 
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, UtfWidth, BSDTAR, FFMPEG,
-    FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
-    RSVG_CONVERT, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
+    TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::{MENU_STYLES, MONOKAI_THEME};
 use crate::io::{execute_and_capture_output_without_check, Canvas};
@@ -697,12 +697,10 @@ impl HLContent {
         let mut highlighter = HighlightLines::new(syntax_ref, monokai);
 
         for line in raw_content.iter() {
-            let mut col = 0;
             let mut v_line = vec![];
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
-                    v_line.push(SyntaxedString::from_syntect(col, token, *style));
-                    col += token.utf_width_u16();
+                    v_line.push(SyntaxedString::from_syntect(token, *style));
                 }
             }
             highlighted_content.push(v_line)
@@ -717,16 +715,15 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    col: u16,
-    content: String,
-    style: Style,
+    pub content: String,
+    pub style: Style,
 }
 
 impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: u16, content: &str, style: SyntectStyle) -> Self {
+    fn from_syntect(content: &str, style: SyntectStyle) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
         let style = Style {
@@ -736,11 +733,7 @@ impl SyntaxedString {
             sub_modifier: Modifier::empty(),
             underline_color: None,
         };
-        Self {
-            col,
-            content,
-            style,
-        }
+        Self { content, style }
     }
 
     fn font_style_to_effect(font_style: &FontStyle) -> Modifier {
@@ -757,11 +750,6 @@ impl SyntaxedString {
         }
 
         modifier
-    }
-
-    // /// Prints itself on a ratatui window.
-    pub fn print(&self, f: &mut Frame, rect: &Rect, row: u16, offset: u16) {
-        rect.print_with_style(f, row, self.col + offset + 2, &self.content, self.style);
     }
 }
 
@@ -911,6 +899,27 @@ impl Line {
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
+pub trait TakeSkip<T> {
+    fn take_skip(&self, top: usize, bottom: usize, length: usize) -> Take<Skip<Iter<'_, T>>>;
+}
+
+macro_rules! impl_take_skip {
+    ($t:ident, $u:ident) => {
+        impl TakeSkip<$u> for $t {
+            fn take_skip(
+                &self,
+                top: usize,
+                bottom: usize,
+                length: usize,
+            ) -> Take<Skip<Iter<'_, $u>>> {
+                self.content.iter().skip(top).take(min(length, bottom + 1))
+            }
+        }
+    };
+}
+/// Common trait for many preview methods which are just a bunch of lines with
+/// no specific formatting.
+/// Some previewing (thumbnail and syntaxed text) needs more details.
 pub trait TakeSkipEnum<T> {
     fn take_skip_enum(
         &self,
@@ -946,3 +955,8 @@ impl_take_skip_enum!(HLContent, VecSyntaxedString);
 impl_take_skip_enum!(Text, String);
 impl_take_skip_enum!(BinaryContent, Line);
 impl_take_skip_enum!(TreeLines, TLine);
+
+impl_take_skip!(HLContent, VecSyntaxedString);
+impl_take_skip!(Text, String);
+impl_take_skip!(BinaryContent, Line);
+impl_take_skip!(TreeLines, TLine);
