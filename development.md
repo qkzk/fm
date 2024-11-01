@@ -1480,6 +1480,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] header & footer
       - [x] create 2 ratatui line & use alignment for display
       - [x] conversion method header/footer->line
+    - [x] menu second line
+    - [x] menu content line
+    - [x] trash clear confirm
+  - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch

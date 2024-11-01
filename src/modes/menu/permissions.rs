@@ -58,7 +58,7 @@ type IsValid = bool;
 /// It's used to display a valid mode or not.
 pub fn parse_input_mode(mode_str: &str) -> Vec<(&str, IsValid)> {
     if mode_str.chars().any(|c| c.is_alphabetic()) {
-        return vec![("", true)];
+        return vec![];
     }
     if mode_str.len() > 3 {
         return vec![("Mode is too long", false)];

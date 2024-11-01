@@ -1099,23 +1099,25 @@ impl<'a> Menu<'a> {
                 let first = MENU_STYLES.get().expect("Menu colors should be set").first;
                 self.menu_line_chmod(f, rect, first, menu);
             }
-            edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
+            // edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
+            edit => {
+                let rect = rect.offset(Offset { x: 2, y: 1 }).intersection(*rect);
+                Span::styled(edit.second_line(), menu).render(rect, f.buffer_mut());
+            }
         };
     }
 
     fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
         let input = self.status.menu.input.string();
-        let mode_parsed = parse_input_mode(&input);
-        let mut col = 11;
-        if mode_parsed.len() == 1 {
-            rect.print_with_style(f, 1, col, mode_parsed[0].0, first);
-        } else {
-            for (text, is_valid) in &mode_parsed {
+        let spans: Vec<_> = parse_input_mode(&input)
+            .iter()
+            .map(|(text, is_valid)| {
                 let style = if *is_valid { first } else { menu };
-                col += 1 + text.utf_width_u16();
-                rect.print_with_style(f, 1, col, text, style);
-            }
-        }
+                Span::styled(*text, style)
+            })
+            .collect();
+        let p_rect = rect.offset(Offset { x: 11, y: 1 }).intersection(*rect);
+        Line::from(spans).render(p_rect, f.buffer_mut());
     }
 
     fn content_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
@@ -1129,21 +1131,20 @@ impl<'a> Menu<'a> {
     }
 
     fn binds_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {
-        // TODO remove
-        // stupid hack to allow some help for the trash...
         if mode == MenuMode::Navigate(Navigate::Trash) {
             return;
         }
-        let height = rect.height;
-
-        rect.clear_line(f, height.saturating_sub(2));
-        rect.print_with_style(
-            f,
-            height.saturating_sub(2),
-            2,
+        let p_rect = rect
+            .offset(Offset {
+                x: 2,
+                y: rect.height.saturating_sub(2) as i32,
+            })
+            .intersection(*rect);
+        Span::styled(
             mode.binds_per_mode(),
             MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
+        )
+        .render(p_rect, f.buffer_mut());
     }
 
     fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
@@ -1391,20 +1392,25 @@ impl<'a> Menu<'a> {
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.trash.content();
-        for (row, trashinfo, style) in enumerated_colored_iter!(content) {
-            let style = self.status.menu.trash.style(row, &style);
-            Self::content_line(f, rect, row as u16 + 4, &trashinfo.to_string(), style);
-        }
+        let lines: Vec<_> = enumerated_colored_iter!(content)
+            .map(|(_row, trashinfo, style)| {
+                Span::raw(trashinfo.to_string());
+                Line::from(vec![Span::styled(trashinfo.to_string(), style)])
+            })
+            .collect();
+        let mut p_rect = rect.offset(Offset { x: 4, y: 4 }).intersection(*rect);
+        p_rect.height -= 1;
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
-        rect.print_with_style(
-            f,
-            row + ContentWindow::WINDOW_MARGIN_TOP_U16,
-            4,
-            text,
-            style,
-        );
+        let p_rect = rect
+            .offset(Offset {
+                x: 4,
+                y: (row + ContentWindow::WINDOW_MARGIN_TOP_U16) as i32,
+            })
+            .intersection(*rect);
+        Span::styled(text, style).render(p_rect, f.buffer_mut());
     }
 }
 
