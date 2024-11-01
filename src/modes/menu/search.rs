@@ -22,7 +22,7 @@ impl std::fmt::Display for Search {
         } else {
             write!(
                 f,
-                "Searched: {regex} - {pos} / {len}",
+                " Searched: {regex} - {pos} / {len} ",
                 regex = self.regex,
                 pos = self.index + 1 - self.paths.is_empty() as usize,
                 len = self.paths.len()

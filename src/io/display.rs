@@ -17,11 +17,14 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::modes::{
-    highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
-    Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
-    MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
-    Text, TextKind, Trash, Tree, Ueber,
+use crate::{
+    app::ToLine,
+    modes::{
+        highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
+        Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
+        MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine,
+        TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+    },
 };
 use crate::{
     app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
@@ -255,9 +258,7 @@ impl<'a> Draw for Files<'a> {
             .draw(f, rect);
         self.copy_progress_bar(f, rect);
         self.content(f, rect);
-        FilesFooter::new(self.status, self.tab, self.attributes.is_selected)
-            .unwrap()
-            .draw(f, rect);
+        FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
     }
 }
 
@@ -322,13 +323,13 @@ impl<'a> Files<'a> {
         let tab = &self.status.tabs[1];
         PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
         let width = rect.width;
-        draw_clickable_strings(
+        let p_rect = rect.offset(Offset { x: 0, y: 0 }).intersection(*rect);
+
+        draw_clickable_strings_left(
             f,
-            0,
-            0,
             &PreviewHeader::default_preview(self.status, tab, width),
-            rect,
-            false,
+            p_rect,
+            self.status.index == 1,
         )
     }
 }
@@ -926,20 +927,17 @@ impl<'a> Draw for FilesHeader<'a> {
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
-    /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, f: &mut Frame, rect: &Rect) {
         let width = rect.width;
-        let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
-            _ => Header::new(self.status, self.tab)
-                .unwrap()
-                .elems()
-                .to_owned(),
+        let header: Box<dyn ClickableLine> = match self.tab.display_mode {
+            DisplayMode::Preview => Box::new(PreviewHeader::new(self.status, self.tab, width)),
+            _ => Box::new(Header::new(self.status, self.tab).expect("Couldn't build header")),
         };
-        draw_clickable_strings(f, 0, 0, &content, rect, self.is_selected);
+        let p_rect = rect.offset(Offset { x: 0, y: 0 }).intersection(*rect);
+        draw_clickable_strings_left(f, header.left(), p_rect, self.is_selected);
+        draw_clickable_strings_right(f, header.right(), p_rect, self.is_selected);
     }
 }
 
@@ -1024,41 +1022,31 @@ impl<'a> Draw for FilesFooter<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let width = rect.width;
         let height = rect.height;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
             _ => Footer::new(self.status, self.tab)
                 .unwrap()
-                .elems()
+                .left()
                 .to_owned(),
         };
-        let mut style = MENU_STYLES.get().expect("Menu colors should be set").first;
-        let last_index = (content.len().saturating_sub(1))
-            % MENU_STYLES
-                .get()
-                .expect("Menu colors should be set")
-                .palette_size();
-        let mut background = MENU_STYLES
-            .get()
-            .expect("Menu colors should be set")
-            .palette()[last_index];
-        if self.is_selected {
-            style.add_modifier |= Modifier::REVERSED;
-            background.add_modifier |= Modifier::REVERSED;
-        };
-        rect.print_with_style(f, height - 1, 0, &" ".repeat(width as usize), background);
-        draw_clickable_strings(f, height - 1, 0, &content, rect, self.is_selected);
+        let p_rect = rect
+            .offset(Offset {
+                x: 0,
+                y: height as i32 - 1,
+            })
+            .intersection(*rect);
+        draw_clickable_strings_left(f, &content, p_rect, self.is_selected);
     }
 }
 
 impl<'a> FilesFooter<'a> {
-    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Result<Self> {
-        Ok(Self {
+    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Self {
+        Self {
             status,
             tab,
             is_selected,
-        })
+        }
     }
 }
 
@@ -1700,27 +1688,24 @@ fn draw_colored_strings(
     }
 }
 
-fn draw_clickable_strings(
+fn draw_clickable_strings_left(
     f: &mut Frame,
-    row: u16,
-    offset: u16,
     elems: &[ClickableString],
-    rect: &Rect,
+    rect: Rect,
     effect_reverse: bool,
 ) {
-    for (elem, style) in std::iter::zip(
-        elems.iter(),
-        MENU_STYLES
-            .get()
-            .expect("Menu colors should be set")
-            .palette()
-            .iter()
-            .cycle(),
-    ) {
-        let mut style = *style;
-        if effect_reverse {
-            style.add_modifier |= Modifier::REVERSED;
-        }
-        rect.print_with_style(f, row, offset + elem.col(), elem.text(), style);
-    }
+    elems
+        .left_to_line(effect_reverse)
+        .render(rect, f.buffer_mut());
+}
+
+fn draw_clickable_strings_right(
+    f: &mut Frame,
+    elems: &[ClickableString],
+    rect: Rect,
+    effect_reverse: bool,
+) {
+    elems
+        .right_to_line(effect_reverse)
+        .render(rect, f.buffer_mut());
 }

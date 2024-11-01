@@ -1477,7 +1477,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] other elements
     - [x] second line
     - [x] log line
-    - [ ] header & footer
+    - [x] header & footer
+      - [x] create 2 ratatui line & use alignment for display
+      - [x] conversion method header/footer->line
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
