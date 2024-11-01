@@ -1483,6 +1483,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] menu second line
     - [x] menu content line
     - [x] trash clear confirm
+    - [x] trash help
+    - [x] context (action & more info)
   - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
@@ -1492,6 +1494,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
 
 - [ ] ratatui component for progress bar for copymove
+
+- [ ] BUG: trash opened + alt-x doesn't clear the trash but deletes the element itself
+- [ ] BUG: menu chmod crash as replace input by current mode
 
 - [ ] previewing text files with bat ? binaries with xxd
 

@@ -44,6 +44,22 @@ use crate::{
     modes::TakeSkip,
 };
 
+trait Offseted {
+    fn offseted(&self, x: u16, y: u16) -> Self;
+}
+
+impl Offseted for Rect {
+    /// Returns a new rect moved by x horizontally and y vertically and constrained to the current rect.
+    /// It won't draw outside of the original rect since it it also intersected by the original rect.
+    fn offseted(&self, x: u16, y: u16) -> Self {
+        self.offset(Offset {
+            x: x as i32,
+            y: y as i32,
+        })
+        .intersection(*self)
+    }
+}
+
 pub trait LimitWidth {
     fn limit_width(&self, width: usize) -> Self;
 }
@@ -163,6 +179,37 @@ macro_rules! enumerated_colored_iter {
             .map(|color| color_to_style(color)),
         )
         .map(|((index, line), style)| (index, line, style))
+    };
+}
+
+macro_rules! colored_iter {
+    ($t:ident) => {
+        std::iter::zip(
+            $t.iter(),
+            Gradient::new(
+                ColorG::from_ratatui(
+                    MENU_STYLES
+                        .get()
+                        .expect("Menu colors should be set")
+                        .first
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
+                )
+                .unwrap_or_default(),
+                ColorG::from_ratatui(
+                    MENU_STYLES
+                        .get()
+                        .expect("Menu colors should be set")
+                        .palette_3
+                        .fg
+                        .unwrap_or(Color::Rgb(0, 0, 0)),
+                )
+                .unwrap_or_default(),
+                $t.len(),
+            )
+            .gradient()
+            .map(|color| color_to_style(color)),
+        )
     };
 }
 
@@ -307,16 +354,15 @@ impl<'a> Files<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        rect.print_with_style(
-            f,
-            1,
-            2,
+        let p_rect = rect.offseted(1, 2);
+        Span::styled(
             &content,
             MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .palette_4,
         )
+        .render(p_rect, f.buffer_mut());
     }
 
     fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
@@ -1189,13 +1235,18 @@ impl<'a> Menu<'a> {
 
     fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
         trash.draw_menu(f, rect, &self.status.menu.window);
-        rect.print_with_style(
-            f,
-            rect.height.saturating_sub(2),
-            2,
+
+        let p_rect = rect
+            .offset(Offset {
+                x: 2,
+                y: rect.height.saturating_sub(2) as i32,
+            })
+            .intersection(*rect);
+        Span::styled(
             &trash.help,
             MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
+        )
+        .render(p_rect, f.buffer_mut());
     }
 
     fn trash_is_empty(&self, f: &mut Frame, rect: &Rect) {
@@ -1233,14 +1284,12 @@ impl<'a> Menu<'a> {
         let selectable = &self.status.menu.picker;
         selectable.draw_menu(f, rect, &self.status.menu.window);
         if let Some(desc) = &selectable.desc {
-            rect.clear_line(f, 1);
-            rect.print_with_style(
-                f,
-                1,
-                2,
+            let p_rect = rect.offseted(2, 1);
+            Span::styled(
                 desc,
                 MENU_STYLES.get().expect("Menu colors should be set").second,
-            );
+            )
+            .render(p_rect, f.buffer_mut());
         }
     }
 
@@ -1251,45 +1300,34 @@ impl<'a> Menu<'a> {
 
     fn context_selectable(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.status.menu.context;
-        rect.print_with_style(
-            f,
-            1,
-            2,
-            "Pick an action.",
-            MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
+
         let content = selectable.content();
         let window = &self.status.menu.window;
-        for (letter, (index, desc, style)) in std::iter::zip(
+        let p_rect = rect.offseted(2, 1 + ContentWindow::WINDOW_MARGIN_TOP_U16);
+        let lines: Vec<_> = std::iter::zip(
             ('a'..='z').cycle().skip(self.status.menu.window.top),
             colored_skip_take!(content, window),
-        ) {
-            let row = (index + 1 - window.top) as u16;
-            if row + 2 + ContentWindow::WINDOW_MARGIN_TOP_U16 > rect.height {
-                return;
-            }
+        )
+        .map(|(letter, (index, desc, style))| {
             let style = selectable.style(index, &style);
-            rect.print_with_style(
-                f,
-                row + ContentWindow::WINDOW_MARGIN_TOP_U16,
-                2,
-                &format!("{letter} "),
-                style,
-            );
-            Self::content_line(f, rect, row, desc, style);
-        }
+            Line::from(vec![Span::styled(format!("{letter} {desc}"), style)])
+        })
+        .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn context_more_infos(&self, f: &mut Frame, rect: &Rect) {
-        let space_used = &self.status.menu.context.content.len();
+        let space_used = self.status.menu.context.content.len() as u16;
         let more_info = MoreInfos::new(
             &self.tab.current_file().unwrap(),
             &self.status.internal_settings.opener,
         )
         .to_lines();
-        for (row, text, style) in enumerated_colored_iter!(more_info) {
-            Self::content_line(f, rect, (space_used + row + 1) as u16, text, style);
-        }
+        let lines: Vec<_> = colored_iter!(more_info)
+            .map(|(text, style)| Line::from(vec![Span::styled(text, style)]))
+            .collect();
+        let p_rect = rect.offseted(4, 3 + space_used);
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
@@ -1398,18 +1436,13 @@ impl<'a> Menu<'a> {
                 Line::from(vec![Span::styled(trashinfo.to_string(), style)])
             })
             .collect();
-        let mut p_rect = rect.offset(Offset { x: 4, y: 4 }).intersection(*rect);
+        let mut p_rect = rect.offseted(4, 4);
         p_rect.height -= 1;
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
-        let p_rect = rect
-            .offset(Offset {
-                x: 4,
-                y: (row + ContentWindow::WINDOW_MARGIN_TOP_U16) as i32,
-            })
-            .intersection(*rect);
+        let p_rect = rect.offseted(4, row + ContentWindow::WINDOW_MARGIN_TOP_U16);
         Span::styled(text, style).render(p_rect, f.buffer_mut());
     }
 }
