@@ -17,6 +17,9 @@ use ratatui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::common::path_to_string;
+use crate::io::{read_last_log_line, DrawMenu};
+use crate::modes::{FuzzyFinder, TakeSkip};
 use crate::{
     app::ToLine,
     modes::{
@@ -32,16 +35,8 @@ use crate::{
 };
 use crate::{colored_skip_take, log_info};
 use crate::{
-    common::{path_to_string, UtfWidth},
-    modes::FuzzyFinder,
-};
-use crate::{
     config::{ColorG, Gradient, MENU_STYLES},
     modes::Input,
-};
-use crate::{
-    io::{read_last_log_line, DrawMenu},
-    modes::TakeSkip,
 };
 
 trait Offseted {
@@ -136,17 +131,6 @@ impl Canvas for Rect {
 trait Draw {
     /// Entry point for window rendering.
     fn draw(&self, f: &mut Frame, rect: &Rect);
-}
-
-trait ClearLine {
-    /// Clear the current line, erasing its chars.
-    fn clear_line(&self, f: &mut Frame, row: u16);
-}
-
-impl ClearLine for Rect {
-    fn clear_line(&self, f: &mut Frame, row: u16) {
-        self.print(f, row, 0, &" ".repeat(self.width as usize));
-    }
 }
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
@@ -1267,16 +1251,15 @@ impl<'a> Menu<'a> {
                 desc = format!("{desc} - {metadata}");
             }
         }
-        rect.print_with_style(
-            f,
-            2,
-            2,
-            &desc,
+        let p_rect = rect.offseted(2, 2);
+        Span::styled(
+            desc,
             MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
                 .palette_4,
-        );
+        )
+        .render(p_rect, f.buffer_mut());
         cloud.draw_menu(f, rect, &self.status.menu.window)
     }
 
@@ -1345,7 +1328,9 @@ impl<'a> Menu<'a> {
     fn flagged_selected(&self, f: &mut Frame, rect: &Rect) {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users).unwrap();
-            rect.print_with_style(f, 2, 2, &fileinfo.format(6, 6).unwrap(), fileinfo.style());
+            let p_rect = rect.offseted(2, 2);
+            Span::styled(fileinfo.format(6, 6).unwrap_or_default(), fileinfo.style())
+                .render(p_rect, f.buffer_mut());
         };
     }
 
@@ -1708,8 +1693,7 @@ fn draw_colored_strings(
     rect: &Rect,
     effect_reverse: bool,
 ) {
-    let mut col = 1;
-    for (text, style) in std::iter::zip(
+    let spans: Vec<_> = std::iter::zip(
         strings.iter(),
         MENU_STYLES
             .get()
@@ -1717,14 +1701,17 @@ fn draw_colored_strings(
             .palette()
             .iter()
             .cycle(),
-    ) {
+    )
+    .map(|(text, style)| {
         let mut style = *style;
         if effect_reverse {
             style.add_modifier |= Modifier::REVERSED;
         }
-        rect.print_with_style(f, row as u16, (offset + col) as u16, text, style);
-        col += text.utf_width();
-    }
+        Span::styled(text, style)
+    })
+    .collect();
+    let p_rect = rect.offseted(1 + offset as u16, row as u16);
+    Line::from(spans).render(p_rect, f.buffer_mut());
 }
 
 fn draw_clickable_strings_left(

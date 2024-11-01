@@ -1485,6 +1485,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] trash clear confirm
     - [x] trash help
     - [x] context (action & more info)
+    - [x] menu first string with colored string
   - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
