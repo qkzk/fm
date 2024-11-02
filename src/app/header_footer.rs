@@ -1,9 +1,11 @@
 mod inner {
     use anyhow::{Context, Result};
     use ratatui::{
-        layout::Alignment,
+        layout::{Alignment, Rect},
         style::Modifier,
         text::{Line, Span},
+        widgets::Widget,
+        Frame,
     };
 
     use crate::common::{
@@ -67,6 +69,56 @@ mod inner {
         }
     }
 
+    trait ToLine<'a> {
+        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
+        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
+    }
+
+    impl<'a> ToLine<'a> for &Vec<ClickableString> {
+        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
+            let left: Vec<_> = std::iter::zip(
+                self.iter(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu colors should be set")
+                    .palette()
+                    .iter()
+                    .cycle(),
+            )
+            .map(|(elem, style)| {
+                let mut style = *style;
+                if effect_reverse {
+                    style.add_modifier |= Modifier::REVERSED;
+                }
+                Span::styled(elem.text(), style)
+            })
+            .collect();
+            Line::from(left).alignment(Alignment::Left)
+        }
+
+        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
+            let left: Vec<_> = std::iter::zip(
+                self.iter(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu colors should be set")
+                    .palette()
+                    .iter()
+                    .rev()
+                    .cycle(),
+            )
+            .map(|(elem, style)| {
+                let mut style = *style;
+                if effect_reverse {
+                    style.add_modifier |= Modifier::REVERSED;
+                }
+                Span::styled(elem.text(), style)
+            })
+            .collect();
+            Line::from(left).alignment(Alignment::Right)
+        }
+    }
+
     /// A line of element that can be clicked on.
     pub trait ClickableLine {
         /// Reference to the elements
@@ -96,6 +148,20 @@ mod inner {
             } else {
                 1
             }
+        }
+
+        /// Draw the left aligned elements of the line.
+        fn draw_left(&self, f: &mut Frame, rect: Rect, effect_reverse: bool) {
+            self.left()
+                .left_to_line(effect_reverse)
+                .render(rect, f.buffer_mut());
+        }
+
+        /// Draw the right aligned elements of the line.
+        fn draw_right(&self, f: &mut Frame, rect: Rect, effect_reverse: bool) {
+            self.left()
+                .right_to_line(effect_reverse)
+                .render(rect, f.buffer_mut());
         }
     }
 
@@ -366,6 +432,14 @@ mod inner {
     }
 
     impl PreviewHeader {
+        pub fn into_default_preview(status: &Status, tab: &Tab, width: u16) -> Self {
+            Self {
+                left: Self::default_preview(status, tab, width),
+                right: vec![],
+                full_width: width,
+            }
+        }
+
         pub fn new(status: &Status, tab: &Tab, width: u16) -> Self {
             Self {
                 left: Self::pair_to_clickable(&Self::strings_left(status, tab), width),
@@ -481,56 +555,6 @@ mod inner {
             Self::pair_to_clickable(&Self::make_default_preview(status, tab), width)
         }
     }
-
-    pub trait ToLine<'a> {
-        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
-        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
-    }
-
-    impl<'a> ToLine<'a> for &[ClickableString] {
-        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
-            let left: Vec<_> = std::iter::zip(
-                self.iter(),
-                MENU_STYLES
-                    .get()
-                    .expect("Menu colors should be set")
-                    .palette()
-                    .iter()
-                    .cycle(),
-            )
-            .map(|(elem, style)| {
-                let mut style = *style;
-                if effect_reverse {
-                    style.add_modifier |= Modifier::REVERSED;
-                }
-                Span::styled(elem.text(), style)
-            })
-            .collect();
-            Line::from(left).alignment(Alignment::Left)
-        }
-
-        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
-            let left: Vec<_> = std::iter::zip(
-                self.iter(),
-                MENU_STYLES
-                    .get()
-                    .expect("Menu colors should be set")
-                    .palette()
-                    .iter()
-                    .rev()
-                    .cycle(),
-            )
-            .map(|(elem, style)| {
-                let mut style = *style;
-                if effect_reverse {
-                    style.add_modifier |= Modifier::REVERSED;
-                }
-                Span::styled(elem.text(), style)
-            })
-            .collect();
-            Line::from(left).alignment(Alignment::Right)
-        }
-    }
 }
 
-pub use inner::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, ToLine};
+pub use inner::{ClickableLine, ClickableString, Footer, Header, PreviewHeader};

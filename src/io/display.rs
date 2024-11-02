@@ -19,18 +19,15 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::path_to_string;
 use crate::io::{read_last_log_line, DrawMenu};
+use crate::modes::{
+    highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
+    Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
+    MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
+    Text, TextKind, Trash, Tree, Ueber,
+};
 use crate::modes::{FuzzyFinder, TakeSkip};
 use crate::{
-    app::ToLine,
-    modes::{
-        highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
-        Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
-        MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine,
-        TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
-    },
-};
-use crate::{
-    app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab},
+    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
     modes::AnsiString,
 };
 use crate::{colored_skip_take, log_info};
@@ -306,13 +303,11 @@ impl<'a> Files<'a> {
     fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
         let tab = &self.status.tabs[1];
         PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
-        let width = rect.width;
-        draw_clickable_strings_left(
+        PreviewHeader::into_default_preview(self.status, tab, rect.width).draw_left(
             f,
-            &PreviewHeader::default_preview(self.status, tab, width),
             *rect,
             self.status.index == 1,
-        )
+        );
     }
 }
 
@@ -887,8 +882,8 @@ impl<'a> Draw for FilesHeader<'a> {
             DisplayMode::Preview => Box::new(PreviewHeader::new(self.status, self.tab, width)),
             _ => Box::new(Header::new(self.status, self.tab).expect("Couldn't build header")),
         };
-        draw_clickable_strings_left(f, header.left(), *rect, self.is_selected);
-        draw_clickable_strings_right(f, header.right(), *rect, self.is_selected);
+        header.draw_left(f, *rect, self.is_selected);
+        header.draw_right(f, *rect, self.is_selected);
     }
 }
 
@@ -972,16 +967,16 @@ impl<'a> Draw for FilesFooter<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let height = rect.height;
-        let content = match self.tab.display_mode {
-            DisplayMode::Preview => vec![],
-            _ => Footer::new(self.status, self.tab)
-                .unwrap()
-                .left()
-                .to_owned(),
-        };
-        let p_rect = rect.offseted(0, height.saturating_sub(1));
-        draw_clickable_strings_left(f, &content, p_rect, self.is_selected);
+        match self.tab.display_mode {
+            DisplayMode::Preview => (),
+            _ => {
+                let Ok(footer) = Footer::new(self.status, self.tab) else {
+                    return;
+                };
+                let p_rect = rect.offseted(0, rect.height.saturating_sub(1));
+                footer.draw_left(f, p_rect, self.is_selected);
+            }
+        }
     }
 }
 
@@ -1617,26 +1612,4 @@ fn draw_colored_strings(
     .collect();
     let p_rect = rect.offseted(1 + offset as u16, row as u16);
     Line::from(spans).render(p_rect, f.buffer_mut());
-}
-
-fn draw_clickable_strings_left(
-    f: &mut Frame,
-    elems: &[ClickableString],
-    rect: Rect,
-    effect_reverse: bool,
-) {
-    elems
-        .left_to_line(effect_reverse)
-        .render(rect, f.buffer_mut());
-}
-
-fn draw_clickable_strings_right(
-    f: &mut Frame,
-    elems: &[ClickableString],
-    rect: Rect,
-    effect_reverse: bool,
-) {
-    elems
-        .right_to_line(effect_reverse)
-        .render(rect, f.buffer_mut());
 }
