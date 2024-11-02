@@ -15,26 +15,18 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
-use unicode_segmentation::UnicodeSegmentation;
 
+use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
+use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
-    highlighted_text, parse_input_mode, BinLine, BinaryContent, Content, ContentWindow,
-    Display as DisplayMode, FileInfo, HLContent, InputSimple, LineDisplay, Menu as MenuMode,
-    MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable, TLine, TakeSkipEnum,
-    Text, TextKind, Trash, Tree, Ueber,
-};
-use crate::modes::{FuzzyFinder, TakeSkip};
-use crate::{
-    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
-    modes::AnsiString,
+    highlighted_text, parse_input_mode, AnsiString, BinLine, BinaryContent, Content, ContentWindow,
+    Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple, LineDisplay,
+    Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable,
+    TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
 use crate::{colored_skip_take, log_info};
-use crate::{
-    config::{ColorG, Gradient, MENU_STYLES},
-    modes::Input,
-};
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -49,31 +41,6 @@ impl Offseted for Rect {
             y: y as i32,
         })
         .intersection(*self)
-    }
-}
-
-pub trait LimitWidth {
-    fn limit_width(&self, width: usize) -> Self;
-}
-
-impl LimitWidth for &str {
-    /// Limit a string slice to the give width, stopping at a char boundary.
-    /// if the width is large enough, it's the width of the slice.
-    fn limit_width(&self, width: usize) -> Self {
-        let mut end = 0;
-        let mut current_width = 0;
-
-        for (index, grapheme) in self.grapheme_indices(true) {
-            let grapheme_width = grapheme.chars().count();
-
-            if current_width + grapheme_width > width {
-                break;
-            }
-            current_width += grapheme_width;
-            end = index + grapheme.len();
-        }
-
-        &self[..end]
     }
 }
 
@@ -1083,12 +1050,12 @@ impl<'a> Menu<'a> {
     }
 
     fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
-        for (row, line, style) in enumerated_colored_iter!(lines) {
-            if row + 2 >= rect.height as usize {
-                break;
-            }
-            Self::content_line(f, rect, row as u16, line, style);
-        }
+        let lines: Vec<_> = colored_iter!(lines)
+            .map(|(line, style)| Line::from(vec![Span::styled(*line, style)]))
+            .collect();
+        let mut p_rect = rect.offseted(4, ContentWindow::WINDOW_MARGIN_TOP_U16);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn navigate(&self, navigate: Navigate, f: &mut Frame, rect: &Rect) {
@@ -1315,11 +1282,8 @@ impl<'a> Menu<'a> {
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.trash.content();
-        let lines: Vec<_> = enumerated_colored_iter!(content)
-            .map(|(_row, trashinfo, style)| {
-                Span::raw(trashinfo.to_string());
-                Line::from(vec![Span::styled(trashinfo.to_string(), style)])
-            })
+        let lines: Vec<_> = colored_iter!(content)
+            .map(|(trashinfo, style)| Line::from(vec![Span::styled(trashinfo.to_string(), style)]))
             .collect();
         let mut p_rect = rect.offseted(4, 4);
         p_rect.height -= 1;
@@ -1338,7 +1302,19 @@ struct MenuFirstLine {
 
 impl Draw for MenuFirstLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        draw_colored_strings(f, 0, 1, &self.content, rect, false);
+        let spans: Vec<_> = std::iter::zip(
+            self.content.iter(),
+            MENU_STYLES
+                .get()
+                .expect("Menu colors should be set")
+                .palette()
+                .iter()
+                .cycle(),
+        )
+        .map(|(text, style)| Span::styled(text, *style))
+        .collect();
+        let p_rect = rect.offseted(1, 0);
+        Line::from(spans).render(p_rect, f.buffer_mut());
     }
 }
 
@@ -1583,33 +1559,4 @@ pub const fn color_to_style(color: Color) -> Style {
         sub_modifier: Modifier::empty(),
         underline_color: None,
     }
-}
-
-fn draw_colored_strings(
-    f: &mut Frame,
-    row: usize,
-    offset: usize,
-    strings: &[String],
-    rect: &Rect,
-    effect_reverse: bool,
-) {
-    let spans: Vec<_> = std::iter::zip(
-        strings.iter(),
-        MENU_STYLES
-            .get()
-            .expect("Menu colors should be set")
-            .palette()
-            .iter()
-            .cycle(),
-    )
-    .map(|(text, style)| {
-        let mut style = *style;
-        if effect_reverse {
-            style.add_modifier |= Modifier::REVERSED;
-        }
-        Span::styled(text, style)
-    })
-    .collect();
-    let p_rect = rect.offseted(1 + offset as u16, row as u16);
-    Line::from(spans).render(p_rect, f.buffer_mut());
 }
