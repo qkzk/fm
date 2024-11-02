@@ -23,7 +23,7 @@ mod opener;
 
 pub use args::Args;
 pub use commands::*;
-pub use display::{color_to_style, Canvas, Display, LimitWidth, MIN_WIDTH_FOR_DUAL_PANE};
+pub use display::{color_to_style, Display, LimitWidth, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;
 pub use git::{git, git_root};
 pub use input_history::*;

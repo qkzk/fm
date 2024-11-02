@@ -1,18 +1,13 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use ratatui::{
-    layout::{Offset, Rect},
-    prelude::Widget,
-    style::Color,
-    text::Line,
-    widgets::Paragraph,
-    Frame,
-};
+use ratatui::{layout::Rect, prelude::Widget, style::Color, text::Line, widgets::Paragraph, Frame};
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::color_to_style;
 use crate::modes::{Content, ContentWindow};
+
+use super::Offseted;
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
@@ -84,7 +79,7 @@ pub trait DrawMenu<T: CowStr> {
     where
         Self: Content<T>,
     {
-        let mut p_rect = rect.offset(Offset { x: 4, y: 3 }).intersection(*rect);
+        let mut p_rect = rect.offseted(4, 3);
         p_rect.height = p_rect.height.saturating_sub(2);
         let content = self.content();
         let lines: Vec<_> = colored_skip_take!(content, window)

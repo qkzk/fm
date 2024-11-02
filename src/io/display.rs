@@ -39,7 +39,7 @@ use crate::{
     modes::Input,
 };
 
-trait Offseted {
+pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
 }
 
@@ -307,12 +307,10 @@ impl<'a> Files<'a> {
         let tab = &self.status.tabs[1];
         PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
         let width = rect.width;
-        let p_rect = rect.offset(Offset { x: 0, y: 0 }).intersection(*rect);
-
         draw_clickable_strings_left(
             f,
             &PreviewHeader::default_preview(self.status, tab, width),
-            p_rect,
+            *rect,
             self.status.index == 1,
         )
     }
@@ -514,12 +512,7 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn files_content(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 2,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(2, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let lines: Vec<_> = self
             .tab
@@ -625,12 +618,7 @@ impl<'a> TreeDisplay<'a> {
         f: &mut Frame,
         rect: &Rect,
     ) {
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 1,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(1, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
@@ -773,12 +761,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 3,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let lines: Vec<_> = text
             .take_skip(window.top, window.bottom, length)
@@ -796,12 +779,7 @@ impl<'a> PreviewDisplay<'a> {
         number_col_width: usize,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 3,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let number_col_style = MENU_STYLES.get().expect("").first;
         let lines: Vec<_> = syntaxed
@@ -832,12 +810,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 3,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let line_number_width_hex = bin.number_width_hex();
         let (style_number, style_ascii) = {
@@ -879,12 +852,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect
-            .offset(Offset {
-                x: 3,
-                y: ContentWindow::WINDOW_MARGIN_TOP_U16 as i32,
-            })
-            .intersection(*rect);
+        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
         let lines: Vec<_> = ansi_text
             .take_skip(window.top, window.bottom, length)
@@ -919,9 +887,8 @@ impl<'a> Draw for FilesHeader<'a> {
             DisplayMode::Preview => Box::new(PreviewHeader::new(self.status, self.tab, width)),
             _ => Box::new(Header::new(self.status, self.tab).expect("Couldn't build header")),
         };
-        let p_rect = rect.offset(Offset { x: 0, y: 0 }).intersection(*rect);
-        draw_clickable_strings_left(f, header.left(), p_rect, self.is_selected);
-        draw_clickable_strings_right(f, header.right(), p_rect, self.is_selected);
+        draw_clickable_strings_left(f, header.left(), *rect, self.is_selected);
+        draw_clickable_strings_right(f, header.right(), *rect, self.is_selected);
     }
 }
 
@@ -943,7 +910,7 @@ struct FilesSecondLine {
 
 impl Draw for FilesSecondLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let mut p_rect = rect.offset(Offset { x: 1, y: 1 }).intersection(*rect);
+        let mut p_rect = rect.offseted(1, 1);
         p_rect.height = p_rect.height.saturating_sub(2);
         if let (Some(content), Some(style)) = (&self.content, &self.style) {
             Span::styled(content, *style).render(p_rect, f.buffer_mut());
@@ -980,8 +947,7 @@ struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let y = rect.height.saturating_sub(2) as i32;
-        let p_rect = rect.offset(Offset { x: 4, y }).intersection(*rect);
+        let p_rect = rect.offseted(4, rect.height.saturating_sub(2));
         let log = &read_last_log_line();
         Span::styled(
             log,
@@ -1014,12 +980,7 @@ impl<'a> Draw for FilesFooter<'a> {
                 .left()
                 .to_owned(),
         };
-        let p_rect = rect
-            .offset(Offset {
-                x: 0,
-                y: height as i32 - 1,
-            })
-            .intersection(*rect);
+        let p_rect = rect.offseted(0, height.saturating_sub(1));
         draw_clickable_strings_left(f, &content, p_rect, self.is_selected);
     }
 }
@@ -1085,7 +1046,7 @@ impl<'a> Menu<'a> {
             }
             // edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
             edit => {
-                let rect = rect.offset(Offset { x: 2, y: 1 }).intersection(*rect);
+                let rect = rect.offseted(2, 1);
                 Span::styled(edit.second_line(), menu).render(rect, f.buffer_mut());
             }
         };
@@ -1100,7 +1061,7 @@ impl<'a> Menu<'a> {
                 Span::styled(*text, style)
             })
             .collect();
-        let p_rect = rect.offset(Offset { x: 11, y: 1 }).intersection(*rect);
+        let p_rect = rect.offseted(11, 1);
         Line::from(spans).render(p_rect, f.buffer_mut());
     }
 
@@ -1118,12 +1079,7 @@ impl<'a> Menu<'a> {
         if mode == MenuMode::Navigate(Navigate::Trash) {
             return;
         }
-        let p_rect = rect
-            .offset(Offset {
-                x: 2,
-                y: rect.height.saturating_sub(2) as i32,
-            })
-            .intersection(*rect);
+        let p_rect = rect.offseted(2, rect.height.saturating_sub(2));
         Span::styled(
             mode.binds_per_mode(),
             MENU_STYLES.get().expect("Menu colors should be set").second,
@@ -1174,12 +1130,7 @@ impl<'a> Menu<'a> {
     fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
         trash.draw_menu(f, rect, &self.status.menu.window);
 
-        let p_rect = rect
-            .offset(Offset {
-                x: 2,
-                y: rect.height.saturating_sub(2) as i32,
-            })
-            .intersection(*rect);
+        let p_rect = rect.offseted(2, rect.height.saturating_sub(2));
         Span::styled(
             &trash.help,
             MENU_STYLES.get().expect("Menu colors should be set").second,
