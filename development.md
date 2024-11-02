@@ -1460,32 +1460,29 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - render : should be cached as much as possible. For many menus, it doesn't change much.
   - actions : should be attached to menus in a way or another. Don't store everything in status
-  - [ ] rendering with ratatui widgets
-  - [ ] menu
-    - [x] navigate: draw menu using ratatui widgets
-    - [ ] input simple
-    - [ ] input completed
-    - [ ] input need confirmation
-  - [x] display top window
-    - [x] directory
-    - [x] tree
-    - [x] preview:
-      - [x] text
-      - [x] syntaxed
-      - [x] binary
-      - [x] command output (ansi colored text)
-  - [ ] other elements
-    - [x] second line
-    - [x] log line
-    - [x] header & footer
-      - [x] create 2 ratatui line & use alignment for display
-      - [x] conversion method header/footer->line
-    - [x] menu second line
-    - [x] menu content line
-    - [x] trash clear confirm
-    - [x] trash help
-    - [x] context (action & more info)
-    - [x] menu first string with colored string
+  - [x] rendering with ratatui widgets
+    - [x] menu
+      - [x] navigate: draw menu using ratatui widgets
+    - [x] display top window
+      - [x] directory
+      - [x] tree
+      - [x] preview:
+        - [x] text
+        - [x] syntaxed
+        - [x] binary
+        - [x] command output (ansi colored text)
+    - [x] other elements
+      - [x] second line
+      - [x] log line
+      - [x] header & footer
+        - [x] create 2 ratatui line & use alignment for display
+        - [x] conversion method header/footer->line
+      - [x] menu second line
+      - [x] menu content line
+      - [x] trash clear confirm
+      - [x] trash help
+      - [x] context (action & more info)
+      - [x] menu first string with colored string
   - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
   - [x] FIX: opening shortcut twice crashes
   - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants

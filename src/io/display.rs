@@ -80,52 +80,6 @@ impl LimitWidth for &str {
     }
 }
 
-/// Basic methods to print in a [`ratatui::layout::Rect`].
-/// - `print_with_style`: allow to print a content at a position with given style,
-/// - `print`: the same but white on black.
-///
-/// It comes from tuikit and was almost the only way to display something back then.
-/// Future versions of fm will aim to remove this trait and build display in a more "ratatui" style.
-pub trait Canvas: Sized {
-    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style);
-
-    fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str);
-}
-
-const FULL_WHITE: Color = Color::Rgb(255, 255, 255);
-
-impl Canvas for Rect {
-    /// Render the text content in the frame.
-    /// The text is displayed in `self` at `row`, `col` with given style.
-    ///
-    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
-    /// It will never overflow its parent rect.
-    fn print_with_style(&self, f: &mut Frame, row: u16, col: u16, content: &str, style: Style) {
-        let width = self.width.saturating_sub(col);
-        let displayed = content.limit_width(width as usize);
-        let area = Rect {
-            x: self.x + col,
-            y: self.y + row,
-            width,
-            height: 1,
-        };
-        f.render_widget(Span::styled(displayed, style), area);
-    }
-
-    /// Render the text content in the frame.
-    /// The text is displayed in `self` at `row`, `col` in white on default background color.
-    ///
-    /// If the text is too wide to be displayed, it's truncated at a valid utf-8 char.
-    /// It will never overflow its parent rect.
-    fn print(&self, f: &mut Frame, row: u16, col: u16, content: &str) {
-        let style = Style {
-            fg: Some(FULL_WHITE),
-            ..Default::default()
-        };
-        self.print_with_style(f, row, col, content, style)
-    }
-}
-
 /// Common trait all "window" should implement.
 /// It's mostly used as an entry point for the rendering and should call another method.
 trait Draw {
