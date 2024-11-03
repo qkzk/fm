@@ -50,10 +50,12 @@ impl EventDispatcher {
         match key {
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers: _,
+                modifiers,
                 kind: _,
                 state: _,
-            } if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
+            } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
+                self.menu_key_matcher(status, c)?
+            }
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
@@ -199,4 +201,9 @@ impl EventDispatcher {
             }
         }
     }
+}
+
+/// True iff the keymodifier is either SHIFT or nothing (no modifier pressed).
+fn modifier_is_shift_or_none(modifiers: KeyModifiers) -> bool {
+    modifiers == KeyModifiers::NONE || modifiers == KeyModifiers::SHIFT
 }

@@ -1501,7 +1501,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] ratatui component for progress bar for copymove
 
-- [ ] BUG: trash opened + alt-x doesn't clear the trash but deletes the element itself
+- [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [ ] BUG: menu chmod crash as replace input by current mode
 
 - [ ] previewing text files with bat ? binaries with xxd
