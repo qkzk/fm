@@ -128,18 +128,18 @@ impl ContentWindow {
         row < Self::HEADER_ROWS as u16
     }
 
-    pub fn preview_page_up(&mut self) {
+    pub fn preview_page_up(&mut self, skip: usize) {
         if self.top == 0 {
             return;
         }
-        let skip = min(self.top, 30);
+        let skip = min(self.top, skip);
         self.bottom -= skip;
         self.top -= skip;
     }
 
-    pub fn preview_page_down(&mut self, preview_len: usize) {
+    pub fn preview_page_down(&mut self, skip: usize, preview_len: usize) {
         if self.bottom < preview_len {
-            let skip = min(preview_len - self.bottom, 30);
+            let skip = min(preview_len - self.bottom, skip);
             self.bottom += skip;
             self.top += skip;
         }

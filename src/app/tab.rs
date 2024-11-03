@@ -733,7 +733,8 @@ impl Tab {
     pub fn preview_page_up(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.up_one_row(),
-            _ => self.window.preview_page_up(),
+            Preview::Binary(_) => self.window.preview_page_up(16),
+            _ => self.window.preview_page_up(30),
         }
     }
 
@@ -741,7 +742,8 @@ impl Tab {
     pub fn preview_page_down(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.down_one_row(),
-            _ => self.window.preview_page_down(self.preview.len()),
+            Preview::Binary(binary) => self.window.preview_page_down(16, binary.len()),
+            _ => self.window.preview_page_down(30, self.preview.len()),
         }
     }
 
