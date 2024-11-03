@@ -1503,7 +1503,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
-- [ ] InputHistory doesn't work
+- [x] FIX: InputHistory
 
 - [ ] previewing text files with bat ? binaries with xxd
 

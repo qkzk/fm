@@ -401,6 +401,9 @@ impl MenuHolder {
     /// Replace the current input by the next proposition from history
     /// for this edit mode.
     pub fn input_history_next(&mut self, tab: &mut Tab) -> Result<()> {
+        if !self.input_history.is_mode_logged(&tab.menu_mode) {
+            return Ok(());
+        }
         self.input_history.next();
         self.input_history_replace(tab)
     }
@@ -408,15 +411,18 @@ impl MenuHolder {
     /// Replace the current input by the previous proposition from history
     /// for this edit mode.
     pub fn input_history_prev(&mut self, tab: &mut Tab) -> Result<()> {
+        if !self.input_history.is_mode_logged(&tab.menu_mode) {
+            return Ok(());
+        }
         self.input_history.prev();
         self.input_history_replace(tab)
     }
 
     fn input_history_replace(&mut self, tab: &mut Tab) -> Result<()> {
-        let Some(hist) = self.input_history.current() else {
+        let Some(history_element) = self.input_history.current() else {
             return Ok(());
         };
-        self.input.replace(hist);
+        self.input.replace(history_element.content());
         self.input_complete(tab)?;
         Ok(())
     }
