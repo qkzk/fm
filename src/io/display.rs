@@ -188,9 +188,7 @@ impl<'a> Draw for Files<'a> {
             self.preview_in_right_tab(f, rect);
             return;
         }
-        FilesHeader::new(self.status, self.tab, self.attributes.is_selected)
-            .unwrap()
-            .draw(f, rect);
+        FilesHeader::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
         self.copy_progress_bar(f, rect);
         self.content(f, rect);
         FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
@@ -841,12 +839,12 @@ impl<'a> Draw for FilesHeader<'a> {
 }
 
 impl<'a> FilesHeader<'a> {
-    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Result<Self> {
-        Ok(Self {
+    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Self {
+        Self {
             status,
             tab,
             is_selected,
-        })
+        }
     }
 }
 
