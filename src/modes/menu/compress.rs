@@ -34,28 +34,22 @@ impl CompressionMethod {
 }
 
 /// Holds a vector of CompressionMethod and a few methods to compress some files.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Compresser {
     content: Vec<CompressionMethod>,
     pub index: usize,
 }
 
-impl Default for Compresser {
-    fn default() -> Self {
-        Self {
-            content: vec![
-                CompressionMethod::Zip,
-                CompressionMethod::Lzma,
-                CompressionMethod::Zlib,
-                CompressionMethod::Gz,
-                CompressionMethod::Defl,
-            ],
-            index: 0,
-        }
-    }
-}
-
 impl Compresser {
+    pub fn setup(&mut self) {
+        self.content = vec![
+            CompressionMethod::Zip,
+            CompressionMethod::Lzma,
+            CompressionMethod::Zlib,
+            CompressionMethod::Gz,
+            CompressionMethod::Defl,
+        ];
+    }
     /// Archive the files with tar and compress them with the selected method.
     /// The compression method is chosen by the user.
     /// Archive is created `here` which should be the path of the selected tab.

@@ -18,23 +18,19 @@ const CONTEXT: [(&str, ActionMap); 10] = [
 
 /// Context menu of a file.
 /// A few possible actions and some more information about this file.
+#[derive(Default)]
 pub struct ContextMenu {
     pub content: Vec<&'static str>,
     index: usize,
     actions: Vec<&'static ActionMap>,
 }
 
-impl Default for ContextMenu {
-    fn default() -> Self {
-        Self {
-            index: 0,
-            content: CONTEXT.iter().map(|(s, _)| *s).collect(),
-            actions: CONTEXT.iter().map(|(_, a)| a).collect(),
-        }
-    }
-}
-
 impl ContextMenu {
+    pub fn setup(&mut self) {
+        self.content = CONTEXT.iter().map(|(s, _)| *s).collect();
+        self.actions = CONTEXT.iter().map(|(_, a)| a).collect();
+    }
+
     pub fn matcher(&self) -> &ActionMap {
         self.actions[self.index]
     }

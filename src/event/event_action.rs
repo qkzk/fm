@@ -1352,6 +1352,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.compression.is_empty() {
+                status.menu.compression.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Compress))?;
         }
         Ok(())
@@ -1365,7 +1368,11 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.menu.context.reset();
+            if status.menu.context.is_empty() {
+                status.menu.context.setup();
+            } else {
+                status.menu.context.reset();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Context))?;
         }
         Ok(())

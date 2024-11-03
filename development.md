@@ -1492,6 +1492,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] shortcuts
     - [x] tui applications
     - [x] cli applications
+    - [x] compression
+    - [x] context
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 
