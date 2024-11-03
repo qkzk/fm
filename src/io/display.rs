@@ -1303,7 +1303,7 @@ impl Draw for MenuFirstLine {
         )
         .map(|(text, style)| Span::styled(text, *style))
         .collect();
-        let p_rect = rect.offseted(1, 0);
+        let p_rect = rect.offseted(2, 0);
         Line::from(spans).render(p_rect, f.buffer_mut());
     }
 }
