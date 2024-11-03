@@ -1488,7 +1488,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] BUG: copy file should be 1 row up
   - [x] generic method to render menu content
   - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
-  - [ ] lazy menu creation. Store empty shells in menuholder
+  - [x] lazy menu creation. Store empty shells in menuholder
     - [x] shortcuts
     - [x] tui applications
     - [x] cli applications
@@ -1503,6 +1503,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
+- [ ] InputHistory doesn't work
 
 - [ ] previewing text files with bat ? binaries with xxd
 
