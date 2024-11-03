@@ -10,7 +10,7 @@ type Mode = u32;
 /// Empty struct used to regroup some methods.
 pub struct Permissions;
 
-/// Maximum possible mode, 0o777 = 511 (decimal)
+/// Maximum possible mode, 0o777 = 511 (decimal), aka "rwx".
 pub const MAX_MODE: Mode = 0o777;
 
 impl Permissions {

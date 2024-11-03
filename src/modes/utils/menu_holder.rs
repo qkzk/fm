@@ -2,7 +2,7 @@ use std::os::unix::fs::MetadataExt;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
@@ -17,7 +17,7 @@ use crate::modes::{
     Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
     CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
     MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
-    Shortcut, Trash, TuiApplications,
+    Shortcut, Trash, TuiApplications, MAX_MODE,
 };
 
 /// Holds almost every menu except for the history, which is tab specific.
@@ -123,27 +123,20 @@ impl MenuHolder {
     /// Replace the current input by the permission of the first flagged file as an octal value.
     /// If the flagged has permission "rwxrw.r.." or 764 in octal, "764" will be the current input.
     /// Only the last 3 octal digits are kept.
+    /// Nothing is done if :
+    /// - there's no flagged file,
+    /// - can't read the metadata of the first flagged file.
     ///
-    /// # Errors
-    ///
-    /// It may fail if
-    /// - there's no flagged file, it's the responsability of the caller to ensure there's always a flagged file.
-    /// - metadata can't be accessed. It's also the responsability of the caller.
-    ///
-    /// Those situations should never happen since:
-    /// This method should be called after flagging the selected file,
-    /// The file which metadata can't be read are filtered out while reading the directories.
-    pub fn replace_input_by_permissions(&mut self) -> Result<()> {
-        let mode = &self
-            .flagged
-            .content
-            .first()
-            .context("There should be at least a flagged file")?
-            .metadata()?
-            .mode()
-            & 0o777;
+    /// It should never happen.
+    pub fn replace_input_by_permissions(&mut self) {
+        let Some(flagged) = &self.flagged.content.first() else {
+            return;
+        };
+        let Ok(metadata) = flagged.metadata() else {
+            return;
+        };
+        let mode = metadata.mode() & MAX_MODE;
         self.input.replace(&format!("{mode:o}"));
-        Ok(())
     }
 
     /// Fill the input string with the currently selected completion.

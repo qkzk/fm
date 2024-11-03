@@ -1651,7 +1651,8 @@ impl Status {
             self.toggle_flag_for_selected();
         }
         self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))?;
-        self.menu.replace_input_by_permissions()
+        self.menu.replace_input_by_permissions();
+        Ok(())
     }
 
     /// Execute a custom event on the selected file
