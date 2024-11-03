@@ -148,10 +148,10 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let edit_mode = &status.current_tab().menu_mode;
-        if matches!(edit_mode, Menu::Navigate(Navigate::Flagged)) {
+        let menu_mode = &status.current_tab().menu_mode;
+        if matches!(menu_mode, Menu::Navigate(Navigate::Flagged)) {
             status.leave_menu_mode()?;
-        } else if matches!(edit_mode, Menu::Nothing) {
+        } else if matches!(menu_mode, Menu::Nothing) {
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
         }
         Ok(())
@@ -456,7 +456,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_height_for_edit_mode(status.index, Menu::Nothing)?;
+        status.set_height_for_menu_mode(status.index, Menu::Nothing)?;
         status.tabs[status.index].menu_mode = Menu::Nothing;
         let len = status.menu.len(Menu::Nothing);
         let height = status.second_window_height()?;

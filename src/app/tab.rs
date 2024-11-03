@@ -121,7 +121,7 @@ impl Tab {
         let mut directory =
             Directory::new(start_dir, &users, &settings.filter, settings.show_hidden)?;
         let display_mode = Display::default();
-        let edit_mode = Menu::Nothing;
+        let menu_mode = Menu::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
         let history = History::default();
@@ -133,7 +133,7 @@ impl Tab {
         window.scroll_to(index);
         Ok(Self {
             display_mode,
-            menu_mode: edit_mode,
+            menu_mode,
             window,
             directory,
             height,

@@ -666,29 +666,29 @@ impl Status {
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
-    pub fn set_menu_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
-        self.set_menu_mode_no_refresh(index, edit_mode)?;
+    pub fn set_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
+        self.set_menu_mode_no_refresh(index, menu_mode)?;
         self.refresh_status()
     }
 
-    pub fn set_menu_mode_no_refresh(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+    pub fn set_menu_mode_no_refresh(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
         }
-        self.set_height_for_edit_mode(index, edit_mode)?;
-        self.tabs[index].menu_mode = edit_mode;
-        let len = self.menu.len(edit_mode);
+        self.set_height_for_menu_mode(index, menu_mode)?;
+        self.tabs[index].menu_mode = menu_mode;
+        let len = self.menu.len(menu_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
-        self.menu.window.scroll_to(self.menu.index(edit_mode));
+        self.menu.window.scroll_to(self.menu.index(menu_mode));
         self.set_focus_from_mode();
-        self.menu.input_history.filter_by_mode(edit_mode);
+        self.menu.input_history.filter_by_mode(menu_mode);
         Ok(())
     }
 
-    pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+    pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         let height = self.internal_settings.term_size().1;
-        let prim_window_height = if edit_mode.is_nothing() {
+        let prim_window_height = if menu_mode.is_nothing() {
             height
         } else {
             height / 2
@@ -1696,7 +1696,7 @@ impl Status {
     pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
-        self.set_height_for_edit_mode(self.index, Menu::Nothing)?;
+        self.set_height_for_menu_mode(self.index, Menu::Nothing)?;
         self.tabs[self.index].menu_mode = Menu::Nothing;
         let len = self.menu.len(Menu::Nothing);
         let height = self.second_window_height()?;

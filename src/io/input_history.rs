@@ -50,8 +50,8 @@ impl InputHistory {
         Ok(())
     }
 
-    pub fn filter_by_mode(&mut self, edit_mode: Menu) {
-        let Some(kind) = HistoryKind::from_mode(edit_mode) else {
+    pub fn filter_by_mode(&mut self, menu_mode: Menu) {
+        let Some(kind) = HistoryKind::from_mode(menu_mode) else {
             return;
         };
         self.index = None;
@@ -129,7 +129,7 @@ impl InputHistory {
     }
 }
 
-/// Different kind of histories, depending of the edit_mode.
+/// Different kind of histories, depending of the menu_mode.
 /// It has a few methods to record and filter methods from text input.
 #[derive(Clone, PartialEq, Eq)]
 pub enum HistoryKind {

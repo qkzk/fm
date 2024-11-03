@@ -95,7 +95,7 @@ Different modes for the main window
 
     - EDIT MODES -
 Different modes for the bottom window
-{edit_modes}
+{menu_modes}
 ",
         quit = action_descriptions!(Quit, Help),
         navigation = action_descriptions!(
@@ -145,7 +145,7 @@ Different modes for the bottom window
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
         tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
         display_modes = action_descriptions!(ResetMode, Tree, Preview),
-        edit_modes = action_descriptions!(
+        menu_modes = action_descriptions!(
             Chmod,
             Exec,
             NewDir,

@@ -276,16 +276,16 @@ impl MenuHolder {
         self.input.replace(self.completion.current_proposition())
     }
 
-    pub fn len(&self, edit_mode: Menu) -> usize {
-        match edit_mode {
+    pub fn len(&self, menu_mode: Menu) -> usize {
+        match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Menu::InputCompleted(_) => self.completion.len(),
             _ => 0,
         }
     }
 
-    pub fn index(&self, edit_mode: Menu) -> usize {
-        match edit_mode {
+    pub fn index(&self, menu_mode: Menu) -> usize {
+        match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Menu::InputCompleted(_) => self.completion.index,
             _ => 0,
