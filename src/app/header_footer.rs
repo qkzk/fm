@@ -159,7 +159,7 @@ mod inner {
 
         /// Draw the right aligned elements of the line.
         fn draw_right(&self, f: &mut Frame, rect: Rect, effect_reverse: bool) {
-            self.left()
+            self.right()
                 .right_to_line(effect_reverse)
                 .render(rect, f.buffer_mut());
         }
