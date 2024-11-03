@@ -240,7 +240,7 @@ impl<'a> Files<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        let p_rect = rect.offseted(1, 2);
+        let p_rect = rect.offseted(1, 1);
         Span::styled(
             &content,
             MENU_STYLES
