@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::min, convert, io::Stdout, sync::MutexGuard};
+use std::{cmp::min, io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
 use crossterm::{
@@ -80,25 +80,6 @@ macro_rules! colored_iter {
             .map(|color| color_to_style(color)),
         )
     };
-}
-
-pub fn render_content<'a, T>(content: &'a [T], f: &mut Frame, rect: &Rect, x: u16, y: u16)
-where
-    T: Into<Cow<'a, str>> + convert::From<&'a T>,
-{
-    let lines: Vec<_> = colored_iter!(content)
-        .map(|(text, style)| Line::from(vec![Span::styled::<T, Style>(text.into(), style)]))
-        .collect();
-    let p_rect = rect.offseted(x, y);
-    Paragraph::new(lines).render(p_rect, f.buffer_mut());
-}
-
-pub fn render_content_str(content: &[&str], f: &mut Frame, rect: &Rect, x: u16, y: u16) {
-    let lines: Vec<_> = colored_iter!(content)
-        .map(|(text, style)| Line::from(vec![Span::styled(*text, style)]))
-        .collect();
-    let p_rect = rect.offseted(x, y);
-    Paragraph::new(lines).render(p_rect, f.buffer_mut());
 }
 
 /// At least 120 chars width to display 2 tabs.
@@ -968,6 +949,23 @@ impl<'a> Menu<'a> {
         }
     }
 
+    /// Render a generic content of elements which are references to str.
+    /// It creates a new rect, offseted by `x, y` and intersected with rect.
+    /// Each element of content is wraped by a styled span (with his own style) and then wrapped by a line.
+    /// The iteration only take enough element to be displayed in the rect.
+    /// Then we create a paragraph with default parameters and render it.
+    fn render_content<T>(content: &[T], f: &mut Frame, rect: &Rect, x: u16, y: u16)
+    where
+        T: AsRef<str>,
+    {
+        let p_rect = rect.offseted(x, y);
+        let lines: Vec<_> = colored_iter!(content)
+            .map(|(text, style)| Line::from(vec![Span::styled(text.as_ref(), style)]))
+            .take(p_rect.height as usize + 2)
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
+
     /// Hide the cursor if the current mode doesn't require one.
     /// Otherwise, display a cursor in the top row, at a correct column.
     ///
@@ -1036,7 +1034,7 @@ impl<'a> Menu<'a> {
     fn input_simple(lines: &[&str], f: &mut Frame, rect: &Rect) {
         let mut p_rect = rect.offseted(4, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
-        render_content_str(lines, f, &p_rect, 0, 0);
+        Self::render_content(lines, f, &p_rect, 0, 0);
     }
 
     fn navigate(&self, navigate: Navigate, f: &mut Frame, rect: &Rect) {
@@ -1154,7 +1152,7 @@ impl<'a> Menu<'a> {
             &self.status.internal_settings.opener,
         )
         .to_lines();
-        render_content(&more_info, f, rect, 4, 3 + space_used);
+        Self::render_content(&more_info, f, rect, 4, 3 + space_used);
     }
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
@@ -1215,7 +1213,7 @@ impl<'a> Menu<'a> {
             .iter()
             .map(|p| p.to_string_lossy().to_string())
             .collect();
-        render_content(
+        Self::render_content(
             &text_content,
             f,
             rect,
@@ -1226,7 +1224,7 @@ impl<'a> Menu<'a> {
 
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
-        render_content(
+        Self::render_content(
             &content,
             f,
             rect,
@@ -1276,8 +1274,8 @@ impl<'a> Menu<'a> {
             .map(|trashinfo| trashinfo.to_string())
             .collect();
         let mut p_rect = rect.offseted(4, 4);
-        p_rect.height -= 1;
-        render_content(&content, f, &p_rect, 0, 0);
+        p_rect.height = p_rect.height.saturating_sub(1);
+        Self::render_content(&content, f, &p_rect, 0, 0);
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
