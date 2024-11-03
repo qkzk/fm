@@ -1,4 +1,4 @@
-use std::{cmp::min, io::Stdout, sync::MutexGuard};
+use std::{borrow::Cow, cmp::min, convert, io::Stdout, sync::MutexGuard};
 
 use anyhow::{Context, Result};
 use crossterm::{
@@ -51,39 +51,6 @@ trait Draw {
     fn draw(&self, f: &mut Frame, rect: &Rect);
 }
 
-/// Iter over the content, returning a triplet of `(index, line, style)`.
-macro_rules! enumerated_colored_iter {
-    ($t:ident) => {
-        std::iter::zip(
-            $t.iter().enumerate(),
-            Gradient::new(
-                ColorG::from_ratatui(
-                    MENU_STYLES
-                        .get()
-                        .expect("Menu colors should be set")
-                        .first
-                        .fg
-                        .unwrap_or(Color::Rgb(0, 0, 0)),
-                )
-                .unwrap_or_default(),
-                ColorG::from_ratatui(
-                    MENU_STYLES
-                        .get()
-                        .expect("Menu colors should be set")
-                        .palette_3
-                        .fg
-                        .unwrap_or(Color::Rgb(0, 0, 0)),
-                )
-                .unwrap_or_default(),
-                $t.len(),
-            )
-            .gradient()
-            .map(|color| color_to_style(color)),
-        )
-        .map(|((index, line), style)| (index, line, style))
-    };
-}
-
 macro_rules! colored_iter {
     ($t:ident) => {
         std::iter::zip(
@@ -113,6 +80,25 @@ macro_rules! colored_iter {
             .map(|color| color_to_style(color)),
         )
     };
+}
+
+pub fn render_content<'a, T>(content: &'a [T], f: &mut Frame, rect: &Rect, x: u16, y: u16)
+where
+    T: Into<Cow<'a, str>> + convert::From<&'a T>,
+{
+    let lines: Vec<_> = colored_iter!(content)
+        .map(|(text, style)| Line::from(vec![Span::styled::<T, Style>(text.into(), style)]))
+        .collect();
+    let p_rect = rect.offseted(x, y);
+    Paragraph::new(lines).render(p_rect, f.buffer_mut());
+}
+
+pub fn render_content_str(content: &[&str], f: &mut Frame, rect: &Rect, x: u16, y: u16) {
+    let lines: Vec<_> = colored_iter!(content)
+        .map(|(text, style)| Line::from(vec![Span::styled(*text, style)]))
+        .collect();
+    let p_rect = rect.offseted(x, y);
+    Paragraph::new(lines).render(p_rect, f.buffer_mut());
 }
 
 /// At least 120 chars width to display 2 tabs.
@@ -1032,7 +1018,7 @@ impl<'a> Menu<'a> {
             MenuMode::Navigate(mode) => self.navigate(mode, f, rect),
             MenuMode::NeedConfirmation(mode) => self.confirm(mode, f, rect),
             MenuMode::InputCompleted(_) => self.completion(f, rect),
-            MenuMode::InputSimple(mode) => Self::static_lines(mode.lines(), f, rect),
+            MenuMode::InputSimple(mode) => Self::input_simple(mode.lines(), f, rect),
             _ => (),
         }
     }
@@ -1049,13 +1035,10 @@ impl<'a> Menu<'a> {
         .render(p_rect, f.buffer_mut());
     }
 
-    fn static_lines(lines: &[&str], f: &mut Frame, rect: &Rect) {
-        let lines: Vec<_> = colored_iter!(lines)
-            .map(|(line, style)| Line::from(vec![Span::styled(*line, style)]))
-            .collect();
+    fn input_simple(lines: &[&str], f: &mut Frame, rect: &Rect) {
         let mut p_rect = rect.offseted(4, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        render_content_str(lines, f, &p_rect, 0, 0);
     }
 
     fn navigate(&self, navigate: Navigate, f: &mut Frame, rect: &Rect) {
@@ -1173,11 +1156,7 @@ impl<'a> Menu<'a> {
             &self.status.internal_settings.opener,
         )
         .to_lines();
-        let lines: Vec<_> = colored_iter!(more_info)
-            .map(|(text, style)| Line::from(vec![Span::styled(text, style)]))
-            .collect();
-        let p_rect = rect.offseted(4, 3 + space_used);
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        render_content(&more_info, f, rect, 4, 3 + space_used);
     }
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
@@ -1230,23 +1209,32 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
-        let content = &self.status.menu.flagged.content;
-        for (row, path, style) in enumerated_colored_iter!(content) {
-            Self::content_line(
-                f,
-                rect,
-                row as u16 + 2,
-                path.to_str().context("Unreadable filename").unwrap(),
-                style,
-            );
-        }
+        let text_content: Vec<_> = self
+            .status
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        render_content(
+            &text_content,
+            f,
+            rect,
+            4,
+            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
+        );
     }
 
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
-        for (row, line, style) in enumerated_colored_iter!(content) {
-            Self::content_line(f, rect, row as u16 + 2, line, style);
-        }
+        render_content(
+            &content,
+            f,
+            rect,
+            4,
+            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
+        );
     }
 
     fn confirm_delete_cloud(&self, f: &mut Frame, rect: &Rect) {
@@ -1281,13 +1269,17 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
-        let content = self.status.menu.trash.content();
-        let lines: Vec<_> = colored_iter!(content)
-            .map(|(trashinfo, style)| Line::from(vec![Span::styled(trashinfo.to_string(), style)]))
+        let content: Vec<_> = self
+            .status
+            .menu
+            .trash
+            .content()
+            .iter()
+            .map(|trashinfo| trashinfo.to_string())
             .collect();
         let mut p_rect = rect.offseted(4, 4);
         p_rect.height -= 1;
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        render_content(&content, f, &p_rect, 0, 0);
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
