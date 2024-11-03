@@ -656,6 +656,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.marks.is_empty() {
+                status.menu.marks.setup();
+            }
             status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::New)),
@@ -672,6 +675,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.marks.is_empty() {
+                status.menu.marks.setup();
+            }
             if status.menu.marks.is_empty() {
                 return Ok(());
             }

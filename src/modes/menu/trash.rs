@@ -317,7 +317,7 @@ impl Trash {
 
         let dest_file_name = self.pick_dest_name(origin)?;
 
-        self.execute_trash(Info::new(origin, &dest_file_name), &dest_file_name)
+        self.trash_a_file(Info::new(origin, &dest_file_name), &dest_file_name)
     }
 
     fn concat_path(root: &str, filename: &str) -> PathBuf {
@@ -336,7 +336,7 @@ impl Trash {
         Self::concat_path(&self.trash_folder_info, &dest_trashinfo_name)
     }
 
-    fn execute_trash(&mut self, trash_info: Info, dest_file_name: &str) -> Result<()> {
+    fn trash_a_file(&mut self, trash_info: Info, dest_file_name: &str) -> Result<()> {
         let trashfile_filename = &self.trashfile_path(dest_file_name);
         if let Err(error) = std::fs::rename(&trash_info.origin, trashfile_filename) {
             log_info!("Couldn't trash {trash_info}. Error: {error:?}");
