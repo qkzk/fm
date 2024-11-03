@@ -7,16 +7,16 @@ use ratatui::layout::Rect;
 use ratatui::Frame;
 
 use crate::app::Tab;
-use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, TUIS_PATH};
+use crate::common::{index_from_a, INPUT_HISTORY_PATH};
 use crate::config::Bindings;
 use crate::event::FmEvents;
 use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CLApplications, CliApplications, Completion, Compresser, Content, ContentWindow,
-    ContextMenu, CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks,
-    Menu, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
+    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
+    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
+    MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
     Shortcut, Trash, TuiApplications,
 };
 
@@ -83,7 +83,7 @@ impl MenuHolder {
     ) -> Result<Self> {
         Ok(Self {
             bulk: Bulk::new(fm_sender),
-            cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
+            cli_applications: CliApplications::default(),
             cloud: OpendalContainer::default(),
             completion: Completion::default(),
             compression: Compresser::default(),
@@ -101,7 +101,7 @@ impl MenuHolder {
             shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
             trash: Trash::new(binds)?,
-            tui_applications: TuiApplications::new(TUIS_PATH),
+            tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
         })
     }

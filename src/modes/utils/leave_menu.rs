@@ -7,8 +7,8 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, CLApplications, Content, InputCompleted, InputSimple, Leave, MarkAction,
-    Menu, Navigate, NodeCreation, PasswordUsage, PickerCaller,
+    BlockDeviceAction, Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, Navigate,
+    NodeCreation, PasswordUsage, PickerCaller, TerminalApplications,
 };
 use crate::{log_info, log_line};
 

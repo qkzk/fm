@@ -606,6 +606,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.tui_applications.is_not_set() {
+                status.menu.tui_applications.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
         }
         Ok(())
@@ -620,6 +623,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.cli_applications.is_empty() {
+                status.menu.cli_applications.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
         }
         Ok(())

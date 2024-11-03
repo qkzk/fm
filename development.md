@@ -1488,10 +1488,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] BUG: copy file should be 1 row up
   - [x] generic method to render menu content
   - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
+  - [ ] lazy menu creation. Store empty shells in menuholder
+    - [x] shortcuts
+    - [x] tui applications
+    - [x] cli applications
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-  - [x] don't store shortcut. Always get them on the fly.
-  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
 
 - [ ] ratatui component for progress bar for copymove
 

@@ -2,10 +2,10 @@ use anyhow::Result;
 use serde_yml::Mapping;
 
 use crate::app::Status;
-use crate::common::is_in_path;
+use crate::common::{is_in_path, TUIS_PATH};
 use crate::io::{execute_without_output, execute_without_output_with_path, DrawMenu};
 use crate::log_line;
-use crate::modes::{CLApplications, Execute};
+use crate::modes::{Execute, TerminalApplications};
 use crate::{impl_content, impl_selectable};
 
 /// Execute a command requiring to be ran from current working directory.
@@ -57,6 +57,16 @@ pub struct TuiApplications {
     index: usize,
 }
 
+impl TuiApplications {
+    pub fn setup(&mut self) {
+        self.update_from_config(TUIS_PATH);
+    }
+
+    pub fn is_not_set(&self) -> bool {
+        self.content.len() == 1
+    }
+}
+
 impl Default for TuiApplications {
     fn default() -> Self {
         let index = 0;
@@ -65,7 +75,7 @@ impl Default for TuiApplications {
     }
 }
 
-impl CLApplications<String, ()> for TuiApplications {
+impl TerminalApplications<String, ()> for TuiApplications {
     fn parse_yaml(&mut self, yaml: &Mapping) {
         for (key, _) in yaml {
             let Some(command) = key.as_str() else {

@@ -28,7 +28,7 @@ mod trash;
 mod tui_menu;
 
 pub use bulkrename::Bulk;
-pub use cli_menu::{CLApplications, CliApplications, Execute};
+pub use cli_menu::{CliApplications, Execute, TerminalApplications};
 pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
