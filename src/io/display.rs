@@ -186,9 +186,7 @@ impl<'a> Files<'a> {
     }
 
     fn should_preview_in_right_tab(&self) -> bool {
-        self.status.display_settings.dual()
-            && self.is_right()
-            && self.status.display_settings.preview()
+        self.status.session.dual() && self.is_right() && self.status.session.preview()
     }
 
     fn is_right(&self) -> bool {
@@ -450,7 +448,7 @@ impl<'a> DirectoryDisplay<'a> {
     }
 
     fn group_owner_size(&self) -> (usize, usize) {
-        if self.status.display_settings.metadata() {
+        if self.status.session.metadata() {
             (
                 self.tab.directory.group_column_width(),
                 self.tab.directory.owner_column_width(),
@@ -498,7 +496,7 @@ impl<'a> DirectoryDisplay<'a> {
         file: &FileInfo,
         owner_sizes: (usize, usize),
     ) -> String {
-        if status.display_settings.metadata() {
+        if status.session.metadata() {
             file.format(owner_sizes.1, owner_sizes.0).unwrap()
         } else {
             file.format_simple().unwrap()
@@ -531,7 +529,7 @@ impl<'a> TreeDisplay<'a> {
             self.status,
             &self.tab.tree,
             &self.tab.window,
-            self.status.display_settings.metadata(),
+            self.status.session.metadata(),
             f,
             rect,
         )
@@ -847,7 +845,7 @@ impl Draw for FilesSecondLine {
 
 impl FilesSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
-        if tab.display_mode.is_preview() || status.display_settings.metadata() {
+        if tab.display_mode.is_preview() || status.session.metadata() {
             return Self::default();
         };
         if let Ok(file) = tab.current_file() {
@@ -1358,7 +1356,7 @@ impl Display {
         let rect = Rect::new(0, 0, width, height);
         let inside_border_rect = Rect::new(1, 1, width.saturating_sub(2), height.saturating_sub(2));
         let borders = self.borders(status);
-        if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
+        if status.session.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
             self.draw_dual(rect, inside_border_rect, borders, status);
         } else {
             self.draw_single(rect, inside_border_rect, borders, status);

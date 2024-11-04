@@ -1482,6 +1482,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] context (action & more info)
       - [x] menu first string with colored string
       - [x] FIX: cursor if offseted by one
+    - [ ] scan status for menu actions which could be moved elsewhere
   - [x] FIX: opening shortcut twice crashes
   - [x] BUG: copy file should be 1 row up
   - [x] generic method to render menu content
@@ -1519,6 +1520,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
+- [ ] cache previews ueberzug previews in /tmp
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone

@@ -116,7 +116,7 @@ pub struct Status {
     /// Navigable menu
     pub menu: MenuHolder,
     /// Display settings
-    pub display_settings: Session,
+    pub session: Session,
     /// Internal settings
     pub internal_settings: InternalSettings,
     /// Window being focused currently
@@ -150,7 +150,7 @@ impl Status {
             path.parent().context("")?
         };
         let disks = Disks::new_with_refreshed_list();
-        let display_settings = Session::new(size.width);
+        let session = Session::new(size.width);
         let internal_settings = InternalSettings::new(opener, size, disks);
         let menu = MenuHolder::new(start_dir, binds, fm_sender.clone())?;
         let focus = Focus::default();
@@ -170,7 +170,7 @@ impl Status {
             index,
             fuzzy,
             menu,
-            display_settings,
+            session,
             internal_settings,
             focus,
             fm_sender,
@@ -221,7 +221,7 @@ impl Status {
 
     /// Select the other tab if two are displayed. Does nothing otherwise.
     pub fn next(&mut self) {
-        if !self.display_settings.dual() {
+        if !self.session.dual() {
             return;
         }
         self.index = 1 - self.index;
@@ -235,7 +235,7 @@ impl Status {
 
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
-        if self.display_settings.dual() {
+        if self.session.dual() {
             if col < self.term_width() / 2 {
                 self.select_left();
             } else {
@@ -281,7 +281,7 @@ impl Status {
 
     /// True iff user has clicked on a preview in second pane.
     fn has_clicked_on_second_pane_preview(&self) -> bool {
-        self.display_settings.dual() && self.display_settings.preview() && self.index == 1
+        self.session.dual() && self.session.preview() && self.index == 1
     }
 
     fn click_action_from_window(
@@ -540,7 +540,7 @@ impl Status {
     }
 
     fn couldnt_dual_but_want(&self) -> bool {
-        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.display_settings.dual()
+        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.session.dual()
     }
 
     fn resize_all_windows(&mut self, height: u16) -> Result<()> {
@@ -568,7 +568,7 @@ impl Status {
     }
 
     fn are_settings_requiring_dualpane_preview(&self) -> bool {
-        self.index == 0 && self.display_settings.dual() && self.display_settings.preview()
+        self.index == 0 && self.session.dual() && self.session.preview()
     }
 
     fn can_display_dualpane_preview(&self) -> bool {
@@ -618,7 +618,7 @@ impl Status {
     }
 
     fn pick_correct_tab_from(&self, index: usize) -> Result<usize> {
-        if index == 1 && self.can_display_dualpane_preview() && self.display_settings.preview() {
+        if index == 1 && self.can_display_dualpane_preview() && self.session.preview() {
             Ok(0)
         } else {
             Ok(index)
@@ -718,9 +718,9 @@ impl Status {
     pub fn set_dual_pane_if_wide_enough(&mut self, width: u16) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_left();
-            self.display_settings.set_dual(false);
+            self.session.set_dual(false);
         } else {
-            self.display_settings.set_dual(true);
+            self.session.set_dual(true);
         }
         Ok(())
     }
@@ -1720,7 +1720,7 @@ impl Status {
     /// The width of a displayed canvas.
     pub fn canvas_width(&self) -> Result<u16> {
         let full_width = self.internal_settings.term_size().0;
-        if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
+        if self.session.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
         } else {
             Ok(full_width)

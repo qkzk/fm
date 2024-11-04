@@ -527,7 +527,7 @@ mod inner {
         }
 
         fn pick_previewed_fileinfo(status: &Status) -> String {
-            if status.display_settings.dual() && status.display_settings.preview() {
+            if status.session.dual() && status.session.preview() {
                 status.tabs[1].preview.filepath()
             } else {
                 status.current_tab().preview.filepath()
