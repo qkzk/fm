@@ -228,11 +228,6 @@ impl Status {
         self.focus_follow_index();
     }
 
-    /// Select the other tab if two are displayed. Does nothing otherwise.
-    pub fn prev(&mut self) {
-        self.next();
-    }
-
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
         if self.session.dual() {
@@ -399,7 +394,7 @@ impl Status {
         self.internal_settings.disks.into_iter().collect()
     }
 
-    /// Returns a the disk spaces for the selected tab..
+    /// Returns the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
         disk_space(&self.disks(), self.current_tab().current_path())
     }
@@ -918,17 +913,8 @@ impl Status {
     }
 
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
-        let (sources, dest) = self.internal_settings.copy_file_queue[0].clone();
-        let in_mem = copy_move(
-            crate::modes::CopyMove::Copy,
-            sources,
-            dest,
-            self.internal_settings.term_size().0,
-            self.internal_settings.term_size().1,
-            std::sync::Arc::clone(&self.fm_sender),
-        )?;
-        self.internal_settings.store_copy_progress(in_mem);
-        Ok(())
+        self.internal_settings
+            .copy_next_file_in_queue(self.fm_sender.clone())
     }
 
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {

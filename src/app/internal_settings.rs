@@ -1,3 +1,6 @@
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
@@ -5,7 +8,9 @@ use ratatui::layout::Size;
 use sysinfo::Disks;
 
 use crate::common::{is_in_path, NVIM, SS};
+use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Opener};
+use crate::modes::copy_move;
 
 /// Internal settings of the status.
 ///
@@ -132,6 +137,21 @@ impl InternalSettings {
             self.copy_file_queue.remove(0);
             Ok(())
         }
+    }
+
+    pub fn copy_next_file_in_queue(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+        let (sources, dest) = self.copy_file_queue[0].clone();
+        let (width, height) = self.term_size();
+        let in_mem = copy_move(
+            crate::modes::CopyMove::Copy,
+            sources,
+            dest,
+            width,
+            height,
+            fm_sender,
+        )?;
+        self.store_copy_progress(in_mem);
+        Ok(())
     }
 
     /// Store copy progress bar.
