@@ -530,8 +530,20 @@ impl Status {
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
     pub fn resize(&mut self, width: u16, height: u16) -> Result<()> {
+        let couldnt_dual_but_want = self.couldnt_dual_but_want();
         self.internal_settings.update_size(width, height);
-        self.set_dual_pane_if_wide_enough(width)?;
+        if couldnt_dual_but_want {
+            self.set_dual_pane_if_wide_enough(width)?;
+        }
+        self.resize_all_windows(height)?;
+        self.refresh_status()
+    }
+
+    fn couldnt_dual_but_want(&self) -> bool {
+        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.display_settings.dual()
+    }
+
+    fn resize_all_windows(&mut self, height: u16) -> Result<()> {
         let height_usize = height as usize;
         self.tabs[0].set_height(height_usize);
         self.tabs[1].set_height(height_usize);
@@ -540,7 +552,7 @@ impl Status {
             self.tabs[self.index].menu_mode,
             self.second_window_height()?,
         );
-        self.refresh_status()
+        Ok(())
     }
 
     /// Check if the second pane should display a preview and force it.

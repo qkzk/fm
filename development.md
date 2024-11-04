@@ -1438,14 +1438,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] 777 is accepted
     - [x] rwxrwxrwx should be accepted
     - [x] replace input by current mode when entering
-    - [ ] +x & all chmod syntax ??? ... user can type "!chmod g+x %s" and voilà...
-    - [ ] set readonly, remove readonly... see fs unix fs set_readonly
-    - [ ] would calling chmod directly be for practical ?
   - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
 - [x] display preview of flagged files in menu flagged.
 - [x] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
 - [x] FIX: preview binary navigation goes too fast, some lines are skipped
 - [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
+  - clean code, well maintained
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
@@ -1504,6 +1502,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
 - [x] FIX: InputHistory
+- [x] FIX: resize change dual / preview
 
 - [ ] previewing text files with bat ? binaries with xxd
 
@@ -1520,13 +1519,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
-- [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
-      Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
-- [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
