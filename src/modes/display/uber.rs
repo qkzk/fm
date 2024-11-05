@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use crate::common::{
-    filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
-    RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
+    filename_from_path, path_to_string, randomize_path, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
+    PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
@@ -338,6 +338,10 @@ impl Thumbnail {
     }
 
     fn create_video(path_str: &str) -> Result<()> {
+        let filename = format!(
+            "/tmp/fm-previews/{rand}_%d.jpg",
+            rand = randomize_path(path_str)
+        );
         let ffmpeg_args = [
             "-i",
             path_str,
@@ -349,7 +353,8 @@ impl Thumbnail {
             "2",
             "-frames:v",
             "5",
-            &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
+            &filename,
+            // &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
         Thumbnail::execute(FFMPEG, &ffmpeg_args)
     }

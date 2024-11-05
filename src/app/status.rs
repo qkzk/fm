@@ -32,6 +32,8 @@ use crate::modes::{
 };
 use crate::{log_info, log_line};
 
+use super::{build_preview_manager, PreviewManager};
+
 /// Kind of "windows" : Header, Files, Menu, Footer.
 pub enum Window {
     Header,
@@ -127,6 +129,8 @@ pub struct Status {
     preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize)>,
     /// Non bloking preview builder
     pub previewer: Previewer,
+    /// Preview manager
+    pub preview_manager: PreviewManager,
 }
 
 impl Status {
@@ -165,6 +169,7 @@ impl Status {
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
+        let preview_manager = build_preview_manager();
         Ok(Self {
             tabs,
             index,
@@ -176,6 +181,7 @@ impl Status {
             fm_sender,
             preview_receiver,
             previewer,
+            preview_manager,
         })
     }
 
@@ -579,7 +585,9 @@ impl Status {
             return Ok(());
         };
         log_info!("sending preview request");
-        self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
+        // self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
+        self.preview_manager.add_preview_task(&fileinfo.path);
+
         Ok(())
     }
 
