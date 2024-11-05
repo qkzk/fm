@@ -1114,13 +1114,13 @@ impl Status {
     /// Update the flagged files depending of the input regex.
     pub fn input_regex(&mut self, char: char) -> Result<()> {
         self.menu.input.insert(char);
-        self.select_from_regex()?;
+        self.flag_from_regex()?;
         Ok(())
     }
 
     /// Flag every file matching a typed regex.
     /// Move to the "first" found match
-    pub fn select_from_regex(&mut self) -> Result<()> {
+    pub fn flag_from_regex(&mut self) -> Result<()> {
         let input = self.menu.input.string();
         if input.is_empty() {
             return Ok(());
@@ -1502,15 +1502,13 @@ impl Status {
         if args.is_empty() {
             return self.menu.clear_sudo_attributes();
         }
-        let (success, stdout, _stderr) = execute_sudo_command_with_password(
-            &args,
-            self.menu
-                .password_holder
-                .sudo()
-                .as_ref()
-                .context("sudo password isn't set")?,
-            self.current_tab().directory_of_selected()?,
-        )?;
+        let Some(password) = self.menu.password_holder.sudo() else {
+            log_info!("run_sudo_command password isn't set");
+            return self.menu.clear_sudo_attributes();
+        };
+        let directory_of_selected = self.current_tab().directory_of_selected()?;
+        let (success, stdout, _) =
+            execute_sudo_command_with_password(&args, password, directory_of_selected)?;
         log_info!("sudo command execution. success: {success}");
         self.menu.clear_sudo_attributes()?;
         self.preview_command_output(stdout, sudo_command.to_owned());

@@ -162,7 +162,7 @@ impl LeaveMenu {
 
     /// Select the first file matching the typed regex in current dir.
     fn regex_match(status: &mut Status) -> Result<()> {
-        status.select_from_regex()?;
+        status.flag_from_regex()?;
         status.menu.input.reset();
         Ok(())
     }
