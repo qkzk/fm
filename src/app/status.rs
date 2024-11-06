@@ -11,7 +11,9 @@ use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
 
-use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
+use crate::app::{
+    ClickableLine, Footer, Header, InternalSettings, PreviewManager, Previewer, Session, Tab,
+};
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
     is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
@@ -31,8 +33,6 @@ use crate::modes::{
     PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
 };
 use crate::{log_info, log_line};
-
-use super::{build_preview_manager, PreviewManager};
 
 /// Kind of "windows" : Header, Files, Menu, Footer.
 pub enum Window {
@@ -169,7 +169,7 @@ impl Status {
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
-        let preview_manager = build_preview_manager();
+        let preview_manager = PreviewManager::default();
         Ok(Self {
             tabs,
             index,
@@ -586,7 +586,7 @@ impl Status {
         };
         log_info!("sending preview request");
         // self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
-        self.preview_manager.add_preview_task(&fileinfo.path);
+        self.preview_manager.enqueue(&fileinfo.path);
 
         Ok(())
     }
