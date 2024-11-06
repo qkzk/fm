@@ -1,3 +1,43 @@
+/*
+
+1. pool de workers
+2. queue
+    - enqueue
+    - clear
+    - dequeue
+
+queue.enqueue(task)
+    ajoute la task a la queue
+
+queue.clear()
+    vide la queue
+
+queue.dequeue() -> task
+    renvoie le plus ancier
+
+worker
+    spawn
+        receive Arc<Mutex<Queue>>
+    start
+        loop
+            ask the queue for a task
+                lock the queue
+                queue.dequeue() -> task
+                unlock the queue
+            preview(task)
+
+status has Arc<Mutex<Queue>>
+    add_queue(task)
+        lock the queue
+        enqueue
+        unlock the queue
+
+    clear_preview_queue()
+        lock the queue
+        clear the queue
+        unlock the queue
+
+*/
 use std::{
     path::{Path, PathBuf},
     sync::mpsc,
@@ -59,7 +99,7 @@ impl PreviewQueue {
         let mut task_senders = Vec::with_capacity(num_workers);
 
         for id in 0..num_workers {
-            let (task_sender, task_receiver) = mpsc::channel(); // Buffer size of 10 tasks per worker
+            let (task_sender, task_receiver) = mpsc::channel();
 
             // Spawn each worker task
             thread::spawn(move || {
