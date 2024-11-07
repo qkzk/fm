@@ -39,7 +39,7 @@ where
 
 /// Hash a path (as str, string, Cow<str>, Path, PathBuf) into a predictable string.
 /// It will allow to check quicly if a file is already created.
-pub fn randomize_path<P: AsRef<std::path::Path>>(p: P) -> String {
+pub fn hash_path<P: AsRef<std::path::Path>>(p: P) -> String {
     let h = hasher(p.as_ref());
     h.to_string()
 }

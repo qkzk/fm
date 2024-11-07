@@ -391,7 +391,9 @@ impl EventAction {
             return Ok(());
         }
         if tab.directory.is_selected_dir()? {
-            tab.go_to_selected_dir()
+            tab.go_to_selected_dir()?;
+            status.preview_directory();
+            Ok(())
         } else {
             EventAction::open_file(status)
         }

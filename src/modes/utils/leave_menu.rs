@@ -249,6 +249,7 @@ impl LeaveMenu {
         }
         let completed = status.menu.completion.current_proposition();
         let path = string_to_path(completed)?;
+        status.clear_preview_queue();
         status.menu.input.reset();
         status.current_tab_mut().cd_to_file(&path)?;
         let len = status.current_tab().directory.content.len();

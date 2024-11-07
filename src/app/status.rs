@@ -591,6 +591,19 @@ impl Status {
         Ok(())
     }
 
+    pub fn preview_directory(&mut self) {
+        self.clear_preview_queue();
+        self.tabs[self.index]
+            .directory
+            .index_to_index()
+            .iter()
+            .for_each(|task| self.preview_manager.enqueue(task));
+    }
+
+    pub fn clear_preview_queue(&mut self) {
+        self.preview_manager.clear();
+    }
+
     /// Check if the previewer has sent a preview.
     ///
     /// If the previewer has sent a preview, it's attached to the correct tab.

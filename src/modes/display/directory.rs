@@ -176,6 +176,20 @@ impl Directory {
             .collect()
     }
 
+    pub fn index_to_index(&self) -> Vec<&Path> {
+        self.content
+            .iter()
+            .map(|fileinfo| fileinfo.path.borrow())
+            .skip(self.index)
+            .chain(
+                self.content
+                    .iter()
+                    .map(|fileinfo| fileinfo.path.borrow())
+                    .take(self.index),
+            )
+            .collect()
+    }
+
     /// True iff the selected path is ".." which is the parent dir.
     pub fn is_dotdot_selected(&self) -> bool {
         let Some(selected) = &self.selected() else {

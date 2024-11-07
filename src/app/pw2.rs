@@ -40,7 +40,7 @@ status has Arc<Mutex<Queue>>
         unlock the queue
 
 # Second step: follow cd & clear
-
+# Thrid use it for ueberzug
 # Third step: quit gracefully, require mpsc for worker
 
 */

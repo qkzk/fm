@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use crate::common::{
-    filename_from_path, path_to_string, randomize_path, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
+    filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
     PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
@@ -167,13 +167,15 @@ pub struct UeberBuilder {
 }
 
 impl UeberBuilder {
-    const VIDEO_THUMBNAILS: [&'static str; 5] = [
-        "/tmp/fm_thumbnail_1.jpg",
-        "/tmp/fm_thumbnail_2.jpg",
-        "/tmp/fm_thumbnail_3.jpg",
-        "/tmp/fm_thumbnail_4.jpg",
-        "/tmp/fm_thumbnail_5.jpg",
-    ];
+    pub fn video_thumbnails(hashed_path: &str) -> [String; 5] {
+        [
+            format!("/tmp/fm-previews/{hashed_path}_1.jpg"),
+            format!("/tmp/fm-previews/{hashed_path}_2.jpg"),
+            format!("/tmp/fm-previews/{hashed_path}_3.jpg"),
+            format!("/tmp/fm-previews/{hashed_path}_4.jpg"),
+            format!("/tmp/fm-previews/{hashed_path}_5.jpg"),
+        ]
+    }
 
     pub fn new(source: &Path, kind: Kind) -> Self {
         let source = source.to_path_buf();
@@ -265,7 +267,8 @@ impl UeberBuilder {
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Thumbnail::create(&self.kind, path_str);
-        let images: Vec<PathBuf> = Self::VIDEO_THUMBNAILS
+        let hashed_path = hash_path(path_str);
+        let images: Vec<PathBuf> = Self::video_thumbnails(&hashed_path)
             .map(PathBuf::from)
             .into_iter()
             .filter(|p| p.exists())
@@ -338,10 +341,12 @@ impl Thumbnail {
     }
 
     fn create_video(path_str: &str) -> Result<()> {
-        let filename = format!(
-            "/tmp/fm-previews/{rand}_%d.jpg",
-            rand = randomize_path(path_str)
-        );
+        let rand = hash_path(path_str);
+        let ffmpeg_filename = format!("/tmp/fm-previews/{rand}_%d.jpg",);
+        if Path::new(&UeberBuilder::video_thumbnails(&rand)[0]).exists() {
+            return Ok(());
+        }
+
         let ffmpeg_args = [
             "-i",
             path_str,
@@ -353,7 +358,7 @@ impl Thumbnail {
             "2",
             "-frames:v",
             "5",
-            &filename,
+            &ffmpeg_filename,
             // &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
         Thumbnail::execute(FFMPEG, &ffmpeg_args)
