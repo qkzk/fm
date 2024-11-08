@@ -46,7 +46,7 @@ status has Arc<Mutex<Queue>>
 */
 use std::{
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     thread,
     time::Duration,
 };
@@ -100,18 +100,6 @@ impl ThumbnailManager {
         drop(locked_queue);
     }
 
-    pub fn collection<P: AsRef<Path>>(&self, tasks: &[P]) {
-        let Ok(mut locked_queue) = self.queue.lock() else {
-            log_info!("ThumbnailManager couldn't lock the queue");
-            return;
-        };
-        log_info!("ThumbnailManager collection");
-        for task in tasks {
-            locked_queue.push(task.as_ref().to_path_buf());
-        }
-        drop(locked_queue);
-    }
-
     pub fn clear(&self) {
         let Ok(mut locked_queue) = self.queue.lock() else {
             return;
@@ -119,17 +107,25 @@ impl ThumbnailManager {
         locked_queue.clear();
         drop(locked_queue);
     }
+
+    pub fn quit(&self) {
+        for worker in &self.workers {
+            worker.quit()
+        }
+        log_info!("ThumbnailManager quit");
+    }
 }
 
 #[derive(Debug)]
 pub struct Worker {
     id: usize,
+    tx: mpsc::Sender<()>,
 }
 
 impl Worker {
     pub fn new(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>) -> Self {
-        let worker = Self { id };
-        let _join_handle = thread::spawn(move || loop {
+        let (tx, rx) = mpsc::channel();
+        let _ = thread::spawn(move || loop {
             let Ok(mut locked_queue) = queue.lock() else {
                 log_info!("Worker {id} couldn't lock the queue");
                 continue;
@@ -141,11 +137,16 @@ impl Worker {
                 make_thumbnail(task);
             }
             drop(locked_queue);
-
+            if let Ok(()) = rx.try_recv() {
+                break;
+            }
             thread::sleep(Duration::from_millis(10));
         });
-        log_info!("Worker {id} started");
+        Self { id, tx }
+    }
 
-        worker
+    pub fn quit(&self) {
+        let _ = self.tx.send(());
+        log_info!("Worker {id} quit", id = self.id);
     }
 }

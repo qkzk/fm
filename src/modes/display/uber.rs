@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Context, Result};
 
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
     filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
@@ -352,8 +352,12 @@ impl Thumbnail {
     pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
         let ffmpeg_filename = format!("/tmp/fm-previews/{rand}_%d.jpg",);
-        if Path::new(&UeberBuilder::video_thumbnails(&rand)[0]).exists() {
+        let images_paths = UeberBuilder::video_thumbnails(&rand);
+        if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
             return Ok(());
+        }
+        for image in &images_paths {
+            let _ = std::fs::remove_file(image);
         }
 
         let ffmpeg_args = [
@@ -397,4 +401,20 @@ impl Thumbnail {
         // }
         Ok(())
     }
+}
+
+const ONE_WEEK_IN_SECONDS: u64 = 7 * 24 * 60 * 60;
+
+fn is_older_than_a_week(path: &str) -> bool {
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return true;
+    };
+    let Ok(creation) = metadata.created() else {
+        return true;
+    };
+    let current_time = SystemTime::now();
+    let Ok(duration) = current_time.duration_since(creation) else {
+        return true;
+    };
+    duration > Duration::from_secs(ONE_WEEK_IN_SECONDS)
 }

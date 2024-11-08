@@ -593,11 +593,15 @@ impl Status {
     }
 
     pub fn preview_directory(&mut self) {
+        if !self.are_settings_requiring_dualpane_preview() || !self.can_display_dualpane_preview() {
+            return;
+        }
         self.clear_preview_queue();
         self.tabs[self.index]
             .directory
-            .paths()
+            .content()
             .iter()
+            .map(|f| &f.path)
             .filter(|p| path_is_video(p))
             .for_each(|path| self.thumbnail_manager.enqueue(path));
     }
