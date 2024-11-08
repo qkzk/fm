@@ -19,11 +19,11 @@ mod header_footer;
 mod internal_settings;
 // mod preview_workers;
 mod previewer;
-mod pw2;
 mod refresher;
 mod session;
 mod status;
 mod tab;
+mod thumbnailer;
 
 pub use application::FM;
 pub use displayer::Displayer;
@@ -31,7 +31,6 @@ pub use header_footer::{ClickableLine, ClickableString, Footer, Header, PreviewH
 pub use internal_settings::InternalSettings;
 // pub use preview_workers::*;
 pub use previewer::*;
-pub use pw2::*;
 pub use refresher::Refresher;
 pub use session::Session;
 pub use status::Focus;
@@ -39,3 +38,5 @@ pub use status::Status;
 pub use status::Window;
 pub use tab::Tab;
 pub use tab::TabSettings;
+pub use thumbnailer::*;
+

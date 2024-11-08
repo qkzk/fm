@@ -12,7 +12,7 @@ use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
 
 use crate::app::{
-    ClickableLine, Footer, Header, InternalSettings, PreviewManager, Previewer, Session, Tab,
+    ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
 };
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
@@ -131,7 +131,7 @@ pub struct Status {
     /// Non bloking preview builder
     pub previewer: Previewer,
     /// Preview manager
-    pub preview_manager: PreviewManager,
+    pub thumbnail_manager: ThumbnailManager,
 }
 
 impl Status {
@@ -170,7 +170,7 @@ impl Status {
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
-        let preview_manager = PreviewManager::default();
+        let thumbnail_manager = ThumbnailManager::default();
         Ok(Self {
             tabs,
             index,
@@ -182,7 +182,7 @@ impl Status {
             fm_sender,
             preview_receiver,
             previewer,
-            preview_manager,
+            thumbnail_manager,
         })
     }
 
@@ -599,11 +599,11 @@ impl Status {
             .paths()
             .iter()
             .filter(|p| path_is_video(p))
-            .for_each(|path| self.preview_manager.enqueue(path));
+            .for_each(|path| self.thumbnail_manager.enqueue(path));
     }
 
     pub fn clear_preview_queue(&mut self) {
-        self.preview_manager.clear();
+        self.thumbnail_manager.clear();
     }
 
     /// Check if the previewer has sent a preview.

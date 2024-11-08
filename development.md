@@ -1515,6 +1515,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop
+- [ ] caching video previews
+- [ ] Case insensitive search
 
 ## TODO
 

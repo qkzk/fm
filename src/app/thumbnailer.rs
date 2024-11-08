@@ -52,25 +52,25 @@ use std::{
 };
 
 use crate::log_info;
-use crate::modes::PreviewBuilder;
+use crate::modes::Thumbnail;
 
-fn make_preview<P>(path: P)
+fn make_thumbnail<P>(path: P)
 where
     P: AsRef<std::path::Path>,
 {
-    match PreviewBuilder::new(path.as_ref()).build() {
-        Ok(_preview) => log_info!("preview built successfully"),
-        Err(e) => log_info!("error building preview {e}"),
+    match Thumbnail::create_video(&path.as_ref().to_string_lossy()) {
+        Ok(_) => log_info!("thumbnail built successfully"),
+        Err(e) => log_info!("error building thumbnail {e}"),
     }
 }
 
 #[derive(Debug)]
-pub struct PreviewManager {
+pub struct ThumbnailManager {
     queue: Arc<Mutex<Vec<PathBuf>>>,
     workers: Vec<Worker>,
 }
 
-impl Default for PreviewManager {
+impl Default for ThumbnailManager {
     fn default() -> Self {
         let num_workers = Self::default_thread_count().unwrap_or(1);
         let queue = Arc::new(Mutex::new(vec![]));
@@ -83,7 +83,7 @@ impl Default for PreviewManager {
     }
 }
 
-impl PreviewManager {
+impl ThumbnailManager {
     fn default_thread_count() -> Option<usize> {
         thread::available_parallelism()
             .map(|it| it.get().checked_sub(6).unwrap_or(1))
@@ -92,20 +92,20 @@ impl PreviewManager {
 
     pub fn enqueue<P: AsRef<Path>>(&self, task: P) {
         let Ok(mut locked_queue) = self.queue.lock() else {
-            log_info!("PreviewManager couldn't lock the queue");
+            log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
-        log_info!("PreviewManager add {p}", p = task.as_ref().display());
+        log_info!("ThumbnailManager add {p}", p = task.as_ref().display());
         locked_queue.push(task.as_ref().to_path_buf());
         drop(locked_queue);
     }
 
     pub fn collection<P: AsRef<Path>>(&self, tasks: &[P]) {
         let Ok(mut locked_queue) = self.queue.lock() else {
-            log_info!("PreviewManager couldn't lock the queue");
+            log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
-        log_info!("PreviewManager collection");
+        log_info!("ThumbnailManager collection");
         for task in tasks {
             locked_queue.push(task.as_ref().to_path_buf());
         }
@@ -138,7 +138,7 @@ impl Worker {
             if !locked_queue.is_empty() {
                 let task = locked_queue.remove(0);
                 log_info!("Worker {id} received task {p}", p = task.display());
-                make_preview(task);
+                make_thumbnail(task);
             }
             drop(locked_queue);
 

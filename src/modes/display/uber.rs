@@ -177,13 +177,12 @@ pub struct UeberBuilder {
 }
 
 impl UeberBuilder {
-    pub fn video_thumbnails(hashed_path: &str) -> [String; 5] {
+    pub fn video_thumbnails(hashed_path: &str) -> [String; 4] {
         [
             format!("/tmp/fm-previews/{hashed_path}_1.jpg"),
             format!("/tmp/fm-previews/{hashed_path}_2.jpg"),
             format!("/tmp/fm-previews/{hashed_path}_3.jpg"),
             format!("/tmp/fm-previews/{hashed_path}_4.jpg"),
-            format!("/tmp/fm-previews/{hashed_path}_5.jpg"),
         ]
     }
 
@@ -320,7 +319,7 @@ impl UeberBuilder {
     }
 }
 
-struct Thumbnail;
+pub struct Thumbnail;
 
 impl Thumbnail {
     fn create(kind: &Kind, path_str: &str) {
@@ -350,7 +349,7 @@ impl Thumbnail {
         )
     }
 
-    fn create_video(path_str: &str) -> Result<()> {
+    pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
         let ffmpeg_filename = format!("/tmp/fm-previews/{rand}_%d.jpg",);
         if Path::new(&UeberBuilder::video_thumbnails(&rand)[0]).exists() {
@@ -363,11 +362,11 @@ impl Thumbnail {
             "-an",
             "-sn",
             "-vf",
-            "fps=1/100,scale=480:-1",
+            "fps=1/100,scale=320:-1",
             "-threads",
             "2",
             "-frames:v",
-            "5",
+            "4",
             &ffmpeg_filename,
             // &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
