@@ -26,11 +26,12 @@ use crate::io::{
     Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
-    BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
-    FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
-    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
-    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    copy_move, extract_extension, parse_line_output, path_is_video, regex_matcher,
+    shell_command_parser, BlockDeviceAction, Content, ContentWindow, CopyMove,
+    Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
+    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate,
+    NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview,
+    PreviewBuilder, Search, Selectable, Users,
 };
 use crate::{log_info, log_line};
 
@@ -585,8 +586,8 @@ impl Status {
             return Ok(());
         };
         log_info!("sending preview request");
-        // self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
-        self.preview_manager.enqueue(&fileinfo.path);
+        self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
+        // self.preview_manager.enqueue(&fileinfo.path);
 
         Ok(())
     }
@@ -595,9 +596,10 @@ impl Status {
         self.clear_preview_queue();
         self.tabs[self.index]
             .directory
-            .index_to_index()
+            .paths()
             .iter()
-            .for_each(|task| self.preview_manager.enqueue(task));
+            .filter(|p| path_is_video(p))
+            .for_each(|path| self.preview_manager.enqueue(path));
     }
 
     pub fn clear_preview_queue(&mut self) {

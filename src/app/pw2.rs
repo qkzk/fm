@@ -100,6 +100,18 @@ impl PreviewManager {
         drop(locked_queue);
     }
 
+    pub fn collection<P: AsRef<Path>>(&self, tasks: &[P]) {
+        let Ok(mut locked_queue) = self.queue.lock() else {
+            log_info!("PreviewManager couldn't lock the queue");
+            return;
+        };
+        log_info!("PreviewManager collection");
+        for task in tasks {
+            locked_queue.push(task.as_ref().to_path_buf());
+        }
+        drop(locked_queue);
+    }
+
     pub fn clear(&self) {
         let Ok(mut locked_queue) = self.queue.lock() else {
             return;

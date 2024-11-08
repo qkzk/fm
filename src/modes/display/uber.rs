@@ -73,6 +73,16 @@ impl std::fmt::Display for Kind {
     }
 }
 
+pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
+    let Some(ext) = path.as_ref().extension() else {
+        return false;
+    };
+    matches!(
+        ext.to_string_lossy().as_ref(),
+        "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
+    )
+}
+
 /// Holds an instance of [`ueberzug::Ueberzug`] and a few information about the display.
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
 pub struct Ueber {
