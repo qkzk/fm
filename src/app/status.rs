@@ -26,7 +26,7 @@ use crate::io::{
     Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
+    copy_move, extract_extension, parse_line_output, regex_flagger, shell_command_parser,
     BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
     FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
     Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
@@ -1180,7 +1180,7 @@ impl Status {
             Display::Tree => self.tabs[self.index].tree.paths(),
             _ => return Ok(()),
         };
-        regex_matcher(&input, &paths, &mut self.menu.flagged)?;
+        regex_flagger(&input, &paths, &mut self.menu.flagged)?;
         if !self.menu.flagged.is_empty() {
             self.tabs[self.index]
                 .go_to_file(self.menu.flagged.selected().context("no selected file")?);

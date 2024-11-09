@@ -49,7 +49,7 @@ pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
 pub use permissions::{parse_input_mode, Permissions, MAX_MODE};
 pub use picker::*;
-pub use regex::{parse_regex, regex_matcher};
+pub use regex::{regex_flagger, CaseDependantRegex};
 pub use remote::Remote;
 pub use removable_devices::RemovableDevices;
 pub use search::Search;

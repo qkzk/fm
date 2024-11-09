@@ -3,16 +3,14 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use crate::app::Tab;
-use crate::modes::{Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
-
-use super::parse_regex;
+use crate::modes::{CaseDependantRegex, Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
 
 /// The current search term.
 /// it records the regex used, the matched paths and where we are in those pathes.
 /// The pathes are refreshed every time we jump to another match, allowing the
 /// display to stay updated.
 pub struct Search {
-    pub regex: regex::Regex,
+    pub regex: CaseDependantRegex,
     pub paths: Vec<PathBuf>,
     pub index: usize,
 }
@@ -36,7 +34,7 @@ impl std::fmt::Display for Search {
 impl Search {
     pub fn empty() -> Self {
         Self {
-            regex: regex::Regex::new("").unwrap(),
+            regex: CaseDependantRegex::new("").unwrap(),
             paths: vec![],
             index: 0,
         }
@@ -44,7 +42,7 @@ impl Search {
 
     pub fn new(searched: &str) -> Result<Self> {
         Ok(Self {
-            regex: parse_regex(searched)?,
+            regex: CaseDependantRegex::new(searched)?,
             paths: vec![],
             index: 0,
         })
@@ -59,7 +57,7 @@ impl Search {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.regex.as_str().is_empty()
+        self.regex.is_empty()
     }
 
     pub fn reset_paths(&mut self) {
