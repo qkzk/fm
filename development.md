@@ -1451,8 +1451,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display preview of flagged files in menu flagged.
 - [x] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
 - [x] FIX: preview binary navigation goes too fast, some lines are skipped
-- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
-  - clean code, well maintained
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l

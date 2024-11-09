@@ -39,7 +39,7 @@ fn shell_command_parser_error(message: &str, command: &str) -> Result<Vec<String
 }
 
 #[derive(Debug)]
-enum Tkn {
+enum Token {
     Identifier(String),
     StringLiteral((char, String)),
     FmExpansion(FmExpansion),
@@ -143,7 +143,7 @@ impl Lexer {
         }
     }
 
-    fn lexer(&self) -> Result<Vec<Tkn>> {
+    fn lexer(&self) -> Result<Vec<Token>> {
         let mut tokens = vec![];
         let mut state = State::Start;
         let mut current = String::new();
@@ -162,11 +162,11 @@ impl Lexer {
                 }
                 State::Arg => {
                     if c == '%' {
-                        tokens.push(Tkn::Identifier(current.clone()));
+                        tokens.push(Token::Identifier(current.clone()));
                         current.clear();
                         state = State::FmExpansion;
                     } else if c == '"' || c == '\'' {
-                        tokens.push(Tkn::Identifier(current.clone()));
+                        tokens.push(Token::Identifier(current.clone()));
                         current.clear();
                         state = State::StringLiteral(c);
                     } else {
@@ -175,7 +175,7 @@ impl Lexer {
                 }
                 State::StringLiteral(quote_type) => {
                     if c == *quote_type {
-                        tokens.push(Tkn::StringLiteral((c, current.clone())));
+                        tokens.push(Token::StringLiteral((c, current.clone())));
                         current.clear();
                         state = State::Start;
                     } else {
@@ -188,7 +188,7 @@ impl Lexer {
                         if let FmExpansion::Invalid = expansion {
                             bail!("Invalid FmExpansion %{c}")
                         }
-                        tokens.push(Tkn::FmExpansion(expansion));
+                        tokens.push(Token::FmExpansion(expansion));
                         current.clear();
                         state = State::Start;
                     } else {
@@ -199,8 +199,8 @@ impl Lexer {
         }
 
         match &state {
-            State::Arg => tokens.push(Tkn::Identifier(current)),
-            State::StringLiteral(quote) => tokens.push(Tkn::StringLiteral((*quote,current))),
+            State::Arg => tokens.push(Token::Identifier(current)),
+            State::StringLiteral(quote) => tokens.push(Token::StringLiteral((*quote,current))),
             State::FmExpansion => bail!("Invalid syntax for {command}. Matching an FmExpansion with {current} which is impossible.", command=self.command),
             State::Start => (),
         }
@@ -210,11 +210,11 @@ impl Lexer {
 }
 
 struct Parser {
-    tokens: Vec<Tkn>,
+    tokens: Vec<Token>,
 }
 
 impl Parser {
-    fn new(tokens: Vec<Tkn>) -> Self {
+    fn new(tokens: Vec<Token>) -> Self {
         Self { tokens }
     }
 
@@ -225,8 +225,8 @@ impl Parser {
         let mut args: Vec<String> = vec![];
         for token in self.tokens.iter() {
             match token {
-                Tkn::Identifier(identifier) => args.push(identifier.to_owned()),
-                Tkn::FmExpansion(fm_expansion) => {
+                Token::Identifier(identifier) => args.push(identifier.to_owned()),
+                Token::FmExpansion(fm_expansion) => {
                     let Ok(mut expansion) = fm_expansion.parse(status) else {
                         log_line!("Invalid expansion {fm_expansion:?}");
                         log_info!("Invalid expansion {fm_expansion:?}");
@@ -234,7 +234,9 @@ impl Parser {
                     };
                     args.append(&mut expansion)
                 }
-                Tkn::StringLiteral((quote, string)) => args.push(format!("{quote}{string}{quote}")),
+                Token::StringLiteral((quote, string)) => {
+                    args.push(format!("{quote}{string}{quote}"))
+                }
             };
         }
         Ok(args)
