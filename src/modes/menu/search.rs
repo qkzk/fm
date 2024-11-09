@@ -5,6 +5,8 @@ use anyhow::Result;
 use crate::app::Tab;
 use crate::modes::{Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
 
+use super::parse_regex;
+
 /// The current search term.
 /// it records the regex used, the matched paths and where we are in those pathes.
 /// The pathes are refreshed every time we jump to another match, allowing the
@@ -42,7 +44,7 @@ impl Search {
 
     pub fn new(searched: &str) -> Result<Self> {
         Ok(Self {
-            regex: regex::Regex::new(searched)?,
+            regex: parse_regex(searched)?,
             paths: vec![],
             index: 0,
         })

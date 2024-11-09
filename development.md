@@ -1414,6 +1414,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   }
   ```
 
+- case insentive search.
+
+  - A lowercase pattern matches regardless of case
+  - An uppercase pattern will match regarding case.
+
+  search for "car", it will find "Cargo", "cargo", "Car".
+
+  search for "Car", it will find "Cargo", "Car" but won't match "cargo"
+
 #### Changelog
 
 - [x] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
@@ -1516,7 +1525,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop
 - [ ] caching video previews
-- [ ] Case insensitive search
+- [x] Case insensitive search
 
 ## TODO
 
