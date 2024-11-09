@@ -1423,6 +1423,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   search for "Car", it will find "Cargo", "Car" but won't match "cargo"
 
+- new expansion for shell commands: %c expands into the clipboard content.
+  Haven't found an usage yet but I couldn't live without it.
+  It's the same as `!`, `some_command <Ctrl+v>`
+
 #### Changelog
 
 - [x] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
@@ -1459,7 +1463,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
 - [ ] why have a bottom line in menu if the binds are always explained ?
 - [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
-  - [ ] new shell command expansion %c current clipboard
+  - [x] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets
       What is a menu in fm ?
 

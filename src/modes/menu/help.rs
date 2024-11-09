@@ -13,6 +13,7 @@ const CUSTOM_HELP: &str = "
 %n: the filename only,
 %p: the full path of the current directory,
 %t: the currently set terminal & its flags.
+%c: the current clipboard as a string.
 ";
 
 /// Creates the help `String` from keybindings.

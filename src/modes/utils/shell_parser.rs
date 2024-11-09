@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 
 use crate::app::Status;
-use crate::common::path_to_string;
+use crate::common::{get_clipboard, path_to_string};
 use crate::{log_info, log_line};
 
 /// Analyse, parse and builds arguments from a shell command.
@@ -17,6 +17,7 @@ use crate::{log_info, log_line};
 /// %e is converted into a `Extension`
 /// %n is converted into a `Filename`
 /// %t is converted into a `$TERM` + custom flag.
+/// %c is converted into a `Clipboard content`.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
@@ -53,6 +54,7 @@ enum FmExpansion {
     Extension,
     Flagged,
     Term,
+    Clipboard,
     Invalid,
 }
 
@@ -65,6 +67,7 @@ impl FmExpansion {
             'e' => Self::Extension,
             'f' => Self::Flagged,
             't' => Self::Term,
+            'c' => Self::Clipboard,
             _ => Self::Invalid,
         }
     }
@@ -77,6 +80,7 @@ impl FmExpansion {
             Self::Flagged => Self::flagged(status),
             Self::SelectedPath => Self::path(status),
             Self::SelectedFilename => Self::filename(status),
+            Self::Clipboard => Self::clipboard(),
             Self::Extension => Self::extension(status),
         }
     }
@@ -122,6 +126,13 @@ impl FmExpansion {
             " ".to_owned(),
             status.internal_settings.opener.terminal_flag.to_owned(),
         ])
+    }
+
+    fn clipboard() -> Result<Vec<String>> {
+        let Some(clipboard) = get_clipboard() else {
+            bail!("Couldn't read the clipboard");
+        };
+        Ok(clipboard.split_whitespace().map(|s| s.to_owned()).collect())
     }
 }
 

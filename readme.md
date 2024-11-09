@@ -358,6 +358,7 @@ Enter     :      Execute mode then NORMAL
 %n: the filename only,
 %p: the full path of the current directory.
 %t: the currently set terminal & its flags.
+%c: the current clipboard as a string.
 Alt('u'):        /usr/bin/google-chrome-stable %s
 Char('D'):        /usr/bin/dragon-drop %s
 ```
