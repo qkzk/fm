@@ -62,7 +62,7 @@ impl ExtensionKind {
             => Self::Audio,
             "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
             => Self::Video,
-            "ttf" | "otf"
+            "ttf" | "otf" | "woff"
             => Self::Font,
             "svg" | "svgz"
             => Self::Svg,
