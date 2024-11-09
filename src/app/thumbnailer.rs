@@ -1,51 +1,5 @@
-/*
-
-# First step
-
-1. pool de workers
-2. queue
-    - enqueue
-    - clear
-    - dequeue
-
-queue.enqueue(task)
-    ajoute la task a la queue
-
-queue.clear()
-    vide la queue
-
-queue.dequeue() -> task
-    renvoie le plus ancier
-
-worker
-    spawn
-        receive Arc<Mutex<Queue>>
-    start
-        loop
-            ask the queue for a task
-                lock the queue
-                queue.dequeue() -> task
-                unlock the queue
-            preview(task)
-
-status has Arc<Mutex<Queue>>
-    add_queue(task)
-        lock the queue
-        enqueue
-        unlock the queue
-
-    clear_preview_queue()
-        lock the queue
-        clear the queue
-        unlock the queue
-
-# Second step: follow cd & clear
-# Thrid use it for ueberzug
-# Third step: quit gracefully, require mpsc for worker
-
-*/
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{mpsc, Arc, Mutex},
     thread,
     time::Duration,
@@ -54,16 +8,22 @@ use std::{
 use crate::log_info;
 use crate::modes::Thumbnail;
 
-fn make_thumbnail<P>(path: P)
-where
-    P: AsRef<std::path::Path>,
-{
-    match Thumbnail::create_video(&path.as_ref().to_string_lossy()) {
+fn make_thumbnail(path: PathBuf) {
+    match Thumbnail::create_video(&path.to_string_lossy()) {
         Ok(_) => log_info!("thumbnail built successfully"),
         Err(e) => log_info!("error building thumbnail {e}"),
     }
 }
 
+/// Video thumbnail builder.
+///
+/// Store videos paths to be thumbnailed in a thread safe vector.
+/// Keep track of a bunch of workers.
+///
+/// The first available workers dequeue a path and build its thumbnails.
+///
+/// A bunch of video paths can be added to the collection.
+/// They should all be _videos_ which can be thumbnailed.
 #[derive(Debug)]
 pub struct ThumbnailManager {
     queue: Arc<Mutex<Vec<PathBuf>>>,
@@ -72,9 +32,9 @@ pub struct ThumbnailManager {
 
 impl Default for ThumbnailManager {
     fn default() -> Self {
-        let num_workers = Self::default_thread_count().unwrap_or(1);
-        let queue = Arc::new(Mutex::new(vec![]));
+        let num_workers = Self::default_thread_count();
         let mut workers = Vec::with_capacity(num_workers);
+        let queue = Arc::new(Mutex::new(vec![]));
         for id in 0..num_workers {
             workers.push(Worker::new(id, queue.clone()));
         }
@@ -84,30 +44,40 @@ impl Default for ThumbnailManager {
 }
 
 impl ThumbnailManager {
-    fn default_thread_count() -> Option<usize> {
+    fn default_thread_count() -> usize {
         thread::available_parallelism()
             .map(|it| it.get().checked_sub(6).unwrap_or(1))
-            .ok()
+            .unwrap_or(1)
     }
 
-    pub fn enqueue<P: AsRef<Path>>(&self, task: P) {
+    /// Add all received files to the queue.
+    ///
+    /// They will be dealt with by the first available worker.
+    pub fn enqueue(&self, mut videos: Vec<PathBuf>) {
         let Ok(mut locked_queue) = self.queue.lock() else {
             log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
-        log_info!("ThumbnailManager add {p}", p = task.as_ref().display());
-        locked_queue.push(task.as_ref().to_path_buf());
+        locked_queue.append(&mut videos);
         drop(locked_queue);
     }
 
+    /// Clear the queue.
+    ///
+    /// Remove all videos awaiting to be thumbnailed from the queue.
     pub fn clear(&self) {
         let Ok(mut locked_queue) = self.queue.lock() else {
+            log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
         locked_queue.clear();
         drop(locked_queue);
     }
 
+    /// Quit.
+    ///
+    /// Stop all the running workers.
+    /// Send a message to their mpsc::channel telling them to break their running loop.
     pub fn quit(&self) {
         for worker in &self.workers {
             worker.quit()
@@ -123,9 +93,19 @@ pub struct Worker {
 }
 
 impl Worker {
-    pub fn new(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>) -> Self {
+    fn new(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>) -> Self {
         let (tx, rx) = mpsc::channel();
-        let _ = thread::spawn(move || loop {
+        let _ = thread::spawn(move || Self::runner(id, queue, rx));
+        Self { id, tx }
+    }
+
+    fn quit(&self) {
+        let _ = self.tx.send(());
+        log_info!("Worker {id} quit", id = self.id);
+    }
+
+    fn runner(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>, rx: mpsc::Receiver<()>) {
+        loop {
             let Ok(mut locked_queue) = queue.lock() else {
                 log_info!("Worker {id} couldn't lock the queue");
                 continue;
@@ -141,12 +121,6 @@ impl Worker {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
-        });
-        Self { id, tx }
-    }
-
-    pub fn quit(&self) {
-        let _ = self.tx.send(());
-        log_info!("Worker {id} quit", id = self.id);
+        }
     }
 }

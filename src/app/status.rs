@@ -593,7 +593,7 @@ impl Status {
 
     /// Build all the video thumbnails of a directory
     /// Build the the thumbnail manager if it hasn't been initialised yet. If there's still files in the queue, they're cleared first.
-    pub fn directory_video_thumbnail(&mut self) {
+    pub fn thumbnail_directory_video(&mut self) {
         if !self.are_settings_requiring_dualpane_preview() || !self.can_display_dualpane_preview() {
             return;
         }
@@ -601,28 +601,26 @@ impl Status {
         if videos.is_empty() {
             return;
         }
-        self.reset_thumbnail_manager();
+        self.thumbnail_init_or_clear();
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
-            videos
-                .iter()
-                .for_each(|path| thumbnail_manager.enqueue(path));
+            thumbnail_manager.enqueue(videos);
         }
     }
 
     /// Clear the thumbnail queue or init the manager.
-    fn reset_thumbnail_manager(&mut self) {
+    fn thumbnail_init_or_clear(&mut self) {
         if self.thumbnail_manager.is_none() {
-            self.init_thumbnail_manager();
+            self.thumbnail_manager_init();
         } else {
-            self.clear_thumbnail_queue();
+            self.thumbnail_queue_clear();
         }
     }
 
-    fn init_thumbnail_manager(&mut self) {
+    fn thumbnail_manager_init(&mut self) {
         self.thumbnail_manager = Some(ThumbnailManager::default());
     }
 
-    pub fn clear_thumbnail_queue(&self) {
+    pub fn thumbnail_queue_clear(&self) {
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
             thumbnail_manager.clear()
         }

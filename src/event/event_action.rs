@@ -392,7 +392,7 @@ impl EventAction {
         }
         if tab.directory.is_selected_dir()? {
             tab.go_to_selected_dir()?;
-            status.directory_video_thumbnail();
+            status.thumbnail_directory_video();
             Ok(())
         } else {
             EventAction::open_file(status)

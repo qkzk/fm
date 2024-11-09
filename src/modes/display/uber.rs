@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 
 use std::ffi::OsStr;
+use std::fs::metadata;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -343,7 +344,7 @@ impl Thumbnail {
     }
 
     fn create_svg(path_str: &str) -> Result<()> {
-        Thumbnail::execute(
+        Self::execute(
             RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
         )
@@ -351,7 +352,6 @@ impl Thumbnail {
 
     pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
-        let ffmpeg_filename = format!("{TMP_THUMBNAILS_DIR}/{rand}_%d.jpg",);
         let images_paths = UeberBuilder::video_thumbnails(&rand);
         if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
             return Ok(());
@@ -359,6 +359,7 @@ impl Thumbnail {
         for image in &images_paths {
             let _ = std::fs::remove_file(image);
         }
+        let ffmpeg_filename = format!("{TMP_THUMBNAILS_DIR}/{rand}_%d.jpg",);
 
         let ffmpeg_args = [
             "-i",
@@ -374,7 +375,7 @@ impl Thumbnail {
             &ffmpeg_filename,
             // &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
-        Thumbnail::execute(FFMPEG, &ffmpeg_args)
+        Self::execute(FFMPEG, &ffmpeg_args)
     }
 
     fn create_pdf(path_str: &str) -> Result<()> {
@@ -392,29 +393,27 @@ impl Thumbnail {
 
     fn execute(exe: &str, args: &[&str]) -> Result<()> {
         let output = execute_and_output_no_log(exe, args.to_owned())?;
-        // if !output.stderr.is_empty() {
         log_info!(
             "make thumbnail output: {} {}",
             String::from_utf8(output.stdout).unwrap_or_default(),
             String::from_utf8(output.stderr).unwrap_or_default()
         );
-        // }
         Ok(())
     }
 }
 
-const ONE_WEEK_IN_SECONDS: u64 = 7 * 24 * 60 * 60;
+const ONE_WEEK: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 
 fn is_older_than_a_week(path: &str) -> bool {
-    let Ok(metadata) = std::fs::metadata(path) else {
+    let Ok(metadata) = metadata(path) else {
         return true;
     };
     let Ok(creation) = metadata.created() else {
         return true;
     };
     let current_time = SystemTime::now();
-    let Ok(duration) = current_time.duration_since(creation) else {
+    let Ok(elapsed_since_creation) = current_time.duration_since(creation) else {
         return true;
     };
-    duration > Duration::from_secs(ONE_WEEK_IN_SECONDS)
+    elapsed_since_creation > ONE_WEEK
 }

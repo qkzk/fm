@@ -1512,11 +1512,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
 - [x] FIX: InputHistory
-- [x] FIX: resize change dual / preview
+- [ ] BUG: resize change dual / preview
+
+  - first attempt didn't fix
 
 - [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
-- [ ] google drive should be a display ?
 - [x] caching video previews
 - [x] Case insensitive search
 
@@ -1524,7 +1525,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
-- [ ] cache previews ueberzug previews in /tmp
+- [ ] google drive should be a display ?
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
