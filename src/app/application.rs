@@ -224,7 +224,7 @@ impl FM {
         self.refresher.quit();
         if let Ok(status) = self.status.lock() {
             status.previewer.quit();
-            status.thumbnail_manager.quit();
+            status.thumbnail_manager_quit();
         }
         drop(self.status);
         Self::disable_mouse_capture()?;

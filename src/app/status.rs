@@ -26,12 +26,11 @@ use crate::io::{
     Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, path_is_video, regex_matcher,
-    shell_command_parser, BlockDeviceAction, Content, ContentWindow, CopyMove,
-    Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
-    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate,
-    NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview,
-    PreviewBuilder, Search, Selectable, Users,
+    copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
+    BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
+    FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
+    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
+    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
 };
 use crate::{log_info, log_line};
 
@@ -131,7 +130,7 @@ pub struct Status {
     /// Non bloking preview builder
     pub previewer: Previewer,
     /// Preview manager
-    pub thumbnail_manager: ThumbnailManager,
+    pub thumbnail_manager: Option<ThumbnailManager>,
 }
 
 impl Status {
@@ -170,7 +169,7 @@ impl Status {
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
-        let thumbnail_manager = ThumbnailManager::default();
+        let thumbnail_manager = None;
         Ok(Self {
             tabs,
             index,
@@ -592,22 +591,48 @@ impl Status {
         Ok(())
     }
 
-    pub fn preview_directory(&mut self) {
+    /// Build all the video thumbnails of a directory
+    /// Build the the thumbnail manager if it hasn't been initialised yet. If there's still files in the queue, they're cleared first.
+    pub fn directory_video_thumbnail(&mut self) {
         if !self.are_settings_requiring_dualpane_preview() || !self.can_display_dualpane_preview() {
             return;
         }
-        self.clear_preview_queue();
-        self.tabs[self.index]
-            .directory
-            .content()
-            .iter()
-            .map(|f| &f.path)
-            .filter(|p| path_is_video(p))
-            .for_each(|path| self.thumbnail_manager.enqueue(path));
+        let videos = self.current_tab().directory.videos();
+        if videos.is_empty() {
+            return;
+        }
+        self.reset_thumbnail_manager();
+        if let Some(thumbnail_manager) = &self.thumbnail_manager {
+            videos
+                .iter()
+                .for_each(|path| thumbnail_manager.enqueue(path));
+        }
     }
 
-    pub fn clear_preview_queue(&mut self) {
-        self.thumbnail_manager.clear();
+    /// Clear the thumbnail queue or init the manager.
+    fn reset_thumbnail_manager(&mut self) {
+        if self.thumbnail_manager.is_none() {
+            self.init_thumbnail_manager();
+        } else {
+            self.clear_thumbnail_queue();
+        }
+    }
+
+    fn init_thumbnail_manager(&mut self) {
+        self.thumbnail_manager = Some(ThumbnailManager::default());
+    }
+
+    pub fn clear_thumbnail_queue(&self) {
+        if let Some(thumbnail_manager) = &self.thumbnail_manager {
+            thumbnail_manager.clear()
+        }
+    }
+
+    /// Exit the thumbnail manager, forcing all workers to stop their thread.
+    pub fn thumbnail_manager_quit(&self) {
+        if let Some(thumbnail_manager) = &self.thumbnail_manager {
+            thumbnail_manager.quit()
+        }
     }
 
     /// Check if the previewer has sent a preview.

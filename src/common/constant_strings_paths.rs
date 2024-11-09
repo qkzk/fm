@@ -26,6 +26,8 @@ pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
 pub const TMP_FOLDER_PATH: &str = "/tmp";
+/// Video thumbnails
+pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
 /// setsid. Installed in most distros
 pub const SETSID: &str = "setsid";
 /// Default terminal application used when openening a program in shell or starting a new shell

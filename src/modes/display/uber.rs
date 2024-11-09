@@ -6,7 +6,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
     filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
-    PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
+    PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, TMP_THUMBNAILS_DIR,
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
@@ -179,10 +179,10 @@ pub struct UeberBuilder {
 impl UeberBuilder {
     pub fn video_thumbnails(hashed_path: &str) -> [String; 4] {
         [
-            format!("/tmp/fm-previews/{hashed_path}_1.jpg"),
-            format!("/tmp/fm-previews/{hashed_path}_2.jpg"),
-            format!("/tmp/fm-previews/{hashed_path}_3.jpg"),
-            format!("/tmp/fm-previews/{hashed_path}_4.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_1.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_2.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_3.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_4.jpg"),
         ]
     }
 
@@ -351,7 +351,7 @@ impl Thumbnail {
 
     pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
-        let ffmpeg_filename = format!("/tmp/fm-previews/{rand}_%d.jpg",);
+        let ffmpeg_filename = format!("{TMP_THUMBNAILS_DIR}/{rand}_%d.jpg",);
         let images_paths = UeberBuilder::video_thumbnails(&rand);
         if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
             return Ok(());

@@ -1514,17 +1514,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: InputHistory
 - [x] FIX: resize change dual / preview
 
-- [ ] previewing text files with bat ? binaries with xxd
-
-  - [ ] could remove the whole syntaxed stuff
-  - [ ] simplify previewing since half the methods are gone
-  - [ ] heavilly rely on ansi string parsing
-
 - [ ] Walkdir::new in tree building instead of exploring by hand
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
-- [ ] previews: find a way to stop
-- [ ] caching video previews
+- [x] caching video previews
 - [x] Case insensitive search
 
 ## TODO

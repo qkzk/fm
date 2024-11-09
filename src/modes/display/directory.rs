@@ -1,14 +1,14 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::fs::read_dir;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
 use crate::app::TabSettings;
 use crate::io::git;
-use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
+use crate::modes::{is_not_hidden, path_is_video, FileInfo, FileKind, FilterKind, SortKind, Users};
 use crate::{impl_content, impl_index_to_index, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
@@ -185,6 +185,14 @@ impl Directory {
             return false;
         };
         selected.path.as_ref() == parent
+    }
+
+    pub fn videos(&self) -> Vec<PathBuf> {
+        self.content()
+            .iter()
+            .map(|f| f.path.to_path_buf())
+            .filter(|p| path_is_video(p))
+            .collect()
     }
 }
 
