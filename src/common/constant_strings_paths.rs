@@ -109,7 +109,7 @@ pub const REMOTE_LINES: [&str; 4] = [
 pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
-    "Type an octal like \"754\" or full text like \"rwxr.xr..\"",
+    "Type an octal like \"754\", a text like \"rwxr.xr..\" or \"a+x\"",
     "",
     "4:      read",
     "2:      write",

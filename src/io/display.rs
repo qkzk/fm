@@ -21,10 +21,10 @@ use crate::common::path_to_string;
 use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
-    highlighted_text, parse_input_mode, AnsiString, BinLine, BinaryContent, Content, ContentWindow,
-    Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple, LineDisplay,
-    Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine, Selectable,
-    TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+    highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
+    ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
+    LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine,
+    Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
 use crate::{colored_skip_take, log_info};
 
@@ -996,7 +996,7 @@ impl<'a> Menu<'a> {
 
     fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
         let input = self.status.menu.input.string();
-        let spans: Vec<_> = parse_input_mode(&input)
+        let spans: Vec<_> = parse_input_permission(&input)
             .iter()
             .map(|(text, is_valid)| {
                 let style = if *is_valid { first } else { menu };

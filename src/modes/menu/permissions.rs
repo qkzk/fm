@@ -2,6 +2,7 @@ use std::os::unix::fs::PermissionsExt;
 
 use anyhow::Result;
 
+use crate::io::execute_without_output;
 use crate::modes::{convert_octal_mode, Flagged};
 use crate::{log_info, log_line};
 
@@ -14,18 +15,6 @@ pub struct Permissions;
 pub const MAX_MODE: Mode = 0o777;
 
 impl Permissions {
-    /// Set the permissions of the flagged files according to a given permission.
-    ///
-    /// # Errors
-    ///
-    /// If the permission are invalid or if the user can't edit them, it may fail.
-    fn set_permissions<P>(path: P, mode: Mode) -> std::io::Result<()>
-    where
-        P: AsRef<std::path::Path>,
-    {
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
-    }
-
     /// Change permission of the flagged files.
     /// Once the user has typed an octal permission like 754, it's applied to
     /// the file.
@@ -35,14 +24,78 @@ impl Permissions {
     /// # Errors
     ///
     /// It may fail if the permissions can't be set by the user.
-    pub fn set_permissions_of_flagged(mode_str: &str, flagged: &mut Flagged) -> Result<()> {
-        let Some(mode) = _Mode::from_str(mode_str) else {
-            return Ok(());
-        };
-        for path in &flagged.content {
-            Self::set_permissions(path, mode.octal())?;
+    pub fn set_permissions_of_flagged(mode_str: &str, flagged: &Flagged) -> Result<()> {
+        if let Some(mode) = ModeParser::from_str(mode_str) {
+            for path in &flagged.content {
+                std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode.octal()))?;
+            }
+            log_line!("Changed permissions to {mode_str}");
+        } else if Self::validate_chmod_args(mode_str) {
+            Self::execute_chmod_for_flagged(mode_str, flagged)?;
         }
-        log_line!("Changed permissions to {mode_str}");
+        Ok(())
+    }
+
+    /// True if a `mode_str` is a valid chmod argument.
+    /// This function only validates input in the form "a+x" or "-r"
+    ///
+    /// The length should be 2 or 3.
+    /// If any, the first char should be a, g, o or u
+    /// The second char should be + or -
+    /// The third char should be X r s t w x
+    fn validate_chmod_args(mode_str: &str) -> bool {
+        let chars: Vec<_> = mode_str.chars().collect();
+        match chars.len() {
+            3 => {
+                let (dest, action, permission) = (chars[0], chars[1], chars[2]);
+                Self::validate_chmod_3(dest, action, permission)
+            }
+            2 => {
+                let (action, permission) = (chars[0], chars[1]);
+                Self::validate_chmod_2(action, permission)
+            }
+            _ => {
+                log_info!("{mode_str} isn't a valid chmod argument. Length should be 2 or 3.");
+                false
+            }
+        }
+    }
+
+    fn validate_chmod_3(dest: char, action: char, permission: char) -> bool {
+        if !"agou".contains(dest) {
+            log_info!("{dest} isn't a valid chmod argument. The first char should be 'a', 'g', 'o' or 'u'.");
+            return false;
+        }
+        Self::validate_chmod_2(action, permission)
+    }
+
+    fn validate_chmod_2(action: char, permission: char) -> bool {
+        if !"+-".contains(action) {
+            log_info!(
+                "{action} isn't a valid chmod argument. The second char should be '+' or '-'."
+            );
+            return false;
+        }
+        if !"Xrstwx".contains(permission) {
+            log_info!("{permission} isn't a valid chmod argument. The third char should be 'X', 'r', 's', 't', 'w' or 'x'.");
+            return false;
+        }
+        true
+    }
+
+    /// The executor doesn't check if the user has the right permissions for this file.
+    fn execute_chmod_for_flagged(mode_str: &str, flagged: &Flagged) -> Result<()> {
+        let flagged: Vec<_> = flagged
+            .content
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        let flagged = flagged.join(" ");
+        let chmod_args: &str = &format!("chmod {mode_str} {flagged}");
+
+        let executable = "/usr/bin/sh";
+        let args = vec!["-c", chmod_args];
+        execute_without_output(executable, &args)?;
         Ok(())
     }
 }
@@ -56,7 +109,7 @@ type IsValid = bool;
 /// It also returns a flag for any char, set to true if the char
 /// is a valid permission.
 /// It's used to display a valid mode or not.
-pub fn parse_input_mode(mode_str: &str) -> Vec<(&str, IsValid)> {
+pub fn parse_input_permission(mode_str: &str) -> Vec<(&str, IsValid)> {
     if mode_str.chars().any(|c| c.is_alphabetic()) {
         return vec![];
     }
@@ -75,9 +128,9 @@ pub fn parse_input_mode(mode_str: &str) -> Vec<(&str, IsValid)> {
     display
 }
 
-struct _Mode(Mode);
+struct ModeParser(Mode);
 
-impl _Mode {
+impl ModeParser {
     const VALID: [char; 3] = ['r', 'w', 'x'];
     const ACCEPTED: [char; 2] = ['.', '-'];
     /// Max valid mode, ie `0o777`.

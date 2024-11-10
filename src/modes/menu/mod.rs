@@ -47,7 +47,7 @@ pub use marks::Marks;
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
-pub use permissions::{parse_input_mode, Permissions, MAX_MODE};
+pub use permissions::{parse_input_permission, Permissions, MAX_MODE};
 pub use picker::*;
 pub use regex::{regex_flagger, CaseDependantRegex};
 pub use remote::Remote;

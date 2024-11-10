@@ -1426,6 +1426,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - new expansion for shell commands: %c expands into the clipboard content.
   Haven't found an usage yet but I couldn't live without it.
   It's the same as `!`, `some_command <Ctrl+v>`
+- chmod improvment. Enter "chmod" mode with "+" or "alt+m"
+  - you can type a permission in octal mode (like 640), litterally (like rwxrwxrwx) or like in chmod "a+x", "-w" etc.
 
 #### Changelog
 
@@ -1445,13 +1447,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   }
   ```
 
-- [ ] chmod improvment
+- [x] chmod improvment
   - [x] "+" should enter chmod
-  - [ ] chmod should detect alphabetic input
-    - [x] 777 is accepted
-    - [x] rwxrwxrwx should be accepted
-    - [x] replace input by current mode when entering
   - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
+  - [x] allow octal like 777
+  - [x] allow rwxrw.r.. and rwxrw-rw--
+  - [x] allow a+x +x o-w etc.
+  - [x] replace input by current mode when entering
 - [x] display preview of flagged files in menu flagged.
 - [x] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
 - [x] FIX: preview binary navigation goes too fast, some lines are skipped
@@ -1462,7 +1464,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   ```
 - [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
 - [ ] why have a bottom line in menu if the binds are always explained ?
-- [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
+- [x] shell_command_parser refactor. Won't do. It's clean already. I need a lexer & a parser. I couldn't use pipes or redirections, now I can.
   - [x] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets
       What is a menu in fm ?
@@ -1509,8 +1511,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 
-- [ ] ratatui component for progress bar for copymove
-
+- [x] WONTDO: ratatui component for progress bar for copymove. Is very poor. I already need a thread to handle the progress, why would I replace it with something less powerful ?
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
 - [x] FIX: InputHistory
@@ -1519,9 +1520,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - first attempt didn't fix
 
 - [ ] Walkdir::new in tree building instead of exploring by hand
+  - require to rewrite everything just to avoid testing depth myself.
+    Little to gain except for speed, it _should_ be much faster
 - [ ] common trait to validate a data : input string, config, args...
 - [x] caching video previews
 - [x] Case insensitive search
+- [ ] --keybinds has wrong display, keybinds should be shortened.
 
 ## TODO
 
