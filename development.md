@@ -1525,7 +1525,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common trait to validate a data : input string, config, args...
 - [x] caching video previews
 - [x] Case insensitive search
-- [ ] --keybinds has wrong display, keybinds should be shortened.
+- [x] FIX --keybinds has wrong display, keybinds should be shortened.
 
 ## TODO
 

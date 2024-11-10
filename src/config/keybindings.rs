@@ -435,7 +435,8 @@ impl Bindings {
         let mut binds = vec![];
         for (key, action) in self.binds.iter() {
             binds.push(format!(
-                "{key:?}:         {action} - {desc}\n",
+                "{key}:         {action} - {desc}\n",
+                key=key.for_help(),
                 desc = action.description()
             ))
         }
