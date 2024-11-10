@@ -77,6 +77,7 @@ impl EventAction {
     /// Toggle between dualpane and single pane. Does nothing if the width
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
+        status.clear_preview_right();
         status.session.toggle_dual();
         status.select_left();
         Ok(())

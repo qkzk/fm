@@ -414,6 +414,12 @@ impl Status {
         self.term_size().0
     }
 
+    pub fn clear_preview_right(&mut self) {
+        if self.session.dual() && self.session.preview() && !self.tabs[1].preview.is_empty() {
+            self.tabs[1].preview = PreviewBuilder::empty()
+        }
+    }
+
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refresh_view(&mut self) -> Result<()> {
         self.refresh_status()?;

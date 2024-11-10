@@ -1462,8 +1462,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
   492
   ```
-- [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
-- [ ] why have a bottom line in menu if the binds are always explained ?
 - [x] shell_command_parser refactor. Won't do. It's clean already. I need a lexer & a parser. I couldn't use pipes or redirections, now I can.
   - [x] new shell command expansion %c current clipboard
 - [ ] menu / rendering / widgets
@@ -1518,6 +1516,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: resize change dual / preview
 
   - first attempt didn't fix
+  - can't reproduce
 
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
@@ -1526,6 +1525,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] caching video previews
 - [x] Case insensitive search
 - [x] FIX --keybinds has wrong display, keybinds should be shortened.
+- [x] FIX: leaving dual mode does't hide ueberzug
 
 ## TODO
 
