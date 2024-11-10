@@ -1,3 +1,4 @@
+use std::fs::{read_dir, remove_file};
 use std::io::stdout;
 use std::panic;
 use std::process::exit;
@@ -17,7 +18,7 @@ use crossterm::{
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH};
+use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{set_loggers, Args, Opener};
@@ -112,6 +113,9 @@ impl FM {
         if args.cloudconfig {
             Self::exit_with_cloud_config()?;
         }
+        if args.clear_cache {
+            Self::exit_with_clear_cache()?;
+        }
         Ok((config, args.path))
     }
 
@@ -122,6 +126,18 @@ impl FM {
 
     fn exit_with_cloud_config() -> Result<()> {
         cloud_config()?;
+        exit(0);
+    }
+
+    fn exit_with_clear_cache() -> Result<()> {
+        read_dir(TMP_THUMBNAILS_DIR)?
+            .filter_map(|entry| entry.ok())
+            .for_each(|e| {
+                if let Err(e) = remove_file(e.path()) {
+                    println!("Couldn't remove {TMP_THUMBNAILS_DIR}: error {e}");
+                }
+            });
+        println!("Cleared {TMP_THUMBNAILS_DIR}");
         exit(0);
     }
 

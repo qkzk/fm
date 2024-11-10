@@ -1,12 +1,13 @@
 use std::{
-    path::PathBuf,
+    fs::create_dir_all,
+    path::{Path, PathBuf},
     sync::{mpsc, Arc, Mutex},
     thread,
     time::Duration,
 };
 
-use crate::log_info;
 use crate::modes::Thumbnail;
+use crate::{common::TMP_THUMBNAILS_DIR, log_info};
 
 fn make_thumbnail(path: PathBuf) {
     match Thumbnail::create_video(&path.to_string_lossy()) {
@@ -32,6 +33,7 @@ pub struct ThumbnailManager {
 
 impl Default for ThumbnailManager {
     fn default() -> Self {
+        Self::create_thumbnail_dir_if_not_exist();
         let num_workers = Self::default_thread_count();
         let mut workers = Vec::with_capacity(num_workers);
         let queue = Arc::new(Mutex::new(vec![]));
@@ -44,6 +46,15 @@ impl Default for ThumbnailManager {
 }
 
 impl ThumbnailManager {
+    fn create_thumbnail_dir_if_not_exist() {
+        if Path::new(TMP_THUMBNAILS_DIR).exists() {
+            return;
+        }
+        if let Err(error) = create_dir_all(TMP_THUMBNAILS_DIR) {
+            log_info!("Coudln't create {TMP_THUMBNAILS_DIR}. Error: {error}");
+        }
+    }
+
     fn default_thread_count() -> usize {
         thread::available_parallelism()
             .map(|it| it.get().checked_sub(6).unwrap_or(1))

@@ -1523,6 +1523,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     Little to gain except for speed, it _should_ be much faster
 - [ ] common trait to validate a data : input string, config, args...
 - [x] caching video previews
+- [x] Ensure the cache can be cleared with an arg and the path is created if needed.
 - [x] Case insensitive search
 - [x] FIX --keybinds has wrong display, keybinds should be shortened.
 - [x] FIX: leaving dual mode does't hide ueberzug

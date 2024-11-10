@@ -31,4 +31,8 @@ pub struct Args {
     /// Configure a google drive client
     #[arg(long, default_value_t = false)]
     pub cloudconfig: bool,
+
+    /// Clear the video thumbnail cache
+    #[arg(long, default_value_t = false)]
+    pub clear_cache: bool,
 }

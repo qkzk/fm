@@ -25,6 +25,7 @@ Options:
       --neovim           Started inside neovim terminal emulator
       --keybinds         Print keybinds
       --cloudconfig      Configure a google drive client
+      --clear-cache      Clear the video thumbnail cache
   -h, --help             Print help
   -V, --version          Print version
 ```
