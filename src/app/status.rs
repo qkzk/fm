@@ -1493,6 +1493,38 @@ impl Status {
         self.refresh_status()
     }
 
+    /// Execute a new temp mark, saving it temporary for futher use.
+    pub fn temp_marks_new(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        let path = self.current_tab_mut().directory.path.to_path_buf();
+        self.menu.temp_marks.set_mark(index as _, path);
+        self.current_tab_mut().refresh_view()?;
+        self.reset_menu_mode()?;
+        self.refresh_status()
+    }
+
+    /// Erase the current mark
+    pub fn temp_marks_erase(&mut self) -> Result<()> {
+        self.menu.temp_marks.erase_current_mark();
+        Ok(())
+    }
+
+    /// Execute a jump to a temporay mark, moving to a valid path.
+    /// If the saved path is invalid, it does nothing but reset the view.
+    pub fn temp_marks_jump_char(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        if let Some(path) = self.menu.temp_marks.get_mark(index as _) {
+            self.tabs[self.index].cd(path)?;
+        }
+        self.current_tab_mut().refresh_view()?;
+        self.reset_menu_mode()?;
+        self.refresh_status()
+    }
+
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
         self.menu.delete_flagged_files()?;
@@ -1690,7 +1722,7 @@ impl Status {
             return Ok(());
         }
         let input_permission = &self.menu.input.string();
-        Permissions::set_permissions_of_flagged(input_permission, &mut self.menu.flagged)?;
+        Permissions::set_permissions_of_flagged(input_permission, &self.menu.flagged)?;
         self.reset_tabs_view()
     }
 

@@ -1042,6 +1042,7 @@ impl<'a> Menu<'a> {
         match navigate {
             Navigate::Cloud => self.cloud(f, rect),
             Navigate::Context => self.context(f, rect),
+            Navigate::TempMarks(_) => self.temp_marks(f, rect),
             Navigate::Flagged => self.flagged(f, rect),
             Navigate::History => self.history(f, rect),
             Navigate::Picker => self.picker(f, rect),
@@ -1118,6 +1119,11 @@ impl<'a> Menu<'a> {
             )
             .render(p_rect, f.buffer_mut());
         }
+    }
+
+    fn temp_marks(&self, f: &mut Frame, rect: &Rect) {
+        let selectable = &self.status.menu.temp_marks;
+        selectable.draw_menu(f, rect, &self.status.menu.window);
     }
 
     fn context(&self, f: &mut Frame, rect: &Rect) {

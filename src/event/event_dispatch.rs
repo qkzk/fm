@@ -174,6 +174,11 @@ impl EventDispatcher {
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
 
+            Navigate::TempMarks(MarkAction::Jump) if c.is_ascii_digit() => {
+                status.temp_marks_jump_char(c)
+            }
+            Navigate::TempMarks(MarkAction::New) if c.is_ascii_digit() => status.temp_marks_new(c),
+
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }

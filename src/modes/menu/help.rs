@@ -118,6 +118,8 @@ Different modes for the bottom window
             GoStart,
             MarksNew,
             MarksJump,
+            TempMarksNew,
+            TempMarksJump,
             SearchNext,
             FuzzyFind,
             FuzzyFindLine,

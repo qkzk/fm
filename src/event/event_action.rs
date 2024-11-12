@@ -692,6 +692,38 @@ impl EventAction {
         Ok(())
     }
 
+    /// Enter TempMarks jump mode, allowing to jump to a marked file.
+    pub fn temp_marks_jump(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::TempMarks(MarkAction::Jump))
+        ) {
+            status.reset_menu_mode()?;
+        } else {
+            status.set_menu_mode(
+                status.index,
+                Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Enter TempMarks new mode, allowing to bind a char to a path.
+    pub fn temp_marks_new(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::TempMarks(MarkAction::New))
+        ) {
+            status.reset_menu_mode()?;
+        } else {
+            status.set_menu_mode(
+                status.index,
+                Menu::Navigate(Navigate::TempMarks(MarkAction::New)),
+            )?;
+        }
+        Ok(())
+    }
+
     /// Enter the shortcut mode, allowing to visit predefined shortcuts.
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
@@ -992,8 +1024,11 @@ impl EventAction {
             return Ok(());
         }
         match status.current_tab().menu_mode {
-            Menu::Navigate(Navigate::Marks(MarkAction::New)) => {
+            Menu::Navigate(Navigate::Marks(_)) => {
                 status.menu.marks.remove_selected()?;
+            }
+            Menu::Navigate(Navigate::TempMarks(_)) => {
+                status.menu.temp_marks.erase_current_mark();
             }
             Menu::InputSimple(_) | Menu::InputCompleted(_) => {
                 status.menu.input.delete_char_left();

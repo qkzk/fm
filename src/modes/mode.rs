@@ -215,6 +215,8 @@ pub enum Navigate {
     RemovableDevices,
     /// Edit a mark or cd to it
     Marks(MarkAction),
+    /// Edit a temporary mark or cd to it
+    TempMarks(MarkAction),
     /// Pick a compression method
     Compress,
     /// Shell menu applications. Start a new shell with this application.
@@ -235,6 +237,7 @@ impl fmt::Display for Navigate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Marks(_) => write!(f, "Marks jump:"),
+            Self::TempMarks(_) => write!(f, "Temp marks jump:"),
             Self::History => write!(f, "History :"),
             Self::Shortcut => write!(f, "Shortcut :"),
             Self::Trash => write!(f, "Trash :"),
@@ -346,6 +349,7 @@ impl Menu {
             Self::InputSimple(_) => "shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
             Self::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
+            Self::Navigate(Navigate::TempMarks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
             Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
             Self::Navigate(Navigate::Trash) => "Up, Down: navigate.",

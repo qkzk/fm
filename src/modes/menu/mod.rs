@@ -24,6 +24,7 @@ mod removable_devices;
 mod search;
 mod shortcut;
 mod sort;
+mod temp_marks;
 mod trash;
 mod tui_menu;
 
@@ -55,5 +56,6 @@ pub use removable_devices::RemovableDevices;
 pub use search::Search;
 pub use shortcut::Shortcut;
 pub use sort::SortKind;
+pub use temp_marks::*;
 pub use trash::Trash;
 pub use tui_menu::{open_tui_program, TuiApplications};

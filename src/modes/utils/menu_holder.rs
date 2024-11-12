@@ -17,7 +17,7 @@ use crate::modes::{
     Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
     CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
     MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
-    Shortcut, Trash, TuiApplications, MAX_MODE,
+    Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
 };
 
 /// Holds almost every menu except for the history, which is tab specific.
@@ -57,6 +57,8 @@ pub struct MenuHolder {
     pub iso_device: Option<IsoDevice>,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
+    /// Temporary marks allows you to jump to a save mark
+    pub temp_marks: TempMarks,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// basic picker
@@ -100,6 +102,7 @@ impl MenuHolder {
             removable_devices: RemovableDevices::default(),
             shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
+            temp_marks: TempMarks::default(),
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
@@ -347,6 +350,7 @@ impl MenuHolder {
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
             Navigate::Marks(_) => func(&mut self.marks),
+            Navigate::TempMarks(_) => func(&mut self.temp_marks),
             Navigate::RemovableDevices => func(&mut self.removable_devices),
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
@@ -368,6 +372,7 @@ impl MenuHolder {
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
             Navigate::Marks(_) => func(&self.marks),
+            Navigate::TempMarks(_) => func(&self.temp_marks),
             Navigate::RemovableDevices => func(&self.removable_devices),
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),

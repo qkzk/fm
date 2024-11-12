@@ -1428,6 +1428,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   It's the same as `!`, `some_command <Ctrl+v>`
 - chmod improvment. Enter "chmod" mode with "+" or "alt+m"
   - you can type a permission in octal mode (like 640), litterally (like rwxrwxrwx) or like in chmod "a+x", "-w" etc.
+- Temporary marks. Use Char(") and Alt+" to jump and save. Only 10 are saved so we can index with the digits.
+  Those marks aren't saved on disk and are dropped when the application stops.
 
 #### Changelog
 
@@ -1527,6 +1529,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Case insensitive search
 - [x] FIX --keybinds has wrong display, keybinds should be shortened.
 - [x] FIX: leaving dual mode does't hide ueberzug
+- [x] temporary marks: very similar to usual marks. We only use digits and save 10 marks at most. They are dropped when the application quits.
 
 ## TODO
 
@@ -1549,7 +1552,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?

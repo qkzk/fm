@@ -55,6 +55,8 @@ impl LeaveMenu {
             Menu::Navigate(Navigate::EncryptedDrive) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
             Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
+            Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
+            Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)) => LeaveMenu::tempmark_jp(status),
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
             Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
             Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
@@ -120,6 +122,40 @@ impl LeaveMenu {
             status.menu.input.reset();
         }
         Ok(())
+    }
+
+    /// Update the selected mark with the current path.
+    /// Doesn't change its char.
+    /// If it doesn't fail, a new pair will be set with (oldchar, new path).
+    fn tempmark_upd(status: &mut Status) -> Result<()> {
+        let index = status.menu.temp_marks.index;
+        let len = status.current_tab().directory.content.len();
+        let new_path = &status.tabs[status.index].directory.path;
+        status
+            .menu
+            .temp_marks
+            .set_mark(index as _, new_path.to_path_buf());
+        log_line!("Saved temp mark {index} -> {p}", p = new_path.display());
+        status.current_tab_mut().window.reset(len);
+        status.menu.input.reset();
+        Ok(())
+    }
+
+    /// Jump to the current mark.
+    fn tempmark_jp(status: &mut Status) -> Result<()> {
+        let Some(opt_path) = &status.menu.temp_marks.selected() else {
+            log_info!("no selected temp mark");
+            return Ok(());
+        };
+        let Some(path) = opt_path else {
+            return Ok(());
+        };
+        let len = status.current_tab().directory.content.len();
+        status.tabs[status.index].cd(path)?;
+        status.current_tab_mut().window.reset(len);
+        status.menu.input.reset();
+
+        status.update_second_pane_for_preview()
     }
 
     /// Execute a shell command picked from the tui_applications menu.
