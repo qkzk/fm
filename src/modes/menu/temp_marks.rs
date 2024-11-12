@@ -8,11 +8,11 @@ use ratatui::{
     Frame,
 };
 
-use crate::io::{color_to_style, CowStr, Offseted};
+use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::io::{color_to_style, Offseted};
+use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::{colored_skip_take, impl_content, impl_selectable};
-use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::log_info;
 
 /// Temporary marks are saved in memory and reset when the application quit.
 ///
@@ -64,16 +64,6 @@ impl TempMarks {
         &self.content[index]
     }
 
-    /// False since there's always 10 marks. Some may be None.
-    pub const fn is_empty(&self) -> bool {
-        false
-    }
-
-    /// Returns 10.
-    pub const fn len(&self) -> usize {
-        Self::NB_TEMP_MARKS
-    }
-
     /// Render the marks on the screen.
     /// Can't use the common trait nor the macro since `Option<PathBuf>` doesn't implement `CowStr`.
     pub fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow) {
@@ -87,7 +77,7 @@ impl TempMarks {
             })
             .map(|(index, opt_path, style)| {
                 let content = if let Some(path) = opt_path {
-                    format!("{index} {p}", p = path.cow_str())
+                    format!("{index} {p}", p = path.display())
                 } else {
                     format!("{index} ")
                 };
