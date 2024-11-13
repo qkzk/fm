@@ -41,7 +41,9 @@ impl Displayer {
                 }
                 match status.lock() {
                     Ok(mut status) => {
-                        display.display_all(&status);
+                        if !status.internal_settings.is_disabled() {
+                            display.display_all(&status);
+                        }
                         if status.should_be_cleared() {
                             status.internal_settings.reset_clear()
                         }

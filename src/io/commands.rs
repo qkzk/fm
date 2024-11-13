@@ -1,9 +1,14 @@
+use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use crossterm::{
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+};
 use nucleo::Injector;
 use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
@@ -383,4 +388,30 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
     let mut tokio_greper = TokioCommand::new(grep);
     tokio_greper.args(&args);
     Some(tokio_greper)
+}
+
+/// Open a new shell in current window.
+/// Disable raw mode, clear the screen, start a new shell ($SHELL, default to bash).
+/// Wait...
+/// Once the shell exits,
+/// Clear the screen and renable raw mode.
+///
+/// It's the responsability of the caller to ensure displayer doesn't try to override the display.
+pub fn open_shell_in_window() -> Result<()> {
+    disable_raw_mode()?;
+    execute!(std::io::stdout(), Clear(ClearType::All))?;
+
+    let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+    let shell_status = Command::new(&shell).status()?;
+
+    if !shell_status.success() {
+        log_info!(
+            "Shell {shell} exited with non-zero status: {:?}",
+            shell_status
+        );
+    }
+
+    enable_raw_mode()?;
+    execute!(std::io::stdout(), Clear(ClearType::All))?;
+    Ok(())
 }

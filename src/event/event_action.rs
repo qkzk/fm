@@ -10,7 +10,7 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{execute_without_output_with_path, read_log};
+use crate::io::{execute_without_output_with_path, open_shell_in_window, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -576,16 +576,17 @@ impl EventAction {
         Ok(())
     }
 
-    /// Open a new terminal in current directory.
+    /// Open a new terminal in current directory and current window.
     /// The shell is a fork of current process and will exit if the application
     /// is terminated first.
     pub fn shell(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let tab = status.current_tab();
-        let path = tab.directory_of_selected()?;
-        execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
+        status.internal_settings.disable_display();
+        open_shell_in_window()?;
+        status.internal_settings.enable_display();
+        status.internal_settings.force_clear();
         Ok(())
     }
 

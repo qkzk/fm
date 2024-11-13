@@ -1530,6 +1530,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX --keybinds has wrong display, keybinds should be shortened.
 - [x] FIX: leaving dual mode does't hide ueberzug
 - [x] temporary marks: very similar to usual marks. We only use digits and save 10 marks at most. They are dropped when the application quits.
+- [x] shell opens in the same window, not a new one.
+      Should every terminal application be opened this way ?
 
 ## TODO
 

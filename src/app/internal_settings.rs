@@ -46,6 +46,7 @@ pub struct InternalSettings {
     /// it shouldn't be massive under normal usage so we can use a vector instead of an efficient queue data structure.
     pub copy_file_queue: Vec<(Vec<std::path::PathBuf>, std::path::PathBuf)>,
     pub in_mem_progress: Option<InMemoryTerm>,
+    is_disabled: bool,
 }
 
 impl InternalSettings {
@@ -56,9 +57,10 @@ impl InternalSettings {
         let nvim_server = args.server.clone();
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
-        let copy_progress = None;
+        let in_mem_progress = None;
         let width = size.width;
         let height = size.height;
+        let is_disabled = false;
         Self {
             force_clear,
             must_quit,
@@ -69,7 +71,8 @@ impl InternalSettings {
             height,
             inside_neovim,
             copy_file_queue,
-            in_mem_progress: copy_progress,
+            in_mem_progress,
+            is_disabled,
         }
     }
 
@@ -164,6 +167,18 @@ impl InternalSettings {
     /// Set copy progress bar to None.
     pub fn unset_copy_progress(&mut self) {
         self.in_mem_progress = None;
+    }
+
+    pub fn disable_display(&mut self) {
+        self.is_disabled = true;
+    }
+
+    pub fn enable_display(&mut self) {
+        self.is_disabled = false;
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        self.is_disabled
     }
 
     /// Set the must quit flag to true.
