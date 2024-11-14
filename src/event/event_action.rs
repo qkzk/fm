@@ -10,7 +10,7 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{execute_without_output_with_path, open_shell_in_window, read_log};
+use crate::io::{open_shell_in_window, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{

@@ -223,7 +223,7 @@ impl External {
         self.0.as_str()
     }
 
-    fn use_term(&self) -> bool {
+    pub fn use_term(&self) -> bool {
         self.1
     }
 
@@ -236,6 +236,20 @@ impl External {
             Self::without_term(args)?;
         }
         Ok(())
+    }
+
+    fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
+        let arg = format!("{program} {path}", program = self.program(),);
+        crate::io::open_file_in_window(&arg)
+    }
+
+    fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
+        let arg = paths
+            .iter()
+            .filter_map(|p| p.to_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        crate::io::open_file_in_window(&format!("{program} {arg}", program = self.program()))
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
@@ -352,6 +366,14 @@ impl Opener {
         self.association.associate(extract_extension(path))
     }
 
+    pub fn use_term(&self, path: &Path) -> bool {
+        match self.kind(path) {
+            None => false,
+            Some(Kind::Internal(_)) => false,
+            Some(Kind::External(external)) => external.use_term(),
+        }
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
@@ -371,8 +393,8 @@ impl Opener {
     /// Open multiple files.
     /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
     /// Only files opened with an external opener are supported.
-    pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
-        for (external, grouped_paths) in &self.regroup_per_opener(paths) {
+    pub fn open_multiple(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+        for (external, grouped_paths) in openers.iter() {
             let _ = external.open(
                 &Self::collect_paths_as_str(grouped_paths),
                 &self.terminal,
@@ -384,7 +406,7 @@ impl Opener {
 
     /// Create an hashmap of openers -> [files].
     /// Each file in the collection share the same opener.
-    fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
+    pub fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
         let mut openers: HashMap<External, Vec<PathBuf>> = HashMap::new();
         for path in paths {
             let Some(Kind::External(pair)) = self.kind(path) else {
@@ -406,5 +428,20 @@ impl Opener {
             .filter(|fp| !fp.is_dir())
             .filter_map(|fp| fp.to_str())
             .collect()
+    }
+
+    pub fn open_in_window(&self, path: &Path) {
+        let Some(Kind::External(external)) = self.kind(path) else {
+            return;
+        };
+        if !external.use_term() {
+            return;
+        };
+        let _ = external.open_in_window(path.to_string_lossy().as_ref());
+    }
+
+    pub fn open_multiple_in_window(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+        let (external, paths) = openers.iter().next().unwrap();
+        external.open_multiple_in_window(paths)
     }
 }

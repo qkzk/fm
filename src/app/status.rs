@@ -1,4 +1,7 @@
+use std::env;
+use std::io::stdout;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -6,7 +9,11 @@ use std::sync::{
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
-use crossterm::event::{Event, KeyEvent};
+use crossterm::{
+    event::{Event, KeyEvent},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
@@ -1197,24 +1204,28 @@ impl Status {
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
         let path = self.current_tab().current_file()?.path;
-        self.open_single_file(&path);
-        Ok(())
+        self.open_single_file(&path)
     }
 
-    pub fn open_single_file(&mut self, path: &Path) {
+    pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
-            Some(Kind::Internal(Internal::NotSupported)) => {
-                let _ = self.mount_iso_drive();
-            }
+            Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
             Some(_) => {
                 if self.should_this_file_be_opened_in_neovim(path) {
                     self.update_nvim_listen_address();
                     open_in_current_neovim(path, &self.internal_settings.nvim_server);
+                    Ok(())
+                } else if self.internal_settings.opener.use_term(path) {
+                    self.internal_settings.disable_display();
+                    self.internal_settings.opener.open_in_window(path);
+                    self.internal_settings.enable_display();
+                    self.internal_settings.force_clear();
+                    Ok(())
                 } else {
-                    let _ = self.internal_settings.opener.open_single(path);
+                    self.internal_settings.opener.open_single(path)
                 }
             }
-            None => (),
+            None => Ok(()),
         }
     }
 
@@ -1238,9 +1249,21 @@ impl Status {
             }
             Ok(())
         } else {
-            self.internal_settings
+            let openers = self
+                .internal_settings
                 .opener
-                .open_multiple(self.menu.flagged.content())
+                .regroup_per_opener(self.menu.flagged.content());
+            if openers.len() == 1 && openers.keys().next().expect("Can't be empty").use_term() {
+                self.internal_settings.disable_display();
+                self.internal_settings
+                    .opener
+                    .open_multiple_in_window(openers)?;
+                self.internal_settings.enable_display();
+                self.internal_settings.force_clear();
+                Ok(())
+            } else {
+                self.internal_settings.opener.open_multiple(openers)
+            }
         }
     }
 

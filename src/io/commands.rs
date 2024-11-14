@@ -1,6 +1,6 @@
 use std::env;
 use std::fmt;
-use std::io::Write;
+use std::io::{stdout, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -18,7 +18,7 @@ use crate::common::{current_username, is_in_path, GREP_EXECUTABLE, RG_EXECUTABLE
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
-/// Execute a command with options in a fork with nohup.
+/// Execute a command with options in a fork with setsid.
 /// If the `SETSID` application isn't there, call the program directly.
 /// but the program may be closed if the parent (fm) is stopped.
 /// Returns an handle to the child process.
@@ -399,7 +399,7 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
 /// It's the responsability of the caller to ensure displayer doesn't try to override the display.
 pub fn open_shell_in_window() -> Result<()> {
     disable_raw_mode()?;
-    execute!(std::io::stdout(), Clear(ClearType::All))?;
+    execute!(stdout(), Clear(ClearType::All))?;
 
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let shell_status = Command::new(&shell).status()?;
@@ -409,6 +409,25 @@ pub fn open_shell_in_window() -> Result<()> {
             "Shell {shell} exited with non-zero status: {:?}",
             shell_status
         );
+    }
+
+    enable_raw_mode()?;
+    execute!(std::io::stdout(), Clear(ClearType::All))?;
+    Ok(())
+}
+
+pub fn open_file_in_window(arg: &str) -> Result<()> {
+    disable_raw_mode()?;
+    execute!(stdout(), Clear(ClearType::All))?;
+
+    let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+    let mut shell_command = Command::new(&shell);
+    shell_command.arg("-c").arg(arg);
+    log_info!("open_file_in_window {shell_command:?}");
+    let shell_status = shell_command.status()?;
+
+    if !shell_status.success() {
+        log_info!("Shell exited with non-zero status: {:?}", shell_status);
     }
 
     enable_raw_mode()?;
