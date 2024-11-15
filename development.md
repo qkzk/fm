@@ -1430,6 +1430,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - you can type a permission in octal mode (like 640), litterally (like rwxrwxrwx) or like in chmod "a+x", "-w" etc.
 - Temporary marks. Use Char(") and Alt+" to jump and save. Only 10 are saved so we can index with the digits.
   Those marks aren't saved on disk and are dropped when the application stops.
+- Use the current window when possible.
+  When you start a shell with `s` or open a file opened in a terminal, we use the current window instead of starting a new terminal emulator.
+  It can't work if you open multiple files which doesn't share a common opener (a text file and something else).
 
 #### Changelog
 
@@ -1533,9 +1536,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] shell opens in the same window, not a new one.
   - [x] open all terminal application this way
   - [x] move opening to internal settings, just let the interface in status
-  - [ ] BUG: when started from a neovim terminal, it should send RPC events not use the terminal window
-    - [ ] i works
-    - [ ] o fails
 
 ## TODO
 
