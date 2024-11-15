@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::common::tilde;
-use crate::io::DrawMenu;
+use crate::io::{DrawMenu, Extension};
+use crate::modes::extract_extension;
 use crate::{impl_content, impl_selectable};
 
 /// The flagged files and an index, allowing navigation when the flagged files are displayed.
@@ -114,6 +115,16 @@ impl Flagged {
             .iter()
             .map(|p| p.to_string_lossy().to_string())
             .collect()
+    }
+
+    fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {
+        matches!(Extension::matcher(extract_extension(path)), Extension::Text)
+    }
+
+    pub fn should_all_be_opened_in_neovim(&self) -> bool {
+        self.content()
+            .iter()
+            .all(|path| self.should_this_file_be_opened_in_neovim(path))
     }
 }
 

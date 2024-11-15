@@ -1531,7 +1531,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leaving dual mode does't hide ueberzug
 - [x] temporary marks: very similar to usual marks. We only use digits and save 10 marks at most. They are dropped when the application quits.
 - [x] shell opens in the same window, not a new one.
-      Should every terminal application be opened this way ?
+  - [x] open all terminal application this way
+  - [x] move opening to internal settings, just let the interface in status
+  - [ ] BUG: when started from a neovim terminal, it should send RPC events not use the terminal window
+    - [ ] i works
+    - [ ] o fails
 
 ## TODO
 

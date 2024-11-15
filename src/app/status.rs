@@ -1,7 +1,4 @@
-use std::env;
-use std::io::stdout;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -9,11 +6,7 @@ use std::sync::{
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
-use crossterm::{
-    event::{Event, KeyEvent},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-};
+use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
@@ -23,21 +16,21 @@ use crate::app::{
 };
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
+    is_sudo_command, path_to_string, row_to_window_index,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_and_capture_output_without_check,
     execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
-    Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    Args, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_flagger, shell_command_parser,
-    BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
-    FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
-    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
-    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
+    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
 };
 use crate::{log_info, log_line};
 
@@ -1210,61 +1203,15 @@ impl Status {
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
-            Some(_) => {
-                if self.should_this_file_be_opened_in_neovim(path) {
-                    self.update_nvim_listen_address();
-                    open_in_current_neovim(path, &self.internal_settings.nvim_server);
-                    Ok(())
-                } else if self.internal_settings.opener.use_term(path) {
-                    self.internal_settings.disable_display();
-                    self.internal_settings.opener.open_in_window(path);
-                    self.internal_settings.enable_display();
-                    self.internal_settings.force_clear();
-                    Ok(())
-                } else {
-                    self.internal_settings.opener.open_single(path)
-                }
-            }
+            Some(_) => self.internal_settings.open_single_file(path),
             None => Ok(()),
         }
     }
 
-    fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {
-        self.internal_settings.inside_neovim
-            && matches!(Extension::matcher(extract_extension(path)), Extension::Text)
-    }
-
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        if self
-            .menu
-            .flagged
-            .content()
-            .iter()
-            .all(|path| self.should_this_file_be_opened_in_neovim(path))
-        {
-            self.update_nvim_listen_address();
-            for path in self.menu.flagged.content().iter() {
-                open_in_current_neovim(path, &self.internal_settings.nvim_server);
-            }
-            Ok(())
-        } else {
-            let openers = self
-                .internal_settings
-                .opener
-                .regroup_per_opener(self.menu.flagged.content());
-            if openers.len() == 1 && openers.keys().next().expect("Can't be empty").use_term() {
-                self.internal_settings.disable_display();
-                self.internal_settings
-                    .opener
-                    .open_multiple_in_window(openers)?;
-                self.internal_settings.enable_display();
-                self.internal_settings.force_clear();
-                Ok(())
-            } else {
-                self.internal_settings.opener.open_multiple(openers)
-            }
-        }
+        self.internal_settings
+            .open_flagged_files(&self.menu.flagged)
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -1570,7 +1517,7 @@ impl Status {
         let current_path = self.current_tab_path_str();
         self.menu.bulk.ask_filenames(flagged, &current_path)?;
         if let Some(temp_file) = self.menu.bulk.temp_file() {
-            self.open_single_file(&temp_file);
+            self.open_single_file(&temp_file)?;
             self.menu.bulk.watch_in_thread()?;
         }
         Ok(())

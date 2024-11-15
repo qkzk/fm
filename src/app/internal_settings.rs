@@ -1,5 +1,6 @@
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{mpsc::Sender, Arc};
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
@@ -7,10 +8,10 @@ use indicatif::InMemoryTerm;
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
-use crate::common::{is_in_path, NVIM, SS};
+use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
 use crate::event::FmEvents;
-use crate::io::{execute_and_output, Args, Opener};
-use crate::modes::copy_move;
+use crate::io::{execute_and_output, Args, Extension, External, Opener};
+use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
 /// Internal settings of the status.
 ///
@@ -179,6 +180,66 @@ impl InternalSettings {
 
     pub fn is_disabled(&self) -> bool {
         self.is_disabled
+    }
+
+    fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {
+        matches!(Extension::matcher(extract_extension(path)), Extension::Text)
+    }
+
+    pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
+        if self.inside_neovim && self.should_this_file_be_opened_in_neovim(path) {
+            self.update_nvim_listen_address();
+            open_in_current_neovim(path, &self.nvim_server);
+            Ok(())
+        } else if self.opener.use_term(path) {
+            self.disable_display();
+            self.opener.open_in_window(path);
+            self.enable_display();
+            self.force_clear();
+            Ok(())
+        } else {
+            self.opener.open_single(path)
+        }
+    }
+
+    pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
+        if self.inside_neovim && flagged.should_all_be_opened_in_neovim() {
+            self.open_multiple_in_neovim(flagged.content());
+            Ok(())
+        } else {
+            self.open_multiple_outside(flagged.content())
+        }
+    }
+
+    fn open_multiple_outside(&mut self, paths: &[PathBuf]) -> Result<()> {
+        let openers = self.opener.regroup_per_opener(paths);
+        if Self::all_files_opened_in_terminal(&openers) {
+            self.open_multiple_files_in_window(openers)
+        } else {
+            self.opener.open_multiple(openers)
+        }
+    }
+
+    fn all_files_opened_in_terminal(openers: &HashMap<External, Vec<PathBuf>>) -> bool {
+        openers.len() == 1 && openers.keys().next().expect("Can't be empty").use_term()
+    }
+
+    fn open_multiple_files_in_window(
+        &mut self,
+        openers: HashMap<External, Vec<PathBuf>>,
+    ) -> Result<()> {
+        self.disable_display();
+        self.opener.open_multiple_in_window(openers)?;
+        self.enable_display();
+        self.force_clear();
+        Ok(())
+    }
+
+    fn open_multiple_in_neovim(&mut self, paths: &[PathBuf]) {
+        self.update_nvim_listen_address();
+        for path in paths {
+            open_in_current_neovim(path, &self.nvim_server);
+        }
     }
 
     /// Set the must quit flag to true.
