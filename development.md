@@ -1536,6 +1536,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] shell opens in the same window, not a new one.
   - [x] open all terminal application this way
   - [x] move opening to internal settings, just let the interface in status
+- [ ] simplify status.confirm action & must leave
 
 ## TODO
 
