@@ -568,7 +568,7 @@ impl<'a> TreeDisplay<'a> {
             Span::raw(line_builder.prefix()),
             Span::raw(" ".repeat(Self::tree_line_calc_flagged_offset_line(status, path))),
             Span::raw(" ".repeat(with_offset as usize)),
-            Span::styled(line_builder.filename(), style),
+            Span::styled(line_builder.filename(with_medatadata), style),
         ])
     }
 

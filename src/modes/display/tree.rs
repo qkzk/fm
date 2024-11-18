@@ -10,7 +10,8 @@ use ratatui::style::{Modifier, Style};
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::impl_index_to_index;
 use crate::modes::{
-    files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
+    extract_extension, files_collection, ContentWindow, FileInfo, FilterKind, Flagged, Icon,
+    SortKind, ToPath, Users,
 };
 
 /// An element of a tree.
@@ -352,19 +353,19 @@ fn other_prefix(prefix: &str) -> String {
 }
 
 #[inline]
-fn filename_format(current_path: &Path, folded: bool) -> String {
-    let filename = filename_from_path(current_path)
-        .unwrap_or_default()
-        .to_owned();
+fn filename_format(current_path: &Path, folded: bool, with_metadata: bool) -> String {
+    let filename = filename_from_path(current_path).unwrap_or_default();
+    let icon = if with_metadata {
+        ""
+    } else {
+        extract_extension(current_path).icon()
+    };
 
     if current_path.is_dir() && !current_path.is_symlink() {
-        if folded {
-            format!("▸ {}", filename)
-        } else {
-            format!("▾ {}", filename)
-        }
+        let fold_symbol = if folded { "▸" } else { "▾" };
+        format!("{fold_symbol} {icon}{filename}")
     } else {
-        filename
+        format!("{icon}{filename}")
     }
 }
 
@@ -535,8 +536,8 @@ impl TLine {
     }
 
     /// Formated filename
-    pub fn filename(&self) -> String {
-        filename_format(&self.path, self.folded)
+    pub fn filename(&self, with_metadata: bool) -> String {
+        filename_format(&self.path, self.folded, with_metadata)
     }
 
     /// Vertical bar displayed before the filename to show

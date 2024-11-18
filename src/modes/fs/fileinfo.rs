@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fs::{symlink_metadata, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -12,7 +11,7 @@ use ratatui::style::Style;
 use crate::common::PERMISSIONS_STR;
 use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
-use crate::modes::{human_size, ToPath, Users, MAX_MODE};
+use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
 
 type Valid = bool;
 
@@ -68,6 +67,18 @@ impl FileKind<Valid> {
             Self::CharDevice => 'c',
             Self::BlockDevice => 'b',
             Self::SymbolicLink(_) => 'l',
+        }
+    }
+
+    fn icon(&self) -> &'static str {
+        match self {
+            Self::Fifo => " ",
+            Self::Socket => "󰟩 ",
+            Self::Directory => " ",
+            Self::NormalFile => "",
+            Self::CharDevice => " ",
+            Self::BlockDevice => " ",
+            Self::SymbolicLink(_) => " ",
         }
     }
 
@@ -278,9 +289,19 @@ impl FileInfo {
         self.file_kind.dir_symbol()
     }
 
+    fn icon(&self) -> &'static str {
+        match self.file_kind {
+            FileKind::NormalFile => self.extension.icon(),
+            _ => self.file_kind.icon(),
+        }
+    }
+
     pub fn format_simple(&self) -> Result<String> {
-        let s: &str = self.filename.borrow();
-        Ok(s.to_string())
+        Ok(format!(
+            "{icon} {name}",
+            icon = self.icon(),
+            name = self.filename
+        ))
     }
 
     /// True iff the file is hidden (aka starts with a '.').

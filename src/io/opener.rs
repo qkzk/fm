@@ -75,6 +75,22 @@ impl Extension {
             _ => Self::Default,
         }
     }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Zip | Self::Xz | Self::Gz => "󰗄 ",
+            Self::Readable => " ",
+            Self::Iso => " ",
+            Self::Text => " ",
+            Self::Audio => " ",
+            Self::Office => "󰈙 ",
+            Self::Bitmap => " ",
+            Self::Vectorial => "󰫨 ",
+            Self::Video => " ",
+
+            _ => " ",
+        }
+    }
 }
 
 macro_rules! open_file_with {
