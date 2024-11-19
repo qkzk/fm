@@ -420,7 +420,7 @@ impl Opener {
         Ok(())
     }
 
-    /// Create an hashmap of openers -> [files].
+    /// Create an hashmap of openers -> `[files]`.
     /// Each file in the collection share the same opener.
     pub fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
         let mut openers: HashMap<External, Vec<PathBuf>> = HashMap::new();

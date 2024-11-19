@@ -15,13 +15,6 @@ use crate::common::CONFIG_FOLDER;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
 
-/// Returns a `Display` instance after `tuikit::term::Term` creation.
-// pub fn init_term() -> Result<Term> {
-//     let term: Term<()> = Term::new()?;
-//     term.enable_mouse_support()?;
-//     Ok(term)
-// }
-
 /// Returns the disk owning a path.
 /// None if the path can't be found.
 ///
@@ -305,14 +298,14 @@ where
 }
 
 /// This trait `UtfWidth` is defined with a single
-/// method `utf_width()` that returns the width of
+/// method `utf_width` that returns the width of
 /// a string in Unicode code points.
 /// The implementation for `String` and `&str`
-/// types are provided which calculate the
-/// width. of the original string in graphemes.
+/// types are provided. They calculate the
+/// number of graphemes.
 /// This method allows for easy calculation of
-/// the horizontal space required for displaying
-/// a given text, which can be useful for layout purposes.
+/// the horizontal space required to display
+/// a text, which can be useful for layout purposes.
 pub trait UtfWidth {
     /// Number of graphemes in the string.
     /// Used to know the necessary width to print this text.
@@ -345,6 +338,16 @@ impl UtfWidth for &str {
     }
 }
 
+/// Index of a character counted from letter 'a'.
+/// `None` if the character code-point is below 'a'.
+///
+/// # Examples
+///
+/// ```rust
+///  assert_eq!(index_from_a('a'), Some(0));
+///  assert_eq!(index_from_a('e'), Some(4));
+///  assert_eq!(index_from_a('T'), None);
+/// ```
 pub fn index_from_a(letter: char) -> Option<usize> {
     (letter as usize).checked_sub('a' as usize)
 }
