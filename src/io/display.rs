@@ -439,12 +439,28 @@ impl<'a> DirectoryDisplay<'a> {
         let group_owner_sizes = self.group_owner_size();
         let mut p_rect = rect.offseted(2, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
+        let formater = self.pick_formater();
         let lines: Vec<_> = self
             .tab
             .dir_enum_skip_take()
-            .map(|(index, file)| self.files_line(group_owner_sizes, index, file))
+            .map(|(index, file)| self.files_line(group_owner_sizes, index, file, &formater))
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
+
+    fn pick_formater(&self) -> fn(&FileInfo, (usize, usize)) -> String {
+        let with_metadata = self.status.session.metadata();
+        let with_icon = *ICON.get().unwrap_or(&false);
+        let with_icon_metadata = *ICON_WITH_METADATA.get().unwrap_or(&false);
+        if with_metadata && with_icon_metadata {
+            Self::format_file_metadata_icon
+        } else if with_metadata {
+            Self::format_file_metadata
+        } else if with_icon {
+            Self::format_file_simple_icon
+        } else {
+            Self::format_file_simple
+        }
     }
 
     fn group_owner_size(&self) -> (usize, usize) {
@@ -463,10 +479,11 @@ impl<'a> DirectoryDisplay<'a> {
         group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
+        formater: &fn(&FileInfo, (usize, usize)) -> String,
     ) -> Line<'b> {
         let mut style = file.style();
         self.reverse_selected(index, &mut style);
-        let content = Self::format_file_content(self.status, file, group_owner_sizes);
+        let content = formater(file, group_owner_sizes);
         Line::from(vec![
             self.span_flagged_symbol(file, &mut style),
             Span::styled(content, style),
@@ -491,16 +508,21 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn format_file_content(
-        status: &Status,
-        file: &FileInfo,
-        owner_sizes: (usize, usize),
-    ) -> String {
-        if status.session.metadata() {
-            file.format(owner_sizes.1, owner_sizes.0).unwrap()
-        } else {
-            file.format_simple().unwrap()
-        }
+    fn format_file_metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata(owner_sizes.1, owner_sizes.0).unwrap()
+    }
+
+    fn format_file_metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_icon(owner_sizes.1, owner_sizes.0)
+            .unwrap()
+    }
+
+    fn format_file_simple(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+        file.format_simple().unwrap()
+    }
+
+    fn format_file_simple_icon(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+        file.format_simple_icon().unwrap()
     }
 }
 
@@ -545,16 +567,11 @@ impl<'a> TreeDisplay<'a> {
     ) {
         let mut p_rect = rect.offseted(1, ContentWindow::WINDOW_MARGIN_TOP_U16);
         p_rect.height = p_rect.height.saturating_sub(2);
+        let with_icon = Self::with_icon(with_metadata);
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
             .map(|(index, line_builder)| {
-                Self::tree_line(
-                    status,
-                    index == 0,
-                    line_builder,
-                    with_metadata,
-                    Self::with_icon(with_metadata),
-                )
+                Self::tree_line(status, index == 0, line_builder, with_metadata, with_icon)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -874,7 +891,10 @@ impl FilesSecondLine {
         style.add_modifier ^= Modifier::REVERSED;
 
         Self {
-            content: Some(file.format(owner_size, group_size).unwrap_or_default()),
+            content: Some(
+                file.format_metadata(owner_size, group_size)
+                    .unwrap_or_default(),
+            ),
             style: Some(style),
         }
     }
@@ -1187,8 +1207,11 @@ impl<'a> Menu<'a> {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users).unwrap();
             let p_rect = rect.offseted(2, 2);
-            Span::styled(fileinfo.format(6, 6).unwrap_or_default(), fileinfo.style())
-                .render(p_rect, f.buffer_mut());
+            Span::styled(
+                fileinfo.format_metadata(6, 6).unwrap_or_default(),
+                fileinfo.style(),
+            )
+            .render(p_rect, f.buffer_mut());
         };
     }
 

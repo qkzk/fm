@@ -9,7 +9,7 @@ use chrono::DateTime;
 use ratatui::style::Style;
 
 use crate::common::PERMISSIONS_STR;
-use crate::config::{extension_color, FILE_STYLES, ICON_WITH_METADATA};
+use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
 use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
 
@@ -235,12 +235,27 @@ impl FileInfo {
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     #[inline]
-    pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+    pub fn format_metadata(
+        &self,
+        owner_col_width: usize,
+        group_col_width: usize,
+    ) -> Result<String> {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
         repr.push(' ');
-        if *ICON_WITH_METADATA.get().unwrap_or(&false) {
-            repr.push_str(self.icon());
-        }
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_icon(
+        &self,
+        owner_col_width: usize,
+        group_col_width: usize,
+    ) -> Result<String> {
+        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+        repr.push(' ');
+        repr.push_str(self.icon());
         repr.push_str(&self.filename);
         self.expand_symlink(&mut repr);
         Ok(repr)
@@ -281,6 +296,10 @@ impl FileInfo {
     }
 
     pub fn format_simple(&self) -> Result<String> {
+        Ok(format!(" {name}", name = self.filename))
+    }
+
+    pub fn format_simple_icon(&self) -> Result<String> {
         Ok(format!(
             "{icon} {name}",
             icon = self.icon(),

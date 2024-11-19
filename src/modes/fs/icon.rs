@@ -1,6 +1,5 @@
 use crate::{
     common::DIR_ICON,
-    config::ICON,
     modes::{extract_extension, FileInfo, FileKind},
 };
 
@@ -279,9 +278,6 @@ impl Icon for FileKind<bool> {
 impl Icon for FileInfo {
     /// Icon for a file given by its fileinfo.
     fn icon(&self) -> &'static str {
-        if !*ICON.get().unwrap_or(&false) {
-            return "";
-        }
         match self.file_kind {
             FileKind::NormalFile => self.extension.icon(),
             _ => self.file_kind.icon(),
