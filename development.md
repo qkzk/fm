@@ -1520,15 +1520,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
 - [x] FIX: menu chmod crash as replace input by current mode
 - [x] FIX: InputHistory
-- [ ] BUG: resize change dual / preview
-
-  - first attempt didn't fix
-  - can't reproduce
-
-- [ ] Walkdir::new in tree building instead of exploring by hand
-  - require to rewrite everything just to avoid testing depth myself.
-    Little to gain except for speed, it _should_ be much faster
-- [ ] common trait to validate a data : input string, config, args...
 - [x] caching video previews
 - [x] Ensure the cache can be cleared with an arg and the path is created if needed.
 - [x] Case insensitive search
@@ -1539,13 +1530,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open all terminal application this way
   - [x] move opening to internal settings, just let the interface in status
 - [x] icons / metadata. Use nerdfont icons when metadata is hidden.
+- [ ] Walkdir::new in tree building instead of exploring by hand
+  - require to rewrite everything just to avoid testing depth myself.
+    Little to gain except for speed, it _should_ be much faster
+- [ ] BUG: resize change dual / preview
+  - first attempt didn't fix
+  - can't reproduce
 - [ ] simplify status.confirm action & must leave
-- [ ] should small windows be used in menus ?
 
 ## TODO
 
 ### Other ideas
 
+- [ ] common trait to validate a data : input string, config, args...
+- [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?

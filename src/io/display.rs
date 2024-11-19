@@ -18,7 +18,7 @@ use ratatui::{
 
 use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
-use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::config::{ColorG, Gradient, ICON, ICON_WITH_METADATA, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
@@ -548,10 +548,21 @@ impl<'a> TreeDisplay<'a> {
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
             .map(|(index, line_builder)| {
-                Self::tree_line(status, index == 0, line_builder, with_metadata)
+                Self::tree_line(
+                    status,
+                    index == 0,
+                    line_builder,
+                    with_metadata,
+                    Self::with_icon(with_metadata),
+                )
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
+
+    fn with_icon(with_metadata: bool) -> bool {
+        (!with_metadata && *ICON.get().unwrap_or(&false))
+            || *ICON_WITH_METADATA.get().unwrap_or(&false)
     }
 
     fn tree_line<'b>(
@@ -559,6 +570,7 @@ impl<'a> TreeDisplay<'a> {
         with_offset: bool,
         line_builder: &'b TLine,
         with_medatadata: bool,
+        with_icon: bool,
     ) -> Line<'b> {
         let mut style = line_builder.style;
         let path = line_builder.path();
@@ -568,7 +580,7 @@ impl<'a> TreeDisplay<'a> {
             Span::raw(line_builder.prefix()),
             Span::raw(" ".repeat(Self::tree_line_calc_flagged_offset_line(status, path))),
             Span::raw(" ".repeat(with_offset as usize)),
-            Span::styled(line_builder.filename(with_medatadata), style),
+            Span::styled(line_builder.filename(with_icon), style),
         ])
     }
 

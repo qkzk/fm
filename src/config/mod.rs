@@ -20,6 +20,6 @@ pub use configuration::{load_config, read_normal_file_colorer, Config, FileStyle
 pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
-    set_configurable_static, ARRAY_GRADIENT, COLORER, FILE_STYLES, MENU_STYLES, MONOKAI_THEME,
-    START_FOLDER,
+    set_configurable_static, set_icon_icon_with_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES,
+    ICON, ICON_WITH_METADATA, MENU_STYLES, MONOKAI_THEME, START_FOLDER,
 };

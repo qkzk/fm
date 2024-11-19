@@ -1,4 +1,12 @@
-/// Associate something to an icon, given by its string representation.
+use crate::{
+    common::DIR_ICON,
+    config::ICON,
+    modes::{extract_extension, FileInfo, FileKind},
+};
+
+/// Associate something to a nerdfont icon.
+///
+/// Those methods require nerdfont to be installed.
 pub trait Icon {
     fn icon(&self) -> &'static str;
 }
@@ -232,6 +240,51 @@ impl Icon for str {
             "zip" => " ",
             "zsh" => " ",
             _ => "󰈔 ",
+        }
+    }
+}
+
+impl Icon for std::path::Path {
+    /// Icon from a path.
+    /// Should only be used in tree display.
+    /// Requires metadata and is quite heavy.
+    fn icon(&self) -> &'static str {
+        let Ok(metadata) = self.symlink_metadata() else {
+            return DIR_ICON;
+        };
+        let file_kind = FileKind::new(&metadata, self);
+        match file_kind {
+            FileKind::NormalFile => extract_extension(self).icon(),
+            _ => file_kind.icon(),
+        }
+    }
+}
+
+impl Icon for FileKind<bool> {
+    /// Icon per file kind.
+    /// Shouldn't be called for normal files, use extension.icon() directly.
+    fn icon(&self) -> &'static str {
+        match self {
+            Self::Fifo => " ",
+            Self::Socket => "󰟩 ",
+            Self::Directory => DIR_ICON,
+            Self::NormalFile => "",
+            Self::CharDevice => " ",
+            Self::BlockDevice => " ",
+            Self::SymbolicLink(_) => " ",
+        }
+    }
+}
+
+impl Icon for FileInfo {
+    /// Icon for a file given by its fileinfo.
+    fn icon(&self) -> &'static str {
+        if !*ICON.get().unwrap_or(&false) {
+            return "";
+        }
+        match self.file_kind {
+            FileKind::NormalFile => self.extension.icon(),
+            _ => self.file_kind.icon(),
         }
     }
 }

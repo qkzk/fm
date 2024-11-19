@@ -9,7 +9,7 @@ use chrono::DateTime;
 use ratatui::style::Style;
 
 use crate::common::PERMISSIONS_STR;
-use crate::config::{extension_color, FILE_STYLES};
+use crate::config::{extension_color, FILE_STYLES, ICON_WITH_METADATA};
 use crate::io::color_to_style;
 use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
 
@@ -67,18 +67,6 @@ impl FileKind<Valid> {
             Self::CharDevice => 'c',
             Self::BlockDevice => 'b',
             Self::SymbolicLink(_) => 'l',
-        }
-    }
-
-    fn icon(&self) -> &'static str {
-        match self {
-            Self::Fifo => " ",
-            Self::Socket => "󰟩 ",
-            Self::Directory => " ",
-            Self::NormalFile => "",
-            Self::CharDevice => " ",
-            Self::BlockDevice => " ",
-            Self::SymbolicLink(_) => " ",
         }
     }
 
@@ -250,6 +238,9 @@ impl FileInfo {
     pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
         repr.push(' ');
+        if *ICON_WITH_METADATA.get().unwrap_or(&false) {
+            repr.push_str(self.icon());
+        }
         repr.push_str(&self.filename);
         self.expand_symlink(&mut repr);
         Ok(repr)
@@ -287,13 +278,6 @@ impl FileInfo {
 
     pub fn dir_symbol(&self) -> char {
         self.file_kind.dir_symbol()
-    }
-
-    fn icon(&self) -> &'static str {
-        match self.file_kind {
-            FileKind::NormalFile => self.extension.icon(),
-            _ => self.file_kind.icon(),
-        }
     }
 
     pub fn format_simple(&self) -> Result<String> {
