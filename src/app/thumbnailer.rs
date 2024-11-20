@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     fs::create_dir_all,
     path::{Path, PathBuf},
     sync::{mpsc, Arc, Mutex},
@@ -8,13 +9,6 @@ use std::{
 
 use crate::modes::Thumbnail;
 use crate::{common::TMP_THUMBNAILS_DIR, log_info};
-
-fn make_thumbnail(path: PathBuf) {
-    match Thumbnail::create_video(&path.to_string_lossy()) {
-        Ok(_) => log_info!("thumbnail built successfully"),
-        Err(e) => log_info!("error building thumbnail {e}"),
-    }
-}
 
 /// Video thumbnail builder.
 ///
@@ -27,7 +21,7 @@ fn make_thumbnail(path: PathBuf) {
 /// They should all be _videos_ which can be thumbnailed.
 #[derive(Debug)]
 pub struct ThumbnailManager {
-    queue: Arc<Mutex<Vec<PathBuf>>>,
+    queue: Arc<Mutex<VecDeque<PathBuf>>>,
     workers: Vec<Worker>,
 }
 
@@ -36,7 +30,7 @@ impl Default for ThumbnailManager {
         Self::create_thumbnail_dir_if_not_exist();
         let num_workers = Self::default_thread_count();
         let mut workers = Vec::with_capacity(num_workers);
-        let queue = Arc::new(Mutex::new(vec![]));
+        let queue = Arc::new(Mutex::new(VecDeque::new()));
         for id in 0..num_workers {
             workers.push(Worker::new(id, queue.clone()));
         }
@@ -64,7 +58,7 @@ impl ThumbnailManager {
     /// Add all received files to the queue.
     ///
     /// They will be dealt with by the first available worker.
-    pub fn enqueue(&self, mut videos: Vec<PathBuf>) {
+    pub fn enqueue(&self, mut videos: VecDeque<PathBuf>) {
         let Ok(mut locked_queue) = self.queue.lock() else {
             log_info!("ThumbnailManager couldn't lock the queue");
             return;
@@ -104,7 +98,7 @@ pub struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>) -> Self {
+    fn new(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) -> Self {
         let (tx, rx) = mpsc::channel();
         let _ = thread::spawn(move || Self::runner(id, queue, rx));
         Self { id, tx }
@@ -115,23 +109,33 @@ impl Worker {
         log_info!("Worker {id} quit", id = self.id);
     }
 
-    fn runner(id: usize, queue: Arc<Mutex<Vec<PathBuf>>>, rx: mpsc::Receiver<()>) {
+    fn runner(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>, rx: mpsc::Receiver<()>) {
         loop {
-            let Ok(mut locked_queue) = queue.lock() else {
-                log_info!("Worker {id} couldn't lock the queue");
-                continue;
-            };
-
-            if !locked_queue.is_empty() {
-                let task = locked_queue.remove(0);
-                log_info!("Worker {id} received task {p}", p = task.display());
-                make_thumbnail(task);
-            }
-            drop(locked_queue);
+            Self::advance_queue(id, &queue);
             if let Ok(()) = rx.try_recv() {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    fn advance_queue(id: usize, queue: &Arc<Mutex<VecDeque<PathBuf>>>) {
+        let Ok(mut locked_queue) = queue.lock() else {
+            log_info!("Worker {id} couldn't lock the queue");
+            return;
+        };
+        let Some(path) = locked_queue.pop_front() else {
+            return;
+        };
+        drop(locked_queue);
+        log_info!("Worker {id} received task {p}", p = path.display());
+        Self::make_thumbnail(path);
+    }
+
+    fn make_thumbnail(path: PathBuf) {
+        match Thumbnail::create_video(&path.to_string_lossy()) {
+            Ok(_) => log_info!("thumbnail built successfully"),
+            Err(e) => log_info!("error building thumbnail {e}"),
         }
     }
 }

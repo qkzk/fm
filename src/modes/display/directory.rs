@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -187,7 +187,7 @@ impl Directory {
         selected.path.as_ref() == parent
     }
 
-    pub fn videos(&self) -> Vec<PathBuf> {
+    pub fn videos(&self) -> VecDeque<PathBuf> {
         self.content()
             .iter()
             .map(|f| f.path.to_path_buf())

@@ -1530,6 +1530,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open all terminal application this way
   - [x] move opening to internal settings, just let the interface in status
 - [x] icons / metadata. Use nerdfont icons when metadata is hidden.
+- [x] FIX: thumbnailer queue is locked too long and freezes status thread
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
