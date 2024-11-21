@@ -603,11 +603,11 @@ impl Status {
         if !self.are_settings_requiring_dualpane_preview() || !self.can_display_dualpane_preview() {
             return;
         }
+        self.thumbnail_init_or_clear();
         let videos = self.current_tab().directory.videos();
         if videos.is_empty() {
             return;
         }
-        self.thumbnail_init_or_clear();
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
             thumbnail_manager.enqueue(videos);
         }
@@ -629,13 +629,6 @@ impl Status {
     pub fn thumbnail_queue_clear(&self) {
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
             thumbnail_manager.clear()
-        }
-    }
-
-    /// Exit the thumbnail manager, forcing all workers to stop their thread.
-    pub fn thumbnail_manager_quit(&self) {
-        if let Some(thumbnail_manager) = &self.thumbnail_manager {
-            thumbnail_manager.quit()
         }
     }
 

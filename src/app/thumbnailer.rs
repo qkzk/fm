@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     fs::create_dir_all,
     path::{Path, PathBuf},
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
@@ -22,20 +22,20 @@ use crate::{common::TMP_THUMBNAILS_DIR, log_info};
 #[derive(Debug)]
 pub struct ThumbnailManager {
     queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    workers: Vec<Worker>,
+    _workers: Vec<Worker>,
 }
 
 impl Default for ThumbnailManager {
     fn default() -> Self {
         Self::create_thumbnail_dir_if_not_exist();
         let num_workers = Self::default_thread_count();
-        let mut workers = Vec::with_capacity(num_workers);
+        let mut _workers = Vec::with_capacity(num_workers);
         let queue = Arc::new(Mutex::new(VecDeque::new()));
         for id in 0..num_workers {
-            workers.push(Worker::new(id, queue.clone()));
+            _workers.push(Worker::new(id, queue.clone()));
         }
 
-        Self { queue, workers }
+        Self { queue, _workers }
     }
 }
 
@@ -78,43 +78,20 @@ impl ThumbnailManager {
         locked_queue.clear();
         drop(locked_queue);
     }
-
-    /// Quit.
-    ///
-    /// Stop all the running workers.
-    /// Send a message to their mpsc::channel telling them to break their running loop.
-    pub fn quit(&self) {
-        for worker in &self.workers {
-            worker.quit()
-        }
-        log_info!("ThumbnailManager quit");
-    }
 }
 
 #[derive(Debug)]
-pub struct Worker {
-    id: usize,
-    tx: mpsc::Sender<()>,
-}
+pub struct Worker;
 
 impl Worker {
     fn new(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) -> Self {
-        let (tx, rx) = mpsc::channel();
-        let _ = thread::spawn(move || Self::runner(id, queue, rx));
-        Self { id, tx }
+        let _ = thread::spawn(move || Self::runner(id, queue));
+        Self
     }
 
-    fn quit(&self) {
-        let _ = self.tx.send(());
-        log_info!("Worker {id} quit", id = self.id);
-    }
-
-    fn runner(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>, rx: mpsc::Receiver<()>) {
+    fn runner(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) {
         loop {
             Self::advance_queue(id, &queue);
-            if let Ok(()) = rx.try_recv() {
-                break;
-            }
             thread::sleep(Duration::from_millis(10));
         }
     }
