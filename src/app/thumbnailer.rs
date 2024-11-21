@@ -3,7 +3,7 @@ use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread,
+    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -63,6 +63,7 @@ impl ThumbnailManager {
             log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
+        log_info!("Enqueuing {len} videos", len = videos.len());
         locked_queue.append(&mut videos);
         drop(locked_queue);
     }
@@ -81,15 +82,20 @@ impl ThumbnailManager {
 }
 
 #[derive(Debug)]
-pub struct Worker;
+pub struct Worker {
+    _handle: JoinHandle<()>,
+}
 
 impl Worker {
     fn new(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) -> Self {
-        let _ = thread::spawn(move || Self::runner(id, queue));
-        Self
+        let _handle = thread::spawn(move || Self::runner(id, queue));
+        Self { _handle }
     }
 
-    fn runner(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) {
+    fn runner(
+        id: usize,
+        queue: Arc<Mutex<VecDeque<PathBuf>>>, // , is_empty: Arc<AtomicBool>
+    ) {
         loop {
             Self::advance_queue(id, &queue);
             thread::sleep(Duration::from_millis(10));

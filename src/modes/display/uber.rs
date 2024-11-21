@@ -394,8 +394,8 @@ impl Thumbnail {
     fn execute(exe: &str, args: &[&str]) -> Result<()> {
         let output = execute_and_output_no_log(exe, args.to_owned())?;
         log_info!(
-            "make thumbnail output: {} {}",
-            String::from_utf8(output.stdout).unwrap_or_default(),
+            "make thumbnail error:  {}",
+            // String::from_utf8(output.stdout).unwrap_or_default(),
             String::from_utf8(output.stderr).unwrap_or_default()
         );
         Ok(())
