@@ -2,7 +2,10 @@ use std::{
     collections::VecDeque,
     fs::create_dir_all,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -22,6 +25,7 @@ use crate::{common::TMP_THUMBNAILS_DIR, log_info};
 #[derive(Debug)]
 pub struct ThumbnailManager {
     queue: Arc<Mutex<VecDeque<PathBuf>>>,
+    is_empty: Arc<AtomicBool>,
     _workers: Vec<Worker>,
 }
 
@@ -31,11 +35,16 @@ impl Default for ThumbnailManager {
         let num_workers = Self::default_thread_count();
         let mut _workers = Vec::with_capacity(num_workers);
         let queue = Arc::new(Mutex::new(VecDeque::new()));
+        let is_empty = Arc::new(AtomicBool::new(true));
         for id in 0..num_workers {
-            _workers.push(Worker::new(id, queue.clone()));
+            _workers.push(Worker::new(id, queue.clone(), is_empty.clone()));
         }
 
-        Self { queue, _workers }
+        Self {
+            queue,
+            _workers,
+            is_empty,
+        }
     }
 }
 
@@ -63,9 +72,14 @@ impl ThumbnailManager {
             log_info!("ThumbnailManager couldn't lock the queue");
             return;
         };
-        log_info!("Enqueuing {len} videos", len = videos.len());
+        // TODO remove when satisfied
+        log_info!(
+            "Enqueuing {len} videos to thumbnail queue",
+            len = videos.len()
+        );
         locked_queue.append(&mut videos);
         drop(locked_queue);
+        self.is_empty.store(false, Ordering::SeqCst);
     }
 
     /// Clear the queue.
@@ -87,22 +101,22 @@ pub struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>) -> Self {
-        let _handle = thread::spawn(move || Self::runner(id, queue));
+    fn new(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>, is_empty: Arc<AtomicBool>) -> Self {
+        let _handle = thread::spawn(move || Self::runner(id, queue, is_empty));
         Self { _handle }
     }
 
-    fn runner(
-        id: usize,
-        queue: Arc<Mutex<VecDeque<PathBuf>>>, // , is_empty: Arc<AtomicBool>
-    ) {
+    fn runner(id: usize, queue: Arc<Mutex<VecDeque<PathBuf>>>, is_empty: Arc<AtomicBool>) {
         loop {
-            Self::advance_queue(id, &queue);
+            Self::advance_queue(id, &queue, &is_empty);
             thread::sleep(Duration::from_millis(10));
         }
     }
 
-    fn advance_queue(id: usize, queue: &Arc<Mutex<VecDeque<PathBuf>>>) {
+    fn advance_queue(id: usize, queue: &Arc<Mutex<VecDeque<PathBuf>>>, is_empty: &Arc<AtomicBool>) {
+        if is_empty.load(Ordering::SeqCst) {
+            return;
+        }
         let Ok(mut locked_queue) = queue.lock() else {
             log_info!("Worker {id} couldn't lock the queue");
             return;
@@ -110,6 +124,9 @@ impl Worker {
         let Some(path) = locked_queue.pop_front() else {
             return;
         };
+        if locked_queue.is_empty() {
+            is_empty.store(true, Ordering::SeqCst);
+        }
         drop(locked_queue);
         log_info!("Worker {id} received task {p}", p = path.display());
         Self::make_thumbnail(path);
