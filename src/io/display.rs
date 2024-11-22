@@ -264,8 +264,8 @@ impl<'a> FuzzyDisplay<'a> {
         };
         let rects = Self::build_layout(rect);
         self.draw_match_counts(fuzzy, f, rects[0]);
+        self.draw_prompt(fuzzy, f, rects[1]);
         self.draw_matches(fuzzy, f, rects[2]);
-        self.draw_prompt(fuzzy, f, rects[3]);
     }
 
     fn build_layout(rect: &Rect) -> Vec<Rect> {
@@ -286,9 +286,8 @@ impl<'a> FuzzyDisplay<'a> {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Min(0),
                 Constraint::Length(2),
+                Constraint::Min(0),
             ])
             .split(area)
             .to_vec()
