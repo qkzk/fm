@@ -1533,6 +1533,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: thumbnailer queue is locked too long and freezes status thread
 - [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
 - [x] fuzzy picker. Move prompt to top
+- [x] move rect creation to a specific struct
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster

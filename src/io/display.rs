@@ -1,4 +1,9 @@
-use std::{cmp::min, io::Stdout, sync::MutexGuard};
+use std::{
+    cmp::min,
+    io::{self, Stdout, Write},
+    rc::Rc,
+    sync::MutexGuard,
+};
 
 use anyhow::{Context, Result};
 use crossterm::{
@@ -1352,6 +1357,93 @@ impl MenuFirstLine {
     }
 }
 
+/// Methods used to create the various rects
+struct Rects;
+
+impl Rects {
+    /// Main rect of the application
+    fn full_rect(width: u16, height: u16) -> Rect {
+        Rect::new(0, 0, width, height)
+    }
+
+    /// Main rect but inside its border
+    fn inside_border_rect(width: u16, height: u16) -> Rect {
+        Rect::new(1, 1, width.saturating_sub(2), height.saturating_sub(2))
+    }
+
+    /// Horizontal split the inside rect in two
+    fn left_right_inside_rects(rect: Rect) -> Rc<[Rect]> {
+        Layout::new(
+            Direction::Horizontal,
+            [Constraint::Min(rect.width / 2), Constraint::Fill(1)],
+        )
+        .split(rect)
+    }
+
+    /// Bordered rects of the four windows
+    fn dual_bordered_rect(
+        parent_wins: Rc<[Rect]>,
+        have_menu_left: bool,
+        have_menu_right: bool,
+    ) -> Vec<Rect> {
+        let mut bordered_wins =
+            Self::vertical_split_border(parent_wins[0], have_menu_left).to_vec();
+        bordered_wins
+            .append(&mut Self::vertical_split_border(parent_wins[1], have_menu_right).to_vec());
+        bordered_wins
+    }
+
+    /// Inside rects of the four windows.
+    fn dual_inside_rect(rect: Rect, have_menu_left: bool, have_menu_right: bool) -> Vec<Rect> {
+        let left_right = Self::left_right_rects(rect);
+        let mut areas = Self::vertical_split_inner(left_right[0], have_menu_left).to_vec();
+        areas.append(&mut Self::vertical_split_inner(left_right[2], have_menu_right).to_vec());
+        areas
+    }
+
+    /// Main inside rect for left and right.
+    /// It also returns a padding rect which should be ignored by the caller.
+    fn left_right_rects(rect: Rect) -> Rc<[Rect]> {
+        Layout::new(
+            Direction::Horizontal,
+            [
+                Constraint::Min(rect.width / 2 - 1),
+                Constraint::Max(2),
+                Constraint::Min(rect.width / 2 - 2),
+            ],
+        )
+        .split(rect)
+    }
+
+    /// Vertical split used to split the inside windows of a pane, left or right.
+    /// It also recturns a padding rect which should be ignored by the caller.
+    fn vertical_split_inner(parent_win: Rect, have_menu: bool) -> Rc<[Rect]> {
+        if have_menu {
+            Layout::new(
+                Direction::Vertical,
+                [
+                    Constraint::Min(parent_win.height / 2 - 1),
+                    Constraint::Max(2),
+                    Constraint::Fill(1),
+                ],
+            )
+            .split(parent_win)
+        } else {
+            Rc::new([parent_win, Rect::default(), Rect::default()])
+        }
+    }
+
+    /// Vertical split used to create the bordered rects of a pane, left or right.
+    fn vertical_split_border(parent_win: Rect, have_menu: bool) -> Rc<[Rect]> {
+        let percent = if have_menu { 50 } else { 100 };
+        Layout::new(
+            Direction::Vertical,
+            [Constraint::Percentage(percent), Constraint::Fill(1)],
+        )
+        .split(parent_win)
+    }
+}
+
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
 pub struct Display {
@@ -1385,40 +1477,53 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
-        use std::io::{self, Write};
-        io::stdout().flush().unwrap();
+        io::stdout().flush().expect("Couldn't flush the stdout");
         if status.should_be_cleared() {
-            self.term.clear().unwrap();
+            self.term.clear().expect("Couldn't clear the terminal");
         }
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
-        let rect = Rect::new(0, 0, width, height);
-        let inside_border_rect = Rect::new(1, 1, width.saturating_sub(2), height.saturating_sub(2));
-        let borders = self.borders(status);
-        if status.session.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual(rect, inside_border_rect, borders, status);
+        let full_rect = Rects::full_rect(width, height);
+        let inside_border_rect = Rects::inside_border_rect(width, height);
+        let borders = Self::borders(status);
+        if Self::use_dual_pane(status, width) {
+            self.draw_dual(full_rect, inside_border_rect, borders, status);
         } else {
-            self.draw_single(rect, inside_border_rect, borders, status);
+            self.draw_single(full_rect, inside_border_rect, borders, status);
         };
+    }
+
+    /// Left File, Left Menu, Right File, Right Menu
+    fn borders(status: &Status) -> [Style; 4] {
+        let menu_styles = MENU_STYLES.get().expect("MENU_STYLES should be set");
+        let mut borders = [menu_styles.inert_border; 4];
+        let selected_border = menu_styles.selected_border;
+        borders[status.focus.index()] = selected_border;
+        borders
+    }
+
+    /// True iff we need to display both panes
+    fn use_dual_pane(status: &Status, width: u16) -> bool {
+        status.session.dual() && width > MIN_WIDTH_FOR_DUAL_PANE
     }
 
     fn draw_dual(
         &mut self,
-        rect: Rect,
+        full_rect: Rect,
         inside_border_rect: Rect,
         borders: [Style; 4],
         status: &Status,
     ) {
-        let (file_left, file_right) = FilesBuilder::dual(status, rect.width);
+        let (file_left, file_right) = FilesBuilder::dual(status, full_rect.width);
         let menu_left = Menu::new(status, 0);
         let menu_right = Menu::new(status, 1);
-        let parent_wins = self.horizontal_split(rect);
+        let parent_wins = Rects::left_right_inside_rects(full_rect);
         let have_menu_left = status.tabs[0].need_menu_window();
         let have_menu_right = status.tabs[1].need_menu_window();
-        let bordered_wins = self.dual_bordered_rect(parent_wins, have_menu_left, have_menu_right);
+        let bordered_wins = Rects::dual_bordered_rect(parent_wins, have_menu_left, have_menu_right);
         let inside_wins =
-            self.dual_inside_rect(inside_border_rect, have_menu_left, have_menu_right);
+            Rects::dual_inside_rect(inside_border_rect, have_menu_left, have_menu_right);
         self.render_dual(
             borders,
             bordered_wins,
@@ -1438,13 +1543,14 @@ impl Display {
     ) {
         self.term
             .draw(|f| {
-                // 0 2
-                // 1 3
+                // 0 File Left | 3 File Right
+                // 1 padding   | 4 padding
+                // 2 Menu Left | 5 Menu Right
                 Self::draw_dual_borders(borders, f, &bordered_wins);
                 files.0.draw(f, &inside_wins[0]);
-                menus.0.draw(f, &inside_wins[1]);
-                files.1.draw(f, &inside_wins[2]);
-                menus.1.draw(f, &inside_wins[3]);
+                menus.0.draw(f, &inside_wins[2]);
+                files.1.draw(f, &inside_wins[3]);
+                menus.1.draw(f, &inside_wins[5]);
             })
             .unwrap();
     }
@@ -1459,16 +1565,16 @@ impl Display {
         let file_left = FilesBuilder::single(status);
         let menu_left = Menu::new(status, 0);
         let need_menu = status.tabs[0].need_menu_window();
-        let bordered_wins = self.vertical_split_border(rect, need_menu);
-        let inside_wins = self.vertical_split_inner(inside_border_rect, need_menu);
+        let bordered_wins = Rects::vertical_split_border(rect, need_menu);
+        let inside_wins = Rects::vertical_split_inner(inside_border_rect, need_menu);
         self.render_single(borders, bordered_wins, inside_wins, file_left, menu_left)
     }
 
     fn render_single(
         &mut self,
         borders: [Style; 4],
-        bordered_wins: Vec<Rect>,
-        inside_wins: Vec<Rect>,
+        bordered_wins: Rc<[Rect]>,
+        inside_wins: Rc<[Rect]>,
         file_left: Files,
         menu_left: Menu,
     ) {
@@ -1476,7 +1582,7 @@ impl Display {
             .draw(|f| {
                 Self::draw_single_borders(borders, f, &bordered_wins);
                 file_left.draw(f, &inside_wins[0]);
-                menu_left.draw(f, &inside_wins[1]);
+                menu_left.draw(f, &inside_wins[2]);
             })
             .unwrap();
     }
@@ -1496,76 +1602,6 @@ impl Display {
 
     fn draw_single_borders(borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
         Self::draw_n_borders(2, borders, f, wins)
-    }
-
-    fn horizontal_split(&self, rect: Rect) -> Vec<Rect> {
-        let left_rect = Rect::new(rect.x, rect.y, rect.width / 2, rect.height);
-        let right_rect = Rect::new(rect.x + rect.width / 2, rect.y, rect.width / 2, rect.height);
-        vec![left_rect, right_rect]
-    }
-
-    fn dual_bordered_rect(
-        &self,
-        parent_wins: Vec<Rect>,
-        have_menu_left: bool,
-        have_menu_right: bool,
-    ) -> Vec<Rect> {
-        let mut bordered_wins = self.vertical_split_border(parent_wins[0], have_menu_left);
-        bordered_wins.append(&mut self.vertical_split_border(parent_wins[1], have_menu_right));
-        bordered_wins
-    }
-
-    // TODO: do the horizontal split by hand
-    fn vertical_split_inner(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
-        let (top, bot) = if have_menu {
-            (parent_win.height / 2 - 1, parent_win.height / 2)
-        } else {
-            (parent_win.height, 0)
-        };
-        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
-        let bot_rect = Rect::new(parent_win.x, parent_win.y + top + 2, parent_win.width, bot);
-        vec![top_rect, bot_rect]
-    }
-
-    fn vertical_split_border(&self, parent_win: Rect, have_menu: bool) -> Vec<Rect> {
-        let (top, bot) = if have_menu {
-            (parent_win.height / 2, parent_win.height / 2)
-        } else {
-            (parent_win.height, 0)
-        };
-        let top_rect = Rect::new(parent_win.x, parent_win.y, parent_win.width, top);
-        let bot_rect = Rect::new(parent_win.x, parent_win.y + top, parent_win.width, bot);
-        vec![top_rect, bot_rect]
-    }
-
-    /// Left File, Left Menu, Right File, Right Menu
-    fn borders(&self, status: &Status) -> [Style; 4] {
-        let menu_styles = MENU_STYLES.get().expect("MENU_STYLES should be set");
-        let mut borders = [menu_styles.inert_border; 4];
-        let selected_border = menu_styles.selected_border;
-        borders[status.focus.index()] = selected_border;
-        borders
-    }
-
-    fn dual_inside_rect(
-        &self,
-        rect: Rect,
-        have_menu_left: bool,
-        have_menu_right: bool,
-    ) -> Vec<Rect> {
-        let parent_wins = {
-            let left_rect = Rect::new(rect.x, rect.y, rect.width / 2 - 1, rect.height);
-            let right_rect = Rect::new(
-                rect.x + rect.width / 2 + 1,
-                rect.y,
-                rect.width / 2 - 2,
-                rect.height,
-            );
-            vec![left_rect, right_rect]
-        };
-        let mut areas = self.vertical_split_inner(parent_wins[0], have_menu_left);
-        areas.append(&mut self.vertical_split_inner(parent_wins[1], have_menu_right));
-        areas
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {
