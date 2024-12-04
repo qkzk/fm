@@ -9,6 +9,7 @@ use std::backtrace;
 
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -207,9 +208,9 @@ impl FM {
         Ok(self)
     }
 
-    /// Disable the mouse capture before normal exit.
-    fn disable_mouse_capture() -> Result<()> {
-        execute!(stdout(), DisableMouseCapture)?;
+    /// Disable the mouse capture and clear before normal exit.
+    fn disable_mouse_capture_and_clear() -> Result<()> {
+        execute!(stdout(), Clear(ClearType::All), DisableMouseCapture)?;
         Ok(())
     }
 
@@ -242,7 +243,7 @@ impl FM {
             status.previewer.quit();
         }
         drop(self.status);
-        Self::disable_mouse_capture()?;
+        Self::disable_mouse_capture_and_clear()?;
         save_final_path(&final_path);
         Ok(())
     }

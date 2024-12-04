@@ -1534,6 +1534,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
 - [x] fuzzy picker. Move prompt to top
 - [x] move rect creation to a specific struct
+- [x] FIX: size shown as 0G for files close to 1GB. See mandalorian s2e2
+- [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
+- [x] FIX: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
@@ -1541,9 +1544,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - first attempt didn't fix
   - can't reproduce
 - [ ] simplify status.confirm action & must leave
-- [x] FIX: size shown as 0G for files close to 1GB. See mandalorian s2e2
-- [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
-- [ ] BUG: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
 
 ## TODO
 
