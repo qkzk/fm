@@ -6,6 +6,7 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
@@ -399,7 +400,7 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
 /// It's the responsability of the caller to ensure displayer doesn't try to override the display.
 pub fn open_shell_in_window() -> Result<()> {
     disable_raw_mode()?;
-    execute!(stdout(), Clear(ClearType::All))?;
+    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
 
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let shell_status = Command::new(&shell).status()?;
@@ -412,13 +413,13 @@ pub fn open_shell_in_window() -> Result<()> {
     }
 
     enable_raw_mode()?;
-    execute!(std::io::stdout(), Clear(ClearType::All))?;
+    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
     Ok(())
 }
 
 pub fn open_file_in_window(arg: &str) -> Result<()> {
     disable_raw_mode()?;
-    execute!(stdout(), Clear(ClearType::All))?;
+    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
 
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let mut shell_command = Command::new(&shell);
@@ -431,6 +432,6 @@ pub fn open_file_in_window(arg: &str) -> Result<()> {
     }
 
     enable_raw_mode()?;
-    execute!(std::io::stdout(), Clear(ClearType::All))?;
+    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
     Ok(())
 }

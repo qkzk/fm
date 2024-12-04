@@ -1542,6 +1542,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - can't reproduce
 - [ ] simplify status.confirm action & must leave
 - [x] FIX: size shown as 0G for files close to 1GB. See mandalorian s2e2
+- [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
+- [ ] BUG: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
 
 ## TODO
 

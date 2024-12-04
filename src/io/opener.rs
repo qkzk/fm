@@ -12,7 +12,7 @@ use crate::common::{
     is_in_path, tilde, OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH,
     OPENER_READABLE, OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
-use crate::io::execute;
+use crate::io::{execute, open_file_in_window};
 use crate::log_info;
 use crate::modes::{decompress_gz, decompress_xz, decompress_zip, extract_extension};
 
@@ -256,7 +256,7 @@ impl External {
 
     fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
         let arg = format!("{program} {path}", program = self.program(),);
-        crate::io::open_file_in_window(&arg)
+        open_file_in_window(&arg)
     }
 
     fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
@@ -265,7 +265,7 @@ impl External {
             .filter_map(|p| p.to_str())
             .collect::<Vec<_>>()
             .join(" ");
-        crate::io::open_file_in_window(&format!("{program} {arg}", program = self.program()))
+        open_file_in_window(&format!("{program} {arg}", program = self.program()))
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
