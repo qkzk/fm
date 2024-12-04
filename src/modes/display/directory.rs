@@ -239,10 +239,13 @@ const SIZES: [&str; 9] = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
 /// Convert a file size from bytes to human readable string.
 #[inline]
 pub fn human_size(bytes: u64) -> String {
-    let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
-    format!(
-        "{:>3}{:<1}",
-        bytes / (1024_u64).pow(factor as u32),
-        SIZES[factor as usize]
-    )
+    let mut factor = 0;
+    let mut size = bytes;
+
+    while size >= 1024 && factor < SIZES.len() - 1 {
+        size /= 1024;
+        factor += 1;
+    }
+
+    format!("{:>3}{}", size, SIZES[factor])
 }
