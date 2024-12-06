@@ -1537,6 +1537,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: size shown as 0G for files close to 1GB. See mandalorian s2e2
 - [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
 - [x] FIX: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
+  - [x] terminal should only be cleared when necessary (if we used the same window)
+  - [ ] refactor with a common method
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster

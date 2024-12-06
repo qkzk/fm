@@ -45,9 +45,13 @@ pub struct InternalSettings {
     pub inside_neovim: bool,
     /// queue of pairs (sources, dest) to be copied.
     /// it shouldn't be massive under normal usage so we can use a vector instead of an efficient queue data structure.
-    pub copy_file_queue: Vec<(Vec<std::path::PathBuf>, std::path::PathBuf)>,
+    pub copy_file_queue: Vec<(Vec<PathBuf>, PathBuf)>,
+    /// internal progressbar used to display copy progress
     pub in_mem_progress: Option<InMemoryTerm>,
+    /// true if the current terminal is disabled
     is_disabled: bool,
+    /// true if the terminal should be cleared before exit. It's set to true when we reuse the window to start a new shell.
+    pub clear_before_quit: bool,
 }
 
 impl InternalSettings {
@@ -62,6 +66,7 @@ impl InternalSettings {
         let width = size.width;
         let height = size.height;
         let is_disabled = false;
+        let clear_before_quit = false;
         Self {
             force_clear,
             must_quit,
@@ -74,6 +79,7 @@ impl InternalSettings {
             copy_file_queue,
             in_mem_progress,
             is_disabled,
+            clear_before_quit,
         }
     }
 
@@ -103,7 +109,7 @@ impl InternalSettings {
         self.force_clear
     }
 
-    pub fn mount_points(&mut self) -> Vec<&std::path::Path> {
+    pub fn mount_points(&mut self) -> Vec<&Path> {
         self.disks.refresh_list();
         self.disks.iter().map(|d| d.mount_point()).collect()
     }
@@ -192,14 +198,19 @@ impl InternalSettings {
             open_in_current_neovim(path, &self.nvim_server);
             Ok(())
         } else if self.opener.use_term(path) {
-            self.disable_display();
-            self.opener.open_in_window(path);
-            self.enable_display();
-            self.force_clear();
+            self.open_single_in_window(path);
             Ok(())
         } else {
             self.opener.open_single(path)
         }
+    }
+
+    fn open_single_in_window(&mut self, path: &Path) {
+        self.disable_display();
+        self.opener.open_in_window(path);
+        self.enable_display();
+        self.force_clear();
+        self.clear_before_quit = true;
     }
 
     pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
@@ -232,6 +243,7 @@ impl InternalSettings {
         self.opener.open_multiple_in_window(openers)?;
         self.enable_display();
         self.force_clear();
+        self.clear_before_quit = true;
         Ok(())
     }
 

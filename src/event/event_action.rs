@@ -587,6 +587,7 @@ impl EventAction {
         open_shell_in_window()?;
         status.internal_settings.enable_display();
         status.internal_settings.force_clear();
+        status.internal_settings.clear_before_quit = true;
         Ok(())
     }
 

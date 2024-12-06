@@ -208,9 +208,15 @@ impl FM {
         Ok(self)
     }
 
-    /// Disable the mouse capture and clear before normal exit.
-    fn disable_mouse_capture_and_clear() -> Result<()> {
-        execute!(stdout(), Clear(ClearType::All), DisableMouseCapture)?;
+    /// Clear before normal exit.
+    fn clear() -> Result<()> {
+        execute!(stdout(), Clear(ClearType::All))?;
+        Ok(())
+    }
+
+    /// Disable the mouse capture before normal exit.
+    fn disable_mouse_capture() -> Result<()> {
+        execute!(stdout(), DisableMouseCapture)?;
         Ok(())
     }
 
@@ -241,9 +247,12 @@ impl FM {
         self.refresher.quit();
         if let Ok(status) = self.status.lock() {
             status.previewer.quit();
+            if status.internal_settings.clear_before_quit {
+                Self::clear()?;
+            }
         }
         drop(self.status);
-        Self::disable_mouse_capture_and_clear()?;
+        Self::disable_mouse_capture()?;
         save_final_path(&final_path);
         Ok(())
     }
