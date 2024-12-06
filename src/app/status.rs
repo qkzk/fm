@@ -550,6 +550,18 @@ impl Status {
         self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.session.dual()
     }
 
+    fn use_dual(&self) -> bool {
+        self.session.dual() && self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+    }
+
+    fn left_window_width(&self) -> u16 {
+        if self.use_dual() {
+            self.internal_settings.width / 2
+        } else {
+            self.internal_settings.width
+        }
+    }
+
     fn resize_all_windows(&mut self, height: u16) -> Result<()> {
         let height_usize = height as usize;
         self.tabs[0].set_height(height_usize);
@@ -951,9 +963,8 @@ impl Status {
                 cut_or_copy,
                 sources,
                 dest,
-                self.internal_settings.term_size().0,
+                self.left_window_width(),
                 self.internal_settings.term_size().1,
-                // Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
             self.internal_settings.store_copy_progress(in_mem);
@@ -963,7 +974,7 @@ impl Status {
 
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
         self.internal_settings
-            .copy_next_file_in_queue(self.fm_sender.clone())
+            .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
     }
 
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {

@@ -149,9 +149,13 @@ impl InternalSettings {
         }
     }
 
-    pub fn copy_next_file_in_queue(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+    pub fn copy_next_file_in_queue(
+        &mut self,
+        fm_sender: Arc<Sender<FmEvents>>,
+        width: u16,
+    ) -> Result<()> {
         let (sources, dest) = self.copy_file_queue[0].clone();
-        let (width, height) = self.term_size();
+        let (_, height) = self.term_size();
         let in_mem = copy_move(
             crate::modes::CopyMove::Copy,
             sources,

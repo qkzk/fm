@@ -1539,6 +1539,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
   - [x] terminal should only be cleared when necessary (if we used the same window)
   - [ ] refactor with a common method
+- [x] FIX: copy progress bar has wrong width
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
@@ -1546,6 +1547,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - first attempt didn't fix
   - can't reproduce
 - [ ] simplify status.confirm action & must leave
+- [ ] crash with error locking status while selecting a file being modified
 
 ## TODO
 
