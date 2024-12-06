@@ -1548,6 +1548,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - can't reproduce
 - [ ] simplify status.confirm action & must leave
 - [ ] crash with error locking status while selecting a file being modified
+- [ ] human size: 3.5G shouldn't be displayed as 3G. 12.3G should still be displayed as 12G. See [eza](https://github.com/eza-community/eza/blob/main/src/output/render/size.rs#L79)
 
 ## TODO
 
