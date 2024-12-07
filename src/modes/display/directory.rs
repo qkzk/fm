@@ -240,12 +240,16 @@ const SIZES: [&str; 9] = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
 #[inline]
 pub fn human_size(bytes: u64) -> String {
     let mut factor = 0;
-    let mut size = bytes;
+    let mut size = bytes as f64;
 
-    while size >= 1024 && factor < SIZES.len() - 1 {
-        size /= 1024;
+    while size >= 1024.0 && factor < SIZES.len() - 1 {
+        size /= 1024.0;
         factor += 1;
     }
 
-    format!("{:>3}{}", size, SIZES[factor])
+    if size < 10.0 {
+        format!("{:.1}{}", size, SIZES[factor])
+    } else {
+        format!("{:>3}{}", size.round() as i64, SIZES[factor])
+    }
 }
