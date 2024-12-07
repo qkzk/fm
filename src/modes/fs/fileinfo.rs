@@ -127,7 +127,7 @@ impl std::fmt::Display for SizeColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Size(bytes) => write!(f, "   {hs}", hs = human_size(*bytes)),
-            Self::EntryCount(count) => write!(f, "   {hs}", hs = human_size(*count)),
+            Self::EntryCount(count) => write!(f, "{hs:>6} ", hs = count),
             Self::MajorMinor((major, minor)) => write!(f, "{major:>3},{minor:<3}"),
         }
     }

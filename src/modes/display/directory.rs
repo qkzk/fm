@@ -234,7 +234,7 @@ pub fn files_collection(
     }
 }
 
-const SIZES: [&str; 9] = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
+const SIZES: [&str; 9] = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
 
 /// Convert a file size from bytes to human readable string.
 #[inline]
@@ -242,12 +242,12 @@ pub fn human_size(bytes: u64) -> String {
     let mut factor = 0;
     let mut size = bytes as f64;
 
-    while size >= 1024.0 && factor < SIZES.len() - 1 {
-        size /= 1024.0;
+    while size >= 1000.0 && factor < SIZES.len() - 1 {
+        size /= 1000.0;
         factor += 1;
     }
 
-    if size < 10.0 {
+    if size < 10.0 && factor > 0 {
         format!("{:.1}{}", size, SIZES[factor])
     } else {
         format!("{:>3}{}", size.round() as i64, SIZES[factor])
