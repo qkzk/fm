@@ -174,10 +174,22 @@ impl<'a> Draw for Files<'a> {
             self.preview_in_right_tab(f, rect);
             return;
         }
-        FilesHeader::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
-        self.copy_progress_bar(f, rect);
-        self.content(f, rect);
-        FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
+        let rects = Layout::new(
+            Direction::Vertical,
+            [
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Fill(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+            ],
+        )
+        .split(*rect);
+
+        FilesHeader::new(self.status, self.tab, self.attributes.is_selected).draw(f, &rects[0]);
+        self.copy_progress_bar(f, &rects[1]);
+        self.content(f, &rects[1], &rects[2]);
+        FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, &rects[4]);
     }
 }
 
@@ -198,12 +210,18 @@ impl<'a> Files<'a> {
         self.attributes.is_right()
     }
 
-    fn content(&self, f: &mut Frame, rect: &Rect) {
+    fn content(&self, f: &mut Frame, second_line_rect: &Rect, content_rect: &Rect) {
         match &self.tab.display_mode {
-            DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, rect),
-            DisplayMode::Tree => TreeDisplay::new(self).draw(f, rect),
-            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, rect),
-            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, rect),
+            DisplayMode::Directory => {
+                FilesSecondLine::new(self.status, self.tab).draw(f, second_line_rect);
+                DirectoryDisplay::new(self).draw(f, content_rect)
+            }
+            DisplayMode::Tree => {
+                FilesSecondLine::new(self.status, self.tab).draw(f, second_line_rect);
+                TreeDisplay::new(self).draw(f, content_rect)
+            }
+            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect),
+            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect),
         }
     }
 
@@ -224,7 +242,7 @@ impl<'a> Files<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        let p_rect = rect.offseted(1, 1);
+        let p_rect = rect.offseted(1, 0);
         Span::styled(
             &content,
             MENU_STYLES
@@ -250,12 +268,6 @@ struct FuzzyDisplay<'a> {
     status: &'a Status,
 }
 
-impl<'a> Draw for FuzzyDisplay<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect) {
-        self.fuzzy(f, rect)
-    }
-}
-
 impl<'a> FuzzyDisplay<'a> {
     fn new(files: &'a Files) -> Self {
         Self {
@@ -263,46 +275,37 @@ impl<'a> FuzzyDisplay<'a> {
         }
     }
 
-    fn fuzzy(&self, f: &mut Frame, rect: &Rect) {
+    fn fuzzy(&self, f: &mut Frame, second_line_rect: &Rect, content_rect: &Rect) {
         let Some(fuzzy) = &self.status.fuzzy else {
             return;
         };
-        let rects = Self::build_layout(rect);
-        self.draw_match_counts(fuzzy, f, rects[0]);
+        let rects = Self::build_layout(content_rect);
+        self.draw_match_counts(fuzzy, f, second_line_rect);
         self.draw_prompt(fuzzy, f, rects[1]);
         self.draw_matches(fuzzy, f, rects[2]);
     }
 
     fn build_layout(rect: &Rect) -> Vec<Rect> {
-        Self::split_layout(Self::build_main_rect(rect))
+        Self::split_layout(rect)
     }
 
-    fn build_main_rect(rect: &Rect) -> Rect {
-        Rect {
-            x: rect.x,
-            y: rect.y + 2,
-            width: rect.width,
-            height: rect.height.saturating_sub(2),
-        }
-    }
-
-    fn split_layout(area: Rect) -> Vec<Rect> {
+    fn split_layout(area: &Rect) -> Vec<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(1),
-                Constraint::Length(2),
+                Constraint::Length(1),
                 Constraint::Min(0),
             ])
-            .split(area)
+            .split(*area)
             .to_vec()
     }
 
     /// Draw the matched items
-    fn draw_match_counts(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+    fn draw_match_counts(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: &Rect) {
         let match_info = self.line_match_info(fuzzy);
         let match_count_paragraph = Self::paragraph_match_count(match_info);
-        f.render_widget(match_count_paragraph, rect);
+        f.render_widget(match_count_paragraph, *rect);
     }
 
     fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
@@ -432,7 +435,6 @@ impl<'a> DirectoryDisplay<'a> {
     /// When we display a simpler version, the menu line is used to display the
     /// metadata of the selected file.
     fn files(&self, f: &mut Frame, rect: &Rect) {
-        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
         self.files_content(f, rect);
         if !self.attributes.has_window_below && !self.attributes.is_right() {
             LogLine.draw(f, rect);
@@ -441,8 +443,7 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn files_content(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
-        let mut p_rect = rect.offseted(2, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(2, 0);
         let formater = self.pick_formater();
         let lines: Vec<_> = self
             .tab
@@ -550,7 +551,6 @@ impl<'a> TreeDisplay<'a> {
     }
 
     fn tree(&self, f: &mut Frame, rect: &Rect) {
-        FilesSecondLine::new(self.status, self.tab).draw(f, rect);
         Self::tree_content(
             self.status,
             &self.tab.tree,
@@ -569,8 +569,8 @@ impl<'a> TreeDisplay<'a> {
         f: &mut Frame,
         rect: &Rect,
     ) {
-        let mut p_rect = rect.offseted(1, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(1, 0);
+        // p_rect.height = p_rect.height.saturating_sub(2);
         let with_icon = Self::with_icon(with_metadata);
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
@@ -697,7 +697,10 @@ impl<'a> PreviewDisplay<'a> {
         number_col_width: usize,
         style: Style,
     ) -> Span<'b> {
-        Span::styled(format!("{line_number_to_print:>number_col_width$} "), style)
+        Span::styled(
+            format!("{line_number_to_print:>number_col_width$}  "),
+            style,
+        )
     }
 
     /// Number of digits in decimal representation
@@ -719,8 +722,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(2, 0);
         let lines: Vec<_> = text
             .take_skip(window.top, window.bottom, length)
             .map(Line::raw)
@@ -737,8 +739,7 @@ impl<'a> PreviewDisplay<'a> {
         number_col_width: usize,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(3, 0);
         let number_col_style = MENU_STYLES.get().expect("").first;
         let lines: Vec<_> = syntaxed
             .take_skip_enum(window.top, window.bottom, length)
@@ -768,8 +769,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(3, 0);
         let line_number_width_hex = bin.number_width_hex();
         let (style_number, style_ascii) = {
             let ms = MENU_STYLES.get().expect("Menu colors should be set");
@@ -795,7 +795,12 @@ impl<'a> PreviewDisplay<'a> {
     fn ueberzug(&self, image: &Ueber, rect: &Rect) {
         let width = rect.width;
         let height = rect.height;
-        image.draw(self.attributes.x_position + 1, 3, width, height - 2);
+        image.draw(
+            self.attributes.x_position + 1,
+            2,
+            width,
+            height.saturating_sub(1),
+        );
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
@@ -810,8 +815,7 @@ impl<'a> PreviewDisplay<'a> {
         rect: &Rect,
         window: &ContentWindow,
     ) {
-        let mut p_rect = rect.offseted(3, ContentWindow::WINDOW_MARGIN_TOP_U16);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(3, 0);
         let lines: Vec<_> = ansi_text
             .take_skip(window.top, window.bottom, length)
             .map(|line| {
@@ -868,8 +872,7 @@ struct FilesSecondLine {
 
 impl Draw for FilesSecondLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let mut p_rect = rect.offseted(1, 1);
-        p_rect.height = p_rect.height.saturating_sub(2);
+        let p_rect = rect.offseted(1, 0);
         if let (Some(content), Some(style)) = (&self.content, &self.style) {
             Span::styled(content, *style).render(p_rect, f.buffer_mut());
         };
@@ -939,8 +942,8 @@ impl<'a> Draw for FilesFooter<'a> {
                 let Ok(footer) = Footer::new(self.status, self.tab) else {
                     return;
                 };
-                let p_rect = rect.offseted(0, rect.height.saturating_sub(1));
-                footer.draw_left(f, p_rect, self.is_selected);
+                // let p_rect = rect.offseted(0, rect.height.saturating_sub(1));
+                footer.draw_left(f, *rect, self.is_selected);
             }
         }
     }
