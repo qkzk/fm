@@ -34,7 +34,7 @@ impl ContentWindow {
     /// How many rows are reserved for the header ?
     pub const HEADER_ROWS: usize = 3;
     /// How many rows are reserved for the footer ?
-    const FOOTER_ROWS: usize = 1;
+    const FOOTER_ROWS: usize = 2;
 
     /// How many rows could be displayed with given height ?
     /// It's not the number of rows displayed since the content may

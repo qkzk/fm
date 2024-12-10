@@ -264,4 +264,20 @@ impl InternalSettings {
     pub fn quit(&mut self) {
         self.must_quit = true
     }
+
+    pub fn format_copy_progress(&self) -> Option<String> {
+        let Some(copy_progress) = &self.in_mem_progress else {
+            return None;
+        };
+        let progress_bar = copy_progress.contents();
+        let nb_copy_left = self.copy_file_queue.len();
+        if nb_copy_left <= 1 {
+            Some(progress_bar)
+        } else {
+            Some(format!(
+                "{progress_bar}     -     1 of {nb}",
+                nb = nb_copy_left
+            ))
+        }
+    }
 }

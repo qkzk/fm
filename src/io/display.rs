@@ -170,26 +170,19 @@ struct Files<'a> {
 
 impl<'a> Draw for Files<'a> {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
+        let rects = Rects::files(rect);
+
         if self.should_preview_in_right_tab() {
-            self.preview_in_right_tab(f, rect);
+            self.preview_in_right_tab(f, &rects[0], &rects[2]);
             return;
         }
-        let rects = Layout::new(
-            Direction::Vertical,
-            [
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Fill(1),
-                Constraint::Length(1),
-                Constraint::Length(1),
-            ],
-        )
-        .split(*rect);
 
-        FilesHeader::new(self.status, self.tab, self.attributes.is_selected).draw(f, &rects[0]);
+        self.header(f, &rects[0]);
         self.copy_progress_bar(f, &rects[1]);
+        self.second_line(f, &rects[1]);
         self.content(f, &rects[1], &rects[2]);
-        FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, &rects[4]);
+        self.log_line(f, &rects[3]);
+        self.footer(f, &rects[4]);
     }
 }
 
@@ -206,23 +199,22 @@ impl<'a> Files<'a> {
         self.status.session.dual() && self.is_right() && self.status.session.preview()
     }
 
+    fn preview_in_right_tab(&self, f: &mut Frame, header_rect: &Rect, content_rect: &Rect) {
+        let tab = &self.status.tabs[1];
+        PreviewHeader::into_default_preview(self.status, tab, content_rect.width).draw_left(
+            f,
+            *header_rect,
+            self.status.index == 1,
+        );
+        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, content_rect);
+    }
+
     fn is_right(&self) -> bool {
         self.attributes.is_right()
     }
 
-    fn content(&self, f: &mut Frame, second_line_rect: &Rect, content_rect: &Rect) {
-        match &self.tab.display_mode {
-            DisplayMode::Directory => {
-                FilesSecondLine::new(self.status, self.tab).draw(f, second_line_rect);
-                DirectoryDisplay::new(self).draw(f, content_rect)
-            }
-            DisplayMode::Tree => {
-                FilesSecondLine::new(self.status, self.tab).draw(f, second_line_rect);
-                TreeDisplay::new(self).draw(f, content_rect)
-            }
-            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect),
-            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect),
-        }
+    fn header(&self, f: &mut Frame, rect: &Rect) {
+        FilesHeader::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
     }
 
     /// Display a copy progress bar on the left tab.
@@ -232,15 +224,49 @@ impl<'a> Files<'a> {
         if self.is_right() {
             return;
         }
-        let Some(copy_progress) = &self.status.internal_settings.in_mem_progress else {
+        CopyProgressBar::new(self.status).draw(f, rect);
+    }
+
+    fn second_line(&self, f: &mut Frame, rect: &Rect) {
+        if matches!(
+            self.tab.display_mode,
+            DisplayMode::Directory | DisplayMode::Tree
+        ) {
+            FilesSecondLine::new(self.status, self.tab).draw(f, rect);
+        }
+    }
+
+    fn content(&self, f: &mut Frame, second_line_rect: &Rect, content_rect: &Rect) {
+        match &self.tab.display_mode {
+            DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, content_rect),
+            DisplayMode::Tree => TreeDisplay::new(self).draw(f, content_rect),
+            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect),
+            DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect),
+        }
+    }
+
+    fn log_line(&self, f: &mut Frame, rect: &Rect) {
+        if matches!(self.tab.display_mode, DisplayMode::Directory)
+            && !self.attributes.has_window_below
+            && !self.attributes.is_right()
+        {
+            LogLine.draw(f, rect);
+        }
+    }
+
+    fn footer(&self, f: &mut Frame, rect: &Rect) {
+        FilesFooter::new(self.status, self.tab, self.attributes.is_selected).draw(f, rect);
+    }
+}
+
+struct CopyProgressBar<'a> {
+    status: &'a Status,
+}
+
+impl<'a> Draw for CopyProgressBar<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect) {
+        let Some(content) = self.status.internal_settings.format_copy_progress() else {
             return;
-        };
-        let progress_bar = copy_progress.contents();
-        let nb_copy_left = self.status.internal_settings.copy_file_queue.len();
-        let content = if nb_copy_left <= 1 {
-            progress_bar
-        } else {
-            format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
         let p_rect = rect.offseted(1, 0);
         Span::styled(
@@ -248,19 +274,15 @@ impl<'a> Files<'a> {
             MENU_STYLES
                 .get()
                 .expect("Menu colors should be set")
-                .palette_4,
+                .palette_2,
         )
         .render(p_rect, f.buffer_mut());
     }
+}
 
-    fn preview_in_right_tab(&self, f: &mut Frame, rect: &Rect) {
-        let tab = &self.status.tabs[1];
-        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, rect);
-        PreviewHeader::into_default_preview(self.status, tab, rect.width).draw_left(
-            f,
-            *rect,
-            self.status.index == 1,
-        );
+impl<'a> CopyProgressBar<'a> {
+    fn new(status: &'a Status) -> Self {
+        Self { status }
     }
 }
 
@@ -409,7 +431,6 @@ impl<'a> FuzzyDisplay<'a> {
 struct DirectoryDisplay<'a> {
     status: &'a Status,
     tab: &'a Tab,
-    attributes: &'a FilesAttributes,
 }
 
 impl<'a> Draw for DirectoryDisplay<'a> {
@@ -423,7 +444,6 @@ impl<'a> DirectoryDisplay<'a> {
         Self {
             status: files.status,
             tab: files.tab,
-            attributes: &files.attributes,
         }
     }
 
@@ -435,13 +455,6 @@ impl<'a> DirectoryDisplay<'a> {
     /// When we display a simpler version, the menu line is used to display the
     /// metadata of the selected file.
     fn files(&self, f: &mut Frame, rect: &Rect) {
-        self.files_content(f, rect);
-        if !self.attributes.has_window_below && !self.attributes.is_right() {
-            LogLine.draw(f, rect);
-        }
-    }
-
-    fn files_content(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
         let p_rect = rect.offseted(2, 0);
         let formater = self.pick_formater();
@@ -911,7 +924,7 @@ struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let p_rect = rect.offseted(4, rect.height.saturating_sub(2));
+        let p_rect = rect.offseted(4, 0);
         let log = &read_last_log_line();
         Span::styled(
             log,
@@ -1444,6 +1457,26 @@ impl Rects {
             [Constraint::Percentage(percent), Constraint::Fill(1)],
         )
         .split(parent_win)
+    }
+
+    /// Split the rect vertically like this:
+    /// 1   :       header
+    /// 1   :       copy progress bar or second line
+    /// fill:       content
+    /// 1   :       log line
+    /// 1   :       footer
+    fn files(rect: &Rect) -> Rc<[Rect]> {
+        Layout::new(
+            Direction::Vertical,
+            [
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Fill(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+            ],
+        )
+        .split(*rect)
     }
 }
 

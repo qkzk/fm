@@ -1551,8 +1551,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: human size. Use 1 decimal place for files sizes 10.0. No decimal places otherwise.
       human size: 3.5G shouldn't be displayed as 3G. 12.3G should still be displayed as 12G. See [eza](https://github.com/eza-community/eza/blob/main/src/output/render/size.rs#L79)
 - [x] FIX: human size should use decimals for size under 1024B.
-- [ ] last element of directory / menus is reachable but invisible.
-      Change ui use rect per content: min 1, min 1, fill, min 1.
+- [ ] BUG: last element of directory / menus is reachable but invisible.
+  - [x] Change ui use rect per content: min 1, min 1, fill, min 1.
+  - [ ] still there. Need to review the scrolling once again.
+    - [x] increase content window footer row by one. OKAY for file
+    - [ ] adjust for: preview, fuzzy, tree, menu
 
 ## TODO
 
