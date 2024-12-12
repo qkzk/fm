@@ -1554,6 +1554,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: last element of directory / menus is reachable but invisible.
   - [x] Change ui use rect per content: min 1, min 1, fill, min 1.
   - [x] increase content window footer row by one.
+- [x] FIX: pagedown in preview doesn't care for window size and scroll too much
 
 ## TODO
 

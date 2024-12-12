@@ -729,21 +729,40 @@ impl Tab {
         self.window.scroll_to(self.preview.len().saturating_sub(1))
     }
 
+    fn preview_scroll(&self) -> usize {
+        if matches!(self.menu_mode, Menu::Nothing) {
+            2 * self.height / 3
+        } else {
+            self.height / 3
+        }
+    }
+
+    fn preview_binary_scroll(&self) -> usize {
+        if matches!(self.menu_mode, Menu::Nothing) {
+            self.height / 3
+        } else {
+            self.height / 6
+        }
+    }
+
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.up_one_row(),
-            Preview::Binary(_) => self.window.preview_page_up(16),
-            _ => self.window.preview_page_up(30),
+            Preview::Binary(_) => self.window.preview_page_up(self.preview_binary_scroll()),
+            _ => self.window.preview_page_up(self.preview_scroll()),
         }
     }
 
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
     pub fn preview_page_down(&mut self) {
+        let len = self.preview.len();
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.down_one_row(),
-            Preview::Binary(binary) => self.window.preview_page_down(16, binary.len()),
-            _ => self.window.preview_page_down(30, self.preview.len()),
+            Preview::Binary(_) => self
+                .window
+                .preview_page_down(self.preview_binary_scroll(), len),
+            _ => self.window.preview_page_down(self.preview_scroll(), len),
         }
     }
 
