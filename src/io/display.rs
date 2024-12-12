@@ -170,7 +170,8 @@ struct Files<'a> {
 
 impl<'a> Draw for Files<'a> {
     fn draw(&self, f: &mut Frame, rect: &Rect) {
-        let rects = Rects::files(rect);
+        let use_log_line = self.use_log_line();
+        let rects = Rects::files(rect, use_log_line);
 
         if self.should_preview_in_right_tab() {
             self.preview_in_right_tab(f, &rects[0], &rects[2]);
@@ -181,8 +182,10 @@ impl<'a> Draw for Files<'a> {
         self.copy_progress_bar(f, &rects[1]);
         self.second_line(f, &rects[1]);
         self.content(f, &rects[1], &rects[2]);
-        self.log_line(f, &rects[3]);
-        self.footer(f, &rects[4]);
+        if use_log_line {
+            self.log_line(f, &rects[3]);
+        }
+        self.footer(f, rects.last().expect("Shouldn't be empty"));
     }
 }
 
@@ -193,6 +196,14 @@ impl<'a> Files<'a> {
             tab: &status.tabs[index],
             attributes,
         }
+    }
+
+    fn use_log_line(&self) -> bool {
+        matches!(
+            self.tab.display_mode,
+            DisplayMode::Directory | DisplayMode::Tree
+        ) && !self.attributes.has_window_below
+            && !self.attributes.is_right()
     }
 
     fn should_preview_in_right_tab(&self) -> bool {
@@ -246,12 +257,7 @@ impl<'a> Files<'a> {
     }
 
     fn log_line(&self, f: &mut Frame, rect: &Rect) {
-        if matches!(self.tab.display_mode, DisplayMode::Directory)
-            && !self.attributes.has_window_below
-            && !self.attributes.is_right()
-        {
-            LogLine.draw(f, rect);
-        }
+        LogLine.draw(f, rect);
     }
 
     fn footer(&self, f: &mut Frame, rect: &Rect) {
@@ -301,26 +307,10 @@ impl<'a> FuzzyDisplay<'a> {
         let Some(fuzzy) = &self.status.fuzzy else {
             return;
         };
-        let rects = Self::build_layout(content_rect);
+        let rects = Rects::fuzzy(content_rect);
         self.draw_match_counts(fuzzy, f, second_line_rect);
         self.draw_prompt(fuzzy, f, rects[1]);
         self.draw_matches(fuzzy, f, rects[2]);
-    }
-
-    fn build_layout(rect: &Rect) -> Vec<Rect> {
-        Self::split_layout(rect)
-    }
-
-    fn split_layout(area: &Rect) -> Vec<Rect> {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Min(0),
-            ])
-            .split(*area)
-            .to_vec()
     }
 
     /// Draw the matched items
@@ -1377,6 +1367,21 @@ impl MenuFirstLine {
 struct Rects;
 
 impl Rects {
+    const FILES_WITH_LOGLINE: &[Constraint] = &[
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ];
+
+    const FILES_WITHOUT_LOGLINE: &[Constraint] = &[
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+        Constraint::Length(1),
+    ];
+
     /// Main rect of the application
     fn full_rect(width: u16, height: u16) -> Rect {
         Rect::new(0, 0, width, height)
@@ -1465,18 +1470,27 @@ impl Rects {
     /// fill:       content
     /// 1   :       log line
     /// 1   :       footer
-    fn files(rect: &Rect) -> Rc<[Rect]> {
+    fn files(rect: &Rect, use_log_line: bool) -> Rc<[Rect]> {
         Layout::new(
             Direction::Vertical,
-            [
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Fill(1),
-                Constraint::Length(1),
-                Constraint::Length(1),
-            ],
+            if use_log_line {
+                Self::FILES_WITH_LOGLINE
+            } else {
+                Self::FILES_WITHOUT_LOGLINE
+            },
         )
         .split(*rect)
+    }
+
+    fn fuzzy(area: &Rect) -> Rc<[Rect]> {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Min(0),
+            ])
+            .split(*area)
     }
 }
 

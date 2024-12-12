@@ -223,17 +223,17 @@ where
     pub fn top_bottom(&self) -> (u32, u32) {
         let used_height = self
             .height
-            .saturating_sub(ContentWindow::WINDOW_PADDING_U32);
+            .saturating_sub(ContentWindow::WINDOW_PADDING_FUZZY);
         if self.matched_item_count < used_height {
             // not enough items to fill the display, take everything
             (0, self.matched_item_count)
-        } else if self.index < self.top + ContentWindow::WINDOW_PADDING_U32 {
+        } else if self.index < self.top + ContentWindow::WINDOW_PADDING_FUZZY {
             // scroll up by one
             (
                 self.top.saturating_sub(1),
                 min(self.top + used_height, self.matched_item_count),
             )
-        } else if self.index + ContentWindow::WINDOW_PADDING_U32 > self.top + used_height {
+        } else if self.index + ContentWindow::WINDOW_PADDING_FUZZY > self.top + used_height {
             // scroll down by one
             (
                 self.top + 1,
@@ -294,10 +294,10 @@ impl FuzzyFinder<String> {
 
     fn select_clic(&mut self, row: u16) {
         let row = row as u32;
-        if row <= ContentWindow::WINDOW_PADDING_U32 || row > self.height {
+        if row <= ContentWindow::WINDOW_PADDING_FUZZY || row > self.height {
             return;
         }
-        self.index = self.top + row - (ContentWindow::WINDOW_PADDING_U32) - 1;
+        self.index = self.top + row - (ContentWindow::WINDOW_PADDING_FUZZY) - 1;
         #[cfg(debug_assertions)]
         self.log();
     }
