@@ -22,8 +22,8 @@ use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_and_capture_output_without_check,
-    execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
-    Args, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    execute_sudo_command_with_password, execute_without_output, get_cloud_token_names,
+    google_drive, reset_sudo_faillock, Args, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
@@ -1374,28 +1374,36 @@ impl Status {
     /// See [`crate::modes::shell_command_parser`] for more information.
     pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        self.parse_shell_command(shell_command, None)
+        self.parse_shell_command(shell_command, None, false)
+    }
+
+    fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
+        if let Some(files) = &files {
+            shell_command + " " + &files.join(" ")
+        } else {
+            shell_command
+        }
     }
 
     pub fn parse_shell_command(
         &mut self,
         shell_command: String,
         files: Option<Vec<String>>,
+        capture_output: bool,
     ) -> Result<bool> {
-        let Ok(mut args) = shell_command_parser(&shell_command, self) else {
+        let command = Self::build_shell_command(shell_command, files);
+        let Ok(args) = shell_command_parser(&command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
         };
-        if let Some(mut files) = files {
-            args.append(&mut files);
-        }
-        self.execute_parsed_command(args, shell_command)
+        self.execute_parsed_command(args, command, capture_output)
     }
 
     fn execute_parsed_command(
         &mut self,
         mut args: Vec<String>,
         shell_command: String,
+        capture_output: bool,
     ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
@@ -1407,11 +1415,16 @@ impl Status {
                 return Ok(true);
             }
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            match execute_and_capture_output(executable, &params) {
-                Ok(output) => self.preview_command_output(output, shell_command),
-                Err(e) => log_info!("Error {e:?}"),
+            if capture_output {
+                match execute_and_capture_output(executable, &params) {
+                    Ok(output) => self.preview_command_output(output, shell_command),
+                    Err(e) => log_info!("Error {e:?}"),
+                }
+                Ok(true)
+            } else {
+                let _ = execute_without_output(executable, &params);
+                Ok(true)
             }
-            Ok(true)
         }
     }
 

@@ -1515,6 +1515,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] marks
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
+  - [ ] use readelf for ELF file
+    - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
 
 - [x] WONTDO: ratatui component for progress bar for copymove. Is very poor. I already need a thread to handle the progress, why would I replace it with something less powerful ?
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
@@ -1555,6 +1557,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Change ui use rect per content: min 1, min 1, fill, min 1.
   - [x] increase content window footer row by one.
 - [x] FIX: pagedown in preview doesn't care for window size and scroll too much
+- [ ] BUG: i sends wrong path
+- [x] FIX: exex hangs
 
 ## TODO
 

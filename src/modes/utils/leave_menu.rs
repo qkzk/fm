@@ -268,7 +268,11 @@ impl LeaveMenu {
             bail!("exec: empty directory")
         }
         let exec_command = status.menu.input.string();
-        if status.parse_shell_command(exec_command, Some(status.menu.flagged.as_strings()))? {
+        if status.parse_shell_command(
+            exec_command,
+            Some(status.menu.flagged.as_strings()),
+            false,
+        )? {
             status.menu.completion.reset();
             status.menu.input.reset();
         }
