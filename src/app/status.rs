@@ -1374,7 +1374,7 @@ impl Status {
     /// See [`crate::modes::shell_command_parser`] for more information.
     pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        self.parse_shell_command(shell_command, None, false)
+        self.parse_shell_command(shell_command, None, true)
     }
 
     fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {

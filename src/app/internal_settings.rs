@@ -130,8 +130,9 @@ impl InternalSettings {
             let output = String::from_utf8(output.stdout).unwrap_or_default();
             let content: String = output
                 .split(&['\n', '\t', ' '])
-                .filter(|w| w.contains(NVIM))
-                .collect();
+                .find(|w| w.contains(NVIM))
+                .unwrap_or("")
+                .to_string();
             if !content.is_empty() {
                 return Ok(content);
             }

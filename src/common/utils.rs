@@ -181,6 +181,10 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
         "<esc>:e {path}<cr><esc>:set number<cr><esc>:close<cr>",
         path = path.display()
     );
+    log_info!(
+        "open_in_current_neovim {nvim_server} {path} {command}",
+        path = path.display()
+    );
     match nvim(nvim_server, command) {
         Ok(()) => log_line!(
             "Opened {path} in neovim at {nvim_server}",
