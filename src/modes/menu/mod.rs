@@ -36,7 +36,7 @@ pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
 pub use cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDeviceOpener};
 pub use decompress::{
-    decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
+    decompress_7z, decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
 };
 pub use filter::FilterKind;
 pub use flagged::Flagged;

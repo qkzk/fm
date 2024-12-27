@@ -14,7 +14,9 @@ use crate::common::{
 };
 use crate::io::{execute, open_file_in_window};
 use crate::log_info;
-use crate::modes::{decompress_gz, decompress_xz, decompress_zip, extract_extension};
+use crate::modes::{
+    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension,
+};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -28,6 +30,7 @@ pub enum Extension {
     Vectorial,
     Video,
     Zip,
+    Sevenz,
     Gz,
     Xz,
     Iso,
@@ -61,7 +64,9 @@ impl Extension {
 
             "zip" => Self::Zip,
 
-            "xz" | "7z" => Self::Xz,
+            "xz" => Self::Xz,
+
+            "7z" | "7za" => Self::Sevenz,
 
             "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => Self::Gz,
             // iso files can't be mounted without more information than we hold in this enum :
@@ -124,6 +129,7 @@ impl Default for Association {
                 (Extension::Text,       Kind::external(OPENER_TEXT)),
                 (Extension::Vectorial,  Kind::external(OPENER_VECT)),
                 (Extension::Video,      Kind::external(OPENER_VIDEO)),
+                (Extension::Sevenz,     Kind::Internal(Internal::Sevenz)),
                 (Extension::Gz,         Kind::Internal(Internal::Gz)),
                 (Extension::Xz,         Kind::Internal(Internal::Xz)),
                 (Extension::Zip,        Kind::Internal(Internal::Zip)),
@@ -205,12 +211,14 @@ pub enum Internal {
     Zip,
     Xz,
     Gz,
+    Sevenz,
     NotSupported,
 }
 
 impl Internal {
     fn open(&self, path: &Path) -> Result<()> {
         match self {
+            Self::Sevenz => decompress_7z(path),
             Self::Zip => decompress_zip(path),
             Self::Xz => decompress_xz(path),
             Self::Gz => decompress_gz(path),

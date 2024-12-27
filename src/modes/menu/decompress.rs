@@ -2,6 +2,7 @@ use std::{fs::File, path::Path};
 
 use anyhow::{Context, Result};
 use flate2::read::{GzDecoder, ZlibDecoder};
+use sevenz_rust::decompress_file;
 use tar::Archive;
 
 use crate::common::{path_to_string, BSDTAR};
@@ -39,6 +40,19 @@ pub fn decompress_gz(source: &Path) -> Result<()> {
         .context("decompress: source should have a parent")?;
     archive.unpack(parent)?;
 
+    Ok(())
+}
+
+/// Decompress a 7z compressed file into its parent directory.
+///
+/// # Errors
+///
+/// It may fail if the file can't be opened.
+pub fn decompress_7z(source: &Path) -> Result<()> {
+    let parent = source
+        .parent()
+        .context("decompress: source should have a parent")?;
+    decompress_file(source, parent)?;
     Ok(())
 }
 

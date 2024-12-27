@@ -214,8 +214,10 @@ pub const GIO: &str = "gio";
 pub const UDEVADM: &str = "udevadm";
 /// neovim executable
 pub const NVIM: &str = "nvim";
-/// bsdtar executable, used to display archive content
+/// bsdtar executable, used to display common archive content
 pub const BSDTAR: &str = "bsdtar";
+/// 7z executable, used to display 7z archive content
+pub const SEVENZ: &str = "7z";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit

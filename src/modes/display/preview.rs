@@ -18,8 +18,8 @@ use syntect::{
 
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
-    TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT,
+    SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
@@ -41,6 +41,7 @@ pub enum ExtensionKind {
     Notebook,
     Office,
     Pdf,
+    Sevenz,
     Svg,
     Torrent,
     Video,
@@ -54,8 +55,10 @@ impl ExtensionKind {
     #[rustfmt::skip]
     pub fn matcher(ext: &str) -> Self {
         match ext {
-            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z" | "gz" | "zst" | "deb" | "rpm"
+            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "gz" | "zst" | "deb" | "rpm"
             => Self::Archive,
+            "7z" | "7za"
+            => Self::Sevenz,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
             => Self::Image,
             "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac"
@@ -94,6 +97,7 @@ impl ExtensionKind {
             Self::Office    => is_in_path(LIBREOFFICE),
             Self::Torrent   => is_in_path(TRANSMISSION_SHOW),
             Self::Image     => is_in_path(UEBERZUG),
+            Self::Sevenz    => is_in_path(SEVENZ),
             Self::Svg       => is_in_path(UEBERZUG) && is_in_path(RSVG_CONVERT),
             Self::Video     => is_in_path(UEBERZUG) && is_in_path(FFMPEG),
             Self::Font      => is_in_path(UEBERZUG) && is_in_path(FONTIMAGE),
@@ -129,6 +133,7 @@ impl std::fmt::Display for ExtensionKind {
             Self::Audio     => write!(f, "audio"),
             Self::Video     => write!(f, "video"),
             Self::Font      => write!(f, "font"),
+            Self::Sevenz    => write!(f, "7zip"),
             Self::Svg       => write!(f, "svg"),
             Self::Pdf       => write!(f, "pdf"),
             Self::Iso       => write!(f, "iso"),
@@ -268,6 +273,9 @@ impl PreviewBuilder {
             ExtensionKind::Archive if kind.has_programs() => {
                 Ok(Preview::Text(Text::archive(&self.path, &extension)?))
             }
+            ExtensionKind::Sevenz if kind.has_programs() => {
+                Ok(Preview::Text(Text::sevenz(&self.path)?))
+            }
             ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(&self.path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
                 Text::epub(&self.path).context("Preview: Couldn't read epub")?,
@@ -406,6 +414,7 @@ pub enum TextKind {
     Iso,
     Log,
     Mediacontent,
+    Sevenz,
     Socket,
     Torrent,
 }
@@ -424,6 +433,7 @@ impl TextKind {
             Self::Iso => "Iso",
             Self::Log => "Log",
             Self::Mediacontent => "a media content",
+            Self::Sevenz => "a 7z archive",
             Self::Socket => "a Socket file",
             Self::Torrent => "a torrent",
         }
@@ -534,6 +544,10 @@ impl Text {
             length: content.len(),
             content,
         })
+    }
+
+    fn sevenz(path: &Path) -> Result<Self> {
+        Self::from_command_output(TextKind::Sevenz, SEVENZ, &["l", &path_to_string(&path)])
     }
 
     fn iso(path: &Path) -> Result<Self> {

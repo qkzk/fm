@@ -1,15 +1,17 @@
 use std::borrow::Cow;
-use std::io::prelude::*;
-use std::io::Write;
+use std::io::{prelude::*, Write};
+use std::path::{Path, PathBuf};
 
+use anyhow::bail;
 use anyhow::Result;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
+use sevenz_rust::compress_to_path;
 use zip::write::SimpleFileOptions;
 
 use crate::io::{CowStr, DrawMenu};
-use crate::{impl_content, impl_selectable, log_line};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Different kind of compression methods
 #[derive(Debug)]
@@ -19,6 +21,7 @@ pub enum CompressionMethod {
     Gz,
     Zlib,
     Lzma,
+    Sevenz,
 }
 
 impl CompressionMethod {
@@ -29,6 +32,7 @@ impl CompressionMethod {
             Self::Lzma => "LZMA:    archive.tar.xz",
             Self::Gz => "GZ:      archive.tar.gz",
             Self::Zlib => "ZLIB:    archive.tar.xz",
+            Self::Sevenz => "7Z:      archive.7z",
         }
     }
 }
@@ -48,12 +52,13 @@ impl Compresser {
             CompressionMethod::Zlib,
             CompressionMethod::Gz,
             CompressionMethod::Defl,
+            CompressionMethod::Sevenz,
         ];
     }
     /// Archive the files with tar and compress them with the selected method.
     /// The compression method is chosen by the user.
     /// Archive is created `here` which should be the path of the selected tab.
-    pub fn compress(&self, files: Vec<std::path::PathBuf>, here: &std::path::Path) -> Result<()> {
+    pub fn compress(&self, files: Vec<PathBuf>, here: &Path) -> Result<()> {
         let Some(selected) = self.selected() else {
             return Ok(());
         };
@@ -64,12 +69,13 @@ impl Compresser {
             CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
             CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
             CompressionMethod::Defl => Self::defl(Self::archive(here, "archive.tar.gz")?, files)?,
+            CompressionMethod::Sevenz => Self::sevenz(here, "archive.7z", files)?,
         }
         log_line!("Compressed with {selected}", selected = selected.to_str());
         Ok(())
     }
 
-    fn make_tar<W>(files: Vec<std::path::PathBuf>, mut archive: tar::Builder<W>) -> Result<()>
+    fn make_tar<W>(files: Vec<PathBuf>, mut archive: tar::Builder<W>) -> Result<()>
     where
         W: Write,
     {
@@ -86,13 +92,13 @@ impl Compresser {
         Ok(())
     }
 
-    fn archive(here: &std::path::Path, archive_name: &str) -> Result<std::fs::File> {
+    fn archive(here: &Path, archive_name: &str) -> Result<std::fs::File> {
         let mut full_path = here.to_path_buf();
         full_path.push(archive_name);
         Ok(std::fs::File::create(full_path)?)
     }
 
-    fn gzip(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
+    fn gzip(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
         let mut encoder = GzEncoder::new(archive, Compression::default());
 
         // Create tar archive and compress files
@@ -104,7 +110,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn defl(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
+    fn defl(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
         let mut encoder = DeflateEncoder::new(archive, Compression::default());
 
         // Create tar archive and compress files
@@ -116,7 +122,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn zlib(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
+    fn zlib(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
         let mut encoder = ZlibEncoder::new(archive, Compression::default());
 
         // Create tar archive and compress files
@@ -128,7 +134,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn lzma(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
+    fn lzma(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
         let mut encoder = LzmaWriter::new_compressor(archive, 6)?;
 
         // Create tar archive and compress files
@@ -140,7 +146,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn zip(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
+    fn zip(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
         let mut zip = zip::ZipWriter::new(archive);
         let options = SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Stored)
@@ -156,6 +162,17 @@ impl Compresser {
 
         // Finish zip file
         zip.finish()?;
+        Ok(())
+    }
+
+    fn sevenz(dest: &Path, filename: &str, files: Vec<PathBuf>) -> Result<()> {
+        if files.len() != 1 {
+            let error_msg = "Can only compress a single file with 7z compression method.";
+            log_line!("{error_msg}");
+            log_info!("{error_msg}");
+            bail!("{error_msg}")
+        }
+        compress_to_path(&files[0], dest.join(filename))?;
         Ok(())
     }
 }
