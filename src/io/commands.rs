@@ -159,10 +159,10 @@ pub fn execute_and_capture_output_with_path<
 /// Execute a command with options in a fork.
 /// Wait for termination and return either `Ok(stdout)`.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output_without_check<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
-    exe: S,
-    args: &[&str],
-) -> Result<String> {
+pub fn execute_and_capture_output_without_check<S>(exe: S, args: &[&str]) -> Result<String>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+{
     log_info!("execute_and_capture_output_without_check. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
@@ -211,7 +211,7 @@ pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output>
 pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
-    if !std::path::Path::new(command).exists() && !is_in_path(command) {
+    if !Path::new(command).exists() && !is_in_path(command) {
         log_info!("{command} can't be found - args {exec_command:?}");
         return Ok(false);
     }

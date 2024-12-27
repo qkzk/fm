@@ -2,15 +2,14 @@ use std::borrow::Cow;
 use std::io::{prelude::*, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::bail;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
-use sevenz_rust::compress_to_path;
 use zip::write::SimpleFileOptions;
 
-use crate::io::{CowStr, DrawMenu};
+use crate::common::{is_in_path, SEVENZ};
+use crate::io::{execute_without_output, CowStr, DrawMenu};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Different kind of compression methods
@@ -166,13 +165,17 @@ impl Compresser {
     }
 
     fn sevenz(dest: &Path, filename: &str, files: Vec<PathBuf>) -> Result<()> {
-        if files.len() != 1 {
-            let error_msg = "Can only compress a single file with 7z compression method.";
-            log_line!("{error_msg}");
-            log_info!("{error_msg}");
-            bail!("{error_msg}")
+        if !is_in_path(SEVENZ) {
+            log_info!("Can't compress with 7z without {SEVENZ} executable");
+            log_line!("Can't compress with 7z without {SEVENZ} executable");
+            return Ok(());
         }
-        compress_to_path(&files[0], dest.join(filename))?;
+        let dest = dest.join(filename);
+        let dest = dest.to_str().context("")?;
+        let mut args = vec!["a", &dest];
+        args.extend(files.iter().filter_map(|file| file.to_str()));
+        args.extend(&["-y", "-bd"]);
+        let _ = execute_without_output(SEVENZ, &args);
         Ok(())
     }
 }

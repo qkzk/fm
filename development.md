@@ -1559,7 +1559,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: pagedown in preview doesn't care for window size and scroll too much
 - [x] FIX: open in nvim concats multiple listen address when nvim is opened several times
 - [x] FIX: exex hangs
-- [ ] 7z support. Looks promising but can only compress single files. Should I simply use 7z program since it's alread used to list files ?
+- [x] 7z support with 7z executable.
+  - [ ] decompress 7z uses a standard opener and should be moved there.
 
 ## TODO
 

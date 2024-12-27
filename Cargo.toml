@@ -57,7 +57,6 @@ strum = {version = "0.26.3", features = ["derive"]}
 strum_macros = "0.26.4"
 syntect = "5.0.0"
 sysinfo = "0.31.4"
-sevenz-rust = "0.6.1"
 tar = "0.4.38"
 tokio = {version = "1", features = ["full"] }
 ueberzug = "0.1.0"

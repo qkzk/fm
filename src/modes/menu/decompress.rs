@@ -2,11 +2,11 @@ use std::{fs::File, path::Path};
 
 use anyhow::{Context, Result};
 use flate2::read::{GzDecoder, ZlibDecoder};
-use sevenz_rust::decompress_file;
 use tar::Archive;
 
-use crate::common::{path_to_string, BSDTAR};
-use crate::io::execute_and_output;
+use crate::common::{is_in_path, path_to_string, BSDTAR, SEVENZ};
+use crate::io::{execute_and_output, execute_without_output};
+use crate::{log_info, log_line};
 
 /// Decompress a zipped compressed file into its parent directory.
 ///
@@ -49,10 +49,28 @@ pub fn decompress_gz(source: &Path) -> Result<()> {
 ///
 /// It may fail if the file can't be opened.
 pub fn decompress_7z(source: &Path) -> Result<()> {
+    if !is_in_path(SEVENZ) {
+        log_info!(
+            "Can't decompress {source} without {SEVENZ} executable",
+            source = source.display()
+        );
+        log_line!(
+            "Can't decompress {source} without {SEVENZ} executable",
+            source = source.display()
+        );
+        return Ok(());
+    }
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    decompress_file(source, parent)?;
+    let args = &[
+        "x",
+        &path_to_string(&source),
+        &format!("-o{parent}", parent = parent.display()),
+        "-y",
+        "-bd",
+    ];
+    let _ = execute_without_output(SEVENZ, args);
     Ok(())
 }
 
