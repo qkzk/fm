@@ -1566,11 +1566,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
-- [ ] full 7zip support ?
-  - [ ] replace every thing (compress, decompress, preview) with 7zip functions?
-  - [ ] compress
-  - [ ] decompress
-  - [ ] preview
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?
