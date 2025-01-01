@@ -1560,12 +1560,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open in nvim concats multiple listen address when nvim is opened several times
 - [x] FIX: exex hangs
 - [x] 7z support with 7z executable.
-  - [ ] decompress 7z uses a standard opener and should be moved there.
+  - [ ] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
 
 ## TODO
 
 ### Other ideas
 
+- [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?

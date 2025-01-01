@@ -308,9 +308,10 @@ impl<'a> FuzzyDisplay<'a> {
             return;
         };
         let rects = Rects::fuzzy(content_rect);
-        self.draw_match_counts(fuzzy, f, second_line_rect);
-        self.draw_prompt(fuzzy, f, rects[1]);
-        self.draw_matches(fuzzy, f, rects[2]);
+
+        self.draw_prompt(fuzzy, f, second_line_rect);
+        self.draw_match_counts(fuzzy, f, &rects[0]);
+        self.draw_matches(fuzzy, f, rects[1]);
     }
 
     /// Draw the matched items
@@ -320,7 +321,7 @@ impl<'a> FuzzyDisplay<'a> {
         f.render_widget(match_count_paragraph, *rect);
     }
 
-    fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+    fn draw_prompt(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: &Rect) {
         // Render the prompt string at the bottom
         let input = fuzzy.input.string();
         let prompt_paragraph = Paragraph::new(vec![Line::from(vec![
@@ -342,11 +343,11 @@ impl<'a> FuzzyDisplay<'a> {
         .block(Block::default().borders(Borders::NONE));
 
         // Render the prompt at the bottom of the layout
-        f.render_widget(prompt_paragraph, rect);
+        f.render_widget(prompt_paragraph, *rect);
         self.set_cursor_position(f, rect, &fuzzy.input);
     }
 
-    fn set_cursor_position(&self, f: &mut Frame, rect: Rect, input: &Input) {
+    fn set_cursor_position(&self, f: &mut Frame, rect: &Rect, input: &Input) {
         // Move the cursor to the prompt
         f.set_cursor_position(Position {
             x: rect.x + input.index() as u16 + 2,
@@ -368,12 +369,14 @@ impl<'a> FuzzyDisplay<'a> {
                 format!("{}", fuzzy.item_count),
                 Style::default().fg(Color::Yellow),
             ),
+            Span::raw(" "),
         ])
     }
 
     fn paragraph_match_count(match_info: Line) -> Paragraph {
         Paragraph::new(match_info)
             .style(Style::default())
+            .right_aligned()
             .block(Block::default().borders(Borders::NONE))
     }
 
@@ -1485,11 +1488,7 @@ impl Rects {
     fn fuzzy(area: &Rect) -> Rc<[Rect]> {
         Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Min(0),
-            ])
+            .constraints([Constraint::Length(1), Constraint::Min(0)])
             .split(*area)
     }
 }
