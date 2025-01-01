@@ -1504,7 +1504,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: opening shortcut twice crashes
   - [x] BUG: copy file should be 1 row up
   - [x] generic method to render menu content
-  - [ ] Layout::vertical 1, max, 1 for each window would simplify rect offset
+  - [x] Layout::vertical 1, max, 1 for each window would simplify rect offset
   - [x] lazy menu creation. Store empty shells in menuholder
     - [x] shortcuts
     - [x] tui applications
@@ -1561,6 +1561,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exex hangs
 - [x] 7z support with 7z executable.
   - [ ] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
+- [ ] fuzzy display recreates a matcher every time it's displayed. It shouldn't have to.
+    Use same approch as [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs) to store the matcher somewhere.
 
 ## TODO
 

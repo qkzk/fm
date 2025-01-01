@@ -342,7 +342,6 @@ impl<'a> FuzzyDisplay<'a> {
         ])])
         .block(Block::default().borders(Borders::NONE));
 
-        // Render the prompt at the bottom of the layout
         f.render_widget(prompt_paragraph, *rect);
         self.set_cursor_position(f, rect, &fuzzy.input);
     }
@@ -385,6 +384,7 @@ impl<'a> FuzzyDisplay<'a> {
         let (top, bottom) = fuzzy.top_bottom();
         let mut indices = vec![];
         // TODO: make matcher static. See helix for a complicated way.
+        // [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)
         let mut matcher = Matcher::default();
         if fuzzy.kind.is_file() {
             matcher.config.set_match_paths();
