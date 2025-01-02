@@ -2,7 +2,6 @@ use std::{
     cmp::min,
     io::{self, Stdout, Write},
     rc::Rc,
-    sync::MutexGuard,
 };
 
 use anyhow::{Context, Result};
@@ -10,7 +9,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
-use nucleo::Matcher;
+use nucleo::Config;
+use parking_lot::MutexGuard;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
@@ -21,7 +21,6 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
 use crate::config::{ColorG, Gradient, ICON, ICON_WITH_METADATA, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
@@ -30,6 +29,10 @@ use crate::modes::{
     ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine,
     Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+};
+use crate::{
+    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
+    config::MATCHER,
 };
 use crate::{colored_skip_take, log_info};
 
@@ -383,9 +386,8 @@ impl<'a> FuzzyDisplay<'a> {
         let snapshot = fuzzy.matcher.snapshot();
         let (top, bottom) = fuzzy.top_bottom();
         let mut indices = vec![];
-        // TODO: make matcher static. See helix for a complicated way.
-        // [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)
-        let mut matcher = Matcher::default();
+        let mut matcher = MATCHER.lock();
+        matcher.config = Config::DEFAULT;
         if fuzzy.kind.is_file() {
             matcher.config.set_match_paths();
         }

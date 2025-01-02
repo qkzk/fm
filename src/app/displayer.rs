@@ -1,10 +1,11 @@
 use std::io::Stdout;
 use std::sync::mpsc::{self, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
+use parking_lot::Mutex;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
@@ -39,18 +40,15 @@ impl Displayer {
                     }
                     Err(TryRecvError::Empty) => {}
                 }
-                match status.lock() {
-                    Ok(mut status) => {
-                        if !status.internal_settings.is_disabled() {
-                            display.display_all(&status);
-                        }
-                        if status.should_be_cleared() {
-                            status.internal_settings.reset_clear()
-                        }
-                        drop(status);
-                    }
-                    Err(error) => bail!("Error locking status: {error}"),
+                let mut status = status.lock();
+                if !status.internal_settings.is_disabled() {
+                    display.display_all(&status);
                 }
+                if status.should_be_cleared() {
+                    status.internal_settings.reset_clear()
+                }
+                drop(status);
+
                 std::thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
             }
             Ok(())

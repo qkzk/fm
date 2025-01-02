@@ -1561,8 +1561,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exex hangs
 - [x] 7z support with 7z executable.
   - [ ] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
-- [ ] fuzzy display recreates a matcher every time it's displayed. It shouldn't have to.
-    Use same approch as [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs) to store the matcher somewhere.
+- [ ] BUG: fuzzy display recreates a matcher every time it's displayed. It shouldn't have to.
+    - [x] Use same approch as [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs) to store the matcher somewhere.
+    - [x] Use parking_lot::Mutex instead of `std::sync::Mutex`. Remove all Err on lock. parking_lot doesn't return a Result when locking.
+    - [ ] test a lot...
+- [x] FIX: display mode fuzzy doesn't react to change focus binds.
 
 ## TODO
 

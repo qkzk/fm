@@ -2,12 +2,12 @@ use std::fs::{read_dir, remove_file};
 use std::io::stdout;
 use std::panic;
 use std::process::exit;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 
 #[cfg(debug_assertions)]
 use std::backtrace;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
 use clap::Parser;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
@@ -16,6 +16,7 @@ use crossterm::{
     execute,
     terminal::disable_raw_mode,
 };
+use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
@@ -184,9 +185,7 @@ impl FM {
     /// Update itself, changing its status.
     /// It will dispatch every [`FmEvents`], updating [`Status`].
     fn update(&mut self, event: FmEvents) -> Result<()> {
-        let Ok(mut status) = self.status.lock() else {
-            bail!("Error locking status");
-        };
+        let mut status = self.status.lock();
         self.event_dispatcher.dispatch(&mut status, event)?;
 
         Ok(())
@@ -194,9 +193,7 @@ impl FM {
 
     /// True iff the application must quit.
     fn must_quit(&self) -> Result<bool> {
-        let Ok(status) = self.status.lock() else {
-            bail!("Error locking status");
-        };
+        let status = self.status.lock();
         Ok(status.must_quit())
     }
 
@@ -232,12 +229,7 @@ impl FM {
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
     pub fn quit(self) -> Result<()> {
-        let final_path = self
-            .status
-            .lock()
-            .map_err(|error| anyhow!("Error locking status: {error}"))?
-            .current_tab_path_str()
-            .to_owned();
+        let final_path = self.status.lock().current_tab_path_str().to_owned();
 
         clear_tmp_files();
 
@@ -245,12 +237,13 @@ impl FM {
         drop(self.event_dispatcher);
         self.displayer.quit();
         self.refresher.quit();
-        if let Ok(status) = self.status.lock() {
-            status.previewer.quit();
-            if status.internal_settings.clear_before_quit {
-                Self::clear()?;
-            }
+        let status = self.status.lock();
+        status.previewer.quit();
+        if status.internal_settings.clear_before_quit {
+            Self::clear()?;
         }
+        drop(status);
+
         drop(self.status);
         Self::disable_mouse_capture()?;
         save_final_path(&final_path);

@@ -21,5 +21,5 @@ pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
     set_configurable_static, set_icon_icon_with_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES,
-    ICON, ICON_WITH_METADATA, MENU_STYLES, MONOKAI_THEME, START_FOLDER,
+    ICON, ICON_WITH_METADATA, MATCHER, MENU_STYLES, MONOKAI_THEME, START_FOLDER,
 };

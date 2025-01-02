@@ -4,11 +4,13 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc,
     },
     thread::{self, JoinHandle},
     time::Duration,
 };
+
+use parking_lot::Mutex;
 
 use crate::modes::Thumbnail;
 use crate::{common::TMP_THUMBNAILS_DIR, log_info};
@@ -68,10 +70,7 @@ impl ThumbnailManager {
     ///
     /// They will be dealt with by the first available worker.
     pub fn enqueue(&self, mut videos: VecDeque<PathBuf>) {
-        let Ok(mut locked_queue) = self.queue.lock() else {
-            log_info!("ThumbnailManager couldn't lock the queue");
-            return;
-        };
+        let mut locked_queue = self.queue.lock();
         // TODO remove when satisfied
         log_info!(
             "Enqueuing {len} videos to thumbnail queue",
@@ -86,10 +85,7 @@ impl ThumbnailManager {
     ///
     /// Remove all videos awaiting to be thumbnailed from the queue.
     pub fn clear(&self) {
-        let Ok(mut locked_queue) = self.queue.lock() else {
-            log_info!("ThumbnailManager couldn't lock the queue");
-            return;
-        };
+        let mut locked_queue = self.queue.lock();
         locked_queue.clear();
         drop(locked_queue);
     }
@@ -117,10 +113,7 @@ impl Worker {
         if is_empty.load(Ordering::SeqCst) {
             return;
         }
-        let Ok(mut locked_queue) = queue.lock() else {
-            log_info!("Worker {id} couldn't lock the queue");
-            return;
-        };
+        let mut locked_queue = queue.lock();
         let Some(path) = locked_queue.pop_front() else {
             return;
         };

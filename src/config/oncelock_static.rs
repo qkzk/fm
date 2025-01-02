@@ -1,9 +1,13 @@
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::{
+    fs::File,
+    ops::DerefMut,
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
-use anyhow::anyhow;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use nucleo::Matcher;
+use parking_lot::{Mutex, MutexGuard};
 use ratatui::style::Color;
 use serde_yml::{from_reader, Value};
 use syntect::highlighting::Theme;
@@ -132,3 +136,33 @@ pub fn set_configurable_static(start_folder: &str) -> Result<()> {
     set_normal_file_colorer()?;
     set_icon_icon_with_metadata()
 }
+
+/// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)
+///
+/// A mutex which is instancied lazylly.
+/// The mutex is created with `None` as value and, once locked, is instancied if necessary.
+pub struct LazyMutex<T> {
+    inner: Mutex<Option<T>>,
+    init: fn() -> T,
+}
+
+impl<T> LazyMutex<T> {
+    /// Instanciate a new `LazyMutex` with `None` as value.
+    pub const fn new(init: fn() -> T) -> Self {
+        Self {
+            inner: Mutex::new(None),
+            init,
+        }
+    }
+
+    /// Lock the mutex.
+    /// At the first call, the value is created with the `init` function passed to `new`.
+    /// Other calls won't have to do it. We just get the already created value.
+    pub fn lock(&self) -> impl DerefMut<Target = T> + '_ {
+        MutexGuard::map(self.inner.lock(), |val| val.get_or_insert_with(self.init))
+    }
+}
+
+/// A nucleo matcher behind a lazy mutex.
+/// Instanciated once and lazylly.
+pub static MATCHER: LazyMutex<Matcher> = LazyMutex::new(Matcher::default);
