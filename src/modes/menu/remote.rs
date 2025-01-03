@@ -21,7 +21,7 @@ impl Remote {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return None;
         }
-        let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
+        let user_hostname_path_port: Vec<&str> = input.trim().split(' ').collect();
         let (username, hostname, remote_path, port) =
             Self::parse_remote_args(user_hostname_path_port)?;
         Some(Self {
