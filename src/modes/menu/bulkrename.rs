@@ -1,13 +1,9 @@
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{mpsc::Sender, Arc};
-use std::thread;
-use std::time::{Duration, SystemTime};
 
 use anyhow::{anyhow, Result};
 
 use crate::common::{random_name, rename, TMP_FOLDER_PATH};
-use crate::event::FmEvents;
 use crate::{log_info, log_line};
 
 type OptionVecPathBuf = Option<Vec<PathBuf>>;
@@ -38,22 +34,6 @@ impl BulkExecutor {
 
         // self.watch_modification_in_thread(original_modification, fm_sender);
         Ok(self)
-    }
-
-    fn watch_modification_in_thread(&self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
-        log_info!("watch_modification_in_thread started");
-        let original_modification = get_modified_date(&self.temp_file)?;
-        let filepath = self.temp_file.to_owned();
-        thread::spawn(move || {
-            loop {
-                if is_file_modified(&filepath, original_modification).unwrap_or(true) {
-                    break;
-                }
-                thread::sleep(Duration::from_millis(100));
-            }
-            fm_sender.send(FmEvents::BulkExecute).unwrap_or_default();
-        });
-        Ok(())
     }
 
     fn get_new_names(&mut self) -> Result<()> {
@@ -146,10 +126,6 @@ impl BulkExecutor {
     }
 }
 
-fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
-    Ok(std::fs::metadata(filepath)?.modified()?)
-}
-
 fn generate_random_filepath() -> PathBuf {
     let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
     filepath.push(random_name());
@@ -159,10 +135,6 @@ fn generate_random_filepath() -> PathBuf {
 fn create_random_file(temp_file: &Path) -> Result<()> {
     std::fs::File::create(temp_file)?;
     Ok(())
-}
-
-fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
-    Ok(get_modified_date(path)? > original_modification)
 }
 
 fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {

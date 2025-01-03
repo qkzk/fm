@@ -1,6 +1,4 @@
 use std::os::unix::fs::MetadataExt;
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 use anyhow::Result;
 use ratatui::layout::Rect;
@@ -9,7 +7,6 @@ use ratatui::Frame;
 use crate::app::Tab;
 use crate::common::{index_from_a, INPUT_HISTORY_PATH};
 use crate::config::Bindings;
-use crate::event::FmEvents;
 use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
