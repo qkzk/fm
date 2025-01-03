@@ -1138,6 +1138,8 @@ impl Status {
         if matches!(input_completed, InputCompleted::Search) {
             self.update_search()?;
             self.search()?;
+        } else {
+            self.menu.input_complete(&mut self.tabs[self.index])?
         }
         Ok(())
     }

@@ -1566,8 +1566,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Use parking_lot::Mutex instead of `std::sync::Mutex`. Remove all Err on lock. parking_lot doesn't return a Result when locking.
     - [ ] test a lot...
 - [x] FIX: display mode fuzzy doesn't react to change focus binds.
-- [ ] Path completion should display visual indicator of directories with / or symbols
-  - [ ] BUG: pressing TAB to complete a directory doesn't refresh its children
+- [x] Path completion should display visual indicator of directories with / or symbols
+  - [x] FIX: pressing TAB to complete a directory doesn't refresh its children
 
 ## TODO
 
