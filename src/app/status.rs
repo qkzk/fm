@@ -156,7 +156,7 @@ impl Status {
         let disks = Disks::new_with_refreshed_list();
         let session = Session::new(size.width);
         let internal_settings = InternalSettings::new(opener, size, disks);
-        let menu = MenuHolder::new(start_dir, binds, fm_sender.clone())?;
+        let menu = MenuHolder::new(start_dir, binds)?;
         let focus = Focus::default();
 
         let users_left = Users::default();
@@ -1538,7 +1538,7 @@ impl Status {
         self.menu.bulk.ask_filenames(flagged, &current_path)?;
         if let Some(temp_file) = self.menu.bulk.temp_file() {
             self.open_single_file(&temp_file)?;
-            self.menu.bulk.watch_in_thread()?;
+            self.fm_sender.send(FmEvents::BulkExecute)?;
         }
         Ok(())
     }

@@ -78,13 +78,9 @@ pub struct MenuHolder {
 }
 
 impl MenuHolder {
-    pub fn new(
-        start_dir: &std::path::Path,
-        binds: &Bindings,
-        fm_sender: Arc<Sender<FmEvents>>,
-    ) -> Result<Self> {
+    pub fn new(start_dir: &std::path::Path, binds: &Bindings) -> Result<Self> {
         Ok(Self {
-            bulk: Bulk::new(fm_sender),
+            bulk: Bulk::default(),
             cli_applications: CliApplications::default(),
             cloud: OpendalContainer::default(),
             completion: Completion::default(),

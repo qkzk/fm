@@ -41,6 +41,7 @@ impl BulkExecutor {
     }
 
     fn watch_modification_in_thread(&self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+        log_info!("watch_modification_in_thread started");
         let original_modification = get_modified_date(&self.temp_file)?;
         let filepath = self.temp_file.to_owned();
         thread::spawn(move || {
@@ -188,18 +189,12 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 /// Modifications of this file are watched in a separate thread.
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
 /// Renaming or creating is execute in bulk with `execute`.
+#[derive(Default)]
 pub struct Bulk {
     bulk: Option<BulkExecutor>,
-    fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl Bulk {
-    pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
-        Self {
-            bulk: None,
-            fm_sender,
-        }
-    }
     /// Reset bulk content to None, droping all created or renomed filename from previous execution.
     pub fn reset(&mut self) {
         self.bulk = None;
@@ -222,14 +217,6 @@ impl Bulk {
     ) -> Result<()> {
         self.bulk =
             Some(BulkExecutor::new(flagged_in_current_dir, current_tab_path_str).ask_filenames()?);
-        Ok(())
-    }
-
-    pub fn watch_in_thread(&mut self) -> Result<()> {
-        match &self.bulk {
-            Some(bulk) => bulk.watch_modification_in_thread(self.fm_sender.clone())?,
-            None => (),
-        }
         Ok(())
     }
 

@@ -1568,11 +1568,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: display mode fuzzy doesn't react to change focus binds.
 - [x] Path completion should display visual indicator of directories with / or symbols
   - [x] FIX: pressing TAB to complete a directory doesn't refresh its children
+- [ ] Remote mount QOL
+  - [ ] Remote mount should allow to mount somewhere else
+    `username host:port remote_mount_point dest` ?
+  - [ ] Remote mount should remember mount points and allow to umount them
+  - [ ] Remote mount should show the command that will be generated
+- [ ] BUG: bulk mode does nothing. It should react once the shell process is exited not when the file is modified.
+  - [x] send the bulkrename event once the thread is stopped.
+  - [ ] TESTS: It works for file edited within the same terminal emulator. Does it works for files edited in a GUI editor ?
+- [ ] BUG: history search (shift+up) doesn't update the search. Surelly does nothing elsewhere...
 
 ## TODO
 
 ### Other ideas
 
+- [ ] it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
 - [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?
