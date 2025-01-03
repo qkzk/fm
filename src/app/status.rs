@@ -1121,7 +1121,11 @@ impl Status {
         if self.focus.is_file() {
             return Ok(());
         }
-        self.menu.input_history_next(&mut self.tabs[self.index])
+        self.menu.input_history_next(&mut self.tabs[self.index])?;
+        if let Menu::InputCompleted(input_completed) = self.current_tab().menu_mode {
+            self.complete(input_completed)?;
+        }
+        Ok(())
     }
 
     /// Replace the current input by the previous result from history
@@ -1129,9 +1133,27 @@ impl Status {
         if self.focus.is_file() {
             return Ok(());
         }
-        self.menu.input_history_prev(&mut self.tabs[self.index])
+        self.menu.input_history_prev(&mut self.tabs[self.index])?;
+        if let Menu::InputCompleted(input_completed) = self.current_tab().menu_mode {
+            self.complete(input_completed)?;
+        }
+        Ok(())
     }
 
+    /// Push the typed char `c` into the input string and fill the completion menu with results.
+    pub fn input_and_complete(&mut self, input_completed: InputCompleted, c: char) -> Result<()> {
+        self.menu.input.insert(c);
+        self.complete(input_completed)
+    }
+
+    fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
+        match input_completed {
+            InputCompleted::Search => self.complete_search(),
+            _ => self.complete_non_search(),
+        }
+    }
+
+    /// Update the input string with the current selection and fill the completion menu with results.
     pub fn complete_tab(&mut self, input_completed: InputCompleted) -> Result<()> {
         self.menu.completion_tab();
         self.complete_cd_move()?;
@@ -1144,8 +1166,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn complete_search(&mut self, c: char) -> Result<()> {
-        self.menu.input.insert(c);
+    fn complete_search(&mut self) -> Result<()> {
         self.update_search()?;
         self.search()?;
         self.menu.input_complete(&mut self.tabs[self.index])
@@ -1158,8 +1179,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn complete_non_search(&mut self, c: char) -> Result<()> {
-        self.menu.input.insert(c);
+    fn complete_non_search(&mut self) -> Result<()> {
         self.complete_cd_move()?;
         self.menu.input_complete(&mut self.tabs[self.index])
     }

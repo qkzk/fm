@@ -7,8 +7,7 @@ use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
 use crate::modes::{
-    Direction as FuzzyDirection, Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu,
-    Navigate,
+    Direction as FuzzyDirection, Display, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
 };
 
 /// Struct which dispatch the received events according to the state of the application.
@@ -161,8 +160,7 @@ impl EventDispatcher {
             Menu::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Menu::InputSimple(InputSimple::Filter) => status.input_filter(c),
             Menu::InputSimple(_) => status.menu.input_insert(c),
-            Menu::InputCompleted(InputCompleted::Search) => status.complete_search(c),
-            Menu::InputCompleted(_) => status.complete_non_search(c),
+            Menu::InputCompleted(input_completed) => status.input_and_complete(input_completed, c),
             Menu::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Menu::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
