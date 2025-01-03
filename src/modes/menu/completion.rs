@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fs::{self, ReadDir};
+use std::path::Path;
 
 use ratatui::style::{Modifier, Style};
 
@@ -113,10 +114,12 @@ impl Completion {
         self.content = vec![];
         self.cd_update_from_zoxide(input_string, current_path);
         if let Some(expanded_input) = self.expand_input(input_string) {
-            self.content.push(expanded_input);
+            let formated = Self::attach_slash_to_dirs(&expanded_input);
+            self.content.push(formated);
         }
         if let Some(cannonicalized_input) = self.canonicalize_input(input_string, current_path) {
-            self.content.push(cannonicalized_input);
+            let formated = Self::attach_slash_to_dirs(&cannonicalized_input);
+            self.content.push(formated);
         }
     }
 
@@ -135,6 +138,7 @@ impl Completion {
         let children: Vec<String> = entries
             .filter_map(|e| e.ok())
             .map(|e| e.path().to_string_lossy().into_owned())
+            .map(|path_str| Self::attach_slash_to_dirs(&path_str))
             .collect();
         self.extend(&children);
     }
@@ -150,7 +154,19 @@ impl Completion {
             return;
         };
         if !zoxide_output.is_empty() {
-            self.content.push(zoxide_output.trim().to_string());
+            self.content
+                .push(Self::attach_slash_to_dirs(zoxide_output.trim()));
+        }
+    }
+
+    fn attach_slash_to_dirs<T: AsRef<str> + std::string::ToString + std::fmt::Display>(
+        path_str: T,
+    ) -> String {
+        let p = Path::new(path_str.as_ref());
+        if !path_str.as_ref().ends_with('/') && p.exists() && p.is_dir() {
+            format!("{path_str}/")
+        } else {
+            path_str.to_string()
         }
     }
 
@@ -196,6 +212,7 @@ impl Completion {
             .filter(|e| e.file_type().is_ok())
             .filter(|e| e.file_type().unwrap().is_dir() && filename_startswith(e, last_name))
             .map(|e| e.path().to_string_lossy().into_owned())
+            .map(|path_str| Self::attach_slash_to_dirs(&path_str))
             .collect()
     }
 
