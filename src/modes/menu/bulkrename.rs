@@ -1,9 +1,13 @@
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{mpsc::Sender, Arc};
+use std::thread;
+use std::time::{Duration, SystemTime};
 
 use anyhow::{anyhow, Result};
 
 use crate::common::{random_name, rename, TMP_FOLDER_PATH};
+use crate::event::FmEvents;
 use crate::{log_info, log_line};
 
 type OptionVecPathBuf = Option<Vec<PathBuf>>;
@@ -36,6 +40,20 @@ impl BulkExecutor {
         Ok(self)
     }
 
+    fn watch_modification_in_thread(&self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+        let original_modification = get_modified_date(&self.temp_file)?;
+        let filepath = self.temp_file.to_owned();
+        thread::spawn(move || {
+            loop {
+                if is_file_modified(&filepath, original_modification).unwrap_or(true) {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            fm_sender.send(FmEvents::BulkExecute).unwrap_or_default();
+        });
+        Ok(())
+    }
     fn get_new_names(&mut self) -> Result<()> {
         self.new_filenames = get_new_filenames(&self.temp_file)?;
         Ok(())
@@ -137,6 +155,14 @@ fn create_random_file(temp_file: &Path) -> Result<()> {
     Ok(())
 }
 
+fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
+    Ok(std::fs::metadata(filepath)?.modified()?)
+}
+
+fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
+    Ok(get_modified_date(path)? > original_modification)
+}
+
 fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
     let file = std::fs::File::open(temp_file)?;
     let reader = std::io::BufReader::new(file);
@@ -189,6 +215,14 @@ impl Bulk {
     ) -> Result<()> {
         self.bulk =
             Some(BulkExecutor::new(flagged_in_current_dir, current_tab_path_str).ask_filenames()?);
+        Ok(())
+    }
+
+    pub fn watch_in_thread(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+        match &self.bulk {
+            Some(bulk) => bulk.watch_modification_in_thread(fm_sender)?,
+            None => (),
+        }
         Ok(())
     }
 

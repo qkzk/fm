@@ -390,6 +390,15 @@ impl Opener {
         self.association.associate(extract_extension(path))
     }
 
+    /// Does this extension requires a terminal ?
+    pub fn extension_use_term(&self, extension: &str) -> bool {
+        if let Some(Kind::External(external)) = self.association.associate(extension) {
+            external.use_term()
+        } else {
+            false
+        }
+    }
+
     pub fn use_term(&self, path: &Path) -> bool {
         match self.kind(path) {
             None => false,

@@ -1515,8 +1515,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] marks
   - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
   - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-  - [ ] use readelf for ELF file
-    - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
 
 - [x] WONTDO: ratatui component for progress bar for copymove. Is very poor. I already need a thread to handle the progress, why would I replace it with something less powerful ?
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
@@ -1545,11 +1543,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
-- [ ] BUG: resize change dual / preview
-  - first attempt didn't fix
-  - can't reproduce
-- [ ] simplify status.confirm action & must leave
-- [ ] crash with error locking status while selecting a file being modified
 - [x] FIX: human size. Use 1 decimal place for files sizes 10.0. No decimal places otherwise.
       human size: 3.5G shouldn't be displayed as 3G. 12.3G should still be displayed as 12G. See [eza](https://github.com/eza-community/eza/blob/main/src/output/render/size.rs#L79)
 - [x] FIX: human size should use decimals for size under 1024B.
@@ -1568,21 +1561,31 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: display mode fuzzy doesn't react to change focus binds.
 - [x] Path completion should display visual indicator of directories with / or symbols
   - [x] FIX: pressing TAB to complete a directory doesn't refresh its children
-- [ ] BUG: bulk mode does nothing. It should react once the shell process is exited not when the file is modified.
+- [x] FIX: bulk mode does nothing.
   - [x] send the bulkrename event once the thread is stopped.
-  - [ ] TESTS: It works for file edited within the same terminal emulator. Does it works for files edited in a GUI editor ?
+  - [x] If the editor requires a terminal, opens bulk when process ends otherwise watch in thread
 - [x] FIX: Input history navigation (shift+up, shift+down) doesn't update the search.
+- [ ] BUG: resize change dual / preview
+  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. Should it be dual again ?
+  - first attempt didn't fix
+- [x] crash with error locking status while selecting a file being modified
+  - [x] can't reproduce
 
 ## TODO
 
 ### Other ideas
 
+- [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
+- [ ] eza / ranger colors for normal files
+- [ ] store 4 windows in display to modify instead of recreating
+- [ ] use readelf for ELF file
+  - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
+- [ ] simplify status.confirm action & must leave
 - [ ] Remote mount QOL
   - [ ] Remote mount should allow to mount somewhere else
     `username host:port remote_mount_point dest` ?
   - [ ] Remote mount should remember mount points and allow to umount them
   - [ ] Remote mount should show the command that will be generated
-- [ ] it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
 - [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?

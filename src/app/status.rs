@@ -1558,7 +1558,11 @@ impl Status {
         self.menu.bulk.ask_filenames(flagged, &current_path)?;
         if let Some(temp_file) = self.menu.bulk.temp_file() {
             self.open_single_file(&temp_file)?;
-            self.fm_sender.send(FmEvents::BulkExecute)?;
+            if self.internal_settings.opener.extension_use_term("txt") {
+                self.fm_sender.send(FmEvents::BulkExecute)?;
+            } else {
+                self.menu.bulk.watch_in_thread(self.fm_sender.clone())?;
+            }
         }
         Ok(())
     }
