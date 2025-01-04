@@ -1566,7 +1566,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] If the editor requires a terminal, opens bulk when process ends otherwise watch in thread
 - [x] FIX: Input history navigation (shift+up, shift+down) doesn't update the search.
 - [ ] BUG: resize change dual / preview
-  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. Should it be dual again ?
+  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
   - first attempt didn't fix
 - [x] crash with error locking status while selecting a file being modified
   - [x] can't reproduce
