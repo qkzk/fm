@@ -7,17 +7,16 @@ use indicatif::InMemoryTerm;
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
     filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
-    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
+    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO,
 };
 use crate::config::{Bindings, START_FOLDER};
 use crate::io::{open_shell_in_window, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow,
-    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search,
-    Selectable,
+    help_string, lsblk_and_cryptsetup_installed, ContentWindow, Direction as FuzzyDirection,
+    Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
+    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -586,8 +585,6 @@ impl EventAction {
         status.internal_settings.disable_display();
         open_shell_in_window()?;
         status.internal_settings.enable_display();
-        status.internal_settings.force_clear();
-        status.internal_settings.clear_before_quit = true;
         Ok(())
     }
 
@@ -1463,16 +1460,6 @@ impl EventAction {
     /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
-    }
-
-    /// Execute Lazygit in a spawned terminal
-    pub fn lazygit(status: &mut Status) -> Result<()> {
-        open_tui_program(status, LAZYGIT)
-    }
-
-    /// Execute NCDU in a spawned terminal
-    pub fn ncdu(status: &mut Status) -> Result<()> {
-        open_tui_program(status, NCDU)
     }
 
     pub fn focus_go_left(status: &mut Status) -> Result<()> {

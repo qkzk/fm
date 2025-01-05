@@ -417,7 +417,7 @@ pub fn open_shell_in_window() -> Result<()> {
     Ok(())
 }
 
-pub fn open_file_in_window(arg: &str) -> Result<()> {
+pub fn open_command_in_window(arg: &str) -> Result<()> {
     disable_raw_mode()?;
     execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
 

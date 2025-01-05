@@ -181,12 +181,24 @@ impl InternalSettings {
         self.in_mem_progress = None;
     }
 
+    /// Disable the application display.
+    /// It's used to give to allow another program to be executed.
     pub fn disable_display(&mut self) {
         self.is_disabled = true;
     }
 
+    /// Display the application after it gave its terminal to another program.
+    ///
+    /// Enable the display again,
+    /// clear the screen,
+    /// set a flag to clear before quitting application.
     pub fn enable_display(&mut self) {
+        if !self.is_disabled() {
+            return;
+        }
         self.is_disabled = false;
+        self.force_clear();
+        self.clear_before_quit = true;
     }
 
     pub fn is_disabled(&self) -> bool {
@@ -214,8 +226,6 @@ impl InternalSettings {
         self.disable_display();
         self.opener.open_in_window(path);
         self.enable_display();
-        self.force_clear();
-        self.clear_before_quit = true;
     }
 
     pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
@@ -247,8 +257,6 @@ impl InternalSettings {
         self.disable_display();
         self.opener.open_multiple_in_window(openers)?;
         self.enable_display();
-        self.force_clear();
-        self.clear_before_quit = true;
         Ok(())
     }
 

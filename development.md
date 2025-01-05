@@ -1539,10 +1539,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exex hangs
 - [x] 7z support with 7z executable.
   - [x] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
-- [ ] BUG: fuzzy display recreates a matcher every time it's displayed. It shouldn't have to.
-    - [x] Use same approch as [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs) to store the matcher somewhere.
-    - [x] Use parking_lot::Mutex instead of `std::sync::Mutex`. Remove all Err on lock. parking_lot doesn't return a Result when locking.
-    - [ ] test a lot...
 - [x] FIX: display mode fuzzy doesn't react to change focus binds.
 - [x] Path completion should display visual indicator of directories with / or symbols
   - [x] FIX: pressing TAB to complete a directory doesn't refresh its children
@@ -1553,6 +1549,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - first attempt didn't fix
 - [x] crash with error locking status while selecting a file being modified
   - [x] can't reproduce
+- [ ] bug: tui apps should open in current window
 
 ## TODO
 

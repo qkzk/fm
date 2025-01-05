@@ -161,7 +161,10 @@ impl LeaveMenu {
     /// Execute a shell command picked from the tui_applications menu.
     /// It will be run an a spawned terminal
     fn tui_application(status: &mut Status) -> Result<()> {
-        status.menu.tui_applications.execute(status)
+        status.internal_settings.disable_display();
+        status.menu.tui_applications.execute(status)?;
+        status.internal_settings.enable_display();
+        Ok(())
     }
 
     fn cli_info(status: &mut Status) -> Result<()> {

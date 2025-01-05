@@ -3,50 +3,29 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, TUIS_PATH};
-use crate::io::{execute_without_output, execute_without_output_with_path, DrawMenu};
-use crate::log_line;
+use crate::io::{open_command_in_window, open_shell_in_window, DrawMenu};
+use crate::log_info;
 use crate::modes::{Execute, TerminalApplications};
 use crate::{impl_content, impl_selectable};
 
-/// Execute a command requiring to be ran from current working directory.
-///
-/// # Errors
-///
-/// May fail if the current directory has no parent aka /
-/// May fail if the command itself fails.
-fn require_cwd_and_command(status: &Status, command: &str) -> Result<()> {
-    execute_without_output(
-        &status.internal_settings.opener.terminal,
-        &[&status.internal_settings.opener.terminal_flag, command],
-    )?;
-    Ok(())
-}
-
-fn execute_shell(status: &Status) -> Result<()> {
-    let tab = status.current_tab();
-    let path = tab.directory_of_selected()?;
-    execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
-    Ok(())
-}
-
 /// Directly open a a TUI application
-pub fn open_tui_program(status: &mut Status, program: &str) -> Result<()> {
-    if is_in_path(program) {
-        require_cwd_and_command(status, program)
+/// The TUI application shares the same window as fm.
+/// If the user picked "shell", we use the environment variable `$SHELL` or `bash` if it's not set.
+pub fn open_tui_program(program: &str) -> Result<()> {
+    if program == "shell" {
+        open_shell_in_window()
+    } else if is_in_path(program) {
+        log_info!("Tui menu execute {program}");
+        open_command_in_window(program)
     } else {
+        log_info!("Tui menu program {program} isn't in path");
         Ok(())
     }
 }
 
 impl Execute<()> for String {
-    fn execute(&self, status: &Status) -> Result<()> {
-        if self.as_str() == "shell" {
-            execute_shell(status)?;
-        } else {
-            require_cwd_and_command(status, self)?;
-        };
-        log_line!("Executed {self}");
-        Ok(())
+    fn execute(&self, _status: &Status) -> Result<()> {
+        open_tui_program(self)
     }
 }
 
