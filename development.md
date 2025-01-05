@@ -1530,6 +1530,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open all terminal application this way
   - [x] move opening to internal settings, just let the interface in status
 - [x] icons / metadata. Use nerdfont icons when metadata is hidden.
+  - [x] display icons in fuzzy finder of files
 - [x] FIX: thumbnailer queue is locked too long and freezes status thread
 - [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
 - [x] fuzzy picker. Move prompt to top
@@ -1538,11 +1539,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
 - [x] FIX: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
   - [x] terminal should only be cleared when necessary (if we used the same window)
-  - [ ] refactor with a common method
 - [x] FIX: copy progress bar has wrong width
-- [ ] Walkdir::new in tree building instead of exploring by hand
-  - require to rewrite everything just to avoid testing depth myself.
-    Little to gain except for speed, it _should_ be much faster
 - [x] FIX: human size. Use 1 decimal place for files sizes 10.0. No decimal places otherwise.
       human size: 3.5G shouldn't be displayed as 3G. 12.3G should still be displayed as 12G. See [eza](https://github.com/eza-community/eza/blob/main/src/output/render/size.rs#L79)
 - [x] FIX: human size should use decimals for size under 1024B.
@@ -1576,16 +1573,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Other ideas
 
 - [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
-- [ ] eza / ranger colors for normal files
 - [ ] store 4 windows in display to modify instead of recreating
+- [ ] eza / ranger colors for normal files
 - [ ] use readelf for ELF file
   - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
-- [ ] simplify status.confirm action & must leave
+- [ ] Walkdir::new in tree building instead of exploring by hand
+  - require to rewrite everything just to avoid testing depth myself.
+    Little to gain except for speed, it _should_ be much faster
 - [ ] Remote mount QOL
   - [ ] Remote mount should allow to mount somewhere else
     `username host:port remote_mount_point dest` ?
   - [ ] Remote mount should remember mount points and allow to umount them
   - [ ] Remote mount should show the command that will be generated
+- [ ] simplify status.confirm action & must leave
 - [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?

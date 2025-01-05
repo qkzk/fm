@@ -16,8 +16,8 @@ use tokio::process::Command as TokioCommand;
 use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
-use crate::io::inject;
-use crate::modes::{ContentWindow, Input};
+use crate::modes::{extract_extension, ContentWindow, Icon, Input};
+use crate::{io::inject, modes::FileKind};
 
 /// Directions for nucleo picker navigation.
 /// Usefull to avoid spreading too much the manipulation
@@ -257,39 +257,40 @@ where
     /// Returns the selected element, if its index is valid.
     /// It should never return `None` if the content isn't empty.
     pub fn pick(&self) -> Option<std::string::String> {
-        #[cfg(debug_assertions)]
-        self.log();
+        // #[cfg(debug_assertions)]
+        // self.log();
         self.selected.to_owned()
     }
 
-    #[cfg(debug_assertions)]
-    fn log(&self) {
-        crate::log_info!(
-            "index {idx} top {top} offset {off} - top_bot {top_bot:?} - matched {mic} - items {itc} - height {hei}",
-            idx = self.index,
-            top = self.top,
-            off = self.index.saturating_sub(self.top),
-            top_bot = self.top_bottom(),
-            mic = self.matched_item_count,
-            itc = self.item_count,
-            hei = self.height,
-        );
-    }
+    // // Do not erase, used for debugging purpose
+    // #[cfg(debug_assertions)]
+    // fn log(&self) {
+    //     crate::log_info!(
+    //         "index {idx} top {top} offset {off} - top_bot {top_bot:?} - matched {mic} - items {itc} - height {hei}",
+    //         idx = self.index,
+    //         top = self.top,
+    //         off = self.index.saturating_sub(self.top),
+    //         top_bot = self.top_bottom(),
+    //         mic = self.matched_item_count,
+    //         itc = self.item_count,
+    //         hei = self.height,
+    //     );
+    // }
 }
 
 impl FuzzyFinder<String> {
     fn select_next(&mut self) {
         self.index += 1;
         self.tick(true);
-        #[cfg(debug_assertions)]
-        self.log();
+        // #[cfg(debug_assertions)]
+        // self.log();
     }
 
     fn select_prev(&mut self) {
         self.index = self.index.saturating_sub(1);
         self.tick(true);
-        #[cfg(debug_assertions)]
-        self.log();
+        // #[cfg(debug_assertions)]
+        // self.log();
     }
 
     fn select_clic(&mut self, row: u16) {
@@ -298,8 +299,8 @@ impl FuzzyFinder<String> {
             return;
         }
         self.index = self.top + row - (ContentWindow::WINDOW_PADDING_FUZZY) - 1;
-        #[cfg(debug_assertions)]
-        self.log();
+        // #[cfg(debug_assertions)]
+        // self.log();
     }
 
     fn page_up(&mut self) {
@@ -393,8 +394,16 @@ fn format_display(display: &Utf32String) -> String {
         .collect::<String>()
 }
 
-pub fn highlighted_text<'a>(text: &'a str, highlighted: &[usize], is_selected: bool) -> Line<'a> {
+pub fn highlighted_text<'a>(
+    text: &'a str,
+    highlighted: &[usize],
+    is_selected: bool,
+    is_file: bool,
+) -> Line<'a> {
     let mut spans = create_spans(is_selected);
+    if is_file {
+        push_icon(text, is_selected, &mut spans);
+    }
     let mut curr_segment = String::new();
     let mut highlight_indices = highlighted.iter().copied().peekable();
     let mut next_highlight = highlight_indices.next();
@@ -417,6 +426,20 @@ pub fn highlighted_text<'a>(text: &'a str, highlighted: &[usize], is_selected: b
     }
 
     Line::from(spans)
+}
+
+fn push_icon(text: &str, is_selected: bool, spans: &mut Vec<Span>) {
+    let file_path = std::path::Path::new(&text);
+    let Ok(meta) = file_path.symlink_metadata() else {
+        return;
+    };
+    let file_kind = FileKind::new(&meta, file_path);
+    let file_icon = match file_kind {
+        FileKind::NormalFile => extract_extension(file_path).icon(),
+        file_kind => file_kind.icon(),
+    };
+    let index = if is_selected { 2 } else { 0 };
+    spans.push(Span::styled(file_icon, ARRAY_STYLES[index]))
 }
 
 fn push_clear(

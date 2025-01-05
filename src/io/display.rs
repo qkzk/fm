@@ -388,7 +388,8 @@ impl<'a> FuzzyDisplay<'a> {
         let mut indices = vec![];
         let mut matcher = MATCHER.lock();
         matcher.config = Config::DEFAULT;
-        if fuzzy.kind.is_file() {
+        let is_file = fuzzy.kind.is_file();
+        if is_file {
             matcher.config.set_match_paths();
         }
         snapshot
@@ -402,8 +403,12 @@ impl<'a> FuzzyDisplay<'a> {
                 );
                 let text = t.matcher_columns[0].to_string();
                 let highlights_usize = Self::highlights_indices(&mut indices);
-                let line =
-                    highlighted_text(&text, &highlights_usize, index as u32 + top == fuzzy.index);
+                let line = highlighted_text(
+                    &text,
+                    &highlights_usize,
+                    index as u32 + top == fuzzy.index,
+                    is_file,
+                );
                 let line_rect = Self::line_rect(rect, index);
                 line.render(line_rect, f.buffer_mut());
             });
