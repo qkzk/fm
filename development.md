@@ -1549,7 +1549,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - first attempt didn't fix
 - [x] crash with error locking status while selecting a file being modified
   - [x] can't reproduce
-- [ ] bug: tui apps should open in current window
+- [x] FIX: tui apps should open in current window
+- [ ] BUG: clicking a footer should reuse the window.
 
 ## TODO
 
