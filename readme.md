@@ -357,8 +357,8 @@ Enter     :      Execute mode then NORMAL
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory.
-%t: the currently set terminal & its flags.
+%p: the full path of the current directory,
+%t: execute the command in the same window,
 %c: the current clipboard as a string.
 Alt('u'):        /usr/bin/google-chrome-stable %s
 Char('D'):        /usr/bin/dragon-drop %s

@@ -21,16 +21,16 @@ use crate::common::{
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
-    build_tokio_greper, execute_and_capture_output, execute_and_capture_output_without_check,
-    execute_sudo_command_with_password, execute_without_output, get_cloud_token_names,
-    google_drive, reset_sudo_faillock, Args, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
+    execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
+    Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
     ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
     FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
     MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1429,25 +1429,37 @@ impl Status {
     ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
-            self.menu.sudo_command = Some(shell_command);
-            self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
-            Ok(false)
-        } else {
-            if !is_in_path(&executable) {
-                return Ok(true);
-            }
-            let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            if capture_output {
-                match execute_and_capture_output(executable, &params) {
-                    Ok(output) => self.preview_command_output(output, shell_command),
-                    Err(e) => log_info!("Error {e:?}"),
-                }
-                Ok(true)
-            } else {
-                let _ = execute_without_output(executable, &params);
-                Ok(true)
-            }
+            self.enter_sudo_mode(shell_command)?;
+            return Ok(false);
         }
+        let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        if executable == *SAME_WINDOW_TOKEN {
+            self.internal_settings.open_in_window(&params)?;
+            return Ok(true);
+        }
+        if !is_in_path(&executable) {
+            log_line!("{executable} isn't in path.");
+            return Ok(true);
+        }
+        if capture_output {
+            match execute_and_capture_output(executable, &params) {
+                Ok(output) => self.preview_command_output(output, shell_command),
+                Err(e) => {
+                    log_info!("Error {e:?}");
+                    log_line!("Command {shell_command} disn't finish properly");
+                }
+            }
+            Ok(true)
+        } else {
+            let _ = execute_without_output(executable, &params);
+            Ok(true)
+        }
+    }
+
+    fn enter_sudo_mode(&mut self, shell_command: String) -> Result<()> {
+        self.menu.sudo_command = Some(shell_command);
+        self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
+        Ok(())
     }
 
     /// Ask for a password of some kind (sudo or device passphrase).
@@ -1755,12 +1767,7 @@ impl Status {
 
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
-        log_info!("custom {string}");
-        let mut args = shell_command_parser(string, self)?;
-        let command = args.remove(0);
-        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
-        let output = execute_and_capture_output_without_check(command, &args)?;
-        log_info!("output {output}");
+        self.parse_shell_command(string.to_owned(), None, true)?;
         Ok(())
     }
 

@@ -12,7 +12,7 @@ const CUSTOM_HELP: &str = "
 %e: the extension of the file,
 %n: the filename only,
 %p: the full path of the current directory,
-%t: the currently set terminal & its flags.
+%t: execute the command in the same window,
 %c: the current clipboard as a string.
 ";
 

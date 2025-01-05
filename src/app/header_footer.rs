@@ -8,15 +8,18 @@ mod inner {
         Frame,
     };
 
-    use crate::common::{
-        PathShortener, UtfWidth, ACTION_LOG_PATH, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
-        LAZYGIT, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
-    };
     use crate::event::ActionMap;
     use crate::modes::{Content, Display, FilterKind, Preview, Search, Selectable, Text, TextKind};
     use crate::{
         app::{Status, Tab},
         config::MENU_STYLES,
+    };
+    use crate::{
+        common::{
+            PathShortener, UtfWidth, ACTION_LOG_PATH, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
+            LAZYGIT, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
+        },
+        modes::SAME_WINDOW_TOKEN,
     };
 
     /// Should the content be aligned left or right ? No centering.
@@ -313,9 +316,9 @@ mod inner {
         fn footer_actions() -> [ActionMap; 6] {
             [
                 ActionMap::Nothing, // position
-                ActionMap::Custom("%t ".to_owned() + NCDU),
+                ActionMap::Custom(SAME_WINDOW_TOKEN.to_owned() + " " + NCDU),
                 ActionMap::Sort,
-                ActionMap::Custom("%t ".to_owned() + LAZYGIT),
+                ActionMap::Custom(SAME_WINDOW_TOKEN.to_owned() + " " + LAZYGIT),
                 ActionMap::DisplayFlagged,
                 ActionMap::Sort,
             ]

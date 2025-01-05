@@ -16,7 +16,7 @@ pub fn open_tui_program(program: &str) -> Result<()> {
         open_shell_in_window()
     } else if is_in_path(program) {
         log_info!("Tui menu execute {program}");
-        open_command_in_window(program)
+        open_command_in_window(&[program])
     } else {
         log_info!("Tui menu program {program} isn't in path");
         Ok(())

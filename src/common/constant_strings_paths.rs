@@ -134,18 +134,20 @@ pub const PASSWORD_LINES_DEVICE: [&str; 2] = [
     "It will be forgotten immediatly after use.",
 ];
 /// Shell presentation for the second window
-pub const SHELL_LINES: [&str; 11] = [
+pub const SHELL_LINES: [&str; 13] = [
     "Type a shell command",
     "",
     "`sudo` commands are supported.",
     "Pipes, redirections ( | < > >> ) and shell specific syntax (*) aren't supported.",
     "",
     "Some expression can be expanded:",
-    "%d:    current directory",
-    "%e:    selected file extension",
-    "%f:    flagged files",
-    "%n:    selected filename",
-    "%s:    selected filepath",
+    "%s: the selected file",
+    "%f: the flagged files",
+    "%e: the extension of the file",
+    "%n: the filename only",
+    "%p: the full path of the current directory",
+    "%t: execute the command in the same window",
+    "%c: the current clipboard as a string",
 ];
 /// Nvim address setter presentation for second window
 pub const NVIM_ADDRESS_LINES: [&str; 4] = [

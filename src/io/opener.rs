@@ -264,7 +264,7 @@ impl External {
 
     fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
         let arg = format!("{program} {path}", program = self.program(),);
-        open_command_in_window(&arg)
+        open_command_in_window(&[&arg])
     }
 
     fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
@@ -273,7 +273,7 @@ impl External {
             .filter_map(|p| p.to_str())
             .collect::<Vec<_>>()
             .join(" ");
-        open_command_in_window(&format!("{program} {arg}", program = self.program()))
+        open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {

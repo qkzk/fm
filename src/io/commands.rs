@@ -417,13 +417,13 @@ pub fn open_shell_in_window() -> Result<()> {
     Ok(())
 }
 
-pub fn open_command_in_window(arg: &str) -> Result<()> {
+pub fn open_command_in_window(args: &[&str]) -> Result<()> {
     disable_raw_mode()?;
     execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
 
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let mut shell_command = Command::new(&shell);
-    shell_command.arg("-c").arg(arg);
+    shell_command.arg("-c").args(args);
     log_info!("open_file_in_window {shell_command:?}");
     let shell_status = shell_command.status()?;
 

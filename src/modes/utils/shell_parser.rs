@@ -4,6 +4,8 @@ use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
 use crate::{log_info, log_line};
 
+pub const SAME_WINDOW_TOKEN: &str = "%t";
+
 /// Analyse, parse and builds arguments from a shell command.
 /// Normal commands are executed with `sh -c "command"` which allow redirection, pipes etc.
 /// Sudo commands are executed with `sudo` then `sh -c "rest of the command"`.
@@ -119,13 +121,8 @@ impl FmExpansion {
             .collect())
     }
 
-    fn term(status: &Status) -> Result<Vec<String>> {
-        // A space is needed unless $TERM & flags will be collapsed like "alacritty-e" (invalid) instead of "alacritty -e" (valid)
-        Ok(vec![
-            status.internal_settings.opener.terminal.to_owned(),
-            " ".to_owned(),
-            status.internal_settings.opener.terminal_flag.to_owned(),
-        ])
+    fn term(_status: &Status) -> Result<Vec<String>> {
+        Ok(vec![SAME_WINDOW_TOKEN.to_owned()])
     }
 
     fn clipboard() -> Result<Vec<String>> {
@@ -199,6 +196,11 @@ impl Lexer {
                         if let FmExpansion::Invalid = expansion {
                             bail!("Invalid FmExpansion %{c}")
                         }
+                        if let FmExpansion::Term = expansion {
+                            if !tokens.is_empty() {
+                                bail!("Term expansion can only be the first argument")
+                            }
+                        }
                         tokens.push(Token::FmExpansion(expansion));
                         current.clear();
                         state = State::Start;
@@ -255,11 +257,14 @@ impl Parser {
 }
 
 fn build_args(args: Vec<String>) -> Result<Vec<String>> {
+    log_info!("build_args {args:?}");
     if args.is_empty() {
         bail!("Empty command");
     }
     if args[0].starts_with("sudo") {
         Ok(build_sudo_args(args))
+    } else if args[0].starts_with(SAME_WINDOW_TOKEN) {
+        Ok(args)
     } else {
         Ok(build_normal_args(args))
     }

@@ -10,7 +10,7 @@ use sysinfo::Disks;
 
 use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
 use crate::event::FmEvents;
-use crate::io::{execute_and_output, Args, Extension, External, Opener};
+use crate::io::{execute_and_output, open_command_in_window, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
 /// Internal settings of the status.
@@ -203,6 +203,13 @@ impl InternalSettings {
 
     pub fn is_disabled(&self) -> bool {
         self.is_disabled
+    }
+
+    pub fn open_in_window(&mut self, args: &[&str]) -> Result<()> {
+        self.disable_display();
+        open_command_in_window(args)?;
+        self.enable_display();
+        Ok(())
     }
 
     fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {

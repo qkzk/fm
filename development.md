@@ -1550,12 +1550,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] crash with error locking status while selecting a file being modified
   - [x] can't reproduce
 - [x] FIX: tui apps should open in current window
-- [ ] BUG: clicking a footer should reuse the window.
+- [x] FIX: clicking a footer should reuse the window. Same problem for custom_commands.
+  - [x] %t expansion resuses the window
+  - [x] allow args in "open in same window" instead of a single arg.
+  - [x] parse custom commands and detect if %t isn't first : error.
+  - [x] add %t to custom commands lines / help 
+  - [x] match agains't the first arg, if %term or something, use "open in same window" 
+- [ ] BUG: while in fuzzy, pressing end or home crashes the app
 
 ## TODO
 
 ### Other ideas
 
+- [ ] terminal configuration is now useless. Should be removed.
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
