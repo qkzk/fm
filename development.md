@@ -1464,18 +1464,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display preview of flagged files in menu flagged.
 - [x] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
 - [x] FIX: preview binary navigation goes too fast, some lines are skipped
-- [ ] document every public function / method. Done for struct, enum & macros.
-  ```sh
-  % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
-  492
-  ```
 - [x] shell_command_parser refactor. Won't do. It's clean already. I need a lexer & a parser. I couldn't use pipes or redirections, now I can.
   - [x] new shell command expansion %c current clipboard
-- [ ] menu / rendering / widgets
-      What is a menu in fm ?
-
-  - render : should be cached as much as possible. For many menus, it doesn't change much.
-  - actions : should be attached to menus in a way or another. Don't store everything in status
+- [x] menu / rendering / widgets
   - [x] rendering with ratatui widgets
     - [x] menu
       - [x] navigate: draw menu using ratatui widgets
@@ -1500,7 +1491,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] context (action & more info)
       - [x] menu first string with colored string
       - [x] FIX: cursor if offseted by one
-    - [ ] scan status for menu actions which could be moved elsewhere
   - [x] FIX: opening shortcut twice crashes
   - [x] BUG: copy file should be 1 row up
   - [x] generic method to render menu content
@@ -1513,8 +1503,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] context
     - [x] input_history: too much code change
     - [x] marks
-  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
-  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 
 - [x] WONTDO: ratatui component for progress bar for copymove. Is very poor. I already need a thread to handle the progress, why would I replace it with something less powerful ?
 - [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
@@ -1550,7 +1538,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open in nvim concats multiple listen address when nvim is opened several times
 - [x] FIX: exex hangs
 - [x] 7z support with 7z executable.
-  - [ ] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
+  - [x] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
 - [ ] BUG: fuzzy display recreates a matcher every time it's displayed. It shouldn't have to.
     - [x] Use same approch as [helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs) to store the matcher somewhere.
     - [x] Use parking_lot::Mutex instead of `std::sync::Mutex`. Remove all Err on lock. parking_lot doesn't return a Result when locking.
@@ -1562,8 +1550,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] send the bulkrename event once the thread is stopped.
   - [x] If the editor requires a terminal, opens bulk when process ends otherwise watch in thread
 - [x] FIX: Input history navigation (shift+up, shift+down) doesn't update the search.
-- [ ] BUG: resize change dual / preview
-  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
   - first attempt didn't fix
 - [x] crash with error locking status while selecting a file being modified
   - [x] can't reproduce
@@ -1572,6 +1558,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
+- [ ] scan status for menu actions which could be moved elsewhere
+- [ ] document every public function / method. Done for struct, enum & macros.
+  ```sh
+  % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
+  492
+  ```
+- [ ] BUG: resize change dual / preview
+  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
+- [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 - [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
 - [ ] store 4 windows in display to modify instead of recreating
 - [ ] eza / ranger colors for normal files
