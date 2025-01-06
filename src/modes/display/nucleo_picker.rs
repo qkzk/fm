@@ -16,7 +16,11 @@ use tokio::process::Command as TokioCommand;
 use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
-use crate::{io::inject, modes::FileKind};
+use crate::{
+    config::{with_icon, with_icon_metadata, ICON, ICON_WITH_METADATA},
+    io::inject,
+    modes::FileKind,
+};
 use crate::{
     log_info,
     modes::{extract_extension, ContentWindow, Icon, Input},
@@ -421,7 +425,7 @@ pub fn highlighted_text<'a>(
     is_file: bool,
 ) -> Line<'a> {
     let mut spans = create_spans(is_selected);
-    if is_file {
+    if is_file && with_icon() || with_icon_metadata() {
         push_icon(text, is_selected, &mut spans);
     }
     let mut curr_segment = String::new();

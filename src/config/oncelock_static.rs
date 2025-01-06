@@ -49,6 +49,14 @@ pub static ICON: OnceLock<bool> = OnceLock::new();
 /// Does the user wants nerdfont icons even if metadata are shown ? Default: false.
 pub static ICON_WITH_METADATA: OnceLock<bool> = OnceLock::new();
 
+pub fn with_icon() -> bool {
+    *ICON.get().unwrap_or(&false)
+}
+
+pub fn with_icon_metadata() -> bool {
+    *ICON_WITH_METADATA.get().unwrap_or(&false)
+}
+
 fn set_start_folder(start_folder: &str) -> Result<()> {
     START_FOLDER
         .set(std::fs::canonicalize(tilde(start_folder).as_ref()).unwrap_or_default())

@@ -1431,10 +1431,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Temporary marks. Use Char(") and Alt+" to jump and save. Only 10 are saved so we can index with the digits.
   Those marks aren't saved on disk and are dropped when the application stops.
 - Use the current window when possible.
-  When you start a shell with `s` or open a file opened in a terminal, we use the current window instead of starting a new terminal emulator.
-  It can't work if you open multiple files which doesn't share a common opener (a text file and something else).
+  - When you start a shell with `s` or open a file opened in a terminal, we use the current window instead of starting a new terminal emulator.
+    It doesn't work if you open multiple files which doesn't share a common opener (like a text file and a pdf).
+  - Tui application (lazygit, ncdu, btop, htop...) reuse the same window.
+  - Shell commands expansion & custom commands expansion: 
+    `%t` allows the command to be executed in a new shell in the same window. `%t` should always be the first argument.
+
 - Nerdfont icons for filetypes. When metadata isn't shown, use nerdfont devicons to display the filekind.
   Association is copied from [ranger_devicons](https://github.com/alexanderjeurissen/ranger_devicons).
+  Fuzzy finder of files display the same icon.
+- Bugfixes:
+  - Fuzzy navigation (home, end, ensure window surrounds index)
 
 #### Changelog
 
@@ -1519,6 +1526,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move opening to internal settings, just let the interface in status
 - [x] icons / metadata. Use nerdfont icons when metadata is hidden.
   - [x] display icons in fuzzy finder of files
+  - [ ] don't use icons in fuzzy if the user doesn't want them.
 - [x] FIX: thumbnailer queue is locked too long and freezes status thread
 - [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
 - [x] fuzzy picker. Move prompt to top

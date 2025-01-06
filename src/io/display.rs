@@ -21,8 +21,7 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::common::path_to_string;
-use crate::config::{ColorG, Gradient, ICON, ICON_WITH_METADATA, MENU_STYLES};
+use crate::config::{with_icon_metadata, ColorG, Gradient, ICON, ICON_WITH_METADATA, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
@@ -35,6 +34,7 @@ use crate::{
     config::MATCHER,
 };
 use crate::{colored_skip_take, log_info};
+use crate::{common::path_to_string, config::with_icon};
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -468,8 +468,8 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn pick_formater(&self) -> fn(&FileInfo, (usize, usize)) -> String {
         let with_metadata = self.status.session.metadata();
-        let with_icon = *ICON.get().unwrap_or(&false);
-        let with_icon_metadata = *ICON_WITH_METADATA.get().unwrap_or(&false);
+        let with_icon = with_icon();
+        let with_icon_metadata = with_icon_metadata();
         if with_metadata && with_icon_metadata {
             Self::format_file_metadata_icon
         } else if with_metadata {
