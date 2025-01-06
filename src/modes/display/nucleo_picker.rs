@@ -16,14 +16,11 @@ use tokio::process::Command as TokioCommand;
 use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
+use crate::modes::{extract_extension, ContentWindow, Icon, Input};
 use crate::{
-    config::{with_icon, with_icon_metadata, ICON, ICON_WITH_METADATA},
+    config::{with_icon, with_icon_metadata},
     io::inject,
     modes::FileKind,
-};
-use crate::{
-    log_info,
-    modes::{extract_extension, ContentWindow, Icon, Input},
 };
 
 /// Directions for nucleo picker navigation.

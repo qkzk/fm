@@ -1526,7 +1526,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move opening to internal settings, just let the interface in status
 - [x] icons / metadata. Use nerdfont icons when metadata is hidden.
   - [x] display icons in fuzzy finder of files
-  - [ ] don't use icons in fuzzy if the user doesn't want them.
+  - [x] don't use icons in fuzzy if the user doesn't want them.
 - [x] FIX: thumbnailer queue is locked too long and freezes status thread
 - [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
 - [x] fuzzy picker. Move prompt to top

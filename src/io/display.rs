@@ -21,7 +21,9 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::config::{with_icon_metadata, ColorG, Gradient, ICON, ICON_WITH_METADATA, MENU_STYLES};
+use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
+use crate::common::path_to_string;
+use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
@@ -29,12 +31,7 @@ use crate::modes::{
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine,
     Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
-use crate::{
-    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
-    config::MATCHER,
-};
 use crate::{colored_skip_take, log_info};
-use crate::{common::path_to_string, config::with_icon};
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -583,8 +580,7 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
     ) {
         let p_rect = rect.offseted(1, 0);
-        // p_rect.height = p_rect.height.saturating_sub(2);
-        let with_icon = Self::with_icon(with_metadata);
+        let with_icon = Self::use_icon(with_metadata);
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
             .map(|(index, line_builder)| {
@@ -594,9 +590,8 @@ impl<'a> TreeDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    fn with_icon(with_metadata: bool) -> bool {
-        (!with_metadata && *ICON.get().unwrap_or(&false))
-            || *ICON_WITH_METADATA.get().unwrap_or(&false)
+    fn use_icon(with_metadata: bool) -> bool {
+        (!with_metadata && with_icon()) || with_icon_metadata()
     }
 
     fn tree_line<'b>(

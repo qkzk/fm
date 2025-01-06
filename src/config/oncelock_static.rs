@@ -44,15 +44,15 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
 
-/// Does the user wants nerdfont icons ? Default: false.
-pub static ICON: OnceLock<bool> = OnceLock::new();
-/// Does the user wants nerdfont icons even if metadata are shown ? Default: false.
-pub static ICON_WITH_METADATA: OnceLock<bool> = OnceLock::new();
+static ICON: OnceLock<bool> = OnceLock::new();
+static ICON_WITH_METADATA: OnceLock<bool> = OnceLock::new();
 
+/// Does the user wants nerdfont icons ? Default: false.
 pub fn with_icon() -> bool {
     *ICON.get().unwrap_or(&false)
 }
 
+/// Does the user wants nerdfont icons even if metadata are shown ? Default: false.
 pub fn with_icon_metadata() -> bool {
     *ICON_WITH_METADATA.get().unwrap_or(&false)
 }
