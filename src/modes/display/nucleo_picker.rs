@@ -1,5 +1,5 @@
 use std::{
-    cmp::min,
+    cmp::{max, min},
     fs::canonicalize,
     path::PathBuf,
     sync::Arc,
@@ -16,8 +16,11 @@ use tokio::process::Command as TokioCommand;
 use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
-use crate::modes::{extract_extension, ContentWindow, Icon, Input};
 use crate::{io::inject, modes::FileKind};
+use crate::{
+    log_info,
+    modes::{extract_extension, ContentWindow, Icon, Input},
+};
 
 /// Directions for nucleo picker navigation.
 /// Usefull to avoid spreading too much the manipulation
@@ -27,6 +30,8 @@ pub enum Direction {
     Down,
     PageUp,
     PageDown,
+    Start,
+    End,
     Index(u16),
 }
 
@@ -224,27 +229,37 @@ where
         let used_height = self
             .height
             .saturating_sub(ContentWindow::WINDOW_PADDING_FUZZY);
+
+        let mut top = self.top;
+        if self.index <= top {
+            // Window is too low
+            top = self.index;
+        }
+
         if self.matched_item_count < used_height {
             // not enough items to fill the display, take everything
             (0, self.matched_item_count)
-        } else if self.index < self.top + ContentWindow::WINDOW_PADDING_FUZZY {
+        } else if self.index
+            > (top + used_height).saturating_add(ContentWindow::WINDOW_PADDING_FUZZY)
+        {
+            // window is too high
+            let bottom = max(top + used_height, self.matched_item_count);
+            (bottom.saturating_sub(used_height) + 1, bottom)
+        } else if self.index < top + ContentWindow::WINDOW_PADDING_FUZZY {
             // scroll up by one
+            if top + used_height > self.matched_item_count {
+                top = self.matched_item_count.saturating_sub(used_height);
+            }
             (
-                self.top.saturating_sub(1),
-                min(self.top + used_height, self.matched_item_count),
+                top.saturating_sub(1),
+                min(top + used_height, self.matched_item_count),
             )
-        } else if self.index + ContentWindow::WINDOW_PADDING_FUZZY > self.top + used_height {
+        } else if self.index + ContentWindow::WINDOW_PADDING_FUZZY > top + used_height {
             // scroll down by one
-            (
-                self.top + 1,
-                min(self.top + used_height + 1, self.matched_item_count),
-            )
+            (top + 1, min(top + used_height + 1, self.matched_item_count))
         } else {
             // don't move
-            (
-                self.top,
-                min(self.top + used_height, self.matched_item_count),
-            )
+            (top, min(top + used_height, self.matched_item_count))
         }
     }
 
@@ -257,40 +272,34 @@ where
     /// Returns the selected element, if its index is valid.
     /// It should never return `None` if the content isn't empty.
     pub fn pick(&self) -> Option<std::string::String> {
-        // #[cfg(debug_assertions)]
-        // self.log();
+        #[cfg(debug_assertions)]
+        self.log();
         self.selected.to_owned()
     }
 
-    // // Do not erase, used for debugging purpose
-    // #[cfg(debug_assertions)]
-    // fn log(&self) {
-    //     crate::log_info!(
-    //         "index {idx} top {top} offset {off} - top_bot {top_bot:?} - matched {mic} - items {itc} - height {hei}",
-    //         idx = self.index,
-    //         top = self.top,
-    //         off = self.index.saturating_sub(self.top),
-    //         top_bot = self.top_bottom(),
-    //         mic = self.matched_item_count,
-    //         itc = self.item_count,
-    //         hei = self.height,
-    //     );
-    // }
+    // Do not erase, used for debugging purpose
+    #[cfg(debug_assertions)]
+    fn log(&self) {
+        crate::log_info!(
+            "index {idx} top {top} offset {off} - top_bot {top_bot:?} - matched {mic} - items {itc} - height {hei}",
+            idx = self.index,
+            top = self.top,
+            off = self.index.saturating_sub(self.top),
+            top_bot = self.top_bottom(),
+            mic = self.matched_item_count,
+            itc = self.item_count,
+            hei = self.height,
+        );
+    }
 }
 
 impl FuzzyFinder<String> {
     fn select_next(&mut self) {
         self.index += 1;
-        self.tick(true);
-        // #[cfg(debug_assertions)]
-        // self.log();
     }
 
     fn select_prev(&mut self) {
         self.index = self.index.saturating_sub(1);
-        self.tick(true);
-        // #[cfg(debug_assertions)]
-        // self.log();
     }
 
     fn select_clic(&mut self, row: u16) {
@@ -299,8 +308,14 @@ impl FuzzyFinder<String> {
             return;
         }
         self.index = self.top + row - (ContentWindow::WINDOW_PADDING_FUZZY) - 1;
-        // #[cfg(debug_assertions)]
-        // self.log();
+    }
+
+    fn select_start(&mut self) {
+        self.index = 0;
+    }
+
+    fn select_end(&mut self) {
+        self.index = u32::MAX;
     }
 
     fn page_up(&mut self) {
@@ -325,7 +340,12 @@ impl FuzzyFinder<String> {
             Direction::PageUp => self.page_up(),
             Direction::PageDown => self.page_down(),
             Direction::Index(index) => self.select_clic(index),
+            Direction::Start => self.select_start(),
+            Direction::End => self.select_end(),
         }
+        self.tick(true);
+        #[cfg(debug_assertions)]
+        self.log();
     }
 
     pub fn find_files(&self, current_path: PathBuf) {

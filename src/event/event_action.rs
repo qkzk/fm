@@ -1078,7 +1078,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
-                Display::Fuzzy => todo!(),
+                Display::Fuzzy => status.fuzzy_start()?,
             };
             status.update_second_pane_for_preview()
         } else {
@@ -1099,7 +1099,7 @@ impl EventAction {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf(),
-                Display::Fuzzy => todo!(),
+                Display::Fuzzy => status.fuzzy_end()?,
             };
             status.update_second_pane_for_preview()?;
         } else {

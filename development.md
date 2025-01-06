@@ -1556,7 +1556,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] parse custom commands and detect if %t isn't first : error.
   - [x] add %t to custom commands lines / help 
   - [x] match agains't the first arg, if %term or something, use "open in same window" 
-- [ ] BUG: while in fuzzy, pressing end or home crashes the app
+- [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
 
 ## TODO
 

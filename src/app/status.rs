@@ -1089,6 +1089,14 @@ impl Status {
         Ok(())
     }
 
+    pub fn fuzzy_start(&mut self) -> Result<()> {
+        self.fuzzy_navigate(FuzzyDirection::Start)
+    }
+
+    pub fn fuzzy_end(&mut self) -> Result<()> {
+        self.fuzzy_navigate(FuzzyDirection::End)
+    }
+
     pub fn fuzzy_navigate(&mut self, direction: FuzzyDirection) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
