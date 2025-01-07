@@ -10,7 +10,7 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{open_shell_in_window, read_log};
+use crate::io::{read_log, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -584,7 +584,7 @@ impl EventAction {
             return Ok(());
         }
         status.internal_settings.disable_display();
-        open_shell_in_window()?;
+        External::open_shell_in_window()?;
         status.internal_settings.enable_display();
         Ok(())
     }

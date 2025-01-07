@@ -1,15 +1,10 @@
 use std::env;
 use std::fmt;
-use std::io::{stdout, Write};
+use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-};
 use nucleo::Injector;
 use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
@@ -68,38 +63,6 @@ pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
         .spawn()?)
 }
 
-pub fn execute_without_output_with_path<S, P>(
-    exe: S,
-    path: P,
-    args: Option<&[&str]>,
-) -> Result<std::process::Child>
-where
-    S: AsRef<std::ffi::OsStr> + fmt::Debug,
-    P: AsRef<Path>,
-{
-    log_info!(
-        "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
-    );
-    let params = args.unwrap_or(&[]);
-    if is_in_path(SETSID) {
-        Ok(Command::new(SETSID)
-            .arg(exe)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .current_dir(path)
-            .args(params)
-            .spawn()?)
-    } else {
-        Ok(Command::new(exe)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .current_dir(path)
-            .args(params)
-            .spawn()?)
-    }
-}
 /// Execute a command with options in a fork.
 /// Wait for termination and return either :
 /// `Ok(stdout)` if the status code is 0
@@ -206,20 +169,6 @@ pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output>
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()?)
-}
-
-pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
-    let mut args: Vec<&str> = exec_command.split(' ').collect();
-    let command = args.remove(0);
-    if !Path::new(command).exists() && !is_in_path(command) {
-        log_info!("{command} can't be found - args {exec_command:?}");
-        return Ok(false);
-    }
-    for file in files {
-        args.push(file.to_str().context("Couldn't parse filepath to str")?);
-    }
-    execute(command, &args)?;
-    Ok(true)
 }
 
 /// Spawn a sudo command with stdin, stdout and stderr piped.
@@ -391,47 +340,16 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
     Some(tokio_greper)
 }
 
-/// Open a new shell in current window.
-/// Disable raw mode, clear the screen, start a new shell ($SHELL, default to bash).
-/// Wait...
-/// Once the shell exits,
-/// Clear the screen and renable raw mode.
-///
-/// It's the responsability of the caller to ensure displayer doesn't try to override the display.
-pub fn open_shell_in_window() -> Result<()> {
-    disable_raw_mode()?;
-    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
-
+pub fn execute_in_shell(args: &[&str]) -> Result<bool> {
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
-    let shell_status = Command::new(&shell).status()?;
-
-    if !shell_status.success() {
-        log_info!(
-            "Shell {shell} exited with non-zero status: {:?}",
-            shell_status
-        );
+    let mut command = Command::new(&shell);
+    if !args.is_empty() {
+        command.arg("-c").args(args);
     }
-
-    enable_raw_mode()?;
-    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
-    Ok(())
-}
-
-pub fn open_command_in_window(args: &[&str]) -> Result<()> {
-    disable_raw_mode()?;
-    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
-
-    let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
-    let mut shell_command = Command::new(&shell);
-    shell_command.arg("-c").args(args);
-    log_info!("open_file_in_window {shell_command:?}");
-    let shell_status = shell_command.status()?;
-
-    if !shell_status.success() {
-        log_info!("Shell exited with non-zero status: {:?}", shell_status);
+    log_info!("execute_in_shell: shell: {shell}, args: {args:?}");
+    let success = command.status()?.success();
+    if !success {
+        log_info!("Shell exited with non-zero status:");
     }
-
-    enable_raw_mode()?;
-    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
-    Ok(())
+    Ok(success)
 }

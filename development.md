@@ -1576,7 +1576,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
-- [ ] terminal configuration is now useless. Should be removed.
+- [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
 - [ ] allow letter binds in every navigate + selection menu like tui & cli applications
 
 ### Other ideas

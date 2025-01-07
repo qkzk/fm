@@ -1,8 +1,14 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::io::stdout;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+};
 use serde_yml::from_reader;
 use serde_yml::Value;
 use strum::IntoEnumIterator;
@@ -12,11 +18,13 @@ use crate::common::{
     is_in_path, tilde, OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH,
     OPENER_READABLE, OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
-use crate::io::{execute, open_command_in_window};
+use crate::io::execute;
 use crate::log_info;
 use crate::modes::{
     decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension,
 };
+
+use super::execute_in_shell;
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -260,7 +268,7 @@ impl External {
 
     fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
         let arg = format!("{program} {path}", program = self.program(),);
-        open_command_in_window(&[&arg])
+        Self::open_command_in_window(&[&arg])
     }
 
     fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
@@ -269,7 +277,7 @@ impl External {
             .filter_map(|p| p.to_str())
             .collect::<Vec<_>>()
             .join(" ");
-        open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
+        Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
@@ -278,6 +286,27 @@ impl External {
         }
         let executable = args.remove(0);
         execute(executable, &args)
+    }
+
+    /// Open a new shell in current window.
+    /// Disable raw mode, clear the screen, start a new shell ($SHELL, default to bash).
+    /// Wait...
+    /// Once the shell exits,
+    /// Clear the screen and renable raw mode.
+    ///
+    /// It's the responsability of the caller to ensure displayer doesn't try to override the display.
+    pub fn open_shell_in_window() -> Result<()> {
+        Self::open_command_in_window(&[])?;
+        Ok(())
+    }
+
+    pub fn open_command_in_window(args: &[&str]) -> Result<()> {
+        disable_raw_mode()?;
+        execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
+        execute_in_shell(args)?;
+        enable_raw_mode()?;
+        execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
+        Ok(())
     }
 }
 
