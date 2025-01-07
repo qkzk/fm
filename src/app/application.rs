@@ -160,7 +160,7 @@ impl FM {
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let status = Arc::new(Mutex::new(Status::new(
             term.size().unwrap(),
-            Opener::new(&config.terminal, &config.terminal_flag),
+            Opener::default(),
             &config.binds,
             fm_sender.clone(),
         )?));

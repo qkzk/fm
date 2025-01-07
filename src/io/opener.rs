@@ -251,14 +251,10 @@ impl External {
         self.1
     }
 
-    fn open(&self, paths: &[&str], term: &str, term_flag: &str) -> Result<()> {
+    fn open(&self, paths: &[&str]) -> Result<()> {
         let mut args: Vec<&str> = vec![self.program()];
         args.extend(paths);
-        if self.use_term() {
-            Self::with_term(args, term, term_flag)?;
-        } else {
-            Self::without_term(args)?;
-        }
+        Self::without_term(args)?;
         Ok(())
     }
 
@@ -282,15 +278,6 @@ impl External {
         }
         let executable = args.remove(0);
         execute(executable, &args)
-    }
-
-    fn with_term<'a>(
-        mut args: Vec<&'a str>,
-        term: &'a str,
-        term_flag: &'a str,
-    ) -> Result<std::process::Child> {
-        args.insert(0, term_flag);
-        execute(term, &args)
     }
 }
 
@@ -359,26 +346,20 @@ impl fmt::Display for Kind {
 /// It may open a single or multiple files, trying to regroup them by opener.
 #[derive(Clone)]
 pub struct Opener {
-    /// The name of the configured terminal application
-    pub terminal: String,
-    /// Terminal flag used to run a command at startup. Usually (but not always) -e.
-    /// See the default config file for more information.
-    pub terminal_flag: String,
-    /// The association of openers for every kind of files
     pub association: Association,
 }
 
-impl Opener {
+impl Default for Opener {
     /// Creates a new opener instance.
     /// Use the configured values from [`crate::common::OPENER_PATH`] if it can be parsed.
-    pub fn new(terminal: &str, terminal_flag: &str) -> Self {
+    fn default() -> Self {
         Self {
-            terminal: terminal.to_owned(),
-            terminal_flag: terminal_flag.to_owned(),
             association: Association::default().with_config(OPENER_PATH),
         }
     }
+}
 
+impl Opener {
     /// Returns the open info about this file.
     /// It's used to check if the file can be opened without specific actions or not.
     /// This opener can't mutate the status and can't ask for a sudo password.
@@ -413,11 +394,9 @@ impl Opener {
     /// This is quite a tricky method, there's many possible failures.
     pub fn open_single(&self, path: &Path) -> Result<()> {
         match self.kind(path) {
-            Some(Kind::External(external)) => external.open(
-                &[path.to_str().context("couldn't")?],
-                &self.terminal,
-                &self.terminal_flag,
-            ),
+            Some(Kind::External(external)) => {
+                external.open(&[path.to_str().context("couldn't")?])
+            }
             Some(Kind::Internal(internal)) => internal.open(path),
             None => Err(anyhow!("{p} can't be opened", p = path.display())),
         }
@@ -428,11 +407,7 @@ impl Opener {
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
         for (external, grouped_paths) in openers.iter() {
-            let _ = external.open(
-                &Self::collect_paths_as_str(grouped_paths),
-                &self.terminal,
-                &self.terminal_flag,
-            );
+            let _ = external.open(&Self::collect_paths_as_str(grouped_paths));
         }
         Ok(())
     }

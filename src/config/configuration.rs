@@ -4,9 +4,7 @@ use anyhow::Result;
 use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
-use crate::common::{
-    is_in_path, tilde, CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION, DEFAULT_TERMINAL_FLAG,
-};
+use crate::common::{tilde, CONFIG_PATH};
 use crate::config::{Bindings, ColorG};
 use crate::io::color_to_style;
 
@@ -16,10 +14,6 @@ use crate::io::color_to_style;
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// The name of the terminal application. It should be installed properly.
-    pub terminal: String,
-    /// terminal flag to run a command with the terminal emulator
-    pub terminal_flag: String,
     /// Configurable keybindings.
     pub binds: Bindings,
 }
@@ -28,9 +22,7 @@ impl Default for Config {
     /// Returns a default config with hardcoded values.
     fn default() -> Self {
         Self {
-            terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
-            terminal_flag: DEFAULT_TERMINAL_FLAG.to_owned(),
         }
     }
 }
@@ -40,43 +32,7 @@ impl Config {
     fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
-        self.update_terminal(&yaml["terminal"]);
-        self.update_terminal_flag(&yaml["terminal_emulator_flags"]);
         Ok(())
-    }
-
-    /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
-    /// we look for the configured one,
-    /// else nothing is done.
-    fn update_terminal(&mut self, yaml: &Value) {
-        let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
-        if !terminal_currently_used.is_empty() && is_in_path(&terminal_currently_used) {
-            self.terminal = terminal_currently_used
-        } else if let Some(configured_terminal) = yaml.as_str() {
-            self.terminal = configured_terminal.to_owned()
-        }
-    }
-
-    fn update_terminal_flag(&mut self, terminal_flag: &Value) {
-        let terminal = self.terminal();
-        if let Some(terminal_flag) = read_yaml_string(terminal_flag, terminal) {
-            self.terminal_flag = terminal_flag.as_str().to_owned();
-            crate::log_info!(
-                "updated terminal_flag for {terminal} using {tf}",
-                terminal = self.terminal,
-                tf = self.terminal_flag
-            );
-        } else {
-            crate::log_info!(
-                "Couldn't find {terminal} in config file. Using default",
-                terminal = self.terminal
-            )
-        }
-    }
-
-    /// The terminal name
-    pub fn terminal(&self) -> &str {
-        &self.terminal
     }
 }
 

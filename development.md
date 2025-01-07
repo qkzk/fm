@@ -1391,7 +1391,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] doc
   - [ ] ???
 
-## Current dev
 
 ### Version 0.1.32
 
@@ -1567,11 +1566,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
 - [x] FIX: flagged files which doesn't exists anymore (deleted/moved somewhere else) may crash flagged menu.
 
+## Current dev
+
+### Version 0.1.33 
+
+#### Summary 
+
+#### Changelog
+
 ## TODO
+
+- [ ] terminal configuration is now useless. Should be removed.
+- [ ] allow letter binds in every navigate + selection menu like tui & cli applications
 
 ### Other ideas
 
-- [ ] terminal configuration is now useless. Should be removed.
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
