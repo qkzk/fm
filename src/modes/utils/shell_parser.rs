@@ -1,8 +1,10 @@
 use anyhow::{bail, Result};
 
 use crate::app::Status;
-use crate::common::path_to_string;
+use crate::common::{get_clipboard, path_to_string};
 use crate::{log_info, log_line};
+
+pub const SAME_WINDOW_TOKEN: &str = "%t";
 
 /// Analyse, parse and builds arguments from a shell command.
 /// Normal commands are executed with `sh -c "command"` which allow redirection, pipes etc.
@@ -17,6 +19,7 @@ use crate::{log_info, log_line};
 /// %e is converted into a `Extension`
 /// %n is converted into a `Filename`
 /// %t is converted into a `$TERM` + custom flag.
+/// %c is converted into a `Clipboard content`.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
@@ -39,7 +42,7 @@ fn shell_command_parser_error(message: &str, command: &str) -> Result<Vec<String
 }
 
 #[derive(Debug)]
-enum Tkn {
+enum Token {
     Identifier(String),
     StringLiteral((char, String)),
     FmExpansion(FmExpansion),
@@ -53,6 +56,7 @@ enum FmExpansion {
     Extension,
     Flagged,
     Term,
+    Clipboard,
     Invalid,
 }
 
@@ -65,6 +69,7 @@ impl FmExpansion {
             'e' => Self::Extension,
             'f' => Self::Flagged,
             't' => Self::Term,
+            'c' => Self::Clipboard,
             _ => Self::Invalid,
         }
     }
@@ -77,6 +82,7 @@ impl FmExpansion {
             Self::Flagged => Self::flagged(status),
             Self::SelectedPath => Self::path(status),
             Self::SelectedFilename => Self::filename(status),
+            Self::Clipboard => Self::clipboard(),
             Self::Extension => Self::extension(status),
         }
     }
@@ -115,13 +121,15 @@ impl FmExpansion {
             .collect())
     }
 
-    fn term(status: &Status) -> Result<Vec<String>> {
-        // A space is needed unless $TERM & flags will be collapsed like "alacritty-e" (invalid) instead of "alacritty -e" (valid)
-        Ok(vec![
-            status.internal_settings.opener.terminal.to_owned(),
-            " ".to_owned(),
-            status.internal_settings.opener.terminal_flag.to_owned(),
-        ])
+    fn term(_status: &Status) -> Result<Vec<String>> {
+        Ok(vec![SAME_WINDOW_TOKEN.to_owned()])
+    }
+
+    fn clipboard() -> Result<Vec<String>> {
+        let Some(clipboard) = get_clipboard() else {
+            bail!("Couldn't read the clipboard");
+        };
+        Ok(clipboard.split_whitespace().map(|s| s.to_owned()).collect())
     }
 }
 
@@ -143,7 +151,7 @@ impl Lexer {
         }
     }
 
-    fn lexer(&self) -> Result<Vec<Tkn>> {
+    fn lexer(&self) -> Result<Vec<Token>> {
         let mut tokens = vec![];
         let mut state = State::Start;
         let mut current = String::new();
@@ -162,11 +170,11 @@ impl Lexer {
                 }
                 State::Arg => {
                     if c == '%' {
-                        tokens.push(Tkn::Identifier(current.clone()));
+                        tokens.push(Token::Identifier(current.clone()));
                         current.clear();
                         state = State::FmExpansion;
                     } else if c == '"' || c == '\'' {
-                        tokens.push(Tkn::Identifier(current.clone()));
+                        tokens.push(Token::Identifier(current.clone()));
                         current.clear();
                         state = State::StringLiteral(c);
                     } else {
@@ -175,7 +183,7 @@ impl Lexer {
                 }
                 State::StringLiteral(quote_type) => {
                     if c == *quote_type {
-                        tokens.push(Tkn::StringLiteral((c, current.clone())));
+                        tokens.push(Token::StringLiteral((c, current.clone())));
                         current.clear();
                         state = State::Start;
                     } else {
@@ -188,7 +196,12 @@ impl Lexer {
                         if let FmExpansion::Invalid = expansion {
                             bail!("Invalid FmExpansion %{c}")
                         }
-                        tokens.push(Tkn::FmExpansion(expansion));
+                        if let FmExpansion::Term = expansion {
+                            if !tokens.is_empty() {
+                                bail!("Term expansion can only be the first argument")
+                            }
+                        }
+                        tokens.push(Token::FmExpansion(expansion));
                         current.clear();
                         state = State::Start;
                     } else {
@@ -199,8 +212,8 @@ impl Lexer {
         }
 
         match &state {
-            State::Arg => tokens.push(Tkn::Identifier(current)),
-            State::StringLiteral(quote) => tokens.push(Tkn::StringLiteral((*quote,current))),
+            State::Arg => tokens.push(Token::Identifier(current)),
+            State::StringLiteral(quote) => tokens.push(Token::StringLiteral((*quote,current))),
             State::FmExpansion => bail!("Invalid syntax for {command}. Matching an FmExpansion with {current} which is impossible.", command=self.command),
             State::Start => (),
         }
@@ -210,11 +223,11 @@ impl Lexer {
 }
 
 struct Parser {
-    tokens: Vec<Tkn>,
+    tokens: Vec<Token>,
 }
 
 impl Parser {
-    fn new(tokens: Vec<Tkn>) -> Self {
+    fn new(tokens: Vec<Token>) -> Self {
         Self { tokens }
     }
 
@@ -225,8 +238,8 @@ impl Parser {
         let mut args: Vec<String> = vec![];
         for token in self.tokens.iter() {
             match token {
-                Tkn::Identifier(identifier) => args.push(identifier.to_owned()),
-                Tkn::FmExpansion(fm_expansion) => {
+                Token::Identifier(identifier) => args.push(identifier.to_owned()),
+                Token::FmExpansion(fm_expansion) => {
                     let Ok(mut expansion) = fm_expansion.parse(status) else {
                         log_line!("Invalid expansion {fm_expansion:?}");
                         log_info!("Invalid expansion {fm_expansion:?}");
@@ -234,7 +247,9 @@ impl Parser {
                     };
                     args.append(&mut expansion)
                 }
-                Tkn::StringLiteral((quote, string)) => args.push(format!("{quote}{string}{quote}")),
+                Token::StringLiteral((quote, string)) => {
+                    args.push(format!("{quote}{string}{quote}"))
+                }
             };
         }
         Ok(args)
@@ -242,11 +257,14 @@ impl Parser {
 }
 
 fn build_args(args: Vec<String>) -> Result<Vec<String>> {
+    log_info!("build_args {args:?}");
     if args.is_empty() {
         bail!("Empty command");
     }
     if args[0].starts_with("sudo") {
         Ok(build_sudo_args(args))
+    } else if args[0].starts_with(SAME_WINDOW_TOKEN) {
+        Ok(args)
     } else {
         Ok(build_normal_args(args))
     }

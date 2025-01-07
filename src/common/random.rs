@@ -1,5 +1,5 @@
 use std::collections::hash_map::RandomState;
-use std::hash::{BuildHasher, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 
 /// Random seed generator
 /// From <https://blog.orhun.dev/zero-deps-random-in-rust/>
@@ -26,4 +26,20 @@ pub fn random_alpha_chars() -> impl Iterator<Item = char> {
     random_numbers()
         .map(|r| (r & 255) as u8 as char)
         .filter(|c| c.is_ascii_alphabetic())
+}
+
+fn hasher<T>(data: T) -> u64
+where
+    T: Hash,
+{
+    let mut hasher = std::hash::DefaultHasher::new();
+    data.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// Hash a path (as `str, string, Cow<str>, Path, PathBuf`) into a predictable string.
+/// It will allow to check quickly if a file is already created.
+pub fn hash_path<P: AsRef<std::path::Path>>(p: P) -> String {
+    let h = hasher(p.as_ref());
+    h.to_string()
 }

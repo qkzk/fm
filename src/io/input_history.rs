@@ -1,10 +1,11 @@
-use std::fmt::Display;
-use std::io::Write;
+use std::fmt::{Display, Formatter};
+use std::fs::{File, OpenOptions};
+use std::io::{Error as IoError, Write};
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use strum_macros::Display;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::common::{read_lines, tilde};
 use crate::io::Args;
@@ -14,28 +15,28 @@ use crate::modes::{InputCompleted, InputSimple, Menu};
 /// It's filtered by content.
 /// If the flag "log_are_enabled" is set to false, it will not be updated in the logs.
 pub struct InputHistory {
-    file_path: std::path::PathBuf,
+    file_path: PathBuf,
     content: Vec<HistoryElement>,
     filtered: Vec<HistoryElement>,
-    index: usize,
+    index: Option<usize>,
     log_are_enabled: bool,
 }
 
 impl InputHistory {
     pub fn load(path: &str) -> Result<Self> {
-        let file_path = std::path::PathBuf::from(tilde(path).to_string());
+        let file_path = PathBuf::from(tilde(path).to_string());
         Ok(Self {
             content: Self::load_content(&file_path)?,
             file_path,
             filtered: vec![],
-            index: 0,
+            index: None,
             log_are_enabled: Args::parse().log,
         })
     }
 
-    fn load_content(path: &std::path::Path) -> Result<Vec<HistoryElement>> {
-        if !std::path::Path::new(&path).exists() {
-            std::fs::File::create(path)?;
+    fn load_content(path: &Path) -> Result<Vec<HistoryElement>> {
+        if !Path::new(&path).exists() {
+            File::create(path)?;
         }
         Ok(read_lines(path)?
             .map(HistoryElement::from_str)
@@ -43,45 +44,58 @@ impl InputHistory {
             .collect())
     }
 
-    pub fn write_elem(&self, elem: &HistoryElement) -> Result<()> {
-        let mut hist_file = std::fs::OpenOptions::new()
-            .append(true)
-            .open(&self.file_path)?;
+    fn write_elem(&self, elem: &HistoryElement) -> Result<()> {
+        let mut hist_file = OpenOptions::new().append(true).open(&self.file_path)?;
         hist_file.write_all(elem.to_string().as_bytes())?;
         Ok(())
     }
 
-    pub fn filter_by_mode(&mut self, edit_mode: Menu) {
-        let Some(kind) = HistoryKind::from_mode(edit_mode) else {
+    pub fn filter_by_mode(&mut self, menu_mode: Menu) {
+        let Some(kind) = HistoryKind::from_mode(menu_mode) else {
             return;
         };
-        self.index = 0;
+        self.index = None;
         self.filtered = self
             .content
             .iter()
             .filter(|elem| elem.kind == kind)
-            .rev()
             .map(|elem| elem.to_owned())
             .collect()
     }
 
-    pub fn next(&mut self) {
-        if !self.filtered.is_empty() {
-            self.index = (self.index + 1) % self.filtered.len();
-        }
-    }
-
     pub fn prev(&mut self) {
-        if self.index > 0 {
-            self.index -= 1
-        } else if !self.filtered.is_empty() {
-            self.index = self.filtered.len() - 1
+        if self.filtered.is_empty() {
+            return;
+        }
+        if self.index.is_none() {
+            self.index = Some(0);
+        } else {
+            self.index = self.index.map(|index| (index + 1) % self.filtered.len());
         }
     }
 
-    pub fn current(&self) -> Option<&str> {
-        let elem = self.filtered.get(self.index)?;
-        Some(&elem.content)
+    pub fn next(&mut self) {
+        if self.filtered.is_empty() {
+            return;
+        }
+        if self.index.is_none() {
+            self.index = Some(self.filtered.len().saturating_sub(1));
+        } else {
+            self.index = self.index.map(|index| {
+                if index > 0 {
+                    index - 1
+                } else {
+                    self.filtered.len() - 1
+                }
+            })
+        }
+    }
+
+    pub fn current(&self) -> Option<&HistoryElement> {
+        match self.index {
+            None => None,
+            Some(index) => self.filtered.get(index),
+        }
     }
 
     /// If logs are disabled, nothing is saved on disk, only during current session
@@ -89,20 +103,66 @@ impl InputHistory {
         let Some(elem) = HistoryElement::from_mode_input_string(mode, input_string) else {
             return Ok(());
         };
+        if let Some(last) = self.filtered.last() {
+            if *last == elem {
+                return Ok(());
+            }
+        }
         if self.log_are_enabled {
             self.write_elem(&elem)?;
         }
         self.content.push(elem);
         Ok(())
     }
+
+    /// True iff the mode is logged.
+    /// It's almost always the case, only password mode isn't saved.
+    /// This method is usefull to check if an input should be replaced when the user want to.
+    pub fn is_mode_logged(&self, mode: &Menu) -> bool {
+        !matches!(
+            mode,
+            Menu::Navigate(_)
+                | Menu::InputSimple(InputSimple::Password(_, _))
+                | Menu::InputSimple(InputSimple::CloudNewdir)
+                | Menu::NeedConfirmation(_)
+        )
+    }
 }
 
-/// Different kind of histories, depending of the edit_mode.
+/// Different kind of histories, depending of the menu_mode.
 /// It has a few methods to record and filter methods from text input.
-#[derive(Display, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum HistoryKind {
     InputSimple(InputSimple),
     InputCompleted(InputCompleted),
+}
+
+impl Display for HistoryKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let menu = match self {
+            Self::InputCompleted(input_completed) => match input_completed {
+                InputCompleted::Cd => "Cd",
+                InputCompleted::Search => "Search",
+                InputCompleted::Exec => "Exec",
+                InputCompleted::Action => "Action",
+            },
+            Self::InputSimple(input_simple) => match input_simple {
+                InputSimple::Rename => "Rename",
+                InputSimple::Chmod => "Chmod",
+                InputSimple::Newfile => "Newfile",
+                InputSimple::Newdir => "Newdir",
+                InputSimple::RegexMatch => "RegexMatch",
+                InputSimple::Sort => "Sort",
+                InputSimple::Filter => "Filter",
+                InputSimple::SetNvimAddr => "SetNvimAddr",
+                InputSimple::ShellCommand => "ShellCommand",
+                InputSimple::Remote => "Remote",
+                InputSimple::CloudNewdir => "xxx",
+                InputSimple::Password(_, _) => "xxx",
+            },
+        };
+        write!(f, "{menu}")
+    }
 }
 
 impl HistoryKind {
@@ -128,8 +188,8 @@ impl HistoryKind {
         })
     }
 
-    fn from_mode(edit_mode: Menu) -> Option<Self> {
-        match edit_mode {
+    fn from_mode(menu_mode: Menu) -> Option<Self> {
+        match menu_mode {
             Menu::InputSimple(InputSimple::Password(_, _) | InputSimple::CloudNewdir) => None,
             Menu::InputSimple(input_simple) => Some(Self::InputSimple(input_simple)),
             Menu::InputCompleted(input_completed) => Some(Self::InputCompleted(input_completed)),
@@ -141,14 +201,14 @@ impl HistoryKind {
 /// Simple struct to record what kind of history is related to an input.
 /// Since we record most user inputs, they are messed up.
 /// Navigating in those elements can be confusing if we don't filter them by kind.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct HistoryElement {
     kind: HistoryKind,
     content: String,
 }
 
 impl Display for HistoryElement {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         writeln!(
             f,
             "{kind} - {content}",
@@ -159,7 +219,7 @@ impl Display for HistoryElement {
 }
 
 impl HistoryElement {
-    fn split_kind_content(line: Result<String, std::io::Error>) -> Result<(String, String)> {
+    fn split_kind_content(line: Result<String, IoError>) -> Result<(String, String)> {
         let line = line?.to_owned();
         let (mut kind, mut content) = line
             .split_once('-')
@@ -177,10 +237,10 @@ impl HistoryElement {
         })
     }
 
-    fn from_str(line: Result<String, std::io::Error>) -> Result<Self> {
+    fn from_str(line: Result<String, IoError>) -> Result<Self> {
         let (kind, content) = Self::split_kind_content(line)?;
         if content.is_empty() {
-            Err(anyhow!("empty line"))
+            bail!("empty line")
         } else {
             Ok(Self {
                 kind: HistoryKind::from_string(&kind)?,
@@ -189,7 +249,7 @@ impl HistoryElement {
         }
     }
 
-    pub fn for_display(&self) -> &str {
+    pub fn content(&self) -> &str {
         &self.content
     }
 }

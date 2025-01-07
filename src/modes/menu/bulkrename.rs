@@ -54,7 +54,6 @@ impl BulkExecutor {
         });
         Ok(())
     }
-
     fn get_new_names(&mut self) -> Result<()> {
         self.new_filenames = get_new_filenames(&self.temp_file)?;
         Ok(())
@@ -145,10 +144,6 @@ impl BulkExecutor {
     }
 }
 
-fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
-    Ok(std::fs::metadata(filepath)?.modified()?)
-}
-
 fn generate_random_filepath() -> PathBuf {
     let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
     filepath.push(random_name());
@@ -158,6 +153,10 @@ fn generate_random_filepath() -> PathBuf {
 fn create_random_file(temp_file: &Path) -> Result<()> {
     std::fs::File::create(temp_file)?;
     Ok(())
+}
+
+fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
+    Ok(std::fs::metadata(filepath)?.modified()?)
 }
 
 fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
@@ -188,18 +187,12 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 /// Modifications of this file are watched in a separate thread.
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
 /// Renaming or creating is execute in bulk with `execute`.
+#[derive(Default)]
 pub struct Bulk {
     bulk: Option<BulkExecutor>,
-    fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl Bulk {
-    pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
-        Self {
-            bulk: None,
-            fm_sender,
-        }
-    }
     /// Reset bulk content to None, droping all created or renomed filename from previous execution.
     pub fn reset(&mut self) {
         self.bulk = None;
@@ -225,9 +218,9 @@ impl Bulk {
         Ok(())
     }
 
-    pub fn watch_in_thread(&mut self) -> Result<()> {
+    pub fn watch_in_thread(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
         match &self.bulk {
-            Some(bulk) => bulk.watch_modification_in_thread(self.fm_sender.clone())?,
+            Some(bulk) => bulk.watch_modification_in_thread(fm_sender)?,
             None => (),
         }
         Ok(())

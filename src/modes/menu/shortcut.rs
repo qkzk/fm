@@ -1,17 +1,24 @@
 use std::borrow::Borrow;
+use std::cmp::min;
+use std::iter::zip;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use ratatui::style::Color;
-use ratatui::{layout::Rect, Frame};
-use std::cmp::min;
+use ratatui::{
+    layout::{Offset, Rect},
+    prelude::Widget,
+    style::Color,
+    text::Line,
+    widgets::Paragraph,
+    Frame,
+};
 
 use crate::colored_skip_take;
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, git_root, Canvas, CowStr, DrawMenu};
+use crate::io::{color_to_style, git_root, CowStr, DrawMenu};
 use crate::modes::ContentWindow;
 use crate::{impl_content, impl_selectable, log_info};
 
@@ -24,27 +31,34 @@ pub struct Shortcut {
     pub content: Vec<PathBuf>,
     /// The currently selected shortcut
     pub index: usize,
-    non_mount_size: usize,
+    start_folder: PathBuf,
 }
 
 impl Shortcut {
-    /// Creates the hardcoded shortcuts
-    /// Add the config folder and the git root
-    ///(no mount point yet).
+    /// Creates empty shortcuts.
+    /// content won't be initiated before the first opening of the menu.
     #[must_use]
-    pub fn new(start_folder: &Path) -> Self {
-        let mut shortcuts = Self::hardcoded_shortcuts();
-        Self::push_home_path(&mut shortcuts);
-        Self::push_trash_folder(&mut shortcuts);
-        Self::push_config_folder(&mut shortcuts);
-        Self::push_start_folder(&mut shortcuts, start_folder);
-        Self::push_git_root(&mut shortcuts);
-        let non_mount_size = shortcuts.len();
+    pub fn empty(start_folder: &Path) -> Self {
+        let content = vec![];
         Self {
-            content: shortcuts,
+            content,
             index: 0,
-            non_mount_size,
+            start_folder: start_folder.to_owned(),
         }
+    }
+
+    fn build_content(start_folder: &Path) -> Vec<PathBuf> {
+        let mut content = Self::hardcoded_shortcuts();
+        Self::push_home_path(&mut content);
+        Self::push_trash_folder(&mut content);
+        Self::push_config_folder(&mut content);
+        Self::push_start_folder(&mut content, start_folder);
+        Self::push_git_root(&mut content);
+        content
+    }
+
+    pub fn update(&mut self) {
+        self.content = Self::build_content(&self.start_folder)
     }
 
     fn hardcoded_shortcuts() -> Vec<PathBuf> {
@@ -94,10 +108,6 @@ impl Shortcut {
         self.content.dedup();
     }
 
-    pub fn update_git_root(&mut self) {
-        self.content[self.non_mount_size - 1] = Self::git_root_or_cwd();
-    }
-
     pub fn with_mount_points(mut self, mount_points: &[&Path]) -> Self {
         self.extend_with_mount_points(mount_points);
         self
@@ -138,15 +148,16 @@ impl Shortcut {
         self.content.extend(mount_points);
     }
 
-    /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
-    /// extend the vector with the mount points.
+    /// Refresh the shortcuts.
+    /// Lazy loading.
+    /// As long as this method isn't called, content won't be populated.
     pub fn refresh(
         &mut self,
         mount_points: &[&Path],
         left_path: &std::path::Path,
         right_path: &std::path::Path,
     ) {
-        self.content.truncate(self.non_mount_size);
+        self.content = Self::build_content(&self.start_folder);
         self.content.push(left_path.to_owned());
         self.content.push(right_path.to_owned());
         self.extend_with_mount_points(mount_points);
@@ -161,18 +172,24 @@ impl DrawMenu<PathBuf> for Shortcut {
     where
         Self: Content<PathBuf>,
     {
+        let mut p_rect = rect.offset(Offset { x: 2, y: 3 }).intersection(*rect);
+        p_rect.height = p_rect.height.saturating_sub(2);
         let content = self.content();
-        for (letter, (index, path, style)) in std::iter::zip(
+        let lines: Vec<_> = zip(
             ('a'..='z').cycle().skip(window.top),
             colored_skip_take!(content, window),
-        ) {
-            let style = self.style(index, &style);
-            let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16;
-            if row + 2 > rect.height {
-                return;
-            }
-            rect.print_with_style(f, row, 2, &format!("{letter} "), style);
-            rect.print_with_style(f, row, 4, &path.cow_str(), self.style(index, &style));
-        }
+        )
+        .filter(|(_, (index, _, _))| {
+            (*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16 + 2
+                <= rect.height
+        })
+        .map(|(letter, (index, path, style))| {
+            Line::styled(
+                format!("{letter} {path}", path = path.cow_str()),
+                self.style(index, &style),
+            )
+        })
+        .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 }

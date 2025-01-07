@@ -12,7 +12,8 @@ const CUSTOM_HELP: &str = "
 %e: the extension of the file,
 %n: the filename only,
 %p: the full path of the current directory,
-%t: the currently set terminal & its flags.
+%t: execute the command in the same window,
+%c: the current clipboard as a string.
 ";
 
 /// Creates the help `String` from keybindings.
@@ -95,7 +96,7 @@ Different modes for the main window
 
     - EDIT MODES -
 Different modes for the bottom window
-{edit_modes}
+{menu_modes}
 ",
         quit = action_descriptions!(Quit, Help),
         navigation = action_descriptions!(
@@ -117,6 +118,8 @@ Different modes for the bottom window
             GoStart,
             MarksNew,
             MarksJump,
+            TempMarksNew,
+            TempMarksJump,
             SearchNext,
             FuzzyFind,
             FuzzyFindLine,
@@ -145,7 +148,7 @@ Different modes for the bottom window
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
         tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
         display_modes = action_descriptions!(ResetMode, Tree, Preview),
-        edit_modes = action_descriptions!(
+        menu_modes = action_descriptions!(
             Chmod,
             Exec,
             NewDir,

@@ -1,9 +1,15 @@
+use std::env;
 use std::fmt;
-use std::io::Write;
+use std::io::{stdout, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
+};
 use nucleo::Injector;
 use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
@@ -13,7 +19,7 @@ use crate::common::{current_username, is_in_path, GREP_EXECUTABLE, RG_EXECUTABLE
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
-/// Execute a command with options in a fork with nohup.
+/// Execute a command with options in a fork with setsid.
 /// If the `SETSID` application isn't there, call the program directly.
 /// but the program may be closed if the parent (fm) is stopped.
 /// Returns an handle to the child process.
@@ -153,10 +159,10 @@ pub fn execute_and_capture_output_with_path<
 /// Execute a command with options in a fork.
 /// Wait for termination and return either `Ok(stdout)`.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output_without_check<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
-    exe: S,
-    args: &[&str],
-) -> Result<String> {
+pub fn execute_and_capture_output_without_check<S>(exe: S, args: &[&str]) -> Result<String>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+{
     log_info!("execute_and_capture_output_without_check. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
@@ -205,7 +211,7 @@ pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output>
 pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
-    if !std::path::Path::new(command).exists() && !is_in_path(command) {
+    if !Path::new(command).exists() && !is_in_path(command) {
         log_info!("{command} can't be found - args {exec_command:?}");
         return Ok(false);
     }
@@ -383,4 +389,49 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
     let mut tokio_greper = TokioCommand::new(grep);
     tokio_greper.args(&args);
     Some(tokio_greper)
+}
+
+/// Open a new shell in current window.
+/// Disable raw mode, clear the screen, start a new shell ($SHELL, default to bash).
+/// Wait...
+/// Once the shell exits,
+/// Clear the screen and renable raw mode.
+///
+/// It's the responsability of the caller to ensure displayer doesn't try to override the display.
+pub fn open_shell_in_window() -> Result<()> {
+    disable_raw_mode()?;
+    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
+
+    let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+    let shell_status = Command::new(&shell).status()?;
+
+    if !shell_status.success() {
+        log_info!(
+            "Shell {shell} exited with non-zero status: {:?}",
+            shell_status
+        );
+    }
+
+    enable_raw_mode()?;
+    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
+    Ok(())
+}
+
+pub fn open_command_in_window(args: &[&str]) -> Result<()> {
+    disable_raw_mode()?;
+    execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
+
+    let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+    let mut shell_command = Command::new(&shell);
+    shell_command.arg("-c").args(args);
+    log_info!("open_file_in_window {shell_command:?}");
+    let shell_status = shell_command.status()?;
+
+    if !shell_status.success() {
+        log_info!("Shell exited with non-zero status: {:?}", shell_status);
+    }
+
+    enable_raw_mode()?;
+    execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
+    Ok(())
 }

@@ -1,14 +1,14 @@
 use std::borrow::Borrow;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::fs::read_dir;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
 use crate::app::TabSettings;
 use crate::io::git;
-use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
+use crate::modes::{is_not_hidden, path_is_video, FileInfo, FileKind, FilterKind, SortKind, Users};
 use crate::{impl_content, impl_index_to_index, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
@@ -186,6 +186,14 @@ impl Directory {
         };
         selected.path.as_ref() == parent
     }
+
+    pub fn videos(&self) -> VecDeque<PathBuf> {
+        self.content()
+            .iter()
+            .map(|f| f.path.to_path_buf())
+            .filter(|p| path_is_video(p))
+            .collect()
+    }
 }
 
 impl_index_to_index!(FileInfo, Directory);
@@ -226,15 +234,22 @@ pub fn files_collection(
     }
 }
 
-const SIZES: [&str; 9] = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
+const SIZES: [&str; 9] = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
 
 /// Convert a file size from bytes to human readable string.
 #[inline]
 pub fn human_size(bytes: u64) -> String {
-    let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
-    format!(
-        "{:>3}{:<1}",
-        bytes / (1024_u64).pow(factor as u32),
-        SIZES[factor as usize]
-    )
+    let mut factor = 0;
+    let mut size = bytes as f64;
+
+    while size >= 1000.0 && factor < SIZES.len() - 1 {
+        size /= 1000.0;
+        factor += 1;
+    }
+
+    if size < 10.0 && factor > 0 {
+        format!("{:.1}{}", size, SIZES[factor])
+    } else {
+        format!("{:>3}{}", size.round() as i64, SIZES[factor])
+    }
 }

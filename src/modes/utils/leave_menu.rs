@@ -7,8 +7,8 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, CLApplications, Content, InputCompleted, InputSimple, Leave, MarkAction,
-    Menu, Navigate, NodeCreation, PasswordUsage, PickerCaller,
+    BlockDeviceAction, Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, Navigate,
+    NodeCreation, PasswordUsage, PickerCaller, TerminalApplications,
 };
 use crate::{log_info, log_line};
 
@@ -55,6 +55,8 @@ impl LeaveMenu {
             Menu::Navigate(Navigate::EncryptedDrive) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
             Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
+            Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
+            Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)) => LeaveMenu::tempmark_jp(status),
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
             Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
             Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
@@ -122,10 +124,47 @@ impl LeaveMenu {
         Ok(())
     }
 
+    /// Update the selected mark with the current path.
+    /// Doesn't change its char.
+    /// If it doesn't fail, a new pair will be set with (oldchar, new path).
+    fn tempmark_upd(status: &mut Status) -> Result<()> {
+        let index = status.menu.temp_marks.index;
+        let len = status.current_tab().directory.content.len();
+        let new_path = &status.tabs[status.index].directory.path;
+        status
+            .menu
+            .temp_marks
+            .set_mark(index as _, new_path.to_path_buf());
+        log_line!("Saved temp mark {index} -> {p}", p = new_path.display());
+        status.current_tab_mut().window.reset(len);
+        status.menu.input.reset();
+        Ok(())
+    }
+
+    /// Jump to the current mark.
+    fn tempmark_jp(status: &mut Status) -> Result<()> {
+        let Some(opt_path) = &status.menu.temp_marks.selected() else {
+            log_info!("no selected temp mark");
+            return Ok(());
+        };
+        let Some(path) = opt_path else {
+            return Ok(());
+        };
+        let len = status.current_tab().directory.content.len();
+        status.tabs[status.index].cd(path)?;
+        status.current_tab_mut().window.reset(len);
+        status.menu.input.reset();
+
+        status.update_second_pane_for_preview()
+    }
+
     /// Execute a shell command picked from the tui_applications menu.
     /// It will be run an a spawned terminal
     fn tui_application(status: &mut Status) -> Result<()> {
-        status.menu.tui_applications.execute(status)
+        status.internal_settings.disable_display();
+        status.menu.tui_applications.execute(status)?;
+        status.internal_settings.enable_display();
+        Ok(())
     }
 
     fn cli_info(status: &mut Status) -> Result<()> {
@@ -162,7 +201,7 @@ impl LeaveMenu {
 
     /// Select the first file matching the typed regex in current dir.
     fn regex_match(status: &mut Status) -> Result<()> {
-        status.select_from_regex()?;
+        status.flag_from_regex()?;
         status.menu.input.reset();
         Ok(())
     }
@@ -232,7 +271,11 @@ impl LeaveMenu {
             bail!("exec: empty directory")
         }
         let exec_command = status.menu.input.string();
-        if status.parse_shell_command(exec_command, Some(status.menu.flagged.as_strings()))? {
+        if status.parse_shell_command(
+            exec_command,
+            Some(status.menu.flagged.as_strings()),
+            false,
+        )? {
             status.menu.completion.reset();
             status.menu.input.reset();
         }
@@ -249,6 +292,7 @@ impl LeaveMenu {
         }
         let completed = status.menu.completion.current_proposition();
         let path = string_to_path(completed)?;
+        status.thumbnail_queue_clear();
         status.menu.input.reset();
         status.current_tab_mut().cd_to_file(&path)?;
         let len = status.current_tab().directory.content.len();

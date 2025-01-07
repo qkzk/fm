@@ -25,6 +25,7 @@ Options:
       --neovim           Started inside neovim terminal emulator
       --keybinds         Print keybinds
       --cloudconfig      Configure a google drive client
+      --clear-cache      Clear the video thumbnail cache
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -137,21 +138,21 @@ If you add this function to your `zshrc` / `bashrc`, it will listen to stdout an
 
 ```bash
 function f() {
-  # start the fm filemanager, enabling cd on quit.
-  dest=$(fm $@)
-  if [[ ! -z $dest ]]
-  then
-   cd $dest
+  fm $@
+  dest=$(cat /tmp/fm_output.txt)
+  if [[ -n $dest ]]; then
+    cd "$dest"
   fi
 }
 ```
 
 For fish users, this is the function to add to your `config.fish`
 
-```bash
+```fish
 function f
   # start the fm filemanager, enabling cd on quit.
-  set dest (fm $argv)
+  fm $argv
+  set dest (cat /tmp/fm_output.txt)
   if not test -z $dest
     cd $dest
   end
@@ -356,8 +357,9 @@ Enter     :      Execute mode then NORMAL
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory.
-%t: the currently set terminal & its flags.
+%p: the full path of the current directory,
+%t: execute the command in the same window,
+%c: the current clipboard as a string.
 Alt('u'):        /usr/bin/google-chrome-stable %s
 Char('D'):        /usr/bin/dragon-drop %s
 ```

@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
-use std::fs::metadata;
-use std::io::BufRead;
+use std::fs::{metadata, File};
+use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -14,13 +14,6 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::common::CONFIG_FOLDER;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
-
-/// Returns a `Display` instance after `tuikit::term::Term` creation.
-// pub fn init_term() -> Result<Term> {
-//     let term: Term<()> = Term::new()?;
-//     term.enable_mouse_support()?;
-//     Ok(term)
-// }
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
@@ -54,10 +47,14 @@ pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
-/// Print the path on the stdout.
-pub fn print_on_quit(path_string: String) {
-    log_info!("print on quit {path_string}");
-    println!("{path_string}")
+/// Print the final path & save it to a temporary file.
+/// Must be called last since we erase temporary with similar name
+/// before leaving.
+pub fn save_final_path(final_path: &str) {
+    let mut file = File::create("/tmp/fm_output.txt").expect("Failed to create file");
+    writeln!(file, "{final_path}").expect("Failed to write to file");
+    log_info!("print on quit {final_path}");
+    println!("{final_path}")
 }
 
 /// Returns the buffered lines from a text file.
@@ -184,6 +181,10 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
         "<esc>:e {path}<cr><esc>:set number<cr><esc>:close<cr>",
         path = path.display()
     );
+    log_info!(
+        "open_in_current_neovim {nvim_server} {path} {command}",
+        path = path.display()
+    );
     match nvim(nvim_server, command) {
         Ok(()) => log_line!(
             "Opened {path} in neovim at {nvim_server}",
@@ -301,14 +302,14 @@ where
 }
 
 /// This trait `UtfWidth` is defined with a single
-/// method `utf_width()` that returns the width of
+/// method `utf_width` that returns the width of
 /// a string in Unicode code points.
 /// The implementation for `String` and `&str`
-/// types are provided which calculate the
-/// width. of the original string in graphemes.
+/// types are provided. They calculate the
+/// number of graphemes.
 /// This method allows for easy calculation of
-/// the horizontal space required for displaying
-/// a given text, which can be useful for layout purposes.
+/// the horizontal space required to display
+/// a text, which can be useful for layout purposes.
 pub trait UtfWidth {
     /// Number of graphemes in the string.
     /// Used to know the necessary width to print this text.
@@ -341,6 +342,16 @@ impl UtfWidth for &str {
     }
 }
 
+/// Index of a character counted from letter 'a'.
+/// `None` if the character code-point is below 'a'.
+///
+/// # Examples
+///
+/// ```rust
+///  assert_eq!(index_from_a('a'), Some(0));
+///  assert_eq!(index_from_a('e'), Some(4));
+///  assert_eq!(index_from_a('T'), None);
+/// ```
 pub fn index_from_a(letter: char) -> Option<usize> {
     (letter as usize).checked_sub('a' as usize)
 }

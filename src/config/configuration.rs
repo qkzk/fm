@@ -59,7 +59,7 @@ impl Config {
 
     fn update_terminal_flag(&mut self, terminal_flag: &Value) {
         let terminal = self.terminal();
-        if let Some(terminal_flag) = read_yaml_value(terminal_flag, terminal) {
+        if let Some(terminal_flag) = read_yaml_string(terminal_flag, terminal) {
             self.terminal_flag = terminal_flag.as_str().to_owned();
             crate::log_info!(
                 "updated terminal_flag for {terminal} using {tf}",
@@ -136,13 +136,13 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
 }
 macro_rules! update_style {
     ($self_style:expr, $yaml:ident, $key:expr) => {
-        if let Some(color) = read_yaml_value($yaml, $key) {
+        if let Some(color) = read_yaml_string($yaml, $key) {
             $self_style = color_to_style(crate::config::str_to_ratatui(color));
         }
     };
 }
 
-fn read_yaml_value(yaml: &Value, key: &str) -> Option<String> {
+fn read_yaml_string(yaml: &Value, key: &str) -> Option<String> {
     yaml[key].as_str().map(|s| s.to_string())
 }
 

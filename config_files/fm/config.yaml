@@ -5,6 +5,13 @@
 # the terminal emulator, which must be accessible from $PATH
 terminal: st
 
+# use nerdfont icons for file ? Default false
+# require [nerdfont](https://www.nerdfonts.com/) installed
+icon: false
+# display icons when metadata are shown ?  Default false
+# no effect if icon is false
+icon_with_metadata: false
+
 # configurable colors
 
 # Colors for "non normal" files. The list is below.

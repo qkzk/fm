@@ -1247,8 +1247,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Simplify display mode comparison with a few methods. Should make the code more readable
 - [ ] directory preview should just be a "directory" ?
 
-## Current dev
-
 ### Version 0.1.31
 
 #### Summary
@@ -1393,62 +1391,218 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] doc
   - [ ] ???
 
+## Current dev
+
+### Version 0.1.32
+
+#### Summary
+
+- print on quit doesn't work anymore in bash / zsh and surelly in fish also (not tested.)
+
+  I tried to make environement variables to work but couldn't.
+  The alternative uses a temporary file :
+
+  Put this in your bashrc / zshrc and use it as you did already.
+
+  ```sh
+  function f() {
+    fm $@
+    dest=$(cat /tmp/fm_output.txt)
+    if [[ -n $dest ]]; then
+      cd "$dest"
+    fi
+  }
+  ```
+
+- case insentive search.
+
+  - A lowercase pattern matches regardless of case
+  - An uppercase pattern will match regarding case.
+
+  search for "car", it will find "Cargo", "cargo", "Car".
+
+  search for "Car", it will find "Cargo", "Car" but won't match "cargo"
+
+- new expansion for shell commands: %c expands into the clipboard content.
+  Haven't found an usage yet but I couldn't live without it.
+  It's the same as `!`, `some_command <Ctrl+v>`
+- chmod improvment. Enter "chmod" mode with "+" or "alt+m"
+  - you can type a permission in octal mode (like 640), litterally (like rwxrwxrwx) or like in chmod "a+x", "-w" etc.
+- Temporary marks. Use Char(") and Alt+" to jump and save. Only 10 are saved so we can index with the digits.
+  Those marks aren't saved on disk and are dropped when the application stops.
+- Use the current window when possible.
+  - When you start a shell with `s` or open a file opened in a terminal, we use the current window instead of starting a new terminal emulator.
+    It doesn't work if you open multiple files which doesn't share a common opener (like a text file and a pdf).
+  - Tui application (lazygit, ncdu, btop, htop...) reuse the same window.
+  - Shell commands expansion & custom commands expansion: 
+    `%t` allows the command to be executed in a new shell in the same window. `%t` should always be the first argument.
+
+- Nerdfont icons for filetypes. When metadata isn't shown, use nerdfont devicons to display the filekind.
+  Association is copied from [ranger_devicons](https://github.com/alexanderjeurissen/ranger_devicons).
+  Fuzzy finder of files display the same icon.
+- Bugfixes:
+  - Fuzzy navigation (home, end, ensure window surrounds index)
+
+#### Changelog
+
+- [x] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
+- [x] function for cd on quit doesn't capture the terminal and hangs
+      Use a temporary file since I no environement variable seems to be set anywhere.
+
+      Update the new function in readme.
+
+  ```sh
+  function f() {
+    fm $@
+    dest=$(cat /tmp/fm_output.txt)
+    if [[ -n $dest ]]; then
+      cd "$dest"
+    fi
+  }
+  ```
+
+- [x] chmod improvment
+  - [x] "+" should enter chmod
+  - [x] FIX: wrong order in display of permission, "all" was displayed before "group"
+  - [x] allow octal like 777
+  - [x] allow rwxrw.r.. and rwxrw-rw--
+  - [x] allow a+x +x o-w etc.
+  - [x] replace input by current mode when entering
+- [x] display preview of flagged files in menu flagged.
+- [x] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
+- [x] FIX: preview binary navigation goes too fast, some lines are skipped
+- [x] shell_command_parser refactor. Won't do. It's clean already. I need a lexer & a parser. I couldn't use pipes or redirections, now I can.
+  - [x] new shell command expansion %c current clipboard
+- [x] menu / rendering / widgets
+  - [x] rendering with ratatui widgets
+    - [x] menu
+      - [x] navigate: draw menu using ratatui widgets
+    - [x] display top window
+      - [x] directory
+      - [x] tree
+      - [x] preview:
+        - [x] text
+        - [x] syntaxed
+        - [x] binary
+        - [x] command output (ansi colored text)
+    - [x] other elements
+      - [x] second line
+      - [x] log line
+      - [x] header & footer
+        - [x] create 2 ratatui line & use alignment for display
+        - [x] conversion method header/footer->line
+      - [x] menu second line
+      - [x] menu content line
+      - [x] trash clear confirm
+      - [x] trash help
+      - [x] context (action & more info)
+      - [x] menu first string with colored string
+      - [x] FIX: cursor if offseted by one
+  - [x] FIX: opening shortcut twice crashes
+  - [x] BUG: copy file should be 1 row up
+  - [x] generic method to render menu content
+  - [x] Layout::vertical 1, max, 1 for each window would simplify rect offset
+  - [x] lazy menu creation. Store empty shells in menuholder
+    - [x] shortcuts
+    - [x] tui applications
+    - [x] cli applications
+    - [x] compression
+    - [x] context
+    - [x] input_history: too much code change
+    - [x] marks
+
+- [x] WONTDO: ratatui component for progress bar for copymove. Is very poor. I already need a thread to handle the progress, why would I replace it with something less powerful ?
+- [x] FIX: trash opened + alt-x doesn't clear the trash but deletes the element itself
+- [x] FIX: menu chmod crash as replace input by current mode
+- [x] FIX: InputHistory
+- [x] caching video previews
+- [x] Ensure the cache can be cleared with an arg and the path is created if needed.
+- [x] Case insensitive search
+- [x] FIX --keybinds has wrong display, keybinds should be shortened.
+- [x] FIX: leaving dual mode does't hide ueberzug
+- [x] temporary marks: very similar to usual marks. We only use digits and save 10 marks at most. They are dropped when the application quits.
+- [x] shell opens in the same window, not a new one.
+  - [x] open all terminal application this way
+  - [x] move opening to internal settings, just let the interface in status
+- [x] icons / metadata. Use nerdfont icons when metadata is hidden.
+  - [x] display icons in fuzzy finder of files
+  - [x] don't use icons in fuzzy if the user doesn't want them.
+- [x] FIX: thumbnailer queue is locked too long and freezes status thread
+- [x] thumbnailer sync with workers trough atomics. Avoid locking the queue too oftenly
+- [x] fuzzy picker. Move prompt to top
+- [x] move rect creation to a specific struct
+- [x] FIX: size shown as 0G for files close to 1GB. See mandalorian s2e2
+- [x] FIX: entering a virtual terminal with shell doesn't enable mouse support.
+- [x] FIX: Once a terminal application is opened in the same window, when left and exit, the screen isn't cleared.
+  - [x] terminal should only be cleared when necessary (if we used the same window)
+- [x] FIX: copy progress bar has wrong width
+- [x] FIX: human size. Use 1 decimal place for files sizes 10.0. No decimal places otherwise.
+      human size: 3.5G shouldn't be displayed as 3G. 12.3G should still be displayed as 12G. See [eza](https://github.com/eza-community/eza/blob/main/src/output/render/size.rs#L79)
+- [x] FIX: human size should use decimals for size under 1024B.
+- [x] FIX: last element of directory / menus is reachable but invisible.
+  - [x] Change ui use rect per content: min 1, min 1, fill, min 1.
+  - [x] increase content window footer row by one.
+- [x] FIX: pagedown in preview doesn't care for window size and scroll too much
+- [x] FIX: open in nvim concats multiple listen address when nvim is opened several times
+- [x] FIX: exex hangs
+- [x] 7z support with 7z executable.
+  - [x] WONTDO: decompress 7z uses a standard opener and should be moved there. Can't do it since 7z requires a lot of arguments and other opener don't
+- [x] FIX: display mode fuzzy doesn't react to change focus binds.
+- [x] Path completion should display visual indicator of directories with / or symbols
+  - [x] FIX: pressing TAB to complete a directory doesn't refresh its children
+- [x] FIX: bulk mode does nothing.
+  - [x] send the bulkrename event once the thread is stopped.
+  - [x] If the editor requires a terminal, opens bulk when process ends otherwise watch in thread
+- [x] FIX: Input history navigation (shift+up, shift+down) doesn't update the search.
+  - first attempt didn't fix
+- [x] crash with error locking status while selecting a file being modified
+  - [x] can't reproduce
+- [x] FIX: tui apps should open in current window
+- [x] FIX: clicking a footer should reuse the window. Same problem for custom_commands.
+  - [x] %t expansion resuses the window
+  - [x] allow args in "open in same window" instead of a single arg.
+  - [x] parse custom commands and detect if %t isn't first : error.
+  - [x] add %t to custom commands lines / help 
+  - [x] match agains't the first arg, if %term or something, use "open in same window" 
+- [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
+- [x] FIX: flagged files which doesn't exists anymore (deleted/moved somewhere else) may crash flagged menu.
+
 ## TODO
 
-### Next version
+### Other ideas
 
+- [ ] terminal configuration is now useless. Should be removed.
+- [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
   % cargo rustdoc -- -D missing_docs 2>&1 | grep error | wc -l
   492
   ```
-- [ ] navigate: home should go to first, end should go to last. g/G can't be used here since it can be a navigation
-- [ ] static lines (from display, menu, content per mode) can be cut out of the window. Should use the space on the right
-- [ ] chmod is crap
-  - [ ] "+" should enter chmod
-  - [ ] chmod should detect text input and react to it.
-    - [x] 777 is accepted
-    - [ ] rwxrwxrwx should be accepted
-    - [ ] +x & all chmod syntax should be accepted too
-- [ ] display preview of flagged files in menu flagged.
-- [ ] why have a bottom line in menu if the binds are always explained ?
-- [ ] preview should display how the file is previewed even if it's obvious "Previewed as binary file"
-- [ ] use anstyle crate to parse ANSI lines. Use anstyle_crossterm for conversion..
-- [ ] shell_command_parser refactor. The whole pipeline should be simplified as much as possible.
-  - [ ] new shell command expansion %c current clipboard
-- [ ] menu / rendering / widgets
-      What is a menu in fm ?
-
-  - render : should be cached as much as possible. For many menus, it doesn't change much.
-  - actions : should be attached to menus in a way or another. Don't store everything in status
-  - [ ] header should be a trait implemented by Header (-> FilesHeader), PreviewHeader, MenuHeader or event variants
-  - [ ] at this point I should list what it should do for every menu and rewrite it from scratch
-  - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-  - [ ] don't store shortcut. Always get them on the fly.
-  - [ ] should all menus be calculated on the fly ? config/hardcoded -> ~static~ build -> filter if something -> render / actions
-
-- [ ] ratatui component for progress bar for copymove
-
-- [ ] previewing text files with bat ? binaries with xxd
-
-  - [ ] could remove the whole syntaxed stuff
-  - [ ] simplify previewing since half the methods are gone
-  - [ ] heavilly rely on ansi string parsing
-
+- [ ] BUG: resize change dual / preview
+  - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
+- [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
+- [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
+- [ ] store 4 windows in display to modify instead of recreating
+- [ ] eza / ranger colors for normal files
+- [ ] use readelf for ELF file
+  - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
 - [ ] Walkdir::new in tree building instead of exploring by hand
+  - require to rewrite everything just to avoid testing depth myself.
+    Little to gain except for speed, it _should_ be much faster
+- [ ] Remote mount QOL
+  - [ ] Remote mount should allow to mount somewhere else
+    `username host:port remote_mount_point dest` ?
+  - [ ] Remote mount should remember mount points and allow to umount them
+  - [ ] Remote mount should show the command that will be generated
+- [ ] simplify status.confirm action & must leave
+- [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
+- [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?
-- [ ] previews: find a way to stop
-
-### Other ideas
-
-- [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
-      Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
-- [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
@@ -1461,7 +1615,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?

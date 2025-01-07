@@ -5,7 +5,6 @@
 //! - [`displayer::Displayer`]: which displays the content at 30 fps,
 //! - [`header_footer::ClickableLine`], [`header_footer::ClickableString`], [`header_footer::Footer`], [`header_footer::Header`], [`header_footer::PreviewHeader`]: a few structs to create clickable header & footer,
 //! - [`internal_settings::InternalSettings`]: a bunch of settings for status,
-//! - [`previewer::Previewer`]: build previews without blocking the status,
 //! - [`refresher::Refresher`]: looks for filetree changes and update of the fuzzy finder,
 //! - [`session::Session`]: records basic updates in configuration (use double tab, preview in second tab, display metadata) to create a session for the user,
 //! - [`status::Status`]: mutates most of the state of the application.
@@ -22,12 +21,13 @@ mod refresher;
 mod session;
 mod status;
 mod tab;
+mod thumbnailer;
 
 pub use application::FM;
 pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, ClickableString, Footer, Header, PreviewHeader};
 pub use internal_settings::InternalSettings;
-pub use previewer::*;
+pub use previewer::Previewer;
 pub use refresher::Refresher;
 pub use session::Session;
 pub use status::Focus;
@@ -35,3 +35,4 @@ pub use status::Status;
 pub use status::Window;
 pub use tab::Tab;
 pub use tab::TabSettings;
+pub use thumbnailer::ThumbnailManager;

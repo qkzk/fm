@@ -26,6 +26,8 @@ pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
 pub const TMP_FOLDER_PATH: &str = "/tmp";
+/// Video thumbnails
+pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
 /// setsid. Installed in most distros
 pub const SETSID: &str = "setsid";
 /// Default terminal application used when openening a program in shell or starting a new shell
@@ -107,7 +109,7 @@ pub const REMOTE_LINES: [&str; 4] = [
 pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
-    "Type an octal mode like 754.",
+    "Type an octal like \"754\", a text like \"rwxr.xr..\" or \"a+x\"",
     "",
     "4:      read",
     "2:      write",
@@ -132,18 +134,20 @@ pub const PASSWORD_LINES_DEVICE: [&str; 2] = [
     "It will be forgotten immediatly after use.",
 ];
 /// Shell presentation for the second window
-pub const SHELL_LINES: [&str; 11] = [
+pub const SHELL_LINES: [&str; 13] = [
     "Type a shell command",
     "",
     "`sudo` commands are supported.",
     "Pipes, redirections ( | < > >> ) and shell specific syntax (*) aren't supported.",
     "",
     "Some expression can be expanded:",
-    "%d:    current directory",
-    "%e:    selected file extension",
-    "%f:    flagged files",
-    "%n:    selected filename",
-    "%s:    selected filepath",
+    "%s: the selected file",
+    "%f: the flagged files",
+    "%e: the extension of the file",
+    "%n: the filename only",
+    "%p: the full path of the current directory",
+    "%t: execute the command in the same window",
+    "%c: the current clipboard as a string",
 ];
 /// Nvim address setter presentation for second window
 pub const NVIM_ADDRESS_LINES: [&str; 4] = [
@@ -212,8 +216,10 @@ pub const GIO: &str = "gio";
 pub const UDEVADM: &str = "udevadm";
 /// neovim executable
 pub const NVIM: &str = "nvim";
-/// bsdtar executable, used to display archive content
+/// bsdtar executable, used to display common archive content
 pub const BSDTAR: &str = "bsdtar";
+/// 7z executable, used to display 7z archive content
+pub const SEVENZ: &str = "7z";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit
@@ -228,3 +234,5 @@ pub const ZOXIDE: &str = "zoxide";
 pub const PDFTOPPM: &str = "pdftoppm";
 /// pdinfo
 pub const PDFINFO: &str = "pdfinfo";
+/// default nerdfont icon used for directories.
+pub const DIR_ICON: &str = " ";

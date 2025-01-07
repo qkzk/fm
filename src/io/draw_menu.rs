@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use ratatui::layout::Rect;
-use ratatui::style::Color;
-use ratatui::Frame;
+use ratatui::{layout::Rect, prelude::Widget, style::Color, text::Line, widgets::Paragraph, Frame};
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, Canvas};
+use crate::io::color_to_style;
 use crate::modes::{Content, ContentWindow};
+
+use super::Offseted;
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
@@ -73,20 +73,18 @@ impl CowStr for String {
 /// Element are itered from the top to the bottom of the window index
 /// and printed in the canvas.
 /// Since the content kind is linked to a mode,
-/// it prints the second line of the mode.
+/// it doesn't print the second line of the mode.
 pub trait DrawMenu<T: CowStr> {
     fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
     where
         Self: Content<T>,
     {
+        let mut p_rect = rect.offseted(4, 3);
+        p_rect.height = p_rect.height.saturating_sub(2);
         let content = self.content();
-        for (index, line, style) in colored_skip_take!(content, window) {
-            let style = self.style(index, &style);
-            let row = index as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16;
-            if row + 2 > rect.height {
-                return;
-            }
-            rect.print_with_style(f, row, 4, &line.cow_str(), self.style(index, &style));
-        }
+        let lines: Vec<_> = colored_skip_take!(content, window)
+            .map(|(index, item, style)| Line::styled(item.cow_str(), self.style(index, &style)))
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 }

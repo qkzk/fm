@@ -251,6 +251,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('/'),    KeyModifiers::NONE), ActionMap::Search),
             (KeyEvent::new(KeyCode::Char('*'),    KeyModifiers::NONE), ActionMap::FlagAll),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::NONE), ActionMap::MarksJump),
+            (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::NONE), ActionMap::TempMarksJump),
             (KeyEvent::new(KeyCode::Char('-'),    KeyModifiers::NONE), ActionMap::Back),
             (KeyEvent::new(KeyCode::Char('~'),    KeyModifiers::NONE), ActionMap::Home),
             (KeyEvent::new(KeyCode::Char('`'),    KeyModifiers::NONE), ActionMap::GoRoot),
@@ -298,6 +299,8 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::NONE), ActionMap::Delete),
             (KeyEvent::new(KeyCode::Char('z'),    KeyModifiers::NONE), ActionMap::TreeFold),
 
+            (KeyEvent::new(KeyCode::Char('+'),    KeyModifiers::NONE), ActionMap::Chmod),
+
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::OpenConfig),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),
@@ -307,13 +310,15 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::ALT), ActionMap::Help),
             (KeyEvent::new(KeyCode::Char('i'),    KeyModifiers::ALT), ActionMap::CliMenu),
             (KeyEvent::new(KeyCode::Char('l'),    KeyModifiers::ALT), ActionMap::Log),
+            (KeyEvent::new(KeyCode::Char('m'),    KeyModifiers::ALT), ActionMap::Chmod),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::ALT), ActionMap::TrashOpen),
+            (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::ALT), ActionMap::TogglePreviewSecond),
             (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::ALT), ActionMap::RemoteMount),
             (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::ALT), ActionMap::TuiMenu),
             (KeyEvent::new(KeyCode::Char('t'),    KeyModifiers::ALT), ActionMap::Context),
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::ALT), ActionMap::TrashEmpty),
-            (KeyEvent::new(KeyCode::Char('m'),    KeyModifiers::ALT), ActionMap::Chmod),
-            (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::ALT), ActionMap::TogglePreviewSecond),
+            (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
+            (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
             (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::RemovableDevices),
@@ -433,7 +438,8 @@ impl Bindings {
         let mut binds = vec![];
         for (key, action) in self.binds.iter() {
             binds.push(format!(
-                "{key:?}:         {action} - {desc}\n",
+                "{key}:         {action} - {desc}\n",
+                key=key.for_help(),
                 desc = action.description()
             ))
         }

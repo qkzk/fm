@@ -1,23 +1,26 @@
+use std::fs::{read_dir, remove_file};
 use std::io::stdout;
 use std::panic;
 use std::process::exit;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 
 #[cfg(debug_assertions)]
 use std::backtrace;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
 use clap::Parser;
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::disable_raw_mode,
 };
+use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, print_on_quit, CONFIG_PATH};
+use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{set_loggers, Args, Opener};
@@ -112,6 +115,9 @@ impl FM {
         if args.cloudconfig {
             Self::exit_with_cloud_config()?;
         }
+        if args.clear_cache {
+            Self::exit_with_clear_cache()?;
+        }
         Ok((config, args.path))
     }
 
@@ -122,6 +128,18 @@ impl FM {
 
     fn exit_with_cloud_config() -> Result<()> {
         cloud_config()?;
+        exit(0);
+    }
+
+    fn exit_with_clear_cache() -> Result<()> {
+        read_dir(TMP_THUMBNAILS_DIR)?
+            .filter_map(|entry| entry.ok())
+            .for_each(|e| {
+                if let Err(e) = remove_file(e.path()) {
+                    println!("Couldn't remove {TMP_THUMBNAILS_DIR}: error {e}");
+                }
+            });
+        println!("Cleared {TMP_THUMBNAILS_DIR}");
         exit(0);
     }
 
@@ -167,20 +185,15 @@ impl FM {
     /// Update itself, changing its status.
     /// It will dispatch every [`FmEvents`], updating [`Status`].
     fn update(&mut self, event: FmEvents) -> Result<()> {
-        let Ok(mut status) = self.status.lock() else {
-            bail!("Error locking status");
-        };
+        let mut status = self.status.lock();
         self.event_dispatcher.dispatch(&mut status, event)?;
-        status.refresh_shortcuts();
 
         Ok(())
     }
 
     /// True iff the application must quit.
     fn must_quit(&self) -> Result<bool> {
-        let Ok(status) = self.status.lock() else {
-            bail!("Error locking status");
-        };
+        let status = self.status.lock();
         Ok(status.must_quit())
     }
 
@@ -190,6 +203,12 @@ impl FM {
             self.update(self.event_reader.poll_event())?;
         }
         Ok(self)
+    }
+
+    /// Clear before normal exit.
+    fn clear() -> Result<()> {
+        execute!(stdout(), Clear(ClearType::All))?;
+        Ok(())
     }
 
     /// Disable the mouse capture before normal exit.
@@ -210,12 +229,7 @@ impl FM {
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
     pub fn quit(self) -> Result<()> {
-        let final_path = self
-            .status
-            .lock()
-            .map_err(|error| anyhow!("Error locking status: {error}"))?
-            .current_tab_path_str()
-            .to_owned();
+        let final_path = self.status.lock().current_tab_path_str().to_owned();
 
         clear_tmp_files();
 
@@ -223,12 +237,16 @@ impl FM {
         drop(self.event_dispatcher);
         self.displayer.quit();
         self.refresher.quit();
-        if let Ok(status) = self.status.lock() {
-            status.previewer.quit()
+        let status = self.status.lock();
+        status.previewer.quit();
+        if status.internal_settings.clear_before_quit {
+            Self::clear()?;
         }
+        drop(status);
+
         drop(self.status);
         Self::disable_mouse_capture()?;
-        print_on_quit(final_path);
+        save_final_path(&final_path);
         Ok(())
     }
 }

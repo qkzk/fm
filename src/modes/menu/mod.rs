@@ -24,18 +24,19 @@ mod removable_devices;
 mod search;
 mod shortcut;
 mod sort;
+mod temp_marks;
 mod trash;
 mod tui_menu;
 
 pub use bulkrename::Bulk;
-pub use cli_menu::{CLApplications, CliApplications, Execute};
+pub use cli_menu::{CliApplications, Execute, TerminalApplications};
 pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
 pub use cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDeviceOpener};
 pub use decompress::{
-    decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
+    decompress_7z, decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
 };
 pub use filter::FilterKind;
 pub use flagged::Flagged;
@@ -47,13 +48,14 @@ pub use marks::Marks;
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
-pub use permissions::{parse_input_mode, Permissions, MAX_MODE};
+pub use permissions::{parse_input_permission, Permissions, MAX_MODE};
 pub use picker::*;
-pub use regex::regex_matcher;
+pub use regex::{regex_flagger, CaseDependantRegex};
 pub use remote::Remote;
 pub use removable_devices::RemovableDevices;
 pub use search::Search;
 pub use shortcut::Shortcut;
 pub use sort::SortKind;
+pub use temp_marks::*;
 pub use trash::Trash;
 pub use tui_menu::{open_tui_program, TuiApplications};

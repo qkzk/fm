@@ -1,22 +1,20 @@
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::os::unix::fs::MetadataExt;
 
 use anyhow::Result;
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
 use crate::app::Tab;
-use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, TUIS_PATH};
+use crate::common::{index_from_a, INPUT_HISTORY_PATH};
 use crate::config::Bindings;
-use crate::event::FmEvents;
 use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CLApplications, CliApplications, Completion, Compresser, Content, ContentWindow,
-    ContextMenu, CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks,
-    Menu, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
-    Shortcut, Trash, TuiApplications,
+    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
+    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
+    MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
+    Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
 };
 
 /// Holds almost every menu except for the history, which is tab specific.
@@ -56,6 +54,8 @@ pub struct MenuHolder {
     pub iso_device: Option<IsoDevice>,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
+    /// Temporary marks allows you to jump to a save mark
+    pub temp_marks: TempMarks,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// basic picker
@@ -75,15 +75,10 @@ pub struct MenuHolder {
 }
 
 impl MenuHolder {
-    pub fn new(
-        start_dir: &std::path::Path,
-        mount_points: &[&std::path::Path],
-        binds: &Bindings,
-        fm_sender: Arc<Sender<FmEvents>>,
-    ) -> Result<Self> {
+    pub fn new(start_dir: &std::path::Path, binds: &Bindings) -> Result<Self> {
         Ok(Self {
-            bulk: Bulk::new(fm_sender),
-            cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
+            bulk: Bulk::default(),
+            cli_applications: CliApplications::default(),
             cloud: OpendalContainer::default(),
             completion: Completion::default(),
             compression: Compresser::default(),
@@ -98,10 +93,11 @@ impl MenuHolder {
             password_holder: PasswordHolder::default(),
             picker: Picker::default(),
             removable_devices: RemovableDevices::default(),
-            shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
+            shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
+            temp_marks: TempMarks::default(),
             trash: Trash::new(binds)?,
-            tui_applications: TuiApplications::new(TUIS_PATH),
+            tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
         })
     }
@@ -118,6 +114,25 @@ impl MenuHolder {
         if let Menu::Navigate(_) = menu_mode {
             self.window.scroll_to(self.index(menu_mode))
         }
+    }
+
+    /// Replace the current input by the permission of the first flagged file as an octal value.
+    /// If the flagged has permission "rwxrw.r.." or 764 in octal, "764" will be the current input.
+    /// Only the last 3 octal digits are kept.
+    /// Nothing is done if :
+    /// - there's no flagged file,
+    /// - can't read the metadata of the first flagged file.
+    ///
+    /// It should never happen.
+    pub fn replace_input_by_permissions(&mut self) {
+        let Some(flagged) = &self.flagged.content.first() else {
+            return;
+        };
+        let Ok(metadata) = flagged.metadata() else {
+            return;
+        };
+        let mode = metadata.mode() & MAX_MODE;
+        self.input.replace(&format!("{mode:o}"));
     }
 
     /// Fill the input string with the currently selected completion.
@@ -257,16 +272,16 @@ impl MenuHolder {
         self.input.replace(self.completion.current_proposition())
     }
 
-    pub fn len(&self, edit_mode: Menu) -> usize {
-        match edit_mode {
+    pub fn len(&self, menu_mode: Menu) -> usize {
+        match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Menu::InputCompleted(_) => self.completion.len(),
             _ => 0,
         }
     }
 
-    pub fn index(&self, edit_mode: Menu) -> usize {
-        match edit_mode {
+    pub fn index(&self, menu_mode: Menu) -> usize {
+        match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Menu::InputCompleted(_) => self.completion.index,
             _ => 0,
@@ -312,6 +327,11 @@ impl MenuHolder {
         self.window.scroll_to(self.index(Menu::Navigate(navigate)))
     }
 
+    pub fn select_last(&mut self, navigate: Navigate) {
+        let index = self.len(Menu::Navigate(navigate)).saturating_sub(1);
+        self.set_index(index, navigate);
+    }
+
     fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T
     where
         F: FnOnce(&mut dyn Selectable) -> T,
@@ -323,6 +343,7 @@ impl MenuHolder {
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
             Navigate::Marks(_) => func(&mut self.marks),
+            Navigate::TempMarks(_) => func(&mut self.temp_marks),
             Navigate::RemovableDevices => func(&mut self.removable_devices),
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
@@ -344,6 +365,7 @@ impl MenuHolder {
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
             Navigate::Marks(_) => func(&self.marks),
+            Navigate::TempMarks(_) => func(&self.temp_marks),
             Navigate::RemovableDevices => func(&self.removable_devices),
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
@@ -377,6 +399,9 @@ impl MenuHolder {
     /// Replace the current input by the next proposition from history
     /// for this edit mode.
     pub fn input_history_next(&mut self, tab: &mut Tab) -> Result<()> {
+        if !self.input_history.is_mode_logged(&tab.menu_mode) {
+            return Ok(());
+        }
         self.input_history.next();
         self.input_history_replace(tab)
     }
@@ -384,15 +409,18 @@ impl MenuHolder {
     /// Replace the current input by the previous proposition from history
     /// for this edit mode.
     pub fn input_history_prev(&mut self, tab: &mut Tab) -> Result<()> {
+        if !self.input_history.is_mode_logged(&tab.menu_mode) {
+            return Ok(());
+        }
         self.input_history.prev();
         self.input_history_replace(tab)
     }
 
     fn input_history_replace(&mut self, tab: &mut Tab) -> Result<()> {
-        let Some(hist) = self.input_history.current() else {
+        let Some(history_element) = self.input_history.current() else {
             return Ok(());
         };
-        self.input.replace(hist);
+        self.input.replace(history_element.content());
         self.input_complete(tab)?;
         Ok(())
     }

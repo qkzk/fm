@@ -1,17 +1,30 @@
 mod inner {
     use anyhow::{Context, Result};
-
-    use crate::app::{Status, Tab};
-    use crate::common::{
-        PathShortener, UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LAZYGIT,
-        LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
+    use ratatui::{
+        layout::{Alignment, Rect},
+        style::Modifier,
+        text::{Line, Span},
+        widgets::Widget,
+        Frame,
     };
+
     use crate::event::ActionMap;
     use crate::modes::{Content, Display, FilterKind, Preview, Search, Selectable, Text, TextKind};
+    use crate::{
+        app::{Status, Tab},
+        config::MENU_STYLES,
+    };
+    use crate::{
+        common::{
+            PathShortener, UtfWidth, ACTION_LOG_PATH, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
+            LAZYGIT, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE, NCDU,
+        },
+        modes::SAME_WINDOW_TOKEN,
+    };
 
     /// Should the content be aligned left or right ? No centering.
-    #[derive(Clone, Copy)]
-    pub enum Align {
+    #[derive(Clone, Copy, Debug)]
+    enum Align {
         Left,
         Right,
     }
@@ -20,7 +33,7 @@ mod inner {
     ///
     /// Holds a text and an action.
     /// It knows where it's situated on the line
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct ClickableString {
         text: String,
         action: ActionMap,
@@ -54,24 +67,71 @@ mod inner {
             self.text.as_str()
         }
 
-        pub fn col(&self) -> u16 {
-            self.left
-        }
-
         pub fn width(&self) -> u16 {
             self.width
+        }
+    }
+
+    trait ToLine<'a> {
+        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
+        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a>;
+    }
+
+    impl<'a> ToLine<'a> for &Vec<ClickableString> {
+        fn left_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
+            let left: Vec<_> = std::iter::zip(
+                self.iter(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu colors should be set")
+                    .palette()
+                    .iter()
+                    .cycle(),
+            )
+            .map(|(elem, style)| {
+                let mut style = *style;
+                if effect_reverse {
+                    style.add_modifier |= Modifier::REVERSED;
+                }
+                Span::styled(elem.text(), style)
+            })
+            .collect();
+            Line::from(left).alignment(Alignment::Left)
+        }
+
+        fn right_to_line(&'a self, effect_reverse: bool) -> Line<'a> {
+            let left: Vec<_> = std::iter::zip(
+                self.iter(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu colors should be set")
+                    .palette()
+                    .iter()
+                    .rev()
+                    .cycle(),
+            )
+            .map(|(elem, style)| {
+                let mut style = *style;
+                if effect_reverse {
+                    style.add_modifier |= Modifier::REVERSED;
+                }
+                Span::styled(elem.text(), style)
+            })
+            .collect();
+            Line::from(left).alignment(Alignment::Right)
         }
     }
 
     /// A line of element that can be clicked on.
     pub trait ClickableLine {
         /// Reference to the elements
-        fn elems(&self) -> &Vec<ClickableString>;
+        fn left(&self) -> &Vec<ClickableString>;
+        fn right(&self) -> &Vec<ClickableString>;
         /// Action for each associated file.
         fn action(&self, col: u16, is_right: bool) -> &ActionMap {
             let offset = self.offset(is_right);
             let col = col - offset;
-            for clickable in self.elems().iter() {
+            for clickable in self.left().iter().chain(self.right().iter()) {
                 if clickable.left <= col && col < clickable.right {
                     return &clickable.action;
                 }
@@ -92,11 +152,26 @@ mod inner {
                 1
             }
         }
+
+        /// Draw the left aligned elements of the line.
+        fn draw_left(&self, f: &mut Frame, rect: Rect, effect_reverse: bool) {
+            self.left()
+                .left_to_line(effect_reverse)
+                .render(rect, f.buffer_mut());
+        }
+
+        /// Draw the right aligned elements of the line.
+        fn draw_right(&self, f: &mut Frame, rect: Rect, effect_reverse: bool) {
+            self.right()
+                .right_to_line(effect_reverse)
+                .render(rect, f.buffer_mut());
+        }
     }
 
     /// Header for tree & directory display mode.
     pub struct Header {
-        elems: Vec<ClickableString>,
+        left: Vec<ClickableString>,
+        right: Vec<ClickableString>,
         full_width: u16,
     }
 
@@ -105,34 +180,42 @@ mod inner {
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let full_width = status.internal_settings.term_size().0;
             let canvas_width = status.canvas_width()?;
-            let elems = Self::make_elems(tab, canvas_width)?;
+            let left = Self::make_left(tab, canvas_width)?;
+            let right = Self::make_right(tab, canvas_width)?;
 
-            Ok(Self { elems, full_width })
+            Ok(Self {
+                left,
+                right,
+                full_width,
+            })
         }
 
-        fn make_elems(tab: &Tab, width: u16) -> Result<Vec<ClickableString>> {
+        fn make_left(tab: &Tab, width: u16) -> Result<Vec<ClickableString>> {
             let mut left = 0;
-            let mut right = width;
             let shorten_path = Self::elem_shorten_path(tab, left)?;
             left += shorten_path.width();
 
             let filename = Self::elem_filename(tab, width, left)?;
 
-            let mut elems = vec![shorten_path, filename];
+            Ok(vec![shorten_path, filename])
+        }
+
+        fn make_right(tab: &Tab, width: u16) -> Result<Vec<ClickableString>> {
+            let mut right = width;
+            let mut right_elems = vec![];
 
             if !tab.search.is_empty() {
                 let search = Self::elem_search(&tab.search, right);
                 right -= search.width();
-                elems.push(search);
+                right_elems.push(search)
             }
 
             let filter_kind = &tab.settings.filter;
             if !matches!(filter_kind, FilterKind::All) {
-                let filter = Self::elem_filter(filter_kind, right);
-                elems.push(filter);
+                right_elems.push(Self::elem_filter(filter_kind, right))
             }
 
-            Ok(elems)
+            Ok(right_elems)
         }
 
         fn elem_shorten_path(tab: &Tab, left: u16) -> Result<ClickableString> {
@@ -196,9 +279,14 @@ mod inner {
         }
     }
 
+    static EMPTY_VEC: Vec<ClickableString> = vec![];
+
     impl ClickableLine for Header {
-        fn elems(&self) -> &Vec<ClickableString> {
-            &self.elems
+        fn left(&self) -> &Vec<ClickableString> {
+            &self.left
+        }
+        fn right(&self) -> &Vec<ClickableString> {
+            &self.right
         }
         fn full_width(&self) -> u16 {
             self.full_width
@@ -207,13 +295,16 @@ mod inner {
 
     /// Default footer for display directory & tree.
     pub struct Footer {
-        elems: Vec<ClickableString>,
+        left: Vec<ClickableString>,
         full_width: u16,
     }
 
     impl ClickableLine for Footer {
-        fn elems(&self) -> &Vec<ClickableString> {
-            &self.elems
+        fn left(&self) -> &Vec<ClickableString> {
+            &self.left
+        }
+        fn right(&self) -> &Vec<ClickableString> {
+            &EMPTY_VEC
         }
 
         fn full_width(&self) -> u16 {
@@ -225,9 +316,9 @@ mod inner {
         fn footer_actions() -> [ActionMap; 6] {
             [
                 ActionMap::Nothing, // position
-                ActionMap::Custom("%t ".to_owned() + NCDU),
+                ActionMap::Custom(SAME_WINDOW_TOKEN.to_owned() + " " + NCDU),
                 ActionMap::Sort,
-                ActionMap::Custom("%t ".to_owned() + LAZYGIT),
+                ActionMap::Custom(SAME_WINDOW_TOKEN.to_owned() + " " + LAZYGIT),
                 ActionMap::DisplayFlagged,
                 ActionMap::Sort,
             ]
@@ -236,9 +327,9 @@ mod inner {
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let full_width = status.internal_settings.term_size().0;
-            let canvas_width = status.canvas_width().unwrap();
-            let elems = Self::make_elems(status, tab, canvas_width)?;
-            Ok(Self { elems, full_width })
+            let canvas_width = status.canvas_width()?;
+            let left = Self::make_elems(status, tab, canvas_width)?;
+            Ok(Self { left, full_width })
         }
 
         fn make_elems(status: &Status, tab: &Tab, width: u16) -> Result<Vec<ClickableString>> {
@@ -275,13 +366,16 @@ mod inner {
         fn make_padded_strings(raw_strings: &[String], total_width: u16) -> Vec<String> {
             let total_width = total_width as usize;
             let used_width = raw_strings.iter().map(|s| s.utf_width()).sum();
-            let available_width = total_width.checked_sub(used_width).unwrap_or_default();
+            let available_width = total_width.saturating_sub(used_width);
             let margin_width = available_width / (2 * raw_strings.len());
             let margin = " ".repeat(margin_width);
-            raw_strings
+            let mut padded_strings: Vec<String> = raw_strings
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))
-                .collect()
+                .collect();
+            let rest = total_width - padded_strings.iter().map(|s| s.utf_width()).sum::<usize>();
+            padded_strings[raw_strings.len() - 1].push_str(&" ".repeat(rest));
+            padded_strings
         }
 
         fn string_first_row_position(tab: &Tab) -> Result<String> {
@@ -322,12 +416,39 @@ mod inner {
 
     /// Empty struct used to attach actions the first line of previews.
     /// What content ? What kind of preview ?
-    pub struct PreviewHeader;
+    pub struct PreviewHeader {
+        left: Vec<ClickableString>,
+        right: Vec<ClickableString>,
+        full_width: u16,
+    }
+
+    impl ClickableLine for PreviewHeader {
+        fn left(&self) -> &Vec<ClickableString> {
+            &self.left
+        }
+        fn right(&self) -> &Vec<ClickableString> {
+            &self.right
+        }
+        fn full_width(&self) -> u16 {
+            self.full_width
+        }
+    }
 
     impl PreviewHeader {
-        pub fn elems(status: &Status, tab: &Tab, width: u16) -> Vec<ClickableString> {
-            let pairs = Self::strings(status, tab);
-            Self::pair_to_clickable(&pairs, width)
+        pub fn into_default_preview(status: &Status, tab: &Tab, width: u16) -> Self {
+            Self {
+                left: Self::default_preview(status, tab, width),
+                right: vec![],
+                full_width: width,
+            }
+        }
+
+        pub fn new(status: &Status, tab: &Tab, width: u16) -> Self {
+            Self {
+                left: Self::pair_to_clickable(&Self::strings_left(status, tab), width),
+                right: Self::pair_to_clickable(&Self::strings_right(tab), width),
+                full_width: width,
+            }
         }
 
         fn pair_to_clickable(pairs: &[(String, Align)], width: u16) -> Vec<ClickableString> {
@@ -355,7 +476,7 @@ mod inner {
             elems
         }
 
-        fn strings(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
+        fn strings_left(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::CommandStdout => Self::make_colored_text(text_content),
@@ -365,6 +486,18 @@ mod inner {
                 },
                 _ => Self::make_default_preview(status, tab),
             }
+        }
+
+        fn strings_right(tab: &Tab) -> Vec<(String, Align)> {
+            let index = match &tab.preview {
+                Preview::Empty => 0,
+                Preview::Ueberzug(image) => image.index + 1,
+                _ => tab.window.bottom,
+            };
+            vec![(
+                format!(" {index} / {len} ", len = tab.preview.len()),
+                Align::Right,
+            )]
         }
 
         fn make_help() -> Vec<(String, Align)> {
@@ -381,13 +514,14 @@ mod inner {
         fn make_log() -> Vec<(String, Align)> {
             vec![
                 (LOG_FIRST_SENTENCE.to_owned(), Align::Left),
+                (ACTION_LOG_PATH.to_owned(), Align::Left),
                 (LOG_SECOND_SENTENCE.to_owned(), Align::Right),
             ]
         }
 
         fn make_colored_text(colored_text: &Text) -> Vec<(String, Align)> {
             vec![
-                (" Command: ".to_owned(), Align::Left),
+                (" Command output: ".to_owned(), Align::Left),
                 (
                     format!(" {command} ", command = colored_text.title),
                     Align::Right,
@@ -395,8 +529,8 @@ mod inner {
             ]
         }
 
-        fn _pick_previewed_fileinfo(status: &Status) -> String {
-            if status.display_settings.dual() && status.display_settings.preview() {
+        fn pick_previewed_fileinfo(status: &Status) -> String {
+            if status.session.dual() && status.session.preview() {
                 status.tabs[1].preview.filepath()
             } else {
                 status.current_tab().preview.filepath()
@@ -404,22 +538,19 @@ mod inner {
         }
 
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
-            let filepath = Self::_pick_previewed_fileinfo(status);
-            let mut strings = vec![
-                (" Preview ".to_owned(), Align::Left),
-                (format!(" {} ", filepath), Align::Left),
-            ];
-            if !tab.preview.is_empty() {
-                let index = match &tab.preview {
-                    Preview::Ueberzug(image) => image.index + 1,
-                    _ => tab.window.bottom,
-                };
-                strings.push((
-                    format!(" {index} / {len} ", len = tab.preview.len()),
-                    Align::Right,
-                ));
-            };
-            strings
+            vec![
+                (
+                    format!(" Preview as {kind} ", kind = tab.preview.kind_display()),
+                    Align::Left,
+                ),
+                (
+                    format!(
+                        " {filepath} ",
+                        filepath = Self::pick_previewed_fileinfo(status)
+                    ),
+                    Align::Left,
+                ),
+            ]
         }
 
         /// Make a default preview header

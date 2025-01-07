@@ -11,24 +11,26 @@ use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::{Disk, Disks};
 
-use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
+use crate::app::{
+    ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
+};
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
+    is_sudo_command, path_to_string, row_to_window_index,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::{
-    build_tokio_greper, execute_and_capture_output, execute_and_capture_output_without_check,
-    execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
-    Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
+    build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
+    execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
+    Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_matcher, shell_command_parser,
-    BlockDeviceAction, Content, ContentWindow, CopyMove, Direction as FuzzyDirection, Display,
-    FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice,
-    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
-    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
+    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -116,7 +118,7 @@ pub struct Status {
     /// Navigable menu
     pub menu: MenuHolder,
     /// Display settings
-    pub display_settings: Session,
+    pub session: Session,
     /// Internal settings
     pub internal_settings: InternalSettings,
     /// Window being focused currently
@@ -127,6 +129,8 @@ pub struct Status {
     preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize)>,
     /// Non bloking preview builder
     pub previewer: Previewer,
+    /// Preview manager
+    pub thumbnail_manager: Option<ThumbnailManager>,
 }
 
 impl Status {
@@ -150,10 +154,9 @@ impl Status {
             path.parent().context("")?
         };
         let disks = Disks::new_with_refreshed_list();
-        let display_settings = Session::new(size.width);
-        let mut internal_settings = InternalSettings::new(opener, size, disks);
-        let mount_points = internal_settings.mount_points();
-        let menu = MenuHolder::new(start_dir, &mount_points, binds, fm_sender.clone())?;
+        let session = Session::new(size.width);
+        let internal_settings = InternalSettings::new(opener, size, disks);
+        let menu = MenuHolder::new(start_dir, binds)?;
         let focus = Focus::default();
 
         let users_left = Users::default();
@@ -166,17 +169,19 @@ impl Status {
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
+        let thumbnail_manager = None;
         Ok(Self {
             tabs,
             index,
             fuzzy,
             menu,
-            display_settings,
+            session,
             internal_settings,
             focus,
             fm_sender,
             preview_receiver,
             previewer,
+            thumbnail_manager,
         })
     }
 
@@ -222,21 +227,16 @@ impl Status {
 
     /// Select the other tab if two are displayed. Does nothing otherwise.
     pub fn next(&mut self) {
-        if !self.display_settings.dual() {
+        if !self.session.dual() {
             return;
         }
         self.index = 1 - self.index;
         self.focus_follow_index();
     }
 
-    /// Select the other tab if two are displayed. Does nothing otherwise.
-    pub fn prev(&mut self) {
-        self.next();
-    }
-
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
-        if self.display_settings.dual() {
+        if self.session.dual() {
             if col < self.term_width() / 2 {
                 self.select_left();
             } else {
@@ -282,7 +282,7 @@ impl Status {
 
     /// True iff user has clicked on a preview in second pane.
     fn has_clicked_on_second_pane_preview(&self) -> bool {
-        self.display_settings.dual() && self.display_settings.preview() && self.index == 1
+        self.session.dual() && self.session.preview() && self.index == 1
     }
 
     fn click_action_from_window(
@@ -400,7 +400,7 @@ impl Status {
         self.internal_settings.disks.into_iter().collect()
     }
 
-    /// Returns a the disk spaces for the selected tab..
+    /// Returns the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
         disk_space(&self.disks(), self.current_tab().current_path())
     }
@@ -412,6 +412,12 @@ impl Status {
 
     fn term_width(&self) -> u16 {
         self.term_size().0
+    }
+
+    pub fn clear_preview_right(&mut self) {
+        if self.session.dual() && self.session.preview() && !self.tabs[1].preview.is_empty() {
+            self.tabs[1].preview = PreviewBuilder::empty()
+        }
     }
 
     /// Refresh the current view, reloading the files. Move the selection to top.
@@ -531,8 +537,32 @@ impl Status {
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
     pub fn resize(&mut self, width: u16, height: u16) -> Result<()> {
+        let couldnt_dual_but_want = self.couldnt_dual_but_want();
         self.internal_settings.update_size(width, height);
-        self.set_dual_pane_if_wide_enough(width)?;
+        if couldnt_dual_but_want {
+            self.set_dual_pane_if_wide_enough(width)?;
+        }
+        self.resize_all_windows(height)?;
+        self.refresh_status()
+    }
+
+    fn couldnt_dual_but_want(&self) -> bool {
+        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.session.dual()
+    }
+
+    fn use_dual(&self) -> bool {
+        self.session.dual() && self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+    }
+
+    fn left_window_width(&self) -> u16 {
+        if self.use_dual() {
+            self.internal_settings.width / 2
+        } else {
+            self.internal_settings.width
+        }
+    }
+
+    fn resize_all_windows(&mut self, height: u16) -> Result<()> {
         let height_usize = height as usize;
         self.tabs[0].set_height(height_usize);
         self.tabs[1].set_height(height_usize);
@@ -541,7 +571,7 @@ impl Status {
             self.tabs[self.index].menu_mode,
             self.second_window_height()?,
         );
-        self.refresh_status()
+        Ok(())
     }
 
     /// Check if the second pane should display a preview and force it.
@@ -557,7 +587,7 @@ impl Status {
     }
 
     fn are_settings_requiring_dualpane_preview(&self) -> bool {
-        self.index == 0 && self.display_settings.dual() && self.display_settings.preview()
+        self.index == 0 && self.session.dual() && self.session.preview()
     }
 
     fn can_display_dualpane_preview(&self) -> bool {
@@ -574,7 +604,44 @@ impl Status {
         };
         log_info!("sending preview request");
         self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
+        // self.preview_manager.enqueue(&fileinfo.path);
+
         Ok(())
+    }
+
+    /// Build all the video thumbnails of a directory
+    /// Build the the thumbnail manager if it hasn't been initialised yet. If there's still files in the queue, they're cleared first.
+    pub fn thumbnail_directory_video(&mut self) {
+        if !self.are_settings_requiring_dualpane_preview() || !self.can_display_dualpane_preview() {
+            return;
+        }
+        self.thumbnail_init_or_clear();
+        let videos = self.current_tab().directory.videos();
+        if videos.is_empty() {
+            return;
+        }
+        if let Some(thumbnail_manager) = &self.thumbnail_manager {
+            thumbnail_manager.enqueue(videos);
+        }
+    }
+
+    /// Clear the thumbnail queue or init the manager.
+    fn thumbnail_init_or_clear(&mut self) {
+        if self.thumbnail_manager.is_none() {
+            self.thumbnail_manager_init();
+        } else {
+            self.thumbnail_queue_clear();
+        }
+    }
+
+    fn thumbnail_manager_init(&mut self) {
+        self.thumbnail_manager = Some(ThumbnailManager::default());
+    }
+
+    pub fn thumbnail_queue_clear(&self) {
+        if let Some(thumbnail_manager) = &self.thumbnail_manager {
+            thumbnail_manager.clear()
+        }
     }
 
     /// Check if the previewer has sent a preview.
@@ -607,7 +674,7 @@ impl Status {
     }
 
     fn pick_correct_tab_from(&self, index: usize) -> Result<usize> {
-        if index == 1 && self.can_display_dualpane_preview() && self.display_settings.preview() {
+        if index == 1 && self.can_display_dualpane_preview() && self.session.preview() {
             Ok(0)
         } else {
             Ok(index)
@@ -659,34 +726,37 @@ impl Status {
                 let (_, mark_path) = &self.menu.marks.content().get(self.menu.marks.index())?;
                 FileInfo::new(mark_path, users).ok()
             }
+            Menu::Navigate(Navigate::Flagged) => {
+                FileInfo::new(self.menu.flagged.selected()?, users).ok()
+            }
             _ => tab.current_file().ok(),
         }
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
-    pub fn set_menu_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
-        self.set_menu_mode_no_refresh(index, edit_mode)?;
+    pub fn set_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
+        self.set_menu_mode_no_refresh(index, menu_mode)?;
         self.refresh_status()
     }
 
-    pub fn set_menu_mode_no_refresh(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+    pub fn set_menu_mode_no_refresh(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
         }
-        self.set_height_for_edit_mode(index, edit_mode)?;
-        self.tabs[index].menu_mode = edit_mode;
-        let len = self.menu.len(edit_mode);
+        self.set_height_for_menu_mode(index, menu_mode)?;
+        self.tabs[index].menu_mode = menu_mode;
+        let len = self.menu.len(menu_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
-        self.menu.window.scroll_to(self.menu.index(edit_mode));
+        self.menu.window.scroll_to(self.menu.index(menu_mode));
         self.set_focus_from_mode();
-        self.menu.input_history.filter_by_mode(edit_mode);
+        self.menu.input_history.filter_by_mode(menu_mode);
         Ok(())
     }
 
-    pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
+    pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         let height = self.internal_settings.term_size().1;
-        let prim_window_height = if edit_mode.is_nothing() {
+        let prim_window_height = if menu_mode.is_nothing() {
             height
         } else {
             height / 2
@@ -704,9 +774,9 @@ impl Status {
     pub fn set_dual_pane_if_wide_enough(&mut self, width: u16) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_left();
-            self.display_settings.set_dual(false);
+            self.session.set_dual(false);
         } else {
-            self.display_settings.set_dual(true);
+            self.session.set_dual(true);
         }
         Ok(())
     }
@@ -755,6 +825,7 @@ impl Status {
                     .directory
                     .content
                     .iter()
+                    .filter(|file| file.filename.as_ref() != "." && file.filename.as_ref() != "..")
                     .for_each(|file| {
                         self.menu.flagged.push(file.path.to_path_buf());
                     });
@@ -893,9 +964,8 @@ impl Status {
                 cut_or_copy,
                 sources,
                 dest,
-                self.internal_settings.term_size().0,
+                self.left_window_width(),
                 self.internal_settings.term_size().1,
-                // Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
             self.internal_settings.store_copy_progress(in_mem);
@@ -904,17 +974,8 @@ impl Status {
     }
 
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
-        let (sources, dest) = self.internal_settings.copy_file_queue[0].clone();
-        let in_mem = copy_move(
-            crate::modes::CopyMove::Copy,
-            sources,
-            dest,
-            self.internal_settings.term_size().0,
-            self.internal_settings.term_size().1,
-            std::sync::Arc::clone(&self.fm_sender),
-        )?;
-        self.internal_settings.store_copy_progress(in_mem);
-        Ok(())
+        self.internal_settings
+            .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
     }
 
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {
@@ -1028,6 +1089,14 @@ impl Status {
         Ok(())
     }
 
+    pub fn fuzzy_start(&mut self) -> Result<()> {
+        self.fuzzy_navigate(FuzzyDirection::Start)
+    }
+
+    pub fn fuzzy_end(&mut self) -> Result<()> {
+        self.fuzzy_navigate(FuzzyDirection::End)
+    }
+
     pub fn fuzzy_navigate(&mut self, direction: FuzzyDirection) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1060,7 +1129,11 @@ impl Status {
         if self.focus.is_file() {
             return Ok(());
         }
-        self.menu.input_history_next(&mut self.tabs[self.index])
+        self.menu.input_history_next(&mut self.tabs[self.index])?;
+        if let Menu::InputCompleted(input_completed) = self.current_tab().menu_mode {
+            self.complete(input_completed)?;
+        }
+        Ok(())
     }
 
     /// Replace the current input by the previous result from history
@@ -1068,21 +1141,40 @@ impl Status {
         if self.focus.is_file() {
             return Ok(());
         }
-        self.menu.input_history_prev(&mut self.tabs[self.index])
+        self.menu.input_history_prev(&mut self.tabs[self.index])?;
+        if let Menu::InputCompleted(input_completed) = self.current_tab().menu_mode {
+            self.complete(input_completed)?;
+        }
+        Ok(())
     }
 
+    /// Push the typed char `c` into the input string and fill the completion menu with results.
+    pub fn input_and_complete(&mut self, input_completed: InputCompleted, c: char) -> Result<()> {
+        self.menu.input.insert(c);
+        self.complete(input_completed)
+    }
+
+    fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
+        match input_completed {
+            InputCompleted::Search => self.complete_search(),
+            _ => self.complete_non_search(),
+        }
+    }
+
+    /// Update the input string with the current selection and fill the completion menu with results.
     pub fn complete_tab(&mut self, input_completed: InputCompleted) -> Result<()> {
         self.menu.completion_tab();
         self.complete_cd_move()?;
         if matches!(input_completed, InputCompleted::Search) {
             self.update_search()?;
             self.search()?;
+        } else {
+            self.menu.input_complete(&mut self.tabs[self.index])?
         }
         Ok(())
     }
 
-    pub fn complete_search(&mut self, c: char) -> Result<()> {
-        self.menu.input.insert(c);
+    fn complete_search(&mut self) -> Result<()> {
         self.update_search()?;
         self.search()?;
         self.menu.input_complete(&mut self.tabs[self.index])
@@ -1095,8 +1187,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn complete_non_search(&mut self, c: char) -> Result<()> {
-        self.menu.input.insert(c);
+    fn complete_non_search(&mut self) -> Result<()> {
         self.complete_cd_move()?;
         self.menu.input_complete(&mut self.tabs[self.index])
     }
@@ -1114,13 +1205,13 @@ impl Status {
     /// Update the flagged files depending of the input regex.
     pub fn input_regex(&mut self, char: char) -> Result<()> {
         self.menu.input.insert(char);
-        self.select_from_regex()?;
+        self.flag_from_regex()?;
         Ok(())
     }
 
     /// Flag every file matching a typed regex.
     /// Move to the "first" found match
-    pub fn select_from_regex(&mut self) -> Result<()> {
+    pub fn flag_from_regex(&mut self) -> Result<()> {
         let input = self.menu.input.string();
         if input.is_empty() {
             return Ok(());
@@ -1130,7 +1221,7 @@ impl Status {
             Display::Tree => self.tabs[self.index].tree.paths(),
             _ => return Ok(()),
         };
-        regex_matcher(&input, &paths, &mut self.menu.flagged)?;
+        regex_flagger(&input, &paths, &mut self.menu.flagged)?;
         if !self.menu.flagged.is_empty() {
             self.tabs[self.index]
                 .go_to_file(self.menu.flagged.selected().context("no selected file")?);
@@ -1141,51 +1232,21 @@ impl Status {
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
         let path = self.current_tab().current_file()?.path;
-        self.open_single_file(&path);
-        Ok(())
+        self.open_single_file(&path)
     }
 
-    pub fn open_single_file(&mut self, path: &Path) {
+    pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
-            Some(Kind::Internal(Internal::NotSupported)) => {
-                let _ = self.mount_iso_drive();
-            }
-            Some(_) => {
-                if self.should_this_file_be_opened_in_neovim(path) {
-                    self.update_nvim_listen_address();
-                    open_in_current_neovim(path, &self.internal_settings.nvim_server);
-                } else {
-                    let _ = self.internal_settings.opener.open_single(path);
-                }
-            }
-            None => (),
+            Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
+            Some(_) => self.internal_settings.open_single_file(path),
+            None => Ok(()),
         }
-    }
-
-    fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {
-        self.internal_settings.inside_neovim
-            && matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        if self
-            .menu
-            .flagged
-            .content()
-            .iter()
-            .all(|path| self.should_this_file_be_opened_in_neovim(path))
-        {
-            self.update_nvim_listen_address();
-            for path in self.menu.flagged.content().iter() {
-                open_in_current_neovim(path, &self.internal_settings.nvim_server);
-            }
-            Ok(())
-        } else {
-            self.internal_settings
-                .opener
-                .open_multiple(self.menu.flagged.content())
-        }
+        self.internal_settings
+            .open_flagged_files(&self.menu.flagged)
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -1343,45 +1404,70 @@ impl Status {
     /// See [`crate::modes::shell_command_parser`] for more information.
     pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        self.parse_shell_command(shell_command, None)
+        self.parse_shell_command(shell_command, None, true)
+    }
+
+    fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
+        if let Some(files) = &files {
+            shell_command + " " + &files.join(" ")
+        } else {
+            shell_command
+        }
     }
 
     pub fn parse_shell_command(
         &mut self,
         shell_command: String,
         files: Option<Vec<String>>,
+        capture_output: bool,
     ) -> Result<bool> {
-        let Ok(mut args) = shell_command_parser(&shell_command, self) else {
+        let command = Self::build_shell_command(shell_command, files);
+        let Ok(args) = shell_command_parser(&command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
         };
-        if let Some(mut files) = files {
-            args.append(&mut files);
-        }
-        self.execute_parsed_command(args, shell_command)
+        self.execute_parsed_command(args, command, capture_output)
     }
 
     fn execute_parsed_command(
         &mut self,
         mut args: Vec<String>,
         shell_command: String,
+        capture_output: bool,
     ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
-            self.menu.sudo_command = Some(shell_command);
-            self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
-            Ok(false)
-        } else {
-            if !is_in_path(&executable) {
-                return Ok(true);
-            }
-            let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            self.enter_sudo_mode(shell_command)?;
+            return Ok(false);
+        }
+        let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        if executable == *SAME_WINDOW_TOKEN {
+            self.internal_settings.open_in_window(&params)?;
+            return Ok(true);
+        }
+        if !is_in_path(&executable) {
+            log_line!("{executable} isn't in path.");
+            return Ok(true);
+        }
+        if capture_output {
             match execute_and_capture_output(executable, &params) {
                 Ok(output) => self.preview_command_output(output, shell_command),
-                Err(e) => log_info!("Error {e:?}"),
+                Err(e) => {
+                    log_info!("Error {e:?}");
+                    log_line!("Command {shell_command} disn't finish properly");
+                }
             }
             Ok(true)
+        } else {
+            let _ = execute_without_output(executable, &params);
+            Ok(true)
         }
+    }
+
+    fn enter_sudo_mode(&mut self, shell_command: String) -> Result<()> {
+        self.menu.sudo_command = Some(shell_command);
+        self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
+        Ok(())
     }
 
     /// Ask for a password of some kind (sudo or device passphrase).
@@ -1437,6 +1523,38 @@ impl Status {
         self.refresh_status()
     }
 
+    /// Execute a new temp mark, saving it temporary for futher use.
+    pub fn temp_marks_new(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        let path = self.current_tab_mut().directory.path.to_path_buf();
+        self.menu.temp_marks.set_mark(index as _, path);
+        self.current_tab_mut().refresh_view()?;
+        self.reset_menu_mode()?;
+        self.refresh_status()
+    }
+
+    /// Erase the current mark
+    pub fn temp_marks_erase(&mut self) -> Result<()> {
+        self.menu.temp_marks.erase_current_mark();
+        Ok(())
+    }
+
+    /// Execute a jump to a temporay mark, moving to a valid path.
+    /// If the saved path is invalid, it does nothing but reset the view.
+    pub fn temp_marks_jump_char(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        if let Some(path) = self.menu.temp_marks.get_mark(index as _) {
+            self.tabs[self.index].cd(path)?;
+        }
+        self.current_tab_mut().refresh_view()?;
+        self.reset_menu_mode()?;
+        self.refresh_status()
+    }
+
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
         self.menu.delete_flagged_files()?;
@@ -1459,8 +1577,12 @@ impl Status {
         let current_path = self.current_tab_path_str();
         self.menu.bulk.ask_filenames(flagged, &current_path)?;
         if let Some(temp_file) = self.menu.bulk.temp_file() {
-            self.open_single_file(&temp_file);
-            self.menu.bulk.watch_in_thread()?;
+            self.open_single_file(&temp_file)?;
+            if self.internal_settings.opener.extension_use_term("txt") {
+                self.fm_sender.send(FmEvents::BulkExecute)?;
+            } else {
+                self.menu.bulk.watch_in_thread(self.fm_sender.clone())?;
+            }
         }
         Ok(())
     }
@@ -1502,15 +1624,13 @@ impl Status {
         if args.is_empty() {
             return self.menu.clear_sudo_attributes();
         }
-        let (success, stdout, _stderr) = execute_sudo_command_with_password(
-            &args,
-            self.menu
-                .password_holder
-                .sudo()
-                .as_ref()
-                .context("sudo password isn't set")?,
-            self.current_tab().directory_of_selected()?,
-        )?;
+        let Some(password) = self.menu.password_holder.sudo() else {
+            log_info!("run_sudo_command password isn't set");
+            return self.menu.clear_sudo_attributes();
+        };
+        let directory_of_selected = self.current_tab().directory_of_selected()?;
+        let (success, stdout, _) =
+            execute_sudo_command_with_password(&args, password, directory_of_selected)?;
         log_info!("sudo command execution. success: {success}");
         self.menu.clear_sudo_attributes()?;
         self.preview_command_output(stdout, sudo_command.to_owned());
@@ -1636,7 +1756,7 @@ impl Status {
             return Ok(());
         }
         let input_permission = &self.menu.input.string();
-        Permissions::set_permissions_of_flagged(input_permission, &mut self.menu.flagged)?;
+        Permissions::set_permissions_of_flagged(input_permission, &self.menu.flagged)?;
         self.reset_tabs_view()
     }
 
@@ -1648,17 +1768,14 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         }
-        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))
+        self.set_menu_mode(self.index, Menu::InputSimple(InputSimple::Chmod))?;
+        self.menu.replace_input_by_permissions();
+        Ok(())
     }
 
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
-        log_info!("custom {string}");
-        let mut args = shell_command_parser(string, self)?;
-        let command = args.remove(0);
-        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
-        let output = execute_and_capture_output_without_check(command, &args)?;
-        log_info!("output {output}");
+        self.parse_shell_command(string.to_owned(), None, true)?;
         Ok(())
     }
 
@@ -1692,7 +1809,7 @@ impl Status {
     pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
-        self.set_height_for_edit_mode(self.index, Menu::Nothing)?;
+        self.set_height_for_menu_mode(self.index, Menu::Nothing)?;
         self.tabs[self.index].menu_mode = Menu::Nothing;
         let len = self.menu.len(Menu::Nothing);
         let height = self.second_window_height()?;
@@ -1704,7 +1821,7 @@ impl Status {
     /// The width of a displayed canvas.
     pub fn canvas_width(&self) -> Result<u16> {
         let full_width = self.internal_settings.term_size().0;
-        if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
+        if self.session.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
         } else {
             Ok(full_width)

@@ -12,9 +12,11 @@ use crate::common::{
     is_in_path, tilde, OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH,
     OPENER_READABLE, OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
-use crate::io::execute;
+use crate::io::{execute, open_command_in_window};
 use crate::log_info;
-use crate::modes::{decompress_gz, decompress_xz, decompress_zip, extract_extension};
+use crate::modes::{
+    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension,
+};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -28,6 +30,7 @@ pub enum Extension {
     Vectorial,
     Video,
     Zip,
+    Sevenz,
     Gz,
     Xz,
     Iso,
@@ -61,7 +64,9 @@ impl Extension {
 
             "zip" => Self::Zip,
 
-            "xz" | "7z" => Self::Xz,
+            "xz" => Self::Xz,
+
+            "7z" | "7za" => Self::Sevenz,
 
             "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => Self::Gz,
             // iso files can't be mounted without more information than we hold in this enum :
@@ -73,6 +78,22 @@ impl Extension {
                 Self::Iso
             }
             _ => Self::Default,
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Zip | Self::Xz | Self::Gz => "󰗄 ",
+            Self::Readable => " ",
+            Self::Iso => " ",
+            Self::Text => " ",
+            Self::Audio => " ",
+            Self::Office => "󰈙 ",
+            Self::Bitmap => " ",
+            Self::Vectorial => "󰫨 ",
+            Self::Video => " ",
+
+            _ => " ",
         }
     }
 }
@@ -108,6 +129,7 @@ impl Default for Association {
                 (Extension::Text,       Kind::external(OPENER_TEXT)),
                 (Extension::Vectorial,  Kind::external(OPENER_VECT)),
                 (Extension::Video,      Kind::external(OPENER_VIDEO)),
+                (Extension::Sevenz,     Kind::Internal(Internal::Sevenz)),
                 (Extension::Gz,         Kind::Internal(Internal::Gz)),
                 (Extension::Xz,         Kind::Internal(Internal::Xz)),
                 (Extension::Zip,        Kind::Internal(Internal::Zip)),
@@ -189,12 +211,14 @@ pub enum Internal {
     Zip,
     Xz,
     Gz,
+    Sevenz,
     NotSupported,
 }
 
 impl Internal {
     fn open(&self, path: &Path) -> Result<()> {
         match self {
+            Self::Sevenz => decompress_7z(path),
             Self::Zip => decompress_zip(path),
             Self::Xz => decompress_xz(path),
             Self::Gz => decompress_gz(path),
@@ -223,7 +247,7 @@ impl External {
         self.0.as_str()
     }
 
-    fn use_term(&self) -> bool {
+    pub fn use_term(&self) -> bool {
         self.1
     }
 
@@ -236,6 +260,20 @@ impl External {
             Self::without_term(args)?;
         }
         Ok(())
+    }
+
+    fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
+        let arg = format!("{program} {path}", program = self.program(),);
+        open_command_in_window(&[&arg])
+    }
+
+    fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
+        let arg = paths
+            .iter()
+            .filter_map(|p| p.to_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
@@ -352,6 +390,23 @@ impl Opener {
         self.association.associate(extract_extension(path))
     }
 
+    /// Does this extension requires a terminal ?
+    pub fn extension_use_term(&self, extension: &str) -> bool {
+        if let Some(Kind::External(external)) = self.association.associate(extension) {
+            external.use_term()
+        } else {
+            false
+        }
+    }
+
+    pub fn use_term(&self, path: &Path) -> bool {
+        match self.kind(path) {
+            None => false,
+            Some(Kind::Internal(_)) => false,
+            Some(Kind::External(external)) => external.use_term(),
+        }
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
@@ -371,8 +426,8 @@ impl Opener {
     /// Open multiple files.
     /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
     /// Only files opened with an external opener are supported.
-    pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
-        for (external, grouped_paths) in &self.regroup_per_opener(paths) {
+    pub fn open_multiple(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+        for (external, grouped_paths) in openers.iter() {
             let _ = external.open(
                 &Self::collect_paths_as_str(grouped_paths),
                 &self.terminal,
@@ -382,9 +437,9 @@ impl Opener {
         Ok(())
     }
 
-    /// Create an hashmap of openers -> [files].
+    /// Create an hashmap of openers -> `[files]`.
     /// Each file in the collection share the same opener.
-    fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
+    pub fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
         let mut openers: HashMap<External, Vec<PathBuf>> = HashMap::new();
         for path in paths {
             let Some(Kind::External(pair)) = self.kind(path) else {
@@ -406,5 +461,20 @@ impl Opener {
             .filter(|fp| !fp.is_dir())
             .filter_map(|fp| fp.to_str())
             .collect()
+    }
+
+    pub fn open_in_window(&self, path: &Path) {
+        let Some(Kind::External(external)) = self.kind(path) else {
+            return;
+        };
+        if !external.use_term() {
+            return;
+        };
+        let _ = external.open_in_window(path.to_string_lossy().as_ref());
+    }
+
+    pub fn open_multiple_in_window(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+        let (external, paths) = openers.iter().next().unwrap();
+        external.open_multiple_in_window(paths)
     }
 }

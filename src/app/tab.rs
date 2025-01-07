@@ -121,7 +121,7 @@ impl Tab {
         let mut directory =
             Directory::new(start_dir, &users, &settings.filter, settings.show_hidden)?;
         let display_mode = Display::default();
-        let edit_mode = Menu::Nothing;
+        let menu_mode = Menu::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
         let history = History::default();
@@ -133,7 +133,7 @@ impl Tab {
         window.scroll_to(index);
         Ok(Self {
             display_mode,
-            menu_mode: edit_mode,
+            menu_mode,
             window,
             directory,
             height,
@@ -729,19 +729,40 @@ impl Tab {
         self.window.scroll_to(self.preview.len().saturating_sub(1))
     }
 
+    fn preview_scroll(&self) -> usize {
+        if matches!(self.menu_mode, Menu::Nothing) {
+            2 * self.height / 3
+        } else {
+            self.height / 3
+        }
+    }
+
+    fn preview_binary_scroll(&self) -> usize {
+        if matches!(self.menu_mode, Menu::Nothing) {
+            self.height / 3
+        } else {
+            self.height / 6
+        }
+    }
+
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.up_one_row(),
-            _ => self.window.preview_page_up(),
+            Preview::Binary(_) => self.window.preview_page_up(self.preview_binary_scroll()),
+            _ => self.window.preview_page_up(self.preview_scroll()),
         }
     }
 
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
     pub fn preview_page_down(&mut self) {
+        let len = self.preview.len();
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.down_one_row(),
-            _ => self.window.preview_page_down(self.preview.len()),
+            Preview::Binary(_) => self
+                .window
+                .preview_page_down(self.preview_binary_scroll(), len),
+            _ => self.window.preview_page_down(self.preview_scroll(), len),
         }
     }
 

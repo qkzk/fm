@@ -26,7 +26,7 @@ impl Default for ContentWindow {
 impl ContentWindow {
     /// The padding around the last displayed filename
     pub const WINDOW_PADDING: usize = 4;
-    pub const WINDOW_PADDING_U32: u32 = Self::WINDOW_PADDING as u32;
+    pub const WINDOW_PADDING_FUZZY: u32 = 3;
     /// The space of the top element as an u16 for convenience
     pub const WINDOW_MARGIN_TOP_U16: u16 = 2;
     /// The space for the bottom row
@@ -34,7 +34,7 @@ impl ContentWindow {
     /// How many rows are reserved for the header ?
     pub const HEADER_ROWS: usize = 3;
     /// How many rows are reserved for the footer ?
-    const FOOTER_ROWS: usize = 1;
+    const FOOTER_ROWS: usize = 2;
 
     /// How many rows could be displayed with given height ?
     /// It's not the number of rows displayed since the content may
@@ -128,18 +128,18 @@ impl ContentWindow {
         row < Self::HEADER_ROWS as u16
     }
 
-    pub fn preview_page_up(&mut self) {
+    pub fn preview_page_up(&mut self, skip: usize) {
         if self.top == 0 {
             return;
         }
-        let skip = min(self.top, 30);
+        let skip = min(self.top, skip);
         self.bottom -= skip;
         self.top -= skip;
     }
 
-    pub fn preview_page_down(&mut self, preview_len: usize) {
+    pub fn preview_page_down(&mut self, skip: usize, preview_len: usize) {
         if self.bottom < preview_len {
-            let skip = min(preview_len - self.bottom, 30);
+            let skip = min(preview_len - self.bottom, skip);
             self.bottom += skip;
             self.top += skip;
         }

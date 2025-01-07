@@ -7,17 +7,16 @@ use indicatif::InMemoryTerm;
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
     filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
-    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
+    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{execute_without_output_with_path, read_log};
+use crate::io::{open_shell_in_window, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow,
-    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, PreviewBuilder, RemovableDevices, Search,
-    Selectable,
+    help_string, lsblk_and_cryptsetup_installed, ContentWindow, Direction as FuzzyDirection,
+    Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
+    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -44,6 +43,7 @@ impl EventAction {
 
     /// Refresh the views if files were modified in current directory.
     pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
+        status.menu.flagged.remove_non_existant();
         status.tabs[0].refresh_if_needed()?;
         status.tabs[1].refresh_if_needed()
     }
@@ -70,25 +70,26 @@ impl EventAction {
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
     /// filenames).
     pub fn toggle_display_full(status: &mut Status) -> Result<()> {
-        status.display_settings.toggle_metadata();
+        status.session.toggle_metadata();
         Ok(())
     }
 
     /// Toggle between dualpane and single pane. Does nothing if the width
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
-        status.display_settings.toggle_dual();
+        status.clear_preview_right();
+        status.session.toggle_dual();
         status.select_left();
         Ok(())
     }
 
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
-        if !status.display_settings.dual() {
+        if !status.session.dual() {
             Self::toggle_dualpane(status)?;
         }
-        status.display_settings.toggle_preview();
-        if status.display_settings.preview() {
+        status.session.toggle_preview();
+        if status.session.preview() {
             status.update_second_pane_for_preview()
         } else {
             status.set_menu_mode(1, Menu::Nothing)?;
@@ -148,10 +149,10 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let edit_mode = &status.current_tab().menu_mode;
-        if matches!(edit_mode, Menu::Navigate(Navigate::Flagged)) {
+        let menu_mode = &status.current_tab().menu_mode;
+        if matches!(menu_mode, Menu::Navigate(Navigate::Flagged)) {
             status.leave_menu_mode()?;
-        } else if matches!(edit_mode, Menu::Nothing) {
+        } else if matches!(menu_mode, Menu::Nothing) {
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
         }
         Ok(())
@@ -391,7 +392,9 @@ impl EventAction {
             return Ok(());
         }
         if tab.directory.is_selected_dir()? {
-            tab.go_to_selected_dir()
+            tab.go_to_selected_dir()?;
+            status.thumbnail_directory_video();
+            Ok(())
         } else {
             EventAction::open_file(status)
         }
@@ -456,7 +459,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         }
-        status.set_height_for_edit_mode(status.index, Menu::Nothing)?;
+        status.set_height_for_menu_mode(status.index, Menu::Nothing)?;
         status.tabs[status.index].menu_mode = Menu::Nothing;
         let len = status.menu.len(Menu::Nothing);
         let height = status.second_window_height()?;
@@ -573,16 +576,16 @@ impl EventAction {
         Ok(())
     }
 
-    /// Open a new terminal in current directory.
+    /// Open a new terminal in current directory and current window.
     /// The shell is a fork of current process and will exit if the application
     /// is terminated first.
     pub fn shell(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let tab = status.current_tab();
-        let path = tab.directory_of_selected()?;
-        execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
+        status.internal_settings.disable_display();
+        open_shell_in_window()?;
+        status.internal_settings.enable_display();
         Ok(())
     }
 
@@ -606,6 +609,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.tui_applications.is_not_set() {
+                status.menu.tui_applications.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::TuiApplication))?;
         }
         Ok(())
@@ -620,6 +626,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.cli_applications.is_empty() {
+                status.menu.cli_applications.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::CliApplication))?;
         }
         Ok(())
@@ -650,6 +659,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.marks.is_empty() {
+                status.menu.marks.setup();
+            }
             status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::New)),
@@ -667,11 +679,46 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             if status.menu.marks.is_empty() {
+                status.menu.marks.setup();
+            }
+            if status.menu.marks.is_empty() {
                 return Ok(());
             }
             status.set_menu_mode(
                 status.index,
                 Menu::Navigate(Navigate::Marks(MarkAction::Jump)),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Enter TempMarks jump mode, allowing to jump to a marked file.
+    pub fn temp_marks_jump(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::TempMarks(MarkAction::Jump))
+        ) {
+            status.reset_menu_mode()?;
+        } else {
+            status.set_menu_mode(
+                status.index,
+                Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Enter TempMarks new mode, allowing to bind a char to a path.
+    pub fn temp_marks_new(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::TempMarks(MarkAction::New))
+        ) {
+            status.reset_menu_mode()?;
+        } else {
+            status.set_menu_mode(
+                status.index,
+                Menu::Navigate(Navigate::TempMarks(MarkAction::New)),
             )?;
         }
         Ok(())
@@ -687,8 +734,8 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            status.refresh_shortcuts();
             std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
-            status.menu.shortcut.update_git_root();
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
@@ -977,8 +1024,11 @@ impl EventAction {
             return Ok(());
         }
         match status.current_tab().menu_mode {
-            Menu::Navigate(Navigate::Marks(MarkAction::New)) => {
+            Menu::Navigate(Navigate::Marks(_)) => {
                 status.menu.marks.remove_selected()?;
+            }
+            Menu::Navigate(Navigate::TempMarks(_)) => {
+                status.menu.temp_marks.erase_current_mark();
             }
             Menu::InputSimple(_) | Menu::InputCompleted(_) => {
                 status.menu.input.delete_char_left();
@@ -1029,11 +1079,15 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
-                Display::Fuzzy => todo!(),
+                Display::Fuzzy => status.fuzzy_start()?,
             };
             status.update_second_pane_for_preview()
         } else {
-            status.menu.input.cursor_start();
+            match status.current_tab().menu_mode {
+                Menu::InputSimple(_) | Menu::InputCompleted(_) => status.menu.input.cursor_start(),
+                Menu::Navigate(navigate) => status.menu.set_index(0, navigate),
+                _ => (),
+            }
             Ok(())
         }
     }
@@ -1046,11 +1100,15 @@ impl EventAction {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf(),
-                Display::Fuzzy => todo!(),
+                Display::Fuzzy => status.fuzzy_end()?,
             };
             status.update_second_pane_for_preview()?;
         } else {
-            status.menu.input.cursor_end();
+            match status.current_tab().menu_mode {
+                Menu::InputSimple(_) | Menu::InputCompleted(_) => status.menu.input.cursor_end(),
+                Menu::Navigate(navigate) => status.menu.select_last(navigate),
+                _ => (),
+            }
         }
         Ok(())
     }
@@ -1338,6 +1396,9 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            if status.menu.compression.is_empty() {
+                status.menu.compression.setup();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Compress))?;
         }
         Ok(())
@@ -1351,7 +1412,11 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.menu.context.reset();
+            if status.menu.context.is_empty() {
+                status.menu.context.setup();
+            } else {
+                status.menu.context.reset();
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Context))?;
         }
         Ok(())
@@ -1396,16 +1461,6 @@ impl EventAction {
     /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
-    }
-
-    /// Execute Lazygit in a spawned terminal
-    pub fn lazygit(status: &mut Status) -> Result<()> {
-        open_tui_program(status, LAZYGIT)
-    }
-
-    /// Execute NCDU in a spawned terminal
-    pub fn ncdu(status: &mut Status) -> Result<()> {
-        open_tui_program(status, NCDU)
     }
 
     pub fn focus_go_left(status: &mut Status) -> Result<()> {

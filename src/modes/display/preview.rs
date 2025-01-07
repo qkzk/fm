@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::convert::Into;
-use std::fmt::Write as _;
+use std::fmt::{Display, Write as _};
 use std::fs::symlink_metadata;
 use std::io::{BufRead, BufReader, Cursor, Read};
 use std::iter::{Enumerate, Skip, Take};
@@ -9,11 +9,7 @@ use std::slice::Iter;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
-use ratatui::{
-    layout::Rect,
-    style::{Color, Modifier, Style},
-    Frame,
-};
+use ratatui::style::{Color, Modifier, Style};
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
@@ -21,12 +17,12 @@ use syntect::{
 };
 
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, UtfWidth, BSDTAR, FFMPEG,
-    FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
-    RSVG_CONVERT, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT,
+    SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
-use crate::config::{MENU_STYLES, MONOKAI_THEME};
-use crate::io::{execute_and_capture_output_without_check, Canvas};
+use crate::config::MONOKAI_THEME;
+use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
     Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
@@ -45,6 +41,7 @@ pub enum ExtensionKind {
     Notebook,
     Office,
     Pdf,
+    Sevenz,
     Svg,
     Torrent,
     Video,
@@ -58,15 +55,17 @@ impl ExtensionKind {
     #[rustfmt::skip]
     pub fn matcher(ext: &str) -> Self {
         match ext {
-            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z" | "gz" | "zst" | "deb" | "rpm"
+            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "gz" | "zst" | "deb" | "rpm"
             => Self::Archive,
+            "7z" | "7za"
+            => Self::Sevenz,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
             => Self::Image,
             "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac"
             => Self::Audio,
             "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
             => Self::Video,
-            "ttf" | "otf"
+            "ttf" | "otf" | "woff"
             => Self::Font,
             "svg" | "svgz"
             => Self::Svg,
@@ -98,6 +97,7 @@ impl ExtensionKind {
             Self::Office    => is_in_path(LIBREOFFICE),
             Self::Torrent   => is_in_path(TRANSMISSION_SHOW),
             Self::Image     => is_in_path(UEBERZUG),
+            Self::Sevenz    => is_in_path(SEVENZ),
             Self::Svg       => is_in_path(UEBERZUG) && is_in_path(RSVG_CONVERT),
             Self::Video     => is_in_path(UEBERZUG) && is_in_path(FFMPEG),
             Self::Font      => is_in_path(UEBERZUG) && is_in_path(FONTIMAGE),
@@ -133,6 +133,7 @@ impl std::fmt::Display for ExtensionKind {
             Self::Audio     => write!(f, "audio"),
             Self::Video     => write!(f, "video"),
             Self::Font      => write!(f, "font"),
+            Self::Sevenz    => write!(f, "7zip"),
             Self::Svg       => write!(f, "svg"),
             Self::Pdf       => write!(f, "pdf"),
             Self::Iso       => write!(f, "iso"),
@@ -170,6 +171,17 @@ impl Preview {
             Self::Binary(preview) => preview.len(),
             Self::Ueberzug(preview) => preview.len(),
             Self::Tree(tree) => tree.displayable().lines().len(),
+        }
+    }
+
+    pub fn kind_display(&self) -> &str {
+        match self {
+            Self::Empty => "empty",
+            Self::Syntaxed(_) => "an highlighted text",
+            Self::Text(text) => text.kind.for_first_line(),
+            Self::Binary(_) => "a binary file",
+            Self::Ueberzug(uber) => uber.kind.for_first_line(),
+            Self::Tree(_) => "a tree",
         }
     }
 
@@ -260,6 +272,9 @@ impl PreviewBuilder {
         match kind {
             ExtensionKind::Archive if kind.has_programs() => {
                 Ok(Preview::Text(Text::archive(&self.path, &extension)?))
+            }
+            ExtensionKind::Sevenz if kind.has_programs() => {
+                Ok(Preview::Text(Text::sevenz(&self.path)?))
             }
             ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(&self.path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
@@ -399,8 +414,36 @@ pub enum TextKind {
     Iso,
     Log,
     Mediacontent,
+    Sevenz,
     Socket,
     Torrent,
+}
+
+impl TextKind {
+    /// Used to display the kind of content in this file.
+    pub fn for_first_line(&self) -> &'static str {
+        match self {
+            Self::TEXTFILE => "a textfile",
+            Self::Archive => "an archive",
+            Self::Blockdevice => "a Blockdevice file",
+            Self::CommandStdout => "a command stdout",
+            Self::Epub => "an epub",
+            Self::FifoChardevice => "a Fifo or Chardevice file",
+            Self::Help => "Help",
+            Self::Iso => "Iso",
+            Self::Log => "Log",
+            Self::Mediacontent => "a media content",
+            Self::Sevenz => "a 7z archive",
+            Self::Socket => "a Socket file",
+            Self::Torrent => "a torrent",
+        }
+    }
+}
+
+impl Display for TextKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{kind_str}", kind_str = self.for_first_line())
+    }
 }
 
 /// Holds a preview of a text content.
@@ -501,6 +544,10 @@ impl Text {
             length: content.len(),
             content,
         })
+    }
+
+    fn sevenz(path: &Path) -> Result<Self> {
+        Self::from_command_output(TextKind::Sevenz, SEVENZ, &["l", &path_to_string(&path)])
     }
 
     fn iso(path: &Path) -> Result<Self> {
@@ -660,12 +707,10 @@ impl HLContent {
         let mut highlighter = HighlightLines::new(syntax_ref, monokai);
 
         for line in raw_content.iter() {
-            let mut col = 0;
             let mut v_line = vec![];
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
-                    v_line.push(SyntaxedString::from_syntect(col, token, *style));
-                    col += token.utf_width_u16();
+                    v_line.push(SyntaxedString::from_syntect(token, *style));
                 }
             }
             highlighted_content.push(v_line)
@@ -680,16 +725,15 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    col: u16,
-    content: String,
-    style: Style,
+    pub content: String,
+    pub style: Style,
 }
 
 impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: u16, content: &str, style: SyntectStyle) -> Self {
+    fn from_syntect(content: &str, style: SyntectStyle) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
         let style = Style {
@@ -699,11 +743,7 @@ impl SyntaxedString {
             sub_modifier: Modifier::empty(),
             underline_color: None,
         };
-        Self {
-            col,
-            content,
-            style,
-        }
+        Self { content, style }
     }
 
     fn font_style_to_effect(font_style: &FontStyle) -> Modifier {
@@ -720,11 +760,6 @@ impl SyntaxedString {
         }
 
         modifier
-    }
-
-    // /// Prints itself on a ratatui window.
-    pub fn print(&self, f: &mut Frame, rect: &Rect, row: u16, offset: u16) {
-        rect.print_with_style(f, row, self.col + offset + 2, &self.content, self.style);
     }
 }
 
@@ -785,6 +820,10 @@ impl BinaryContent {
     pub fn is_empty(&self) -> bool {
         self.length == 0
     }
+
+    pub fn number_width_hex(&self) -> usize {
+        format!("{:x}", self.len() * 16).len()
+    }
 }
 
 /// Holds a `Vec` of "bytes" (`u8`).
@@ -801,7 +840,7 @@ impl Line {
 
     /// Format a line of 16 bytes as BigEndian, separated by spaces.
     /// Every byte is zero filled if necessary.
-    fn format_hex(&self) -> String {
+    pub fn format_hex(&self) -> String {
         let mut hex_repr = String::new();
         for (i, byte) in self.line.iter().enumerate() {
             let _ = write!(hex_repr, "{byte:02x}");
@@ -825,52 +864,36 @@ impl Line {
 
     /// Format a line of 16 bytes as an ASCII string.
     /// Non ASCII printable bytes are replaced by dots.
-    fn format_as_ascii(&self) -> String {
+    pub fn format_as_ascii(&self) -> String {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
-    /// Print the line number as hexadecimal
-    pub fn print_line_number_hex(
-        &self,
-        f: &mut Frame,
-        rect: &Rect,
-        row: u16,
-        top: usize,
-        i: usize,
-        line_number_width_hex: usize,
-    ) {
-        rect.print_with_style(
-            f,
-            row,
-            0,
-            &Self::format_line_nr_hex(i + 1 + top, line_number_width_hex),
-            MENU_STYLES.get().expect("Menu colors should be set").first,
-        );
-    }
-    /// Print line of pair of bytes in hexadecimal, 16 bytes long.
-    /// It uses BigEndian notation, regardless of platform usage.
-    /// It tries to imitates the output of hexdump.
-    pub fn print_bytes(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
-        rect.print(f, row, offset as u16 + 2, &self.format_hex());
-    }
-
-    fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
-        format!("{line_nr:0width$x}")
-    }
-
-    /// Print a line as an ASCII string
-    /// Non ASCII printable bytes are replaced by dots.
-    pub fn print_ascii(&self, f: &mut Frame, rect: &Rect, row: u16, offset: usize) {
-        rect.print_with_style(
-            f,
-            row,
-            offset as u16 + 2,
-            &self.format_as_ascii(),
-            MENU_STYLES.get().expect("Menu colors should be set").second,
-        );
+    pub fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+        format!("{line_nr:0width$x}  ")
     }
 }
 
+/// Common trait for many preview methods which are just a bunch of lines with
+/// no specific formatting.
+/// Some previewing (thumbnail and syntaxed text) needs more details.
+pub trait TakeSkip<T> {
+    fn take_skip(&self, top: usize, bottom: usize, length: usize) -> Take<Skip<Iter<'_, T>>>;
+}
+
+macro_rules! impl_take_skip {
+    ($t:ident, $u:ident) => {
+        impl TakeSkip<$u> for $t {
+            fn take_skip(
+                &self,
+                top: usize,
+                bottom: usize,
+                length: usize,
+            ) -> Take<Skip<Iter<'_, $u>>> {
+                self.content.iter().skip(top).take(min(length, bottom + 1))
+            }
+        }
+    };
+}
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -909,3 +932,8 @@ impl_take_skip_enum!(HLContent, VecSyntaxedString);
 impl_take_skip_enum!(Text, String);
 impl_take_skip_enum!(BinaryContent, Line);
 impl_take_skip_enum!(TreeLines, TLine);
+
+impl_take_skip!(HLContent, VecSyntaxedString);
+impl_take_skip!(Text, String);
+impl_take_skip!(BinaryContent, Line);
+impl_take_skip!(TreeLines, TLine);

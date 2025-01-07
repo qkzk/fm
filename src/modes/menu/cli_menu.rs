@@ -6,6 +6,7 @@ use serde_yml::from_reader;
 use serde_yml::Mapping;
 
 use crate::app::Status;
+use crate::common::CLI_PATH;
 use crate::common::{is_in_path, tilde};
 use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
 use crate::modes::shell_command_parser;
@@ -81,16 +82,16 @@ impl Execute<(String, String)> for CliCommand {
 /// configuration.
 /// Only the yaml parsing should be implemented specifically since more
 /// information is required for some application.
-pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
-    fn new(config_file: &str) -> Self {
-        Self::default().update_from_config(config_file)
-    }
+pub trait TerminalApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
+    // fn new(config_file: &str) -> Self {
+    //     Self::default().update_from_config(config_file)
+    // }
 
-    fn update_from_config(mut self, config_file: &str) -> Self {
+    fn update_from_config(&mut self, config_file: &str) {
         let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(config_file).to_string()))
         else {
             log_info!("Couldn't open cli file at {config_file}. Using default");
-            return self;
+            return;
         };
         match from_reader(file) {
             Ok(yaml) => {
@@ -100,7 +101,6 @@ pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
                 log_info!("error parsing yaml file {config_file}. Error: {error:?}");
             }
         }
-        self
     }
 
     fn parse_yaml(&mut self, yaml: &Mapping);
@@ -125,18 +125,22 @@ pub struct CliApplications {
 }
 
 impl CliApplications {
-    pub fn update_desc_size(mut self) -> Self {
+    pub fn setup(&mut self) {
+        self.update_from_config(CLI_PATH);
+        self.update_desc_size();
+    }
+
+    pub fn update_desc_size(&mut self) {
         let desc_size = self
             .content
             .iter()
             .map(|cli| cli.desc.len())
             .fold(usize::MIN, |a, b| a.max(b));
         self.desc_size = desc_size;
-        self
     }
 }
 
-impl CLApplications<CliCommand, (String, String)> for CliApplications {
+impl TerminalApplications<CliCommand, (String, String)> for CliApplications {
     fn parse_yaml(&mut self, yaml: &Mapping) {
         for (key, mapping) in yaml {
             let Some(name) = key.as_str() else {

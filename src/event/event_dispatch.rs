@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use crossterm::event::{
     Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
@@ -6,10 +6,8 @@ use crossterm::event::{
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
-use crate::log_info;
 use crate::modes::{
-    Direction as FuzzyDirection, Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu,
-    Navigate,
+    Direction as FuzzyDirection, Display, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
 };
 
 /// Struct which dispatch the received events according to the state of the application.
@@ -50,10 +48,12 @@ impl EventDispatcher {
         match key {
             KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers: _,
+                modifiers,
                 kind: _,
                 state: _,
-            } if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
+            } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
+                self.menu_key_matcher(status, c)?
+            }
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
@@ -85,7 +85,11 @@ impl EventDispatcher {
 
     fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         if matches!(status.current_tab().display_mode, Display::Fuzzy) {
-            return self.fuzzy_matcher(status, key);
+            if let Ok(success) = self.fuzzy_matcher(status, key) {
+                if success {
+                    return Ok(());
+                }
+            }
         }
         let Some(action) = self.binds.get(&key) else {
             return Ok(());
@@ -93,9 +97,18 @@ impl EventDispatcher {
         action.matcher(status, &self.binds)
     }
 
-    fn fuzzy_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+    /// Returns `Ok(true)` iff the key event matched a fuzzy event.
+    /// If the event isn't a fuzzy event, it should be dealt elewhere.
+    fn fuzzy_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<bool> {
         let Some(fuzzy) = &mut status.fuzzy else {
-            bail!("Fuzzy should be set");
+            // fuzzy isn't set anymore and current_tab should be reset.
+            // This occurs when two fuzzy windows are opened and one is closed.
+            // The other tab hangs with nothing to do as long as the user doesn't press Escape
+            status
+                .current_tab_mut()
+                .set_display_mode(Display::Directory);
+            status.refresh_status()?;
+            return Ok(false);
         };
         match key {
             KeyEvent {
@@ -103,42 +116,41 @@ impl EventDispatcher {
                 modifiers,
                 kind: _,
                 state: _,
-            } if matches!(modifiers, KeyModifiers::NONE | KeyModifiers::SHIFT) => {
-                if matches!(modifiers, KeyModifiers::SHIFT) {
-                    c = c.to_ascii_uppercase()
-                };
+            } if modifier_is_shift_or_none(modifiers) => {
+                c = to_correct_case(c, modifiers);
                 fuzzy.input.insert(c);
                 fuzzy.update_input(true);
-                Ok(())
+                Ok(true)
             }
             key => self.fuzzy_key_matcher(status, key),
         }
     }
 
-    fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
-        log_info!("fuzzy_key_matcher: {key:?}");
-        if let KeyEvent {
+    #[rustfmt::skip]
+    fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<bool> {
+        let KeyEvent {
             code,
             modifiers: KeyModifiers::NONE,
             kind: _,
             state: _,
         } = key
-        {
-            match code {
-                KeyCode::Enter => status.fuzzy_select()?,
-                KeyCode::Esc => status.fuzzy_leave()?,
-                KeyCode::Backspace => status.fuzzy_backspace()?,
-                KeyCode::Delete => status.fuzzy_delete()?,
-                KeyCode::Left => status.fuzzy_left()?,
-                KeyCode::Right => status.fuzzy_right()?,
-                KeyCode::Up => status.fuzzy_navigate(FuzzyDirection::Up)?,
-                KeyCode::Down => status.fuzzy_navigate(FuzzyDirection::Down)?,
-                KeyCode::PageUp => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
-                KeyCode::PageDown => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
-                _ => (),
-            }
+        else {
+            return Ok(false);
+        };
+        match code {
+            KeyCode::Enter      => status.fuzzy_select()?,
+            KeyCode::Esc        => status.fuzzy_leave()?,
+            KeyCode::Backspace  => status.fuzzy_backspace()?,
+            KeyCode::Delete     => status.fuzzy_delete()?,
+            KeyCode::Left       => status.fuzzy_left()?,
+            KeyCode::Right      => status.fuzzy_right()?,
+            KeyCode::Up         => status.fuzzy_navigate(FuzzyDirection::Up)?,
+            KeyCode::Down       => status.fuzzy_navigate(FuzzyDirection::Down)?,
+            KeyCode::PageUp     => status.fuzzy_navigate(FuzzyDirection::PageUp)?,
+            KeyCode::PageDown   => status.fuzzy_navigate(FuzzyDirection::PageDown)?,
+            _ => return Ok(false),
         }
-        Ok(())
+        Ok(true)
     }
 
     fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
@@ -148,8 +160,7 @@ impl EventDispatcher {
             Menu::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Menu::InputSimple(InputSimple::Filter) => status.input_filter(c),
             Menu::InputSimple(_) => status.menu.input_insert(c),
-            Menu::InputCompleted(InputCompleted::Search) => status.complete_search(c),
-            Menu::InputCompleted(_) => status.complete_non_search(c),
+            Menu::InputCompleted(input_completed) => status.input_and_complete(input_completed, c),
             Menu::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Menu::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
@@ -171,6 +182,11 @@ impl EventDispatcher {
 
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
+
+            Navigate::TempMarks(MarkAction::Jump) if c.is_ascii_digit() => {
+                status.temp_marks_jump_char(c)
+            }
+            Navigate::TempMarks(MarkAction::New) if c.is_ascii_digit() => status.temp_marks_new(c),
 
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
@@ -198,5 +214,19 @@ impl EventDispatcher {
                 status.current_tab_mut().reset_display_mode_and_view()
             }
         }
+    }
+}
+
+/// True iff the keymodifier is either SHIFT or nothing (no modifier pressed).
+fn modifier_is_shift_or_none(modifiers: KeyModifiers) -> bool {
+    modifiers == KeyModifiers::NONE || modifiers == KeyModifiers::SHIFT
+}
+
+/// If the modifier is shift, upercase, otherwise lowercase
+fn to_correct_case(c: char, modifiers: KeyModifiers) -> char {
+    if matches!(modifiers, KeyModifiers::SHIFT) {
+        c.to_ascii_uppercase()
+    } else {
+        c
     }
 }

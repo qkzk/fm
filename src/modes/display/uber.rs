@@ -1,12 +1,13 @@
 use anyhow::{anyhow, bail, Context, Result};
 
 use std::ffi::OsStr;
+use std::fs::metadata;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
-    filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
-    RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
+    filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
+    PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, TMP_THUMBNAILS_DIR,
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
@@ -31,6 +32,18 @@ pub enum Kind {
 impl Kind {
     fn allow_multiples(&self) -> bool {
         matches!(self, Self::Pdf)
+    }
+
+    pub fn for_first_line(&self) -> &str {
+        match self {
+            Self::Font => "a font",
+            Self::Image => "an image",
+            Self::Office => "an office document",
+            Self::Pdf => "a pdf",
+            Self::Svg => "an svg image",
+            Self::Video => "a video",
+            Self::Unknown => "Unknown",
+        }
     }
 }
 
@@ -61,11 +74,21 @@ impl std::fmt::Display for Kind {
     }
 }
 
+pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
+    let Some(ext) = path.as_ref().extension() else {
+        return false;
+    };
+    matches!(
+        ext.to_string_lossy().as_ref(),
+        "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
+    )
+}
+
 /// Holds an instance of [`ueberzug::Ueberzug`] and a few information about the display.
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
 pub struct Ueber {
     since: Instant,
-    kind: Kind,
+    pub kind: Kind,
     pub identifier: String,
     images: Vec<PathBuf>,
     length: usize,
@@ -155,13 +178,14 @@ pub struct UeberBuilder {
 }
 
 impl UeberBuilder {
-    const VIDEO_THUMBNAILS: [&'static str; 5] = [
-        "/tmp/fm_thumbnail_1.jpg",
-        "/tmp/fm_thumbnail_2.jpg",
-        "/tmp/fm_thumbnail_3.jpg",
-        "/tmp/fm_thumbnail_4.jpg",
-        "/tmp/fm_thumbnail_5.jpg",
-    ];
+    pub fn video_thumbnails(hashed_path: &str) -> [String; 4] {
+        [
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_1.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_2.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_3.jpg"),
+            format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_4.jpg"),
+        ]
+    }
 
     pub fn new(source: &Path, kind: Kind) -> Self {
         let source = source.to_path_buf();
@@ -253,7 +277,8 @@ impl UeberBuilder {
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Thumbnail::create(&self.kind, path_str);
-        let images: Vec<PathBuf> = Self::VIDEO_THUMBNAILS
+        let hashed_path = hash_path(path_str);
+        let images: Vec<PathBuf> = Self::video_thumbnails(&hashed_path)
             .map(PathBuf::from)
             .into_iter()
             .filter(|p| p.exists())
@@ -295,7 +320,7 @@ impl UeberBuilder {
     }
 }
 
-struct Thumbnail;
+pub struct Thumbnail;
 
 impl Thumbnail {
     fn create(kind: &Kind, path_str: &str) {
@@ -319,27 +344,38 @@ impl Thumbnail {
     }
 
     fn create_svg(path_str: &str) -> Result<()> {
-        Thumbnail::execute(
+        Self::execute(
             RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
         )
     }
 
-    fn create_video(path_str: &str) -> Result<()> {
+    pub fn create_video(path_str: &str) -> Result<()> {
+        let rand = hash_path(path_str);
+        let images_paths = UeberBuilder::video_thumbnails(&rand);
+        if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
+            return Ok(());
+        }
+        for image in &images_paths {
+            let _ = std::fs::remove_file(image);
+        }
+        let ffmpeg_filename = format!("{TMP_THUMBNAILS_DIR}/{rand}_%d.jpg",);
+
         let ffmpeg_args = [
             "-i",
             path_str,
             "-an",
             "-sn",
             "-vf",
-            "fps=1/100,scale=480:-1",
+            "fps=1/100,scale=320:-1",
             "-threads",
             "2",
             "-frames:v",
-            "5",
-            &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
+            "4",
+            &ffmpeg_filename,
+            // &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
-        Thumbnail::execute(FFMPEG, &ffmpeg_args)
+        Self::execute(FFMPEG, &ffmpeg_args)
     }
 
     fn create_pdf(path_str: &str) -> Result<()> {
@@ -357,13 +393,27 @@ impl Thumbnail {
 
     fn execute(exe: &str, args: &[&str]) -> Result<()> {
         let output = execute_and_output_no_log(exe, args.to_owned())?;
-        // if !output.stderr.is_empty() {
         log_info!(
-            "make thumbnail output: {} {}",
-            String::from_utf8(output.stdout).unwrap_or_default(),
+            "make thumbnail error:  {}",
+            // String::from_utf8(output.stdout).unwrap_or_default(),
             String::from_utf8(output.stderr).unwrap_or_default()
         );
-        // }
         Ok(())
     }
+}
+
+const ONE_WEEK: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+
+fn is_older_than_a_week(path: &str) -> bool {
+    let Ok(metadata) = metadata(path) else {
+        return true;
+    };
+    let Ok(creation) = metadata.created() else {
+        return true;
+    };
+    let current_time = SystemTime::now();
+    let Ok(elapsed_since_creation) = current_time.duration_since(creation) else {
+        return true;
+    };
+    elapsed_since_creation > ONE_WEEK
 }

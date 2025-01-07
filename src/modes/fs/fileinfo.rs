@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fs::{symlink_metadata, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -12,7 +11,7 @@ use ratatui::style::Style;
 use crate::common::PERMISSIONS_STR;
 use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
-use crate::modes::{human_size, ToPath, Users, MAX_MODE};
+use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
 
 type Valid = bool;
 
@@ -128,7 +127,7 @@ impl std::fmt::Display for SizeColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Size(bytes) => write!(f, "   {hs}", hs = human_size(*bytes)),
-            Self::EntryCount(count) => write!(f, "   {hs}", hs = human_size(*count)),
+            Self::EntryCount(count) => write!(f, "{hs:>6} ", hs = count),
             Self::MajorMinor((major, minor)) => write!(f, "{major:>3},{minor:<3}"),
         }
     }
@@ -236,9 +235,27 @@ impl FileInfo {
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     #[inline]
-    pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+    pub fn format_metadata(
+        &self,
+        owner_col_width: usize,
+        group_col_width: usize,
+    ) -> Result<String> {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
         repr.push(' ');
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_icon(
+        &self,
+        owner_col_width: usize,
+        group_col_width: usize,
+    ) -> Result<String> {
+        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+        repr.push(' ');
+        repr.push_str(self.icon());
         repr.push_str(&self.filename);
         self.expand_symlink(&mut repr);
         Ok(repr)
@@ -279,8 +296,15 @@ impl FileInfo {
     }
 
     pub fn format_simple(&self) -> Result<String> {
-        let s: &str = self.filename.borrow();
-        Ok(s.to_string())
+        Ok(format!(" {name}", name = self.filename))
+    }
+
+    pub fn format_simple_icon(&self) -> Result<String> {
+        Ok(format!(
+            "{icon} {name}",
+            icon = self.icon(),
+            name = self.filename
+        ))
     }
 
     /// True iff the file is hidden (aka starts with a '.').
@@ -375,7 +399,7 @@ fn extract_permissions_string(metadata: &Metadata) -> Arc<str> {
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    Arc::from(format!("{s_o}{s_a}{s_g}").as_str())
+    Arc::from(format!("{s_o}{s_g}{s_a}").as_str())
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`

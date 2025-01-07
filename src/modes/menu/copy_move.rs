@@ -87,6 +87,7 @@ impl CopyMove {
         width: u16,
         height: u16,
     ) -> Result<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
+        let width = width.saturating_sub(4);
         let in_mem = InMemoryTerm::new(height, width);
         let pb = ProgressBar::with_draw_target(
             Some(100),
