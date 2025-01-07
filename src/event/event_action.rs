@@ -43,6 +43,7 @@ impl EventAction {
 
     /// Refresh the views if files were modified in current directory.
     pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
+        status.menu.flagged.remove_non_existant();
         status.tabs[0].refresh_if_needed()?;
         status.tabs[1].refresh_if_needed()
     }

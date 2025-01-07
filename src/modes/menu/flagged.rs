@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    cmp::min,
+    path::{Path, PathBuf},
+};
 
 use crate::common::tilde;
 use crate::io::{DrawMenu, Extension};
@@ -125,6 +128,22 @@ impl Flagged {
         self.content()
             .iter()
             .all(|path| self.should_this_file_be_opened_in_neovim(path))
+    }
+
+    /// Remove all files from flagged which doesn't exists.
+    pub fn remove_non_existant(&mut self) {
+        let non_existant_indices: Vec<usize> = self
+            .content
+            .iter()
+            .enumerate()
+            .filter(|(_index, path)| !path.exists())
+            .map(|(index, _path)| index)
+            .rev()
+            .collect();
+        for index in non_existant_indices.iter() {
+            self.content.remove(*index);
+        }
+        self.index = min(self.index, self.len().saturating_sub(1))
     }
 }
 

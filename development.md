@@ -1565,6 +1565,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] add %t to custom commands lines / help 
   - [x] match agains't the first arg, if %term or something, use "open in same window" 
 - [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
+- [x] FIX: flagged files which doesn't exists anymore (deleted/moved somewhere else) may crash flagged menu.
 
 ## TODO
 

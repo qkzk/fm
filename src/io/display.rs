@@ -1220,7 +1220,9 @@ impl<'a> Menu<'a> {
 
     fn flagged_selected(&self, f: &mut Frame, rect: &Rect) {
         if let Some(selected) = self.status.menu.flagged.selected() {
-            let fileinfo = FileInfo::new(selected, &self.tab.users).unwrap();
+            let Ok(fileinfo) = FileInfo::new(selected, &self.tab.users) else {
+                return;
+            };
             let p_rect = rect.offseted(2, 2);
             Span::styled(
                 fileinfo.format_metadata(6, 6).unwrap_or_default(),
