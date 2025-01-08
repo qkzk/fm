@@ -1581,6 +1581,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
 - [x] visual flagging like ranger V
+- [ ] BUG: open config (Alt + c) does nothing. Reuse open in window and move/delete open single. The match against 'use term' should be in the opener
 - [ ] allow letter binds in every navigate + selection menu like tui & cli applications
 
 ### Other ideas
