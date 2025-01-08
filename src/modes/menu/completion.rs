@@ -300,6 +300,6 @@ fn create_parent(vec_steps: Vec<&str>) -> String {
 }
 
 impl_selectable!(Completion);
-impl_content!(String, Completion);
+impl_content!(Completion, String);
 
 impl DrawMenu<String> for Completion {}

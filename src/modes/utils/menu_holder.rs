@@ -17,6 +17,27 @@ use crate::modes::{
     Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
 };
 
+macro_rules! impl_navigate_from_char {
+    ($name:ident, $field:ident) => {
+        #[doc = concat!(
+                                                 "Navigates to the index in the `",
+                                                 stringify!($field),
+                                                 "` field based on the given character."
+                                                                                        )]
+        pub fn $name(&mut self, c: char) -> bool {
+            let Some(index) = index_from_a(c) else {
+                return false;
+            };
+            if index < self.$field.len() {
+                self.$field.set_index(index);
+                self.window.scroll_to(index);
+                return true;
+            }
+            false
+        }
+    };
+}
+
 /// Holds almost every menu except for the history, which is tab specific.
 /// Only one instance is created and hold by status.
 /// It acts as an interface for basic methods (navigation, length, completion) etc.
@@ -239,53 +260,6 @@ impl MenuHolder {
     ) {
         self.shortcut.refresh(mount_points, left_path, right_path)
     }
-    // pub fn shortcut_from_char(&mut self, c: char) -> bool {
-    //     let Some(index) = index_from_a(c) else {
-    //         return false;
-    //     };
-    //     if index < self.shortcut.len() {
-    //         self.shortcut.set_index(index);
-    //         self.window.scroll_to(index);
-    //         return true;
-    //     }
-    //     false
-    // }
-    //
-    // pub fn context_from_char(&mut self, c: char) -> bool {
-    //     let Some(index) = index_from_a(c) else {
-    //         return false;
-    //     };
-    //     if index < self.context.len() {
-    //         self.context.set_index(index);
-    //         self.window.scroll_to(index);
-    //         return true;
-    //     }
-    //     false
-    // }
-    //
-    // pub fn tui_applications_from_char(&mut self, c: char) -> bool {
-    //     let Some(index) = index_from_a(c) else {
-    //         return false;
-    //     };
-    //     if index < self.tui_applications.len() {
-    //         self.tui_applications.set_index(index);
-    //         self.window.scroll_to(index);
-    //         return true;
-    //     }
-    //     false
-    // }
-    //
-    // pub fn cli_applications_from_char(&mut self, c: char) -> bool {
-    //     let Some(index) = index_from_a(c) else {
-    //         return false;
-    //     };
-    //     if index < self.cli_applications.len() {
-    //         self.cli_applications.set_index(index);
-    //         self.window.scroll_to(index);
-    //         return true;
-    //     }
-    //     false
-    // }
 
     pub fn completion_reset(&mut self) {
         self.completion.reset();
@@ -447,27 +421,10 @@ impl MenuHolder {
         self.input_complete(tab)?;
         Ok(())
     }
-}
 
-macro_rules! impl_navigate_from_char {
-    ($name:ident, $field:ident) => {
-        pub fn $name(&mut self, c: char) -> bool {
-            let Some(index) = index_from_a(c) else {
-                return false;
-            };
-            if index < self.$field.len() {
-                self.$field.set_index(index);
-                self.window.scroll_to(index);
-                return true;
-            }
-            false
-        }
-    };
-}
-
-impl MenuHolder {
     impl_navigate_from_char!(shortcut_from_char, shortcut);
     impl_navigate_from_char!(context_from_char, context);
     impl_navigate_from_char!(tui_applications_from_char, tui_applications);
     impl_navigate_from_char!(cli_applications_from_char, cli_applications);
+    impl_navigate_from_char!(compression_method_from_char, compression);
 }

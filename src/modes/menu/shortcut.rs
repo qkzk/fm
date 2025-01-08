@@ -1,26 +1,14 @@
 use std::borrow::Borrow;
-use std::cmp::min;
-use std::iter::zip;
+// use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use ratatui::{
-    layout::{Offset, Rect},
-    prelude::Widget,
-    style::Color,
-    text::Line,
-    widgets::Paragraph,
-    Frame,
-};
-
-use crate::colored_skip_take;
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
-use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, git_root, CowStr, DrawMenu};
-use crate::modes::ContentWindow;
-use crate::{impl_content, impl_selectable, log_info};
+// use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::io::git_root;
+use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -165,31 +153,5 @@ impl Shortcut {
 }
 
 impl_selectable!(Shortcut);
-impl_content!(PathBuf, Shortcut);
-
-impl DrawMenu<PathBuf> for Shortcut {
-    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
-    where
-        Self: Content<PathBuf>,
-    {
-        let mut p_rect = rect.offset(Offset { x: 2, y: 3 }).intersection(*rect);
-        p_rect.height = p_rect.height.saturating_sub(2);
-        let content = self.content();
-        let lines: Vec<_> = zip(
-            ('a'..='z').cycle().skip(window.top),
-            colored_skip_take!(content, window),
-        )
-        .filter(|(_, (index, _, _))| {
-            (*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16 + 2
-                <= rect.height
-        })
-        .map(|(letter, (index, path, style))| {
-            Line::styled(
-                format!("{letter} {path}", path = path.cow_str()),
-                self.style(index, &style),
-            )
-        })
-        .collect();
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
-    }
-}
+impl_content!(Shortcut, PathBuf);
+impl_draw_menu_with_char!(Shortcut, PathBuf);

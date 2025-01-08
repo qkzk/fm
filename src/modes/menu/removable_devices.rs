@@ -447,7 +447,7 @@ impl UsbDevicesBuilder {
 }
 
 impl_selectable!(RemovableDevices);
-impl_content!(Removable, RemovableDevices);
+impl_content!(RemovableDevices, Removable);
 
 impl CowStr for Removable {
     fn cow_str(&self) -> Cow<str> {

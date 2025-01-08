@@ -317,7 +317,7 @@ impl CryptoDeviceOpener {
 }
 
 impl_selectable!(CryptoDeviceOpener);
-impl_content!(CryptoDevice, CryptoDeviceOpener);
+impl_content!(CryptoDeviceOpener, CryptoDevice);
 
 impl CowStr for CryptoDevice {
     fn cow_str(&self) -> Cow<str> {

@@ -169,6 +169,6 @@ impl Marks {
 
 type Pair = (char, PathBuf);
 impl_selectable!(Marks);
-impl_content!(Pair, Marks);
+impl_content!(Marks, Pair);
 
 impl DrawMenu<Pair> for Marks {}

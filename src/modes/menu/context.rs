@@ -1,7 +1,7 @@
 use crate::event::ActionMap;
 use crate::io::Opener;
 use crate::modes::{extract_datetime, ExtensionKind, FileInfo, FileKind};
-use crate::{impl_content, impl_selectable};
+use crate::{impl_content, impl_draw_menu_with_char, impl_selectable};
 
 const CONTEXT: [(&str, ActionMap); 10] = [
     ("Open", ActionMap::OpenFile),
@@ -43,7 +43,8 @@ impl ContextMenu {
 type StaticStr = &'static str;
 
 impl_selectable!(ContextMenu);
-impl_content!(StaticStr, ContextMenu);
+impl_content!(ContextMenu, StaticStr);
+impl_draw_menu_with_char!(ContextMenu, StaticStr);
 
 /// Used to generate more informations about a file in the context menu.
 pub struct MoreInfos<'a> {

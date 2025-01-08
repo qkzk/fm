@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::min, iter::zip};
+use std::borrow::Cow;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -8,19 +8,10 @@ use serde_yml::Mapping;
 use crate::app::Status;
 use crate::common::CLI_PATH;
 use crate::common::{is_in_path, tilde};
-use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, execute_with_ansi_colors, CowStr, DrawMenu};
+use crate::impl_draw_menu_with_char;
+use crate::io::execute_with_ansi_colors;
 use crate::modes::shell_command_parser;
-use crate::modes::ContentWindow;
-use crate::{colored_skip_take, impl_content, impl_selectable, log_info, log_line};
-use ratatui::{
-    layout::{Offset, Rect},
-    prelude::Widget,
-    style::Color,
-    text::Line,
-    widgets::Paragraph,
-    Frame,
-};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Simple method used to execute a command.
 /// All static command should implemtant it (cli_menu, tui_menu).
@@ -170,9 +161,6 @@ impl TerminalApplications<CliCommand, (String, String)> for CliApplications {
     }
 }
 
-impl_selectable!(CliApplications);
-impl_content!(CliCommand, CliApplications);
-
 impl CowStr for CliCommand {
     fn cow_str(&self) -> Cow<str> {
         let desc_size = 20_usize.saturating_sub(self.desc.len());
@@ -186,29 +174,6 @@ impl CowStr for CliCommand {
     }
 }
 
-impl DrawMenu<CliCommand> for CliApplications {
-    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
-    where
-        Self: Content<CliCommand>,
-    {
-        let mut p_rect = rect.offset(Offset { x: 2, y: 3 }).intersection(*rect);
-        p_rect.height = p_rect.height.saturating_sub(2);
-        let content = self.content();
-        let lines: Vec<_> = zip(
-            ('a'..='z').cycle().skip(window.top),
-            colored_skip_take!(content, window),
-        )
-        .filter(|(_, (index, _, _))| {
-            (*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16 + 2
-                <= rect.height
-        })
-        .map(|(letter, (index, path, style))| {
-            Line::styled(
-                format!("{letter} {path}", path = path.cow_str()),
-                self.style(index, &style),
-            )
-        })
-        .collect();
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
-    }
-}
+impl_selectable!(CliApplications);
+impl_content!(CliApplications, CliCommand);
+impl_draw_menu_with_char!(CliApplications, CliCommand);

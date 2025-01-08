@@ -191,15 +191,15 @@ impl EventDispatcher {
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
-
+            Navigate::Compress if status.menu.compression_method_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
             Navigate::Context if status.menu.context_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
-
             Navigate::CliApplication if status.menu.cli_applications_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
-
             Navigate::TuiApplication if status.menu.tui_applications_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }

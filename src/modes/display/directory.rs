@@ -198,7 +198,7 @@ impl Directory {
 
 impl_index_to_index!(FileInfo, Directory);
 impl_selectable!(Directory);
-impl_content!(FileInfo, Directory);
+impl_content!(Directory, FileInfo);
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
     files

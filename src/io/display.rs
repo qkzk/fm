@@ -1,5 +1,4 @@
 use std::{
-    cmp::min,
     io::{self, Stdout, Write},
     rc::Rc,
 };
@@ -25,13 +24,13 @@ use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
 use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
+use crate::log_info;
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
     ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine,
     Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
-use crate::{colored_skip_take, log_info};
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -1179,21 +1178,10 @@ impl<'a> Menu<'a> {
     }
 
     fn context_selectable(&self, f: &mut Frame, rect: &Rect) {
-        let selectable = &self.status.menu.context;
-
-        let content = selectable.content();
-        let window = &self.status.menu.window;
-        let p_rect = rect.offseted(2, 1 + ContentWindow::WINDOW_MARGIN_TOP_U16);
-        let lines: Vec<_> = std::iter::zip(
-            ('a'..='z').cycle().skip(self.status.menu.window.top),
-            colored_skip_take!(content, window),
-        )
-        .map(|(letter, (index, desc, style))| {
-            let style = selectable.style(index, &style);
-            Line::from(vec![Span::styled(format!("{letter} {desc}"), style)])
-        })
-        .collect();
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        self.status
+            .menu
+            .context
+            .draw_menu(f, rect, &self.status.menu.window);
     }
 
     fn context_more_infos(&self, f: &mut Frame, rect: &Rect) {

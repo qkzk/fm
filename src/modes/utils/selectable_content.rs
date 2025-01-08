@@ -157,7 +157,7 @@ macro_rules! impl_index_to_index {
 /// `selected` returns an optional reference to the value.
 #[macro_export]
 macro_rules! impl_content {
-    ($content_type:ident, $struct:ident) => {
+    ($struct:ident, $content_type:ident) => {
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.
