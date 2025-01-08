@@ -264,6 +264,30 @@ impl MenuHolder {
         false
     }
 
+    pub fn tui_applications_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.tui_applications.len() {
+            self.tui_applications.set_index(index);
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
+    }
+
+    pub fn cli_applications_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.cli_applications.len() {
+            self.cli_applications.set_index(index);
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
+    }
+
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }

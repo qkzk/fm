@@ -196,6 +196,14 @@ impl EventDispatcher {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
 
+            Navigate::CliApplication if status.menu.cli_applications_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
+
+            Navigate::TuiApplication if status.menu.tui_applications_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
+
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
             Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
             Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
