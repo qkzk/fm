@@ -1574,6 +1574,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - Removed "terminal" & "terminal flags" from configuration. Shell programs are opened in the same window and doesn't require new terminal.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
+- More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
 
 #### Changelog
 
@@ -1583,6 +1584,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] visual flagging like ranger V
 - [x] allow letter binds in every navigate + selection menu like tui & cli applications
 - [x] FIX: open config (Alt + c) does nothing
+- [x] swap keybinds: Alt + c open compression menu and Shift + c opens the configuration file.
 
 ### Other ideas
 

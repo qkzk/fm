@@ -260,7 +260,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char(':'),    KeyModifiers::NONE), ActionMap::Action),
             (KeyEvent::new(KeyCode::Char('6'),    KeyModifiers::NONE), ActionMap::History),
 
-            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::Compress),
+            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::OpenConfig),
             (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::SHIFT), ActionMap::ToggleDisplayFull),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::SHIFT), ActionMap::End),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::SHIFT), ActionMap::DisplayFlagged),
@@ -303,7 +303,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('+'),    KeyModifiers::NONE), ActionMap::Chmod),
 
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
-            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::OpenConfig),
+            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::Compress),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),
             (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::ALT), ActionMap::EncryptedDrive),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::ALT), ActionMap::Filter),
