@@ -143,7 +143,8 @@ Different modes for the bottom window
             TrashMoveFile,
             Compress,
             FlaggedToClipboard,
-            FlaggedFromClipboard
+            FlaggedFromClipboard,
+            ToggleVisual,
         ),
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
         tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),

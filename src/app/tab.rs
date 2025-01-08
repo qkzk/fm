@@ -95,7 +95,10 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    /// Saved path before entering "CD" mode.
+    /// Used if the cd is canceled
     pub origin_path: Option<std::path::PathBuf>,
+    pub visual: bool,
 }
 
 impl Tab {
@@ -129,6 +132,7 @@ impl Tab {
         let index = directory.select_file(path);
         let tree = Tree::default();
         let origin_path = None;
+        let visual = false;
 
         window.scroll_to(index);
         Ok(Self {
@@ -144,6 +148,7 @@ impl Tab {
             tree,
             settings,
             origin_path,
+            visual,
         })
     }
 
@@ -258,6 +263,7 @@ impl Tab {
 
     /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.reset_visual();
         self.search.reset_paths();
         self.reset_preview();
         self.display_mode = new_display_mode
@@ -826,5 +832,17 @@ impl Tab {
 
     pub fn save_origin_path(&mut self) {
         self.origin_path = Some(self.current_path().to_owned());
+    }
+
+    pub fn toggle_visual(&mut self) {
+        if matches!(self.display_mode, Display::Directory | Display::Tree) {
+            self.visual = !self.visual;
+        } else {
+            self.reset_visual();
+        }
+    }
+
+    pub fn reset_visual(&mut self) {
+        self.visual = false
     }
 }

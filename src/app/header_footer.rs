@@ -392,7 +392,11 @@ mod inner {
         }
 
         fn string_used_space(tab: &Tab) -> String {
-            format!(" {} ", tab.directory.used_space())
+            if tab.visual {
+                "VISUAL".to_owned()
+            } else {
+                format!(" {} ", tab.directory.used_space())
+            }
         }
 
         fn string_disk_space(disk_space: &str) -> String {

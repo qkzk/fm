@@ -452,6 +452,7 @@ impl Status {
         } else {
             self.current_tab_mut().refresh_params();
         }
+        self.current_tab_mut().reset_visual();
         Ok(())
     }
 
@@ -465,14 +466,6 @@ impl Status {
     pub fn leave_preview(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.current_tab_mut().refresh_and_reselect_file()
-    }
-
-    // TODO useful ?
-    pub fn reset_menu_mode_no_refresh(&mut self) -> Result<()> {
-        self.menu.reset();
-        self.set_menu_mode_no_refresh(self.index, Menu::Nothing)?;
-        self.set_height_of_unfocused_menu()?;
-        Ok(())
     }
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
@@ -736,6 +729,7 @@ impl Status {
     /// Set an edit mode for the tab at `index`. Refresh the view.
     pub fn set_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         self.set_menu_mode_no_refresh(index, menu_mode)?;
+        self.current_tab_mut().reset_visual();
         self.refresh_status()
     }
 
@@ -1999,6 +1993,15 @@ impl Status {
         self.menu.cloud.move_to_parent()?;
         self.cloud_set_content_window_len()?;
         Ok(())
+    }
+
+    pub fn toggle_flag_visual(&mut self) {
+        if self.current_tab().visual {
+            let Ok(file) = self.current_tab().current_file() else {
+                return;
+            };
+            self.menu.flagged.toggle(&file.path)
+        }
     }
 }
 

@@ -59,6 +59,7 @@ impl EventAction {
             status.leave_preview()?;
         }
         if matches!(status.current_tab().menu_mode, Menu::Nothing) {
+            status.current_tab_mut().reset_visual();
             return Ok(());
         };
         status.leave_menu_mode()?;
@@ -889,9 +890,15 @@ impl EventAction {
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Directory => tab.normal_up_one_row(),
+            Display::Directory => {
+                tab.normal_up_one_row();
+                status.toggle_flag_visual();
+            }
             Display::Preview => tab.preview_page_up(),
-            Display::Tree => tab.tree_select_prev(),
+            Display::Tree => {
+                tab.tree_select_prev();
+                status.toggle_flag_visual();
+            }
             Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Up)?,
         }
         Ok(())
@@ -900,9 +907,15 @@ impl EventAction {
     fn move_display_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Directory => tab.normal_down_one_row(),
+            Display::Directory => {
+                tab.normal_down_one_row();
+                status.toggle_flag_visual();
+            }
             Display::Preview => tab.preview_page_down(),
-            Display::Tree => tab.tree_select_next(),
+            Display::Tree => {
+                tab.tree_select_next();
+                status.toggle_flag_visual()
+            }
             Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Down)?,
         }
         Ok(())
@@ -1560,5 +1573,12 @@ impl EventAction {
     pub fn check_preview_fuzzy_tick(status: &mut Status) -> Result<()> {
         status.fuzzy_tick();
         status.check_preview()
+    }
+
+    pub fn visual(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().toggle_visual();
+        status.toggle_flag_visual();
+
+        Ok(())
     }
 }

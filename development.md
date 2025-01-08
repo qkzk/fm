@@ -1572,11 +1572,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary 
 
+- Removed "terminal" & "terminal flags" from configuration. Shell programs are opened in the same window and doesn't require new terminal.
+- Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
+
 #### Changelog
 
 ## TODO
 
 - [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
+- [x] visual flagging like ranger V
 - [ ] allow letter binds in every navigate + selection menu like tui & cli applications
 
 ### Other ideas
@@ -1590,7 +1594,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: resize change dual / preview
   - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
 - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-- [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
 - [ ] store 4 windows in display to modify instead of recreating
 - [ ] eza / ranger colors for normal files
 - [ ] use readelf for ELF file

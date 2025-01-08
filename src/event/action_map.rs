@@ -105,6 +105,7 @@ pub enum ActionMap {
     TreeFold,
     TreeFoldAll,
     TreeUnFoldAll,
+    ToggleVisual,
     Custom(String),
 }
 
@@ -205,6 +206,7 @@ impl ActionMap {
             Self::TreeFoldAll => EventAction::tree_fold_all(status),
             Self::TreeUnFoldAll => EventAction::tree_unfold_all(status),
             Self::TuiMenu => EventAction::tui_menu(status),
+            Self::ToggleVisual => EventAction::visual(status),
             Self::Custom(string) => EventAction::custom(status, string),
 
             Self::Nothing => Ok(()),
@@ -319,6 +321,7 @@ impl ActionMap {
             Self::TreeFoldAll => "Fold every node",
             Self::TreeUnFoldAll => "Unfold every node",
             Self::TuiMenu => "TUI APPS",
+            Self::ToggleVisual => "Visual selection",
         }
     }
 
