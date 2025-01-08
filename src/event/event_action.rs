@@ -1390,11 +1390,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        match status
-            .internal_settings
-            .opener
-            .open_single(&path::PathBuf::from(tilde(CONFIG_PATH).to_string()))
-        {
+        match status.open_single_file(&path::PathBuf::from(tilde(CONFIG_PATH).to_string())) {
             Ok(_) => log_line!("Opened the config file {CONFIG_PATH}"),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
