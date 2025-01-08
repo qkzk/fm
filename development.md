@@ -1585,6 +1585,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow letter binds in every navigate + selection menu like tui & cli applications
 - [x] FIX: open config (Alt + c) does nothing
 - [x] swap keybinds: Alt + c open compression menu and Shift + c opens the configuration file.
+- [ ] Remote mount QOL
+  - [ ] Remote mount should allow to mount somewhere else
+    `username host:port remote_mount_point dest` ?
+  - [ ] Remote mount should remember mount points and allow to umount them
+  - [ ] Remote mount should show the command that will be generated
+- [ ] store 4 windows in display to modify instead of recreating
 
 ### Other ideas
 
@@ -1604,11 +1610,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
-- [ ] Remote mount QOL
-  - [ ] Remote mount should allow to mount somewhere else
-    `username host:port remote_mount_point dest` ?
-  - [ ] Remote mount should remember mount points and allow to umount them
-  - [ ] Remote mount should show the command that will be generated
 - [ ] simplify status.confirm action & must leave
 - [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
