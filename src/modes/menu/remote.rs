@@ -16,7 +16,7 @@ pub struct Remote {
 }
 
 impl Remote {
-    /// Converts an input like "username hostname ~ 33" into
+    /// Converts an input like "username hostname:33 /remote/path /local/path" into
     /// a separated list of arguments for sshfs.
     /// Returns `None` if the input string can't be parsed correctly.
     /// Returns also `None` if "sshfs" isn't in the current `$PATH`.
@@ -68,6 +68,8 @@ impl Remote {
         })
     }
 
+    /// Returns a demonstration command with current path & args to be executed.
+    /// The command is only used for display and is never executed.
     pub fn command(&self) -> Command {
         let first_arg = format!(
             "{username}@{hostname}:{remote_path}",
