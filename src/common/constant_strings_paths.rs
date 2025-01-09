@@ -96,11 +96,12 @@ pub const SORT_LINES: [&str; 9] = [
     "",
     "r:  reverse current sort",
 ];
-pub const REMOTE_LINES: [&str; 4] = [
+pub const REMOTE_LINES: [&str; 5] = [
     "Mount a directory with sshfs",
-    "Type the arguments as below, separated by a space. The port is optional",
+    "Type the arguments as below, separated by a space.",
+    "Port and local path are optional",
     "",
-    "username hostname remote_path port",
+    "username hostname:port remote_path local_path",
 ];
 pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window

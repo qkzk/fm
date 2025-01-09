@@ -207,8 +207,8 @@ impl MenuHolder {
     /// If the user doesn't provide 3 arguments,
     pub fn mount_remote(&mut self, current_path: &str) {
         let input = self.input.string();
-        if let Some(remote_builder) = Remote::from_input(input) {
-            remote_builder.mount(current_path);
+        if let Some(remote_builder) = Remote::from_input(input, current_path) {
+            remote_builder.mount();
         }
         self.input.reset();
     }
