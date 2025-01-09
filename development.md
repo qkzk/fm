@@ -1587,8 +1587,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] swap keybinds: Alt + c open compression menu and Shift + c opens the configuration file.
 - [ ] Remote mount QOL
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
+  - [x] Remote mount shows the command that will be generated
   - [ ] Remote mount should remember mount points and allow to umount them
-  - [ ] Remote mount should show the command that will be generated
 - [ ] store 4 windows in display to modify instead of recreating
 
 ### Other ideas

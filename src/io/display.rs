@@ -28,8 +28,8 @@ use crate::log_info;
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
     ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
-    LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, SecondLine,
-    Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+    LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, Remote,
+    SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
 
 pub trait Offseted {
@@ -1026,13 +1026,17 @@ impl<'a> Menu<'a> {
     }
 
     fn menu_line(&self, f: &mut Frame, rect: &Rect) {
-        let menu = MENU_STYLES.get().expect("Menu colors should be set").second;
+        let menu_style = MENU_STYLES.get().expect("Menu colors should be set");
+        let menu = menu_style.second;
         match self.tab.menu_mode {
             MenuMode::InputSimple(InputSimple::Chmod) => {
-                let first = MENU_STYLES.get().expect("Menu colors should be set").first;
+                let first = menu_style.first;
                 self.menu_line_chmod(f, rect, first, menu);
             }
-            // edit => rect.print_with_style(f, 1, 2, edit.second_line(), menu),
+            MenuMode::InputSimple(InputSimple::Remote) => {
+                let palette_3 = menu_style.palette_3;
+                self.menu_line_remote(f, rect, palette_3);
+            }
             edit => {
                 let rect = rect.offseted(2, 1);
                 Span::styled(edit.second_line(), menu).render(rect, f.buffer_mut());
@@ -1051,6 +1055,17 @@ impl<'a> Menu<'a> {
             .collect();
         let p_rect = rect.offseted(11, 1);
         Line::from(spans).render(p_rect, f.buffer_mut());
+    }
+
+    fn menu_line_remote(&self, f: &mut Frame, rect: &Rect, first: Style) {
+        let input = self.status.menu.input.string();
+        let current_path = path_to_string(&self.tab.current_path());
+
+        if let Some(remote) = Remote::from_input(input, &current_path) {
+            let command = format!("{command:?}", command = remote.command());
+            let p_rect = rect.offseted(4, 8);
+            Line::styled(command, first).render(p_rect, f.buffer_mut());
+        };
     }
 
     fn content_per_mode(&self, f: &mut Frame, rect: &Rect, mode: MenuMode) {

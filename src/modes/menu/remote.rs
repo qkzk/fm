@@ -1,16 +1,18 @@
+use std::process::Command;
+
 use crate::common::{is_in_path, SSHFS_EXECUTABLE};
-use crate::io::execute_and_capture_output_with_path;
+use crate::io::{command_with_path, execute_and_capture_output_with_path};
 use crate::{log_info, log_line};
 
 /// Used to remember the setting of this remote.
 /// it's used to mount the remote in the current directory using sshfs.
 pub struct Remote {
-    username: String,
-    hostname: String,
-    remote_path: String,
-    local_path: String,
-    current_path: String,
-    port: String,
+    pub username: String,
+    pub hostname: String,
+    pub remote_path: String,
+    pub local_path: String,
+    pub current_path: String,
+    pub port: String,
 }
 
 impl Remote {
@@ -64,6 +66,20 @@ impl Remote {
             local_path: local_path.to_owned(),
             port: port.to_owned(),
         })
+    }
+
+    pub fn command(&self) -> Command {
+        let first_arg = format!(
+            "{username}@{hostname}:{remote_path}",
+            username = self.username,
+            hostname = self.hostname,
+            remote_path = self.remote_path
+        );
+        command_with_path(
+            SSHFS_EXECUTABLE,
+            &self.current_path,
+            &[&first_arg, &self.local_path, "-p", &self.port],
+        )
     }
 
     /// Run sshfs with typed parameters to mount a remote directory in current directory.

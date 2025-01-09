@@ -88,6 +88,24 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     }
 }
 
+/// Creates a command without executing it.
+/// Arguments are pased to the command and a current dir is set.
+/// It's used to display a command before execution.
+pub fn command_with_path<S: AsRef<std::ffi::OsStr> + fmt::Debug, P: AsRef<Path>>(
+    exe: S,
+    path: P,
+    args: &[&str],
+) -> Command {
+    let mut command = Command::new(exe);
+    command
+        .args(args)
+        .current_dir(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    command
+}
+
 /// Execute a command with options in a fork.
 /// Wait for termination and return either :
 /// `Ok(stdout)` if the status code is 0
