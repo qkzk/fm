@@ -217,6 +217,8 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Edit a temporary mark or cd to it
     TempMarks(MarkAction),
+    /// See mount points, mount, unmount partions
+    Mount,
     /// Pick a compression method
     Compress,
     /// Shell menu applications. Start a new shell with this application.
@@ -245,6 +247,7 @@ impl fmt::Display for Navigate {
                 write!(f, "Start a new shell running a command:")
             }
             Self::Compress => write!(f, "Compress :"),
+            Self::Mount => write!(f, "Mount :"),
             Self::EncryptedDrive => {
                 write!(f, "Encrypted devices :")
             }
@@ -282,6 +285,7 @@ impl Navigate {
                 | Self::EncryptedDrive
                 | Self::RemovableDevices
                 | Self::Marks(_)
+                | Self::Mount
         )
     }
 }

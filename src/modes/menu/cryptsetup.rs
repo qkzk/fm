@@ -24,8 +24,16 @@ pub enum BlockDeviceAction {
 /// lsblk -l -o FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,PARTLABEL
 /// ```
 /// as a String.
-fn get_devices() -> Result<String> {
+pub fn get_devices() -> Result<String> {
     let output = execute_and_output(LSBLK, ["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])?;
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+pub fn get_devices_json() -> Result<String> {
+    let output = execute_and_output(
+        LSBLK,
+        ["--json", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,NAME"],
+    )?;
     Ok(String::from_utf8(output.stdout)?)
 }
 

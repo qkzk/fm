@@ -272,6 +272,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('m'),    KeyModifiers::SHIFT), ActionMap::MarksNew),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::SHIFT), ActionMap::Sort),
             (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::SHIFT), ActionMap::Preview),
+            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::SHIFT), ActionMap::Mount),
             (KeyEvent::new(KeyCode::Char('v'),    KeyModifiers::SHIFT), ActionMap::ToggleVisual),
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::SHIFT), ActionMap::TrashMoveFile),
             (KeyEvent::new(KeyCode::Char('Z'),    KeyModifiers::SHIFT), ActionMap::TreeUnFoldAll),

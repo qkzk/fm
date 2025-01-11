@@ -58,6 +58,7 @@ impl LeaveMenu {
             Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
             Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)) => LeaveMenu::tempmark_jp(status),
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
+            Menu::Navigate(Navigate::Mount) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
             Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Picker) => {
@@ -390,6 +391,7 @@ impl LeaveMenu {
         match status.current_tab().menu_mode {
             Menu::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
             Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
+            Menu::Navigate(Navigate::Mount) => status.go_to_mount(),
             _ => Ok(()),
         }
     }

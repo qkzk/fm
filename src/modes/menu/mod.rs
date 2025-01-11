@@ -13,6 +13,7 @@ mod history;
 mod input;
 mod iso;
 mod marks;
+mod mount;
 mod node_creation;
 mod nvim;
 mod password;
@@ -34,7 +35,10 @@ pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
-pub use cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDeviceOpener};
+pub use cryptsetup::{
+    get_devices, get_devices_json, lsblk_and_cryptsetup_installed, BlockDeviceAction,
+    CryptoDeviceOpener,
+};
 pub use decompress::{
     decompress_7z, decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
 };
@@ -45,6 +49,7 @@ pub use history::History;
 pub use input::Input;
 pub use iso::IsoDevice;
 pub use marks::Marks;
+pub use mount::*;
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};

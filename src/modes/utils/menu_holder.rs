@@ -12,7 +12,7 @@ use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
     Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
-    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
+    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount,
     MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
     Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
 };
@@ -20,10 +20,10 @@ use crate::modes::{
 macro_rules! impl_navigate_from_char {
     ($name:ident, $field:ident) => {
         #[doc = concat!(
-                                                 "Navigates to the index in the `",
-                                                 stringify!($field),
-                                                 "` field based on the given character."
-                                                                                        )]
+         "Navigates to the index in the `",
+         stringify!($field),
+         "` field based on the given character."
+                                                                                                )]
         pub fn $name(&mut self, c: char) -> bool {
             let Some(index) = index_from_a(c) else {
                 return false;
@@ -93,6 +93,8 @@ pub struct MenuHolder {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
+    /// mounts
+    pub mount: Mount,
 }
 
 impl MenuHolder {
@@ -120,6 +122,7 @@ impl MenuHolder {
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
+            mount: Mount::default(),
         })
     }
 
@@ -336,6 +339,7 @@ impl MenuHolder {
         match navigate {
             Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::Compress => func(&mut self.compression),
+            Navigate::Mount => func(&mut self.mount),
             Navigate::Context => func(&mut self.context),
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
@@ -358,6 +362,7 @@ impl MenuHolder {
         match navigate {
             Navigate::CliApplication => func(&self.cli_applications),
             Navigate::Compress => func(&self.compression),
+            Navigate::Mount => func(&self.mount),
             Navigate::Context => func(&self.context),
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
@@ -389,6 +394,7 @@ impl MenuHolder {
             Navigate::CliApplication => self.cli_applications.draw_menu(f, rect, &self.window),
             Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(f, rect, &self.window),
             Navigate::RemovableDevices => self.removable_devices.draw_menu(f, rect, &self.window),
+            Navigate::Mount => self.mount.draw_menu(f, rect, &self.window),
             _ => unreachable!("{navigate} requires more information to be displayed."),
         }
     }

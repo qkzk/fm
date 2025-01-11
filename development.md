@@ -1588,15 +1588,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Remote mount QOL
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
   - [x] Remote mount shows the command that will be generated
-  - [ ] Remote mount should remember mount points and allow to umount them
-    looks difficult and requires many changes.
-    should we simply handle mount points like in yazi / ranger:udisk smoething plugin ???
-    - [ ] new navigate with remotes ?
-    - [ ] creates a remote manager struct { oldpath: Vec<PathBuf>, current: Option<Remote>}
-    - [ ] holds the manager in menu holder or internal settings 
-    - [ ] store the path if success in manager 
-    - [ ] keybinds per mode for toggling remebered remotes 
-    - [ ] keybinds per mode to umount rembembered remote
+- [ ] mount menu
+    - [x] mount menu
+    - [x] display 
+    - [ ] actions
+      - [x] show all mount points
+      - [ ] mount / unmount with sudo 
+      - [ ] mount / unmount without sudo 
+      - [ ] encrypted drives
+      - [ ] replace sudo commands with pkexec ?
+
+      - udisksctl is annoying to use, isn't made for scripting and requires password
 - [ ] store 4 windows in display to modify instead of recreating
 
 ### Other ideas

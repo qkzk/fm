@@ -836,6 +836,7 @@ dependencies = [
  "regex",
  "rust-lzma",
  "serde",
+ "serde_json",
  "serde_yml",
  "strfmt",
  "strum",

@@ -1,0 +1,172 @@
+{
+   "blockdevices": [
+      {
+         "fstype": "iso9660",
+         "path": "/dev/loop0",
+         "uuid": "2010-11-01-01-48-38-",
+         "fsver": "Joliet Extension",
+         "mountpoint": "/run/media/quentin/fm_iso",
+         "name": "loop0",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop2",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/core/16928",
+         "name": "loop2",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop3",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/core/17200",
+         "name": "loop3",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop4",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/core20/2379",
+         "name": "loop4",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop5",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/core20/2434",
+         "name": "loop5",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop6",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/core24/609",
+         "name": "loop6",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop7",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/certbot/4193",
+         "name": "loop7",
+         "state": null
+      },{
+         "fstype": "squashfs",
+         "path": "/dev/loop8",
+         "uuid": null,
+         "fsver": "4.0",
+         "mountpoint": "/var/lib/snapd/snap/certbot/4325",
+         "name": "loop8",
+         "state": null
+      },{
+         "fstype": null,
+         "path": "/dev/sda",
+         "uuid": null,
+         "fsver": null,
+         "mountpoint": null,
+         "name": "sda",
+         "state": "running",
+         "children": [
+            {
+               "fstype": "ext4",
+               "path": "/dev/sda1",
+               "uuid": "cfef288a-9a84-4a80-a10d-115e6580d5d7",
+               "fsver": "1.0",
+               "mountpoint": "/home/quentin/hdd",
+               "name": "sda1",
+               "state": null
+            }
+         ]
+      },{
+         "fstype": "crypto_LUKS",
+         "path": "/dev/sdb",
+         "uuid": "e2838de1-018a-44a9-bcc2-121a04251a31",
+         "fsver": "1",
+         "mountpoint": null,
+         "name": "sdb",
+         "state": "running",
+         "children": [
+            {
+               "fstype": "ext4",
+               "path": "/dev/mapper/e2838de1-018a-44a9-bcc2-121a04251a31",
+               "uuid": "a5a75c3a-93eb-4bbe-b9c8-9a77e5b16769",
+               "fsver": "1.0",
+               "mountpoint": "/run/media/quentin/e2838de1-018a-44a9-bcc2-121a04251a31",
+               "name": "e2838de1-018a-44a9-bcc2-121a04251a31",
+               "state": "running"
+            }
+         ]
+      },{
+         "fstype": null,
+         "path": "/dev/sdc",
+         "uuid": null,
+         "fsver": null,
+         "mountpoint": null,
+         "name": "sdc",
+         "state": "running",
+         "children": [
+            {
+               "fstype": "ext4",
+               "path": "/dev/sdc1",
+               "uuid": "b3f44aec-3ee5-4dcc-8a31-50b3df4f86bf",
+               "fsver": "1.0",
+               "mountpoint": "/home/quentin/ssd",
+               "name": "sdc1",
+               "state": null
+            }
+         ]
+      },{
+         "fstype": null,
+         "path": "/dev/sdd",
+         "uuid": null,
+         "fsver": null,
+         "mountpoint": null,
+         "name": "sdd",
+         "state": "running",
+         "children": [
+            {
+               "fstype": "vfat",
+               "path": "/dev/sdd1",
+               "uuid": "7DD3-FEF4",
+               "fsver": "FAT32",
+               "mountpoint": "/run/media/quentin/7DD3-FEF4",
+               "name": "sdd1",
+               "state": null
+            }
+         ]
+      },{
+         "fstype": null,
+         "path": "/dev/nvme0n1",
+         "uuid": null,
+         "fsver": null,
+         "mountpoint": null,
+         "name": "nvme0n1",
+         "state": "live",
+         "children": [
+            {
+               "fstype": "vfat",
+               "path": "/dev/nvme0n1p1",
+               "uuid": "20FD-E1B6",
+               "fsver": "FAT32",
+               "mountpoint": "/boot/efi",
+               "name": "nvme0n1p1",
+               "state": null
+            },{
+               "fstype": "ext4",
+               "path": "/dev/nvme0n1p2",
+               "uuid": "2e3343df-6488-461e-80f2-1b276e7e5cad",
+               "fsver": "1.0",
+               "mountpoint": "/",
+               "name": "nvme0n1p2",
+               "state": null
+            }
+         ]
+      }
+   ]
+}

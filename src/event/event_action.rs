@@ -1577,4 +1577,21 @@ impl EventAction {
 
         Ok(())
     }
+
+    /// Open the trash.
+    /// Displays a navigable content of the trash.
+    /// Each item can be restored or deleted.
+    /// Each opening refresh the trash content.
+    pub fn mount(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::Mount)
+        ) {
+            status.reset_menu_mode()?;
+        } else {
+            status.menu.mount.update()?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
+        }
+        Ok(())
+    }
 }

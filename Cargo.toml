@@ -57,7 +57,8 @@ ratatui = "0.28.1"
 regex = "1.10.6"
 rust-lzma = "0.6.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_yml = "0.0.12" # test serde_yml
+serde_json = "1.0"
+serde_yml = "0.0.12"
 strfmt = "0.2.4"
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"

@@ -1394,6 +1394,10 @@ impl Status {
         self.current_tab_mut().refresh_view()
     }
 
+    pub fn go_to_mount(&mut self) -> Result<()> {
+        todo!();
+    }
+
     /// Reads and parse a shell command. Some arguments may be expanded.
     /// See [`crate::modes::shell_command_parser`] for more information.
     pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
