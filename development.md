@@ -1593,10 +1593,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] display 
     - [ ] actions
       - [x] show all mount points
-      - [ ] mount / unmount with sudo 
-      - [ ] mount / unmount without sudo 
-      - [ ] encrypted drives
-      - [ ] replace sudo commands with pkexec ?
+      - [x] mount / unmount with sudo 
+      - [x] mount / unmount without sudo which opens pkexec
+      - [x] encrypted drives
       - [ ] include remote, mtp & isos in same menu ?
         - why ?
         - how ?
@@ -1604,6 +1603,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - udisksctl is annoying to use, isn't made for scripting and requires password
 - [ ] store 4 windows in display to modify instead of recreating
 - [ ] BUG: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
+- [x] FIX: click on menu is off by 2
 
 ### Other ideas
 
