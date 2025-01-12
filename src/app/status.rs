@@ -27,10 +27,11 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    ContentWindow, CopyMove, CryptoDevice, Direction as FuzzyDirection, Display, FileInfo,
+    FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu,
+    MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -355,8 +356,10 @@ impl Status {
     fn menu_action(&mut self, row: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
         let offset = row as usize - second_window_height;
-        if offset >= 4 {
-            let index = offset - 4 + self.menu.window.top;
+        const OFFSET: usize =
+            ContentWindow::WINDOW_PADDING + ContentWindow::WINDOW_MARGIN_TOP_U16 as usize;
+        if offset >= OFFSET {
+            let index = offset - OFFSET + self.menu.window.top;
             match self.current_tab().menu_mode {
                 Menu::Navigate(navigate) => match navigate {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
@@ -1359,6 +1362,11 @@ impl Status {
         };
         if device.is_mounted() {
             return Ok(());
+        }
+        if device.is_crypto() {
+            self.menu.encrypted_devices.update()?;
+            self.menu.encrypted_devices.select_by_path(&device.path);
+            return self.mount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.mount_selected_no_password() else {
             return Ok(());
