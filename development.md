@@ -1578,6 +1578,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
+- Removed "terminal" from configuration. Doesn't break config file. It's just not used anymore.
+- VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
+- swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
+- Use char keybinds in tuimenu & cli menus for quick actions
+
+## Bugfixes :
+
+- click in menus was offset by 2
+- shell would open in other tab path
+- open config file did nothing
+
 ## TODO
 
 - [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
@@ -1588,6 +1599,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Remote mount QOL
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
   - [x] Remote mount shows the command that will be generated
+  - [ ] expand local path with tilde
 - [ ] mount menu
     - [x] mount menu
     - [x] display 
