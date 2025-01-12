@@ -16,7 +16,7 @@ use crate::app::{
 };
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, path_to_string, row_to_window_index,
+    is_sudo_command, path_to_string, row_to_window_index, set_current_dir,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
@@ -1868,7 +1868,7 @@ impl Status {
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(&mut self) -> Result<()> {
         let here = &self.current_tab().directory.path;
-        std::env::set_current_dir(here)?;
+        set_current_dir(here)?;
         let files_with_relative_paths = self.flagged_or_selected_relative_to(here);
         if files_with_relative_paths.is_empty() {
             return Ok(());

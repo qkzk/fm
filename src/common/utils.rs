@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
+use std::env;
 use std::fs::{metadata, File};
 use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
@@ -387,4 +388,8 @@ pub fn tilde(input_str: &str) -> Cow<str> {
         // input doesn't start with tilde
         input_str.into()
     }
+}
+
+pub fn set_current_dir<P: AsRef<Path>>(path: P) -> Result<()> {
+    Ok(env::set_current_dir(path.as_ref())?)
 }

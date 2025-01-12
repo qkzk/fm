@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::common::{
-    has_last_modification_happened_less_than, path_to_string, row_to_window_index,
+    has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_current_dir,
 };
 use crate::config::START_FOLDER;
 use crate::io::Args;
@@ -491,7 +491,7 @@ impl Tab {
             return Ok(());
         }
         self.search.reset_paths();
-        match std::env::set_current_dir(path) {
+        match set_current_dir(path) {
             Ok(()) => (),
             Err(error) => {
                 log_info!("can't reach {path}. Error {error}", path = path.display());

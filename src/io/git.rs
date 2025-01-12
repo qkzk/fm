@@ -9,7 +9,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::is_in_path;
+use crate::common::{is_in_path, set_current_dir};
 use crate::io::execute_and_output_no_log;
 
 #[derive(Default)]
@@ -139,7 +139,7 @@ pub fn git(path: &Path) -> Result<String> {
     if !is_in_path("git") {
         return Ok("".to_owned());
     }
-    if std::env::set_current_dir(path).is_err() {
+    if set_current_dir(path).is_err() {
         // The path may not exist. It should never happen.
         return Ok("".to_owned());
     }

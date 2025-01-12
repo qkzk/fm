@@ -7,7 +7,7 @@ use indicatif::InMemoryTerm;
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
     filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
-    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO,
+    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH, GIO,
 };
 use crate::config::{Bindings, START_FOLDER};
 use crate::io::{read_log, External};
@@ -584,6 +584,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
+        set_current_dir(status.current_tab().current_path())?;
         status.internal_settings.disable_display();
         External::open_shell_in_window()?;
         status.internal_settings.enable_display();
@@ -736,7 +737,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.refresh_shortcuts();
-            std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
+            set_current_dir(status.current_tab().directory_of_selected()?)?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
