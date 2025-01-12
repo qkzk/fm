@@ -1,4 +1,3 @@
-use std::os::unix::process::ExitStatusExt;
 use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Context, Result};
@@ -15,11 +14,12 @@ use crate::{impl_content, impl_selectable, log_info};
 #[derive(Default, Deserialize, Debug)]
 pub struct BlockDevice {
     fstype: Option<String>,
-    path: String,
+    pub path: String,
     uuid: Option<String>,
     fsver: Option<String>,
     mountpoint: Option<String>,
     name: Option<String>,
+    label: Option<String>,
     #[serde(default)]
     children: Vec<BlockDevice>,
 }
@@ -39,6 +39,23 @@ impl BlockDevice {
         } else {
             Ok(false)
         }
+    }
+
+    pub fn umount_no_password(&mut self) -> Result<bool> {
+        let mut args = self.format_umount_parameters("");
+        let output = execute_and_output(&args.remove(0), &args)?;
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn is_crypto(&self) -> bool {
+        let Some(fstype) = &self.fstype else {
+            return false;
+        };
+        fstype.contains("crypto")
     }
 }
 
@@ -115,10 +132,15 @@ impl MountCommands for BlockDevice {
 impl MountRepr for BlockDevice {
     /// String representation of the device.
     fn as_string(&self) -> Result<String> {
-        Ok(if let Some(mountpoint) = &self.mountpoint {
-            format!("{} -> {}", self.path, mountpoint)
+        let label = if let Some(label) = &self.label {
+            label
         } else {
-            format!("{} - not mounted", self.path)
+            ""
+        };
+        Ok(if let Some(mountpoint) = &self.mountpoint {
+            format!("{} {label} -> {}", self.path, mountpoint)
+        } else {
+            format!("{} {label} - not mounted", self.path)
         })
     }
 
@@ -157,6 +179,10 @@ impl Mount {
             }
         }
         Ok(content)
+    }
+
+    pub fn umount_selected_no_password(&mut self) -> Result<bool> {
+        self.content[self.index].umount_no_password()
     }
 
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {

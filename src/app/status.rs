@@ -1409,6 +1409,13 @@ impl Status {
         if !device.is_mounted() {
             return Ok(());
         }
+        let Ok(success) = self.menu.mount.umount_selected_no_password() else {
+            return Ok(());
+        };
+        if success {
+            self.menu.mount.update()?;
+            return Ok(());
+        }
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::MOUNT)
         } else {

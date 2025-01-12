@@ -36,7 +36,7 @@ pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
 pub use cryptsetup::{
-    get_devices, get_devices_json, lsblk_and_cryptsetup_installed, BlockDeviceAction,
+    get_devices, get_devices_json, lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDevice,
     CryptoDeviceOpener,
 };
 pub use decompress::{

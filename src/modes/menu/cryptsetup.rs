@@ -32,7 +32,11 @@ pub fn get_devices() -> Result<String> {
 pub fn get_devices_json() -> Result<String> {
     let output = execute_and_output(
         LSBLK,
-        ["--json", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,NAME"],
+        [
+            "--json",
+            "-o",
+            "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,NAME,LABEL",
+        ],
     )?;
     Ok(String::from_utf8(output.stdout)?)
 }
@@ -297,6 +301,17 @@ impl CryptoDeviceOpener {
             PasswordKind::SUDO => password_holder.set_sudo(password),
             PasswordKind::CRYPTSETUP => password_holder.set_cryptsetup(password),
         }
+    }
+
+    pub fn select_by_path(&mut self, path: &str) -> bool {
+        for (index, device) in self.content.iter().enumerate() {
+            if device.path.as_str() == path {
+                self.index = index;
+                log_info!("encrypted found {device:?}", device = self.content[index]);
+                return true;
+            }
+        }
+        false
     }
 
     /// Open and mount the selected device.
