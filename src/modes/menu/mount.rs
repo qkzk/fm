@@ -22,6 +22,8 @@ pub struct BlockDevice {
     label: Option<String>,
     #[serde(default)]
     children: Vec<BlockDevice>,
+    #[serde(default)]
+    is_encrypted_device: bool,
 }
 
 impl BlockDevice {
@@ -52,6 +54,9 @@ impl BlockDevice {
     }
 
     pub fn is_crypto(&self) -> bool {
+        if self.is_encrypted_device {
+            return true;
+        }
         let Some(fstype) = &self.fstype else {
             return false;
         };
@@ -132,15 +137,20 @@ impl MountCommands for BlockDevice {
 impl MountRepr for BlockDevice {
     /// String representation of the device.
     fn as_string(&self) -> Result<String> {
+        let is_mounted = if self.is_mounted() { "M" } else { "U" };
+        let is_cypto = if self.is_crypto() { "C" } else { " " };
         let label = if let Some(label) = &self.label {
             label
         } else {
             ""
         };
         Ok(if let Some(mountpoint) = &self.mountpoint {
-            format!("{} {label} -> {}", self.path, mountpoint)
+            format!(
+                "{is_mounted}{is_cypto} {} {label} -> {}",
+                self.path, mountpoint
+            )
         } else {
-            format!("{} {label} - not mounted", self.path)
+            format!("{is_mounted}{is_cypto} {} {label}", self.path)
         })
     }
 
@@ -170,12 +180,14 @@ impl Mount {
         let root = serde_json::from_str::<Mount>(&json_content)?;
         let mut content: Vec<BlockDevice> = vec![];
         for top_level in root.content.into_iter() {
-            if top_level.uuid.is_some() {
-                content.push(top_level)
-            } else if !top_level.children.is_empty() {
-                for children in top_level.children.into_iter() {
-                    content.push(children)
+            if !top_level.children.is_empty() {
+                let is_crypto = top_level.is_crypto();
+                for mut children in top_level.children.into_iter() {
+                    children.is_encrypted_device = is_crypto;
+                    content.push(children);
                 }
+            } else if top_level.uuid.is_some() {
+                content.push(top_level)
             }
         }
         Ok(content)

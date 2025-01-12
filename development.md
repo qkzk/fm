@@ -1599,6 +1599,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] include remote, mtp & isos in same menu ?
         - why ?
         - how ?
+    - [ ] refactor all other mount things into this one 
+      - [ ] encrypted drives, it should be doable but annoying 
+      - [ ] remote requires to hold an enum in `Mount` with this kind. All variants should impl same traits.
+      - [ ] iso... look if selected file is mountable and add it ? Another enum variant with same traits.
+      - [ ] MTP hard to test without a working phone
 
       - udisksctl is annoying to use, isn't made for scripting and requires password
 - [ ] store 4 windows in display to modify instead of recreating

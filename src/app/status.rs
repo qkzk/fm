@@ -1409,6 +1409,11 @@ impl Status {
         if !device.is_mounted() {
             return Ok(());
         }
+        if device.is_crypto() {
+            self.menu.encrypted_devices.update()?;
+            self.menu.encrypted_devices.select_by_path(&device.path);
+            return self.umount_encrypted_drive();
+        }
         let Ok(success) = self.menu.mount.umount_selected_no_password() else {
             return Ok(());
         };
