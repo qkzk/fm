@@ -373,8 +373,9 @@ mod inner {
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))
                 .collect();
-            let rest = total_width - padded_strings.iter().map(|s| s.utf_width()).sum::<usize>();
-            padded_strings[raw_strings.len() - 1].push_str(&" ".repeat(rest));
+            let rest = total_width
+                .saturating_sub(padded_strings.iter().map(|s| s.utf_width()).sum::<usize>());
+            padded_strings[raw_strings.len().saturating_sub(1)].push_str(&" ".repeat(rest));
             padded_strings
         }
 

@@ -1609,8 +1609,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] store 4 windows in display to modify instead of recreating
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
-- [ ] BUG: substract with overflow in right tab : 0: fm::app::header_footer::inner::Footer::make_padded_strings
-             at /home/quentin/gclem/dev/rust/fm/src/app/header_footer.rs:376:24
+- [x] FIX: substract with overflow footer
 
 ### Other ideas
 
