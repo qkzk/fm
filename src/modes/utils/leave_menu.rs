@@ -391,7 +391,7 @@ impl LeaveMenu {
         match status.current_tab().menu_mode {
             Menu::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
             Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
-            Menu::Navigate(Navigate::Mount) => status.go_to_mount(),
+            Menu::Navigate(Navigate::Mount) => status.go_to_normal_drive(),
             _ => Ok(()),
         }
     }

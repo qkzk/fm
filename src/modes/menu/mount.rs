@@ -1,9 +1,13 @@
-use std::borrow::Cow;
+use std::os::unix::process::ExitStatusExt;
+use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Context, Result};
 
-use crate::common::{LSBLK, MKDIR};
-use crate::io::{execute_and_output, execute_sudo_command, set_sudo_session, CowStr, DrawMenu};
+use crate::common::{current_username, LSBLK, MKDIR};
+use crate::io::{
+    drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
+    set_sudo_session, CowStr, DrawMenu,
+};
 use crate::modes::{get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder};
 use crate::{impl_content, impl_selectable, log_info};
 
@@ -26,6 +30,16 @@ impl BlockDevice {
             .clone()
             .unwrap_or_else(|| self.uuid.as_ref().unwrap().clone())
     }
+
+    pub fn mount_no_password(&mut self) -> Result<bool> {
+        let mut args = self.format_mount_parameters("");
+        let output = execute_and_output(&args.remove(0), &args)?;
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
 }
 
 impl MountParameters for BlockDevice {
@@ -39,7 +53,7 @@ impl MountParameters for BlockDevice {
 
     fn format_mount_parameters(&mut self, _username: &str) -> Vec<String> {
         vec![
-            "udiskctl".to_owned(),
+            "udisksctl".to_owned(),
             "mount".to_owned(),
             "--block-device".to_owned(),
             self.path.to_owned(),
@@ -48,7 +62,7 @@ impl MountParameters for BlockDevice {
 
     fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
-            "udiskctl".to_owned(),
+            "udisksctl".to_owned(),
             "unmount".to_owned(),
             "--block-device".to_owned(),
             self.path.to_owned(),
@@ -64,17 +78,16 @@ impl MountCommands for BlockDevice {
         self.mountpoint.is_some()
     }
 
-    fn mount(&mut self, username: &str, _: &mut PasswordHolder) -> Result<bool> {
-        // mkdir
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_mkdir_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+    fn mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        // sudo
+        let success = set_sudo_session(password)?;
+        password.reset();
         if !success {
             return Ok(false);
         }
         // mount
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_mount_parameters(username))?;
+        let args_sudo = self.format_mount_parameters(username);
+        let (success, stdout, stderr) = execute_sudo_command(&args_sudo)?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
@@ -144,6 +157,41 @@ impl Mount {
             }
         }
         Ok(content)
+    }
+
+    pub fn mount_selected_no_password(&mut self) -> Result<bool> {
+        self.content[self.index].mount_no_password()
+    }
+
+    /// Open and mount the selected device.
+    pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        let username = current_username()?;
+        let success = self.content[self.index].mount(&username, password_holder)?;
+        if !success {
+            reset_sudo_faillock()?
+        }
+        password_holder.reset();
+        drop_sudo_privileges()?;
+        Ok(success)
+    }
+
+    pub fn selected_mount_point(&self) -> Option<PathBuf> {
+        let selected = self.selected()?;
+        let Some(mountpoint) = &selected.mountpoint else {
+            return None;
+        };
+        Some(PathBuf::from(mountpoint))
+    }
+
+    pub fn umount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
+        let username = current_username()?;
+        let success = self.content[self.index].umount(&username, password_holder)?;
+        if !success {
+            reset_sudo_faillock()?
+        }
+        password_holder.reset();
+        drop_sudo_privileges()?;
+        Ok(())
     }
 }
 

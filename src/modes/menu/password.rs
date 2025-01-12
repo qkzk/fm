@@ -26,6 +26,7 @@ pub enum PasswordUsage {
     CRYPTSETUP(PasswordKind),
     USB,
     SUDOCOMMAND,
+    MOUNT,
 }
 
 type Password = String;

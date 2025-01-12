@@ -1350,6 +1350,65 @@ impl Status {
                 .umount_selected(&mut self.menu.password_holder)
         }
     }
+    /// Mount the selected encrypted device. Will ask first for sudo password and
+    /// passphrase.
+    /// Those passwords are always dropped immediatly after the commands are run.
+    pub fn mount_normal_drive(&mut self) -> Result<()> {
+        let Some(device) = self.menu.mount.selected() else {
+            return Ok(());
+        };
+        if device.is_mounted() {
+            return Ok(());
+        }
+        let Ok(success) = self.menu.mount.mount_selected_no_password() else {
+            return Ok(());
+        };
+        if success {
+            self.menu.mount.update()?;
+            self.go_to_normal_drive()?;
+            return Ok(());
+        }
+        if !self.menu.password_holder.has_sudo() {
+            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::MOUNT)
+        } else {
+            if let Ok(true) = self
+                .menu
+                .mount
+                .mount_selected(&mut self.menu.password_holder)
+            {
+                self.go_to_normal_drive()?;
+            }
+            Ok(())
+        }
+    }
+
+    /// Move to the selected crypted device mount point.
+    pub fn go_to_normal_drive(&mut self) -> Result<()> {
+        let Some(path) = self.menu.mount.selected_mount_point() else {
+            return Ok(());
+        };
+        let tab = self.current_tab_mut();
+        tab.cd(&path)?;
+        tab.refresh_view()
+    }
+
+    /// Unmount the selected device.
+    /// Will ask first for a sudo password which is immediatly forgotten.
+    pub fn umount_normal_drive(&mut self) -> Result<()> {
+        let Some(device) = self.menu.mount.selected() else {
+            return Ok(());
+        };
+        if !device.is_mounted() {
+            return Ok(());
+        }
+        if !self.menu.password_holder.has_sudo() {
+            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::MOUNT)
+        } else {
+            self.menu
+                .mount
+                .umount_selected(&mut self.menu.password_holder)
+        }
+    }
 
     pub fn umount_removable(&mut self) -> Result<()> {
         if self.menu.removable_devices.is_empty() {
@@ -1392,10 +1451,6 @@ impl Status {
         };
         self.current_tab_mut().cd(&path)?;
         self.current_tab_mut().refresh_view()
-    }
-
-    pub fn go_to_mount(&mut self) -> Result<()> {
-        todo!();
     }
 
     /// Reads and parse a shell command. Some arguments may be expanded.
@@ -1657,6 +1712,11 @@ impl Status {
             PasswordUsage::CRYPTSETUP(_) => match action {
                 Some(BlockDeviceAction::MOUNT) => self.mount_encrypted_drive(),
                 Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
+                None => Ok(()),
+            },
+            PasswordUsage::MOUNT => match action {
+                Some(BlockDeviceAction::MOUNT) => self.mount_normal_drive(),
+                Some(BlockDeviceAction::UMOUNT) => self.umount_normal_drive(),
                 None => Ok(()),
             },
             PasswordUsage::SUDOCOMMAND => self.run_sudo_command(sudo_command),

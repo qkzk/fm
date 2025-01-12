@@ -176,6 +176,10 @@ impl EventDispatcher {
             Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
 
+            Navigate::Mount if c == 'm' => status.mount_normal_drive(),
+            Navigate::Mount if c == 'g' => status.go_to_normal_drive(),
+            Navigate::Mount if c == 'u' => status.umount_normal_drive(),
+
             Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
             Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
             Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
