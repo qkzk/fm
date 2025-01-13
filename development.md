@@ -1576,6 +1576,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
 - More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
 
+**Bugfixes :**
+
+- click in menus was offset by 2
+- shell would open in other tab path
+- open config file did nothing
+
 #### Changelog
 
 - Removed "terminal" from configuration. Doesn't break config file. It's just not used anymore.
@@ -1583,13 +1589,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
 - Use char keybinds in tuimenu & cli menus for quick actions
 
-## Bugfixes :
 
-- click in menus was offset by 2
-- shell would open in other tab path
-- open config file did nothing
-
-## TODO
 
 - [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
 - [x] visual flagging like ranger V
@@ -1599,7 +1599,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Remote mount QOL
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
   - [x] Remote mount shows the command that will be generated
-  - [ ] expand local path with tilde
+  - [x] expand local path with tilde
 - [ ] mount menu
     - [x] mount menu
     - [x] display 
@@ -1622,6 +1622,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
 - [x] FIX: substract with overflow footer
+
+## TODO
 
 ### Other ideas
 

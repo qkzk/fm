@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::common::{is_in_path, SSHFS_EXECUTABLE};
+use crate::common::{is_in_path, tilde, SSHFS_EXECUTABLE};
 use crate::io::{command_with_path, execute_and_capture_output_with_path};
 use crate::{log_info, log_line};
 
@@ -56,7 +56,7 @@ impl Remote {
         let local_path = if number_of_args == 3 {
             current_path
         } else {
-            user_host_port_remotepath_localpath[3]
+            &tilde(user_host_port_remotepath_localpath[3])
         };
         Some(Self {
             username: username.to_owned(),
