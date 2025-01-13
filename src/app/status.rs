@@ -1365,7 +1365,7 @@ impl Status {
         }
         if device.is_crypto() {
             self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(&device.path);
+            self.menu.encrypted_devices.select_by_path(&device.path());
             return self.mount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.mount_selected_no_password() else {
@@ -1411,7 +1411,7 @@ impl Status {
         }
         if device.is_crypto() {
             self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(&device.path);
+            self.menu.encrypted_devices.select_by_path(&device.path());
             return self.umount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.umount_selected_no_password() else {

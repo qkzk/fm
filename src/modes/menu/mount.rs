@@ -1,7 +1,7 @@
-use std::default;
 use std::{borrow::Cow, path::PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+use serde::Deserialize;
 
 use crate::common::{current_username, LSBLK, MKDIR};
 use crate::io::{
@@ -15,7 +15,7 @@ use crate::{impl_content, impl_selectable, log_info};
 
 // TODO: copied from cryptsetup, should be unified someway
 #[derive(Default, Deserialize, Debug)]
-pub struct BlockDevice {
+struct BlockDevice {
     fstype: Option<String>,
     pub path: String,
     uuid: Option<String>,
@@ -36,7 +36,7 @@ impl BlockDevice {
             .unwrap_or_else(|| self.uuid.as_ref().unwrap().clone())
     }
 
-    pub fn mount_no_password(&mut self) -> Result<bool> {
+    fn mount_no_password(&mut self) -> Result<bool> {
         let mut args = self.format_mount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
         if output.status.success() {
@@ -46,7 +46,7 @@ impl BlockDevice {
         }
     }
 
-    pub fn umount_no_password(&mut self) -> Result<bool> {
+    fn umount_no_password(&mut self) -> Result<bool> {
         let mut args = self.format_umount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
         if output.status.success() {
@@ -56,7 +56,7 @@ impl BlockDevice {
         }
     }
 
-    pub fn is_crypto(&self) -> bool {
+    fn is_crypto(&self) -> bool {
         if self.is_encrypted_device {
             return true;
         }
@@ -168,11 +168,45 @@ pub enum Mountable {
     Device(BlockDevice),
 }
 
-#[derive(Default, Deserialize, Debug)]
+impl Mountable {
+    fn as_string(&self) -> Result<String> {
+        match &self {
+            Self::Device(device) => device.as_string(),
+            _ => todo!(),
+        }
+    }
+
+    pub fn is_crypto(&self) -> bool {
+        match &self {
+            Self::Device(device) => device.is_crypto(),
+            Self::Remote(_) => false,
+        }
+    }
+
+    pub fn is_mounted(&self) -> bool {
+        match &self {
+            Self::Device(device) => device.is_mounted(),
+            Self::Remote(_) => true,
+        }
+    }
+
+    pub fn path(&self) -> &str {
+        match &self {
+            Self::Device(device) => device.path.as_str(),
+            Self::Remote(path) => path.as_str(),
+        }
+    }
+}
+
+impl CowStr for Mountable {
+    fn cow_str(&self) -> Cow<str> {
+        self.as_string().unwrap_or_default().into()
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct Mount {
-    #[serde(rename = "blockdevices")]
-    pub content: Vec<BlockDevice>,
-    #[serde(default)]
+    pub content: Vec<Mountable>,
     index: usize,
 }
 
@@ -192,7 +226,7 @@ impl Mount {
         Ok(())
     }
 
-    fn from_json(json_content: String) -> Result<Vec<BlockDevice>, Box<dyn std::error::Error>> {
+    fn from_json(json_content: String) -> Result<Vec<Mountable>, Box<dyn std::error::Error>> {
         let value: serde_json::Value = serde_json::from_str(&json_content)?;
 
         let blockdevices_value = value
@@ -200,33 +234,42 @@ impl Mount {
             .ok_or("Missing 'blockdevices' field in JSON")?;
 
         let devices: Vec<BlockDevice> = serde_json::from_value(blockdevices_value.clone())?;
-        let mut content: Vec<BlockDevice> = vec![];
+        let mut content: Vec<Mountable> = vec![];
         for top_level in devices.into_iter() {
             if !top_level.children.is_empty() {
                 let is_crypto = top_level.is_crypto();
                 for mut children in top_level.children.into_iter() {
                     children.is_encrypted_device = is_crypto;
-                    content.push(children);
+                    content.push(Mountable::Device(children));
                 }
             } else if top_level.uuid.is_some() {
-                content.push(top_level)
+                content.push(Mountable::Device(top_level))
             }
         }
         Ok(content)
     }
 
     pub fn umount_selected_no_password(&mut self) -> Result<bool> {
-        self.content[self.index].umount_no_password()
+        match &mut self.content[self.index] {
+            Mountable::Device(device) => device.umount_no_password(),
+            _ => Ok(false),
+        }
     }
 
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {
-        self.content[self.index].mount_no_password()
+        match &mut self.content[self.index] {
+            Mountable::Device(device) => device.mount_no_password(),
+            _ => Ok(false),
+        }
     }
 
     /// Open and mount the selected device.
     pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
         let username = current_username()?;
-        let success = self.content[self.index].mount(&username, password_holder)?;
+        let success = match &mut self.content[self.index] {
+            Mountable::Device(device) => device.mount(&username, password_holder)?,
+            _ => todo!(),
+        };
         if !success {
             reset_sudo_faillock()?
         }
@@ -237,15 +280,24 @@ impl Mount {
 
     pub fn selected_mount_point(&self) -> Option<PathBuf> {
         let selected = self.selected()?;
-        let Some(mountpoint) = &selected.mountpoint else {
-            return None;
+        let mountpoint: &str = match selected {
+            Mountable::Device(device) => {
+                let Some(mountpoint) = &device.mountpoint else {
+                    return None;
+                };
+                mountpoint
+            }
+            _ => todo!(),
         };
         Some(PathBuf::from(mountpoint))
     }
 
     pub fn umount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
         let username = current_username()?;
-        let success = self.content[self.index].umount(&username, password_holder)?;
+        let success = match &mut self.content[self.index] {
+            Mountable::Device(device) => device.umount(&username, password_holder)?,
+            _ => todo!(),
+        };
         if !success {
             reset_sudo_faillock()?
         }
@@ -255,14 +307,6 @@ impl Mount {
     }
 }
 
-impl CowStr for BlockDevice {
-    fn cow_str(&self) -> Cow<str> {
-        self.as_string().unwrap_or_default().into()
-    }
-}
-
 impl_selectable!(Mount);
-impl_content!(Mount, BlockDevice);
-impl DrawMenu<BlockDevice> for Mount {}
-
-use serde::Deserialize;
+impl_content!(Mount, Mountable);
+impl DrawMenu<Mountable> for Mount {}
