@@ -1609,8 +1609,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] mount / unmount without sudo which opens pkexec
       - [x] encrypted drives
     - [ ] regroup all mount things `Mount` menu
-      - [ ] enum with different kinds: BlockDevice, Remote, Mtp ???
-      - [ ] encrypted drives, it should be doable but annoying 
+      - [x] enum with different kinds: BlockDevice, Remote
+      - [ ] enum variant: `Encrypted` move most methods to it
+      - [x] encrypted drives, it should be doable but annoying 
       - [x] remote. Doesn't require mount, since we can't guess what the user want to do
         - [x] enum variant
         - [x] remote actions: unmount
