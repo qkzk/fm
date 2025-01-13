@@ -1,3 +1,4 @@
+use std::default;
 use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Context, Result};
@@ -7,7 +8,9 @@ use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
     set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder};
+use crate::modes::{
+    get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder, Remote,
+};
 use crate::{impl_content, impl_selectable, log_info};
 
 // TODO: copied from cryptsetup, should be unified someway
@@ -159,6 +162,12 @@ impl MountRepr for BlockDevice {
     }
 }
 
+#[derive(Debug)]
+pub enum Mountable {
+    Remote(String),
+    Device(BlockDevice),
+}
+
 #[derive(Default, Deserialize, Debug)]
 pub struct Mount {
     #[serde(rename = "blockdevices")]
@@ -170,16 +179,29 @@ pub struct Mount {
 impl Mount {
     pub fn update(&mut self) -> Result<()> {
         let json_content = get_devices_json()?;
-        self.content = Self::from_json(json_content)?;
+
+        self.content = match Self::from_json(json_content) {
+            Ok(content) => content,
+            Err(e) => {
+                log_info!("update {e:#?}");
+                vec![]
+            }
+        };
         self.index = 0;
         log_info!("{self:#?}");
         Ok(())
     }
 
-    fn from_json(json_content: String) -> Result<Vec<BlockDevice>> {
-        let root = serde_json::from_str::<Mount>(&json_content)?;
+    fn from_json(json_content: String) -> Result<Vec<BlockDevice>, Box<dyn std::error::Error>> {
+        let value: serde_json::Value = serde_json::from_str(&json_content)?;
+
+        let blockdevices_value = value
+            .get("blockdevices")
+            .ok_or("Missing 'blockdevices' field in JSON")?;
+
+        let devices: Vec<BlockDevice> = serde_json::from_value(blockdevices_value.clone())?;
         let mut content: Vec<BlockDevice> = vec![];
-        for top_level in root.content.into_iter() {
+        for top_level in devices.into_iter() {
             if !top_level.children.is_empty() {
                 let is_crypto = top_level.is_crypto();
                 for mut children in top_level.children.into_iter() {
