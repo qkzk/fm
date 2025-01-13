@@ -1603,19 +1603,18 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] mount menu
     - [x] mount menu
     - [x] display 
-    - [ ] actions
+    - [x] actions for normal block devices (non encrypted disks)
       - [x] show all mount points
       - [x] mount / unmount with sudo 
       - [x] mount / unmount without sudo which opens pkexec
       - [x] encrypted drives
-      - [ ] include remote, mtp & isos in same menu ?
-        - why ?
-        - how ?
-    - [ ] refactor all other mount things into this one 
+    - [ ] regroup all mount things `Mount` menu
+      - [ ] enum with different kinds: BlockDevice, Remote, Mtp ???
       - [ ] encrypted drives, it should be doable but annoying 
-      - [x] remote requires to hold an enum in `Mount` with this kind. All variants should impl same traits.
-      - [x] remote actions: unmount
-      - [x] iso are already found
+      - [x] remote. Doesn't require mount, since we can't guess what the user want to do
+        - [x] enum variant
+        - [x] remote actions: unmount
+        - [x] iso are already found
       - [ ] MTP hard to test without a working phone
 
       - udisksctl is annoying to use, isn't made for scripting and requires password
