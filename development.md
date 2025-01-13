@@ -1614,7 +1614,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] refactor all other mount things into this one 
       - [ ] encrypted drives, it should be doable but annoying 
       - [x] remote requires to hold an enum in `Mount` with this kind. All variants should impl same traits.
-      - [ ] remote actions: unmount
+      - [x] remote actions: unmount
       - [x] iso are already found
       - [ ] MTP hard to test without a working phone
 
@@ -1623,6 +1623,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
 - [x] FIX: substract with overflow footer
+- [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 
 ## TODO
 

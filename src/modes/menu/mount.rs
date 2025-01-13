@@ -2,20 +2,19 @@ use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::Result;
 use serde::Deserialize;
+use sysinfo::Disks;
 
-use crate::common::{current_username, LSBLK, MKDIR};
+use crate::common::{current_username, MKDIR};
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
     set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{
-    get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder, Remote,
-};
+use crate::modes::{get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder};
 use crate::{impl_content, impl_selectable, log_info};
 
 // TODO: copied from cryptsetup, should be unified someway
 #[derive(Default, Deserialize, Debug)]
-struct BlockDevice {
+pub struct BlockDevice {
     fstype: Option<String>,
     pub path: String,
     uuid: Option<String>,
@@ -164,7 +163,7 @@ impl MountRepr for BlockDevice {
 
 #[derive(Debug)]
 pub enum Mountable {
-    Remote(String),
+    Remote((String, String)),
     Device(BlockDevice),
 }
 
@@ -172,7 +171,9 @@ impl Mountable {
     fn as_string(&self) -> Result<String> {
         match &self {
             Self::Device(device) => device.as_string(),
-            _ => todo!(),
+            Self::Remote((remote_desc, local_path)) => {
+                Ok(format!("MS {remote_desc} -> {local_path}"))
+            }
         }
     }
 
@@ -193,7 +194,7 @@ impl Mountable {
     pub fn path(&self) -> &str {
         match &self {
             Self::Device(device) => device.path.as_str(),
-            Self::Remote(path) => path.as_str(),
+            Self::Remote((_, local_path)) => local_path.as_str(),
         }
     }
 }
@@ -211,19 +212,40 @@ pub struct Mount {
 }
 
 impl Mount {
-    pub fn update(&mut self) -> Result<()> {
-        let json_content = get_devices_json()?;
-
-        self.content = match Self::from_json(json_content) {
-            Ok(content) => content,
-            Err(e) => {
-                log_info!("update {e:#?}");
-                vec![]
-            }
-        };
+    pub fn update(&mut self, disks: &Disks) -> Result<()> {
         self.index = 0;
+
+        self.content = Self::build_from_json()?;
+        self.extend_with_remote(disks);
+
         log_info!("{self:#?}");
         Ok(())
+    }
+
+    fn build_from_json() -> Result<Vec<Mountable>> {
+        let json_content = get_devices_json()?;
+        match Self::from_json(json_content) {
+            Ok(content) => Ok(content),
+            Err(e) => {
+                log_info!("update error {e:#?}");
+                Ok(vec![])
+            }
+        }
+    }
+
+    fn extend_with_remote(&mut self, disks: &Disks) {
+        self.content.extend(
+            disks
+                .iter()
+                .filter(|d| d.file_system().to_string_lossy().contains("sshfs"))
+                .map(|d| {
+                    Mountable::Remote((
+                        d.name().to_string_lossy().to_string(),
+                        d.mount_point().to_string_lossy().to_string(),
+                    ))
+                })
+                .collect::<Vec<_>>(),
+        );
     }
 
     fn from_json(json_content: String) -> Result<Vec<Mountable>, Box<dyn std::error::Error>> {
@@ -252,27 +274,40 @@ impl Mount {
     pub fn umount_selected_no_password(&mut self) -> Result<bool> {
         match &mut self.content[self.index] {
             Mountable::Device(device) => device.umount_no_password(),
-            _ => Ok(false),
+            Mountable::Remote((_name, mountpoint)) => {
+                let output = execute_and_output("umount", [mountpoint.as_str()])?;
+                let success = output.status.success();
+                log_info!(
+                    "umount {mountpoint}:\nstdout: {stdout}\nstderr: {stderr}",
+                    stdout = String::from_utf8(output.stdout)?,
+                    stderr = String::from_utf8(output.stderr)?,
+                );
+                Ok(success)
+            }
         }
     }
 
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {
         match &mut self.content[self.index] {
             Mountable::Device(device) => device.mount_no_password(),
-            _ => Ok(false),
+            Mountable::Remote(_) => Ok(false),
         }
     }
 
     /// Open and mount the selected device.
     pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
-        let username = current_username()?;
         let success = match &mut self.content[self.index] {
-            Mountable::Device(device) => device.mount(&username, password_holder)?,
-            _ => todo!(),
+            Mountable::Device(device) => {
+                let username = current_username()?;
+                let success = device.mount(&username, password_holder)?;
+                if !success {
+                    reset_sudo_faillock()?
+                }
+                success
+            }
+            Mountable::Remote(_) => false,
         };
-        if !success {
-            reset_sudo_faillock()?
-        }
+
         password_holder.reset();
         drop_sudo_privileges()?;
         Ok(success)
@@ -287,7 +322,7 @@ impl Mount {
                 };
                 mountpoint
             }
-            _ => todo!(),
+            Mountable::Remote((_name, mountpoint)) => mountpoint,
         };
         Some(PathBuf::from(mountpoint))
     }
@@ -296,7 +331,7 @@ impl Mount {
         let username = current_username()?;
         let success = match &mut self.content[self.index] {
             Mountable::Device(device) => device.umount(&username, password_holder)?,
-            _ => todo!(),
+            Mountable::Remote((_, mountpoint)) => umount_remote(mountpoint, password_holder)?,
         };
         if !success {
             reset_sudo_faillock()?
@@ -305,6 +340,24 @@ impl Mount {
         drop_sudo_privileges()?;
         Ok(())
     }
+}
+
+fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Result<bool> {
+    let success = set_sudo_session(password_holder)?;
+    password_holder.reset();
+    if !success {
+        return Ok(false);
+    }
+    let (success, stdout, stderr) = execute_sudo_command(&["umount", mountpoint])?;
+    if !success {
+        log_info!(
+            "umount remote failed:\nstdout: {}\nstderr: {}",
+            stdout,
+            stderr
+        );
+    }
+
+    Ok(success)
 }
 
 impl_selectable!(Mount);

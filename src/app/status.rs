@@ -27,11 +27,10 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, CryptoDevice, Direction as FuzzyDirection, Display, FileInfo,
-    FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu,
-    MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
-    SAME_WINDOW_TOKEN,
+    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1356,6 +1355,7 @@ impl Status {
     /// Mount the selected encrypted device. Will ask first for sudo password and
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
+    // TODO: refactor
     pub fn mount_normal_drive(&mut self) -> Result<()> {
         let Some(device) = self.menu.mount.selected() else {
             return Ok(());
@@ -1365,14 +1365,14 @@ impl Status {
         }
         if device.is_crypto() {
             self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(&device.path());
+            self.menu.encrypted_devices.select_by_path(device.path());
             return self.mount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.mount_selected_no_password() else {
             return Ok(());
         };
         if success {
-            self.menu.mount.update()?;
+            self.menu.mount.update(self.internal_settings.disks())?;
             self.go_to_normal_drive()?;
             return Ok(());
         }
@@ -1411,14 +1411,14 @@ impl Status {
         }
         if device.is_crypto() {
             self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(&device.path());
+            self.menu.encrypted_devices.select_by_path(device.path());
             return self.umount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.umount_selected_no_password() else {
             return Ok(());
         };
         if success {
-            self.menu.mount.update()?;
+            self.menu.mount.update(self.internal_settings.disks())?;
             return Ok(());
         }
         if !self.menu.password_holder.has_sudo() {

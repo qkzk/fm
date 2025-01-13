@@ -1590,7 +1590,7 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            status.menu.mount.update()?;
+            status.menu.mount.update(status.internal_settings.disks())?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
         }
         Ok(())
