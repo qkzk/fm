@@ -209,8 +209,6 @@ pub enum Navigate {
     Shortcut,
     /// Manipulate trash files
     Trash,
-    /// Manipulate an encrypted device
-    EncryptedDrive,
     /// Removable devices
     RemovableDevices,
     /// Edit a mark or cd to it
@@ -248,9 +246,6 @@ impl fmt::Display for Navigate {
             }
             Self::Compress => write!(f, "Compress :"),
             Self::Mount => write!(f, "Mount :"),
-            Self::EncryptedDrive => {
-                write!(f, "Encrypted devices :")
-            }
             Self::RemovableDevices => {
                 write!(f, "Removable devices :")
             }
@@ -282,7 +277,6 @@ impl Navigate {
                 | Self::Shortcut
                 | Self::TuiApplication
                 | Self::CliApplication
-                | Self::EncryptedDrive
                 | Self::RemovableDevices
                 | Self::Marks(_)
                 | Self::Mount

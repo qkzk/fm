@@ -29,7 +29,6 @@ impl SecondLine for Navigate {
             Self::TempMarks(mark_action) => mark_action.second_line(),
             Self::Mount => "m: mount   --   u: unmount   --   g: go to mount point",
             Self::Context => "Pick an action",
-            Self::EncryptedDrive => "m: mount   --   u: unmount   --   g: go to mount point",
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
             Self::Cloud => "Remote navigation",

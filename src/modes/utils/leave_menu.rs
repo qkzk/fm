@@ -52,7 +52,6 @@ impl LeaveMenu {
                 LeaveMenu::cloud_enter(status)?;
                 return Ok(());
             }
-            Menu::Navigate(Navigate::EncryptedDrive) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
             Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
             Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
@@ -389,7 +388,6 @@ impl LeaveMenu {
     /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
     fn go_to_mount(status: &mut Status) -> Result<()> {
         match status.current_tab().menu_mode {
-            Menu::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
             Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
             Menu::Navigate(Navigate::Mount) => status.go_to_normal_drive(),
             _ => Ok(()),

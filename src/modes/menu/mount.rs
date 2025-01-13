@@ -1,16 +1,23 @@
 use std::{borrow::Cow, path::PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use sysinfo::Disks;
 
-use crate::common::{current_username, MKDIR};
+use crate::common::{current_username, is_in_path, CRYPTSETUP, LSBLK, MKDIR};
 use crate::io::{
-    drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
-    set_sudo_session, CowStr, DrawMenu,
+    drop_sudo_privileges, execute_and_output, execute_sudo_command,
+    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{get_devices_json, MountCommands, MountParameters, MountRepr, PasswordHolder};
+use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder};
 use crate::{impl_content, impl_selectable, log_info};
+
+/// Possible actions on encrypted drives
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum BlockDeviceAction {
+    MOUNT,
+    UMOUNT,
+}
 
 // TODO: copied from cryptsetup, should be unified someway
 #[derive(Default, Deserialize, Debug)]
@@ -64,6 +71,115 @@ impl BlockDevice {
         };
         fstype.contains("crypto")
     }
+
+    pub fn open_mount_crypto(
+        &self,
+        username: &str,
+        password_holder: &mut PasswordHolder,
+    ) -> Result<bool> {
+        let success = self.set_sudo_session(password_holder)?
+            && self.execute_luks_open(password_holder)?
+            && self.execute_mkdir_crypto(username)?
+            && self.execute_mount_crypto(username)?;
+        drop_sudo_privileges()?;
+        Ok(success)
+    }
+
+    fn set_sudo_session(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        if !set_sudo_session(password_holder)? {
+            password_holder.reset();
+            return Ok(false);
+        }
+        Ok(true)
+    }
+
+    fn execute_luks_open(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        let (success, stdout, stderr) = execute_sudo_command_with_password(
+            &self.format_luksopen_parameters(),
+            password_holder
+                .cryptsetup()
+                .as_ref()
+                .context("cryptsetup password_holder isn't set")?,
+            std::path::Path::new("/"),
+        )?;
+        password_holder.reset();
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        Ok(success)
+    }
+
+    fn execute_mkdir_crypto(&self, username: &str) -> Result<bool> {
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mkdir_parameters_crypto(username))?;
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        Ok(success)
+    }
+
+    fn execute_mount_crypto(&self, username: &str) -> Result<bool> {
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mount_parameters_crypto(username))?;
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        Ok(success)
+    }
+
+    pub fn umount_close_crypto(
+        &self,
+        username: &str,
+        password_holder: &mut PasswordHolder,
+    ) -> Result<bool> {
+        let success = self.set_sudo_session(password_holder)?
+            && self.execute_umount_crypto(username)?
+            && self.execute_luks_close()?;
+        drop_sudo_privileges()?;
+        Ok(success)
+    }
+
+    fn execute_umount_crypto(&self, username: &str) -> Result<bool> {
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_umount_parameters(username))?;
+        if !success {
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        }
+        Ok(success)
+    }
+
+    fn execute_luks_close(&self) -> Result<bool> {
+        let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
+        if !success {
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        }
+        Ok(success)
+    }
+
+    fn format_luksopen_parameters(&self) -> [String; 4] {
+        [
+            CRYPTSETUP.to_owned(),
+            "open".to_owned(),
+            self.path.clone(),
+            self.uuid.clone().unwrap(),
+        ]
+    }
+    fn format_luksclose_parameters(&self) -> [String; 3] {
+        [
+            CRYPTSETUP.to_owned(),
+            "close".to_owned(),
+            self.uuid.clone().unwrap(),
+        ]
+    }
+    fn format_mkdir_parameters_crypto(&self, username: &str) -> [String; 3] {
+        [
+            MKDIR.to_owned(),
+            "-p".to_owned(),
+            format!("/run/media/{}/{}", username, self.uuid.clone().unwrap()),
+        ]
+    }
+
+    fn format_mount_parameters_crypto(&self, username: &str) -> Vec<String> {
+        vec![
+            "mount".to_owned(),
+            format!("/dev/mapper/{}", self.uuid.clone().unwrap()),
+            format!("/run/media/{}/{}", username, self.uuid.clone().unwrap()),
+        ]
+    }
 }
 
 impl MountParameters for BlockDevice {
@@ -116,8 +232,7 @@ impl MountCommands for BlockDevice {
         if !success {
             return Ok(false);
         }
-        // sudo -k
-        execute_sudo_command(&["-k".to_owned()])?;
+        drop_sudo_privileges()?;
         Ok(success)
     }
 
@@ -358,6 +473,24 @@ fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Resu
     }
 
     Ok(success)
+}
+
+/// True iff `lsblk` and `cryptsetup` are in path.
+/// Nothing here can be done without those programs.
+pub fn lsblk_and_cryptsetup_installed() -> bool {
+    is_in_path(LSBLK) && is_in_path(CRYPTSETUP)
+}
+
+pub fn get_devices_json() -> Result<String> {
+    let output = execute_and_output(
+        LSBLK,
+        [
+            "--json",
+            "-o",
+            "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,NAME,LABEL",
+        ],
+    )?;
+    Ok(String::from_utf8(output.stdout)?)
 }
 
 impl_selectable!(Mount);

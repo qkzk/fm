@@ -29,8 +29,9 @@ use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
     ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
     FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    MountCommands, MountRepr, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1290,16 +1291,7 @@ impl Status {
         Ok(())
     }
 
-    /// Mount the selected encrypted device. Will ask first for sudo password and
-    /// passphrase.
-    /// Those passwords are always dropped immediatly after the commands are run.
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.menu.encrypted_devices.selected() else {
-            return Ok(());
-        };
-        if device.is_mounted() {
-            return Ok(());
-        }
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
                 Some(BlockDeviceAction::MOUNT),
@@ -1311,45 +1303,32 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            if let Ok(true) = self
-                .menu
-                .encrypted_devices
-                .mount_selected(&mut self.menu.password_holder)
+            let Some(Mountable::Device(device)) = &self.menu.mount.selected() else {
+                return Ok(());
+            };
+            if let Ok(true) =
+                device.open_mount_crypto(&current_username()?, &mut self.menu.password_holder)
             {
-                self.go_to_encrypted_drive()?;
+                self.go_to_normal_drive()?;
             }
             Ok(())
         }
     }
 
-    /// Move to the selected crypted device mount point.
-    pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(path) = self.menu.find_encrypted_drive_mount_point() else {
-            return Ok(());
-        };
-        let tab = self.current_tab_mut();
-        tab.cd(&path)?;
-        tab.refresh_view()
-    }
-
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn umount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.menu.encrypted_devices.selected() else {
-            return Ok(());
-        };
-        if !device.is_mounted() {
-            return Ok(());
-        }
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
                 Some(BlockDeviceAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else {
-            self.menu
-                .encrypted_devices
-                .umount_selected(&mut self.menu.password_holder)
+            let Some(Mountable::Device(device)) = &self.menu.mount.selected() else {
+                return Ok(());
+            };
+            device.umount_close_crypto(&current_username()?, &mut self.menu.password_holder)?;
+            Ok(())
         }
     }
     /// Mount the selected encrypted device. Will ask first for sudo password and
@@ -1364,8 +1343,9 @@ impl Status {
             return Ok(());
         }
         if device.is_crypto() {
-            self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(device.path());
+            // self.menu.encrypted_devices.update()?;
+            // self.menu.encrypted_devices.select_by_path(device.path());
+            // return self.mount_encrypted_drive();
             return self.mount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.mount_selected_no_password() else {
@@ -1410,8 +1390,9 @@ impl Status {
             return Ok(());
         }
         if device.is_crypto() {
-            self.menu.encrypted_devices.update()?;
-            self.menu.encrypted_devices.select_by_path(device.path());
+            // self.menu.encrypted_devices.update()?;
+            // self.menu.encrypted_devices.select_by_path(device.path());
+            // return self.umount_encrypted_drive();
             return self.umount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.umount_selected_no_password() else {

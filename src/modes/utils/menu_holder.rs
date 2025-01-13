@@ -11,10 +11,10 @@ use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
-    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount,
-    MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
-    Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
+    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu, Flagged,
+    History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount, MountCommands, Navigate,
+    PasswordHolder, Picker, Remote, RemovableDevices, Selectable, Shortcut, TempMarks, Trash,
+    TuiApplications, MAX_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -63,8 +63,6 @@ pub struct MenuHolder {
     pub compression: Compresser,
     /// Cotext menu
     pub context: ContextMenu,
-    /// Encrypted devices opener
-    pub encrypted_devices: CryptoDeviceOpener,
     /// The flagged files
     pub flagged: Flagged,
     /// The typed input by the user
@@ -106,7 +104,6 @@ impl MenuHolder {
             completion: Completion::default(),
             compression: Compresser::default(),
             context: ContextMenu::default(),
-            encrypted_devices: CryptoDeviceOpener::default(),
             flagged: Flagged::default(),
             history: History::default(),
             input: Input::default(),
@@ -183,15 +180,6 @@ impl MenuHolder {
             }
             _ => (),
         }
-    }
-
-    pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
-        let device = self.encrypted_devices.selected()?;
-        if !device.is_mounted() {
-            return None;
-        }
-        let mount_point = device.mount_point()?;
-        Some(std::path::PathBuf::from(mount_point))
     }
 
     pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
@@ -341,7 +329,6 @@ impl MenuHolder {
             Navigate::Compress => func(&mut self.compression),
             Navigate::Mount => func(&mut self.mount),
             Navigate::Context => func(&mut self.context),
-            Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
             Navigate::Marks(_) => func(&mut self.marks),
             Navigate::TempMarks(_) => func(&mut self.temp_marks),
@@ -364,7 +351,6 @@ impl MenuHolder {
             Navigate::Compress => func(&self.compression),
             Navigate::Mount => func(&self.mount),
             Navigate::Context => func(&self.context),
-            Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
             Navigate::Marks(_) => func(&self.marks),
             Navigate::TempMarks(_) => func(&self.temp_marks),
@@ -392,7 +378,6 @@ impl MenuHolder {
             Navigate::Marks(_) => self.marks.draw_menu(f, rect, &self.window),
             Navigate::TuiApplication => self.tui_applications.draw_menu(f, rect, &self.window),
             Navigate::CliApplication => self.cli_applications.draw_menu(f, rect, &self.window),
-            Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(f, rect, &self.window),
             Navigate::RemovableDevices => self.removable_devices.draw_menu(f, rect, &self.window),
             Navigate::Mount => self.mount.draw_menu(f, rect, &self.window),
             _ => unreachable!("{navigate} requires more information to be displayed."),

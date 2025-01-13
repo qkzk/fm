@@ -4,7 +4,7 @@ mod completion;
 mod compress;
 mod context;
 mod copy_move;
-mod cryptsetup;
+// mod cryptsetup;
 mod decompress;
 mod filter;
 mod flagged;
@@ -35,10 +35,6 @@ pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
-pub use cryptsetup::{
-    get_devices, get_devices_json, lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDevice,
-    CryptoDeviceOpener,
-};
 pub use decompress::{
     decompress_7z, decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
 };

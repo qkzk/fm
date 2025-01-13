@@ -1347,27 +1347,6 @@ impl EventAction {
         LeaveMenu::trash(status)
     }
 
-    /// Enter the encrypted device menu, allowing the user to mount/umount
-    /// a luks encrypted device.
-    pub fn encrypted_drive(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().menu_mode,
-            Menu::Navigate(Navigate::EncryptedDrive)
-        ) {
-            status.reset_menu_mode()?;
-        } else {
-            if !lsblk_and_cryptsetup_installed() {
-                log_line!("lsblk and cryptsetup must be installed.");
-                return Ok(());
-            }
-            if status.menu.encrypted_devices.is_empty() {
-                status.menu.encrypted_devices.update()?;
-            }
-            status.set_menu_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
-        }
-        Ok(())
-    }
-
     /// Enter the Removable Devices mode where the user can mount an MTP device
     pub fn removable_devices(status: &mut Status) -> Result<()> {
         if matches!(

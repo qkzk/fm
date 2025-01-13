@@ -29,18 +29,6 @@ pub fn get_devices() -> Result<String> {
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub fn get_devices_json() -> Result<String> {
-    let output = execute_and_output(
-        LSBLK,
-        [
-            "--json",
-            "-o",
-            "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,NAME,LABEL",
-        ],
-    )?;
-    Ok(String::from_utf8(output.stdout)?)
-}
-
 /// True iff `lsblk` and `cryptsetup` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_cryptsetup_installed() -> bool {

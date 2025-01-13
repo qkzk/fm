@@ -306,7 +306,6 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::Compress),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),
-            (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::ALT), ActionMap::EncryptedDrive),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::ALT), ActionMap::Filter),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::ALT), ActionMap::Cd),
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::ALT), ActionMap::Help),

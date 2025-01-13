@@ -160,7 +160,7 @@ Different modes for the bottom window
             Sort,
             History,
             Shortcut,
-            EncryptedDrive,
+            Mount,
             RemovableDevices,
             Search,
             Action,
