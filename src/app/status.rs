@@ -1303,7 +1303,7 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            let Some(Mountable::Device(device)) = &self.menu.mount.selected() else {
+            let Some(Mountable::Encrypted(device)) = &self.menu.mount.selected() else {
                 return Ok(());
             };
             if let Ok(true) =
@@ -1324,10 +1324,13 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else {
-            let Some(Mountable::Device(device)) = &self.menu.mount.selected() else {
+            let Some(Mountable::Encrypted(device)) = &self.menu.mount.selected() else {
+                log_info!("Cannot find Encrypted device");
                 return Ok(());
             };
-            device.umount_close_crypto(&current_username()?, &mut self.menu.password_holder)?;
+            let success =
+                device.umount_close_crypto(&current_username()?, &mut self.menu.password_holder)?;
+            log_info!("umount_encrypted_drive: {success}");
             Ok(())
         }
     }
@@ -1390,9 +1393,6 @@ impl Status {
             return Ok(());
         }
         if device.is_crypto() {
-            // self.menu.encrypted_devices.update()?;
-            // self.menu.encrypted_devices.select_by_path(device.path());
-            // return self.umount_encrypted_drive();
             return self.umount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.umount_selected_no_password() else {

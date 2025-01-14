@@ -1610,7 +1610,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] encrypted drives
     - [ ] regroup all mount things `Mount` menu
       - [x] enum with different kinds: BlockDevice, Remote
-      - [ ] enum variant: `Encrypted` move most methods to it
+      - [x] enum variant: `Encrypted` moved most methods to it
       - [x] encrypted drives, it should be doable but annoying 
       - [x] remote. Doesn't require mount, since we can't guess what the user want to do
         - [x] enum variant

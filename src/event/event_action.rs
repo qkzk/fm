@@ -14,7 +14,7 @@ use crate::io::{read_log, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, ContentWindow, Direction as FuzzyDirection,
+    help_string, lsblk_and_udisksctl_installed, ContentWindow, Direction as FuzzyDirection,
     Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
     NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
 };
@@ -1568,7 +1568,7 @@ impl EventAction {
             Menu::Navigate(Navigate::Mount)
         ) {
             status.reset_menu_mode()?;
-        } else {
+        } else if lsblk_and_udisksctl_installed() {
             status.menu.mount.update(status.internal_settings.disks())?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
         }

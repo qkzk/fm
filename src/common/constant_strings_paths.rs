@@ -207,6 +207,8 @@ pub const UMOUNT: &str = "umount";
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives
 pub const CRYPTSETUP: &str = "cryptsetup";
+/// udisksctl is used to mount drives
+pub const UDISKSCTL: &str = "udisksctl";
 /// gio is used to mount removable devices
 pub const GIO: &str = "gio";
 /// used to get information about fifo files
