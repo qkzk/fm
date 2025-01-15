@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 
-use crate::io::{execute_sudo_command, set_sudo_session};
+use crate::io::{drop_sudo_privileges, execute_sudo_command, set_sudo_session};
 use crate::log_info;
 use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder};
 
@@ -42,19 +42,24 @@ impl MountParameters for IsoDevice {
         [
             "mkdir".to_owned(),
             "-p".to_owned(),
-            format!("/run/media/{}/{}", username, Self::FILENAME),
+            format!(
+                "/run/media/{username}/{filename}",
+                filename = Self::FILENAME
+            ),
         ]
     }
 
-    fn format_mount_parameters(&mut self, username: &str) -> Vec<String> {
-        let mountpoints = Self::mountpoints(username);
-        self.mountpoints = Some(mountpoints.clone());
+    fn format_mount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             "mount".to_owned(),
             "-o".to_owned(),
             "loop".to_owned(),
             self.path.clone(),
-            mountpoints.to_string_lossy().to_string(),
+            self.mountpoints
+                .clone()
+                .expect("mountpoint should be set already")
+                .to_string_lossy()
+                .to_string(),
         ]
     }
 
@@ -62,9 +67,8 @@ impl MountParameters for IsoDevice {
         vec![
             "umount".to_owned(),
             format!(
-                "/run/media/{}/{}",
-                username,
-                Self::mountpoints(username).display(),
+                "/run/media/{username}/{mountpoint}",
+                mountpoint = Self::mountpoints(username).display(),
             ),
         ]
     }
@@ -82,16 +86,13 @@ impl MountCommands for IsoDevice {
         if !success {
             return Ok(false);
         }
-        // unmount
         let (success, stdout, stderr) =
             execute_sudo_command(&self.format_umount_parameters(username))?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if success {
             self.is_mounted = false;
         }
-        // sudo -k
-        let (success, stdout, stderr) = execute_sudo_command(&["-k"])?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        drop_sudo_privileges()?;
         Ok(success)
     }
 
@@ -112,17 +113,20 @@ impl MountCommands for IsoDevice {
             log_info!("stdout: {}\nstderr: {}", stdout, stderr);
             let mut last_success = false;
             if success {
+                let mountpoints = Self::mountpoints(username);
+                self.mountpoints = Some(mountpoints.clone());
                 // mount
                 let (success, stdout, stderr) =
                     execute_sudo_command(&self.format_mount_parameters(username))?;
                 last_success = success;
-                log_info!("stdout: {}\nstderr: {}", stdout, stderr);
-                // sudo -k
+                if !success {
+                    log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+                }
                 self.is_mounted = success;
             } else {
                 self.is_mounted = false;
             }
-            execute_sudo_command(&["-k"])?;
+            drop_sudo_privileges()?;
             Ok(last_success)
         }
     }
@@ -141,9 +145,5 @@ impl MountRepr for IsoDevice {
                 ))
             },
         )
-    }
-
-    fn device_name(&self) -> Result<String> {
-        Ok(self.path.clone())
     }
 }

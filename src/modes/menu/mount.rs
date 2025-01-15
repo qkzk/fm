@@ -37,8 +37,12 @@ impl MountParameters for EncryptedBlockDevice {
         ]
     }
 
-    fn format_mount_parameters(&mut self, _username: &str) -> Vec<String> {
-        unreachable!("EncryptedBlockDevice should impl its own version")
+    fn format_mount_parameters(&self, username: &str) -> Vec<String> {
+        vec![
+            "mount".to_owned(),
+            format!("/dev/mapper/{}", self.uuid.clone().unwrap()),
+            format!("/run/media/{}/{}", username, self.uuid.clone().unwrap()),
+        ]
     }
 
     fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
@@ -48,23 +52,6 @@ impl MountParameters for EncryptedBlockDevice {
             "--block-device".to_owned(),
             self.path.to_owned(),
         ]
-    }
-}
-
-impl MountCommands for EncryptedBlockDevice {
-    /// True if there's a mount point for this drive.
-    /// It's only valid if we mounted the device since it requires
-    /// the uuid to be in the mount point.
-    fn is_mounted(&self) -> bool {
-        self.mountpoint.is_some()
-    }
-
-    fn mount(&mut self, _username: &str, _password: &mut PasswordHolder) -> Result<bool> {
-        unreachable!("EncryptedBlockDevice should impl its own method.")
-    }
-
-    fn umount(&mut self, _username: &str, _password: &mut PasswordHolder) -> Result<bool> {
-        unreachable!("EncryptedBlockDevice should impl its own method.")
     }
 }
 
@@ -83,11 +70,8 @@ impl MountRepr for EncryptedBlockDevice {
         }
         Ok(repr)
     }
-
-    fn device_name(&self) -> Result<String> {
-        self.as_string()
-    }
 }
+
 impl From<BlockDevice> for EncryptedBlockDevice {
     fn from(device: BlockDevice) -> Self {
         EncryptedBlockDevice {
@@ -184,14 +168,6 @@ impl EncryptedBlockDevice {
         Ok(success)
     }
 
-    fn format_mount_parameters(&self, username: &str) -> Vec<String> {
-        vec![
-            "mount".to_owned(),
-            format!("/dev/mapper/{}", self.uuid.clone().unwrap()),
-            format!("/run/media/{}/{}", username, self.uuid.clone().unwrap()),
-        ]
-    }
-
     fn format_luksopen_parameters(&self) -> [String; 4] {
         [
             CRYPTSETUP.to_owned(),
@@ -219,6 +195,13 @@ impl EncryptedBlockDevice {
         } else {
             ""
         }
+    }
+
+    /// True if there's a mount point for this drive.
+    /// It's only valid if we mounted the device since it requires
+    /// the uuid to be in the mount point.
+    fn is_mounted(&self) -> bool {
+        self.mountpoint.is_some()
     }
 }
 
@@ -299,7 +282,7 @@ impl MountParameters for BlockDevice {
         ]
     }
 
-    fn format_mount_parameters(&mut self, _username: &str) -> Vec<String> {
+    fn format_mount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             "udisksctl".to_owned(),
             "mount".to_owned(),
@@ -374,10 +357,6 @@ impl MountRepr for BlockDevice {
             repr.push_str(mountpoint)
         }
         Ok(repr)
-    }
-
-    fn device_name(&self) -> Result<String> {
-        self.as_string()
     }
 }
 

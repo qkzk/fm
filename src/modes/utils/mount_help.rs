@@ -1,8 +1,5 @@
 use anyhow::Result;
 
-use ratatui::style::Style;
-
-use crate::config::MENU_STYLES;
 use crate::modes::PasswordHolder;
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
@@ -26,7 +23,7 @@ pub trait MountCommands {
 }
 
 /// Methods used to display the mounted device in terminal
-pub trait MountRepr: MountCommands {
+pub trait MountRepr {
     /// String representation of the device
     ///
     /// # Errors
@@ -39,19 +36,8 @@ pub trait MountRepr: MountCommands {
     /// # Errors
     ///
     /// It may fail while accessing the device name
-    fn device_name(&self) -> Result<String>;
-
-    /// Default attr.
-    /// Using configurable colors. "first" when mounted, "inert border" otherwise
-    fn style(&self) -> Style {
-        if self.is_mounted() {
-            MENU_STYLES.get().expect("Menu colors should be set").first
-        } else {
-            MENU_STYLES
-                .get()
-                .expect("Menu colors should be set")
-                .inert_border
-        }
+    fn device_name(&self) -> Result<String> {
+        self.as_string()
     }
 }
 
@@ -61,7 +47,7 @@ pub trait MountParameters {
     fn format_mkdir_parameters(&self, username: &str) -> [String; 3];
 
     /// Parameters used to mount the device
-    fn format_mount_parameters(&mut self, username: &str) -> Vec<String>;
+    fn format_mount_parameters(&self, username: &str) -> Vec<String>;
 
     /// Parameters used to umount the device
     fn format_umount_parameters(&self, username: &str) -> Vec<String>;
