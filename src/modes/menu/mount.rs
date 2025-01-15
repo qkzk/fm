@@ -173,11 +173,11 @@ impl MountRepr for EncryptedBlockDevice {
             "{is_mounted}C {path} {label}",
             is_mounted = if self.is_mounted() { "M" } else { "U" },
             label = self.label_repr(),
-            path = self.path
+            path = truncate_string(&self.path, 20)
         );
         if let Some(mountpoint) = &self.mountpoint {
             repr.push_str(" -> ");
-            repr.push_str(mountpoint)
+            repr.push_str(&truncate_string(mountpoint, 25));
         }
         Ok(repr)
     }
@@ -780,6 +780,14 @@ pub fn get_devices_json() -> Result<String> {
     Ok(String::from_utf8(output.stdout)?)
 }
 
+fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
+    if input.as_ref().chars().count() > max_length {
+        let truncated: String = input.as_ref().chars().take(max_length).collect();
+        format!("{}...", truncated)
+    } else {
+        input.as_ref().to_string()
+    }
+}
 impl_selectable!(Mount);
 impl_content!(Mount, Mountable);
 impl DrawMenu<Mountable> for Mount {}

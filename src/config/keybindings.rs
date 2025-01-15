@@ -272,6 +272,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('m'),    KeyModifiers::SHIFT), ActionMap::MarksNew),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::SHIFT), ActionMap::Sort),
             (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::SHIFT), ActionMap::Preview),
+            (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::SHIFT), ActionMap::RemovableDevices),
             (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::SHIFT), ActionMap::Mount),
             (KeyEvent::new(KeyCode::Char('v'),    KeyModifiers::SHIFT), ActionMap::ToggleVisual),
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::SHIFT), ActionMap::TrashMoveFile),
@@ -306,6 +307,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::Compress),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),
+            (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::ALT), ActionMap::Mount),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::ALT), ActionMap::Filter),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::ALT), ActionMap::Cd),
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::ALT), ActionMap::Help),
@@ -322,7 +324,6 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
-            (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::RemovableDevices),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::CONTROL), ActionMap::CopyFilename),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::CONTROL), ActionMap::PageDown),
