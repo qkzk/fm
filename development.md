@@ -1616,9 +1616,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         - [x] enum variant
         - [x] remote actions: unmount
         - [x] iso are already found
-      - [ ] removable 
-        - shut down ?
-        - eject ?
+      - [x] eject removable devices
       - [ ] MTP hard to test without a working phone
 
       - udisksctl is annoying to use, isn't made for scripting and requires password

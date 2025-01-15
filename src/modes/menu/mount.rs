@@ -25,6 +25,7 @@ pub struct EncryptedBlockDevice {
     uuid: Option<String>,
     mountpoint: Option<String>,
     label: Option<String>,
+    model: Option<String>,
     parent: Option<String>,
 }
 
@@ -79,6 +80,7 @@ impl From<BlockDevice> for EncryptedBlockDevice {
             uuid: device.uuid,
             mountpoint: device.mountpoint,
             label: device.label,
+            model: device.model,
             parent: None,
         }
     }
@@ -192,6 +194,8 @@ impl EncryptedBlockDevice {
     fn label_repr(&self) -> &str {
         if let Some(label) = &self.label {
             label
+        } else if let Some(model) = &self.model {
+            model
         } else {
             ""
         }
@@ -214,6 +218,7 @@ pub struct BlockDevice {
     name: Option<String>,
     label: Option<String>,
     hotplug: bool,
+    model: Option<String>,
     #[serde(default)]
     children: Vec<BlockDevice>,
 }
@@ -225,24 +230,16 @@ impl BlockDevice {
             .unwrap_or_else(|| self.uuid.as_ref().unwrap().clone())
     }
 
-    fn mount_no_password(&mut self) -> Result<bool> {
+    fn mount_no_password(&self) -> Result<bool> {
         let mut args = self.format_mount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
-        if output.status.success() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(output.status.success())
     }
 
-    fn umount_no_password(&mut self) -> Result<bool> {
+    fn umount_no_password(&self) -> Result<bool> {
         let mut args = self.format_umount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
-        if output.status.success() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(output.status.success())
     }
 
     fn is_crypto(&self) -> bool {
@@ -267,9 +264,19 @@ impl BlockDevice {
     fn label_repr(&self) -> &str {
         if let Some(label) = &self.label {
             label
+        } else if let Some(model) = &self.model {
+            model
         } else {
             ""
         }
+    }
+
+    pub fn power_off(&self) -> Result<bool> {
+        if !self.hotplug && !self.is_mounted() {
+            return Ok(false);
+        }
+        let output = execute_and_output(UDISKSCTL, ["power-off", "-b", &self.path])?;
+        Ok(output.status.success())
     }
 }
 
@@ -455,12 +462,12 @@ impl Mount {
     fn from_json(json_content: String) -> Result<Vec<Mountable>, Box<dyn std::error::Error>> {
         let devices: Vec<BlockDevice> = Self::read_blocks_from_json(json_content)?;
         let mut content = vec![];
-        for top_level in devices.into_iter() {
-            let is_crypto = top_level.is_crypto();
-            if !top_level.children.is_empty() {
-                Self::push_children(is_crypto, &mut content, top_level);
-            } else if top_level.uuid.is_some() {
-                Self::push_parent(is_crypto, &mut content, top_level)
+        for parent in devices.into_iter() {
+            let is_crypto = parent.is_crypto();
+            if !parent.children.is_empty() {
+                Self::push_children(is_crypto, &mut content, parent);
+            } else if parent.uuid.is_some() {
+                Self::push_parent(is_crypto, &mut content, parent)
             }
         }
         Ok(content)
@@ -478,23 +485,24 @@ impl Mount {
         Ok(serde_json::from_value(blockdevices_value)?)
     }
 
-    fn push_children(is_crypto: bool, content: &mut Vec<Mountable>, top_level: BlockDevice) {
-        for children in top_level.children.into_iter() {
+    fn push_children(is_crypto: bool, content: &mut Vec<Mountable>, parent: BlockDevice) {
+        for mut children in parent.children.into_iter() {
             if is_crypto {
                 let mut encrypted_children: EncryptedBlockDevice = children.into();
-                encrypted_children.set_parent(&top_level.uuid);
+                encrypted_children.set_parent(&parent.uuid);
                 content.push(Mountable::Encrypted(encrypted_children));
             } else {
+                children.model = parent.model.clone();
                 content.push(Mountable::Device(children));
             }
         }
     }
 
-    fn push_parent(is_crypto: bool, content: &mut Vec<Mountable>, top_level: BlockDevice) {
+    fn push_parent(is_crypto: bool, content: &mut Vec<Mountable>, parent: BlockDevice) {
         if is_crypto {
-            content.push(Mountable::Encrypted(top_level.into()))
+            content.push(Mountable::Encrypted(parent.into()))
         } else {
-            content.push(Mountable::Device(top_level))
+            content.push(Mountable::Device(parent))
         }
     }
 
@@ -585,6 +593,13 @@ impl Mount {
         drop_sudo_privileges()?;
         Ok(())
     }
+
+    pub fn eject_removable_device(&self) -> Result<bool> {
+        let Some(Mountable::Device(device)) = &self.selected() else {
+            return Ok(false);
+        };
+        device.power_off()
+    }
 }
 
 fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Result<bool> {
@@ -617,7 +632,7 @@ pub fn get_devices_json() -> Result<String> {
         [
             "--json",
             "-o",
-            "FSTYPE,PATH,UUID,MOUNTPOINT,NAME,LABEL,HOTPLUG",
+            "FSTYPE,PATH,UUID,MOUNTPOINT,NAME,LABEL,HOTPLUG,MODEL",
         ],
     )?;
     Ok(String::from_utf8(output.stdout)?)

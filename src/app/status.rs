@@ -1445,6 +1445,17 @@ impl Status {
         }
     }
 
+    pub fn eject_removable_device(&mut self) -> Result<()> {
+        if self.menu.mount.is_empty() {
+            return Ok(());
+        }
+        let success = self.menu.mount.eject_removable_device()?;
+        if success {
+            self.menu.mount.update(self.internal_settings.disks())?;
+        }
+        Ok(())
+    }
+
     /// Move to the selected removable device.
     pub fn go_to_removable(&mut self) -> Result<()> {
         let Some(path) = self.menu.find_removable_mount_point() else {

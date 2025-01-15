@@ -175,6 +175,7 @@ impl EventDispatcher {
             Navigate::Mount if c == 'm' => status.mount_normal_drive(),
             Navigate::Mount if c == 'g' => status.go_to_normal_drive(),
             Navigate::Mount if c == 'u' => status.umount_normal_drive(),
+            Navigate::Mount if c == 'e' => status.eject_removable_device(),
 
             Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
             Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
