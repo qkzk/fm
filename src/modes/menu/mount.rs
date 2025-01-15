@@ -1,22 +1,132 @@
 use std::{borrow::Cow, path::PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use sysinfo::Disks;
 
-use crate::common::{current_username, is_in_path, CRYPTSETUP, LSBLK, MKDIR, UDISKSCTL};
+use crate::common::{
+    current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR, MOUNT,
+    UDISKSCTL,
+};
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command,
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
 use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder};
-use crate::{impl_content, impl_selectable, log_info};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BlockDeviceAction {
     MOUNT,
     UMOUNT,
+}
+
+/// Holds a MTP device name, a path and a flag set to true
+/// if the device is mounted.
+#[derive(Debug, Clone, Default)]
+pub struct Mtp {
+    pub name: String,
+    pub path: String,
+    pub is_mounted: bool,
+    pub is_ejected: bool,
+}
+
+impl Mtp {
+    /// Creates a `Removable` instance from a filtered `gio` command output.
+    ///
+    /// `gio mount -l`  will return a lot of information about mount points,
+    /// including MTP (aka Android) devices.
+    /// We don't check if the device actually exists, we just create the instance.
+    fn from_gio(line: &str) -> Result<Self> {
+        let name = line
+            .replace("activation_root=mtp://", "")
+            .replace('/', "")
+            .trim()
+            .to_owned();
+        let uid = current_uid()?;
+        let path = format!("/run/user/{uid}/gvfs/mtp:host={name}");
+        let pb_path = std::path::Path::new(&path);
+        let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
+        let is_ejected = false;
+        log_info!("gio {name} - is_mounted {is_mounted}");
+        Ok(Self {
+            name,
+            path,
+            is_mounted,
+            is_ejected,
+        })
+    }
+
+    /// Format itself as a valid `gio mount $device` argument.
+    fn format_for_gio(&self) -> String {
+        format!("mtp://{name}", name = self.name)
+    }
+
+    /// True if the device is mounted
+    fn is_mounted(&self) -> bool {
+        self.is_mounted
+    }
+
+    /// Mount a non mounted removable device.
+    /// `Err` if the device is already mounted.
+    /// Runs a `gio mount $name` command and check
+    /// the result.
+    /// The `is_mounted` flag is updated accordingly to the result.
+    fn mount(&mut self) -> Result<bool> {
+        if self.is_mounted {
+            bail!("Already mounted {name}", name = self.name);
+        }
+        self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio()])?
+            .status
+            .success();
+
+        log_line!(
+            "Mounted {device}. Success ? {success}",
+            device = self.name,
+            success = self.is_mounted
+        );
+        Ok(self.is_mounted)
+    }
+
+    /// Unount a mounted removable device.
+    /// `Err` if the device isnt mounted.
+    /// Runs a `gio mount $device_name` command and check
+    /// the result.
+    /// The `is_mounted` flag is updated accordingly to the result.
+    fn umount(&mut self) -> Result<bool> {
+        if !self.is_mounted {
+            bail!("Not mounted {name}", name = self.name);
+        }
+        self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio(), "-u"])?
+            .status
+            .success();
+
+        log_info!(
+            "Unmounted {device}. Success ? {success}",
+            device = self.name,
+            success = self.is_mounted
+        );
+        Ok(!self.is_mounted)
+    }
+}
+
+impl MountRepr for Mtp {
+    /// String representation of the device
+    fn as_string(&self) -> Result<String> {
+        let is_mounted = self.is_mounted();
+        let mut repr = format!(
+            "{mount_repr}P {name}",
+            mount_repr = if is_mounted { "M" } else { "U" },
+            name = self.name.clone()
+        );
+        if is_mounted {
+            repr.push_str(" -> ");
+            repr.push_str(&self.path)
+        }
+
+        Ok(repr)
+    }
 }
 
 #[derive(Debug)]
@@ -372,6 +482,7 @@ pub enum Mountable {
     Remote((String, String)),
     Encrypted(EncryptedBlockDevice),
     Device(BlockDevice),
+    MTP(Mtp),
 }
 
 impl Mountable {
@@ -379,6 +490,7 @@ impl Mountable {
         match &self {
             Self::Device(device) => device.as_string(),
             Self::Encrypted(device) => device.as_string(),
+            Self::MTP(device) => device.as_string(),
             Self::Remote((remote_desc, local_path)) => {
                 Ok(format!("MS {remote_desc} -> {local_path}"))
             }
@@ -389,6 +501,7 @@ impl Mountable {
         match &self {
             Self::Device(device) => device.is_crypto(),
             Self::Encrypted(device) => device.is_crypto(),
+            Self::MTP(_device) => false,
             Self::Remote(_) => false,
         }
     }
@@ -397,6 +510,7 @@ impl Mountable {
         match &self {
             Self::Device(device) => device.is_mounted(),
             Self::Encrypted(device) => device.is_mounted(),
+            Self::MTP(device) => device.is_mounted(),
             Self::Remote(_) => true,
         }
     }
@@ -405,6 +519,7 @@ impl Mountable {
         match &self {
             Self::Device(device) => device.path.as_str(),
             Self::Encrypted(device) => device.path.as_str(),
+            Self::MTP(device) => device.path.as_str(),
             Self::Remote((_, local_path)) => local_path.as_str(),
         }
     }
@@ -428,6 +543,7 @@ impl Mount {
 
         self.content = Self::build_from_json()?;
         self.extend_with_remote(disks);
+        self.extend_with_mtp_from_gio();
 
         log_info!("{self:#?}");
         Ok(())
@@ -457,6 +573,27 @@ impl Mount {
                 })
                 .collect::<Vec<_>>(),
         );
+    }
+
+    fn extend_with_mtp_from_gio(&mut self) {
+        if !is_in_path(GIO) {
+            return;
+        }
+        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
+            return;
+        };
+        let Ok(stdout) = String::from_utf8(output.stdout) else {
+            return;
+        };
+
+        self.content.extend(
+            stdout
+                .lines()
+                .filter(|line| line.contains("activation_root"))
+                .map(Mtp::from_gio)
+                .filter_map(std::result::Result::ok)
+                .map(|device| Mountable::MTP(device)),
+        )
     }
 
     fn from_json(json_content: String) -> Result<Vec<Mountable>, Box<dyn std::error::Error>> {
@@ -512,6 +649,7 @@ impl Mount {
             Mountable::Encrypted(_device) => {
                 unreachable!("Encrypted devices can't be unmounted without password.")
             }
+            Mountable::MTP(device) => device.umount(),
             Mountable::Remote((_name, mountpoint)) => {
                 let output = execute_and_output("umount", [mountpoint.as_str()])?;
                 let success = output.status.success();
@@ -528,6 +666,7 @@ impl Mount {
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {
         match &mut self.content[self.index] {
             Mountable::Device(device) => device.mount_no_password(),
+            Mountable::MTP(device) => device.mount(),
             Mountable::Encrypted(_device) => {
                 unreachable!("Encrypted devices can't be mounted without password.")
             }
@@ -546,6 +685,7 @@ impl Mount {
                 }
                 success
             }
+            Mountable::MTP(device) => device.mount()?,
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
@@ -566,6 +706,7 @@ impl Mount {
                 };
                 mountpoint
             }
+            Mountable::MTP(device) => &device.path,
             Mountable::Encrypted(device) => {
                 let Some(mountpoint) = &device.mountpoint else {
                     return None;
@@ -581,6 +722,7 @@ impl Mount {
         let username = current_username()?;
         let success = match &mut self.content[self.index] {
             Mountable::Device(device) => device.umount(&username, password_holder)?,
+            Mountable::MTP(device) => device.umount()?,
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }

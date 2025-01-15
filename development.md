@@ -1617,9 +1617,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         - [x] remote actions: unmount
         - [x] iso are already found
       - [x] eject removable devices
-      - [ ] MTP hard to test without a working phone
+      - [x] include GIO (=MTP) devices
+        - [ ] test with a working phone...
+      - [ ] refactor the whole file
 
-      - udisksctl is annoying to use, isn't made for scripting and requires password
 - [ ] store 4 windows in display to modify instead of recreating
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
