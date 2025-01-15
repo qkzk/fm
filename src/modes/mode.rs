@@ -351,6 +351,7 @@ impl Menu {
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
             Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
             Self::Navigate(Navigate::Trash) => "Up, Down: navigate.",
+            Self::Navigate(Navigate::Mount) => "m: mount, u: umount, e: eject (removable), g/ENTER: go to",
             Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",

@@ -27,7 +27,7 @@ impl SecondLine for Navigate {
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",
             Self::Marks(mark_action) => mark_action.second_line(),
             Self::TempMarks(mark_action) => mark_action.second_line(),
-            Self::Mount => "m: mount   --   u: unmount   --   g: go to mount point",
+            Self::Mount => "M: mounted, U: not mounted, C: encrypted, R: removable, P: mtp device, L: loop device (iso)",
             Self::Context => "Pick an action",
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
