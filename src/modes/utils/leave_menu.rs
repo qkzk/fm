@@ -59,7 +59,6 @@ impl LeaveMenu {
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
             Menu::Navigate(Navigate::Mount) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
-            Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Picker) => {
                 LeaveMenu::picker(status)?;
                 return Ok(());
@@ -388,7 +387,6 @@ impl LeaveMenu {
     /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
     fn go_to_mount(status: &mut Status) -> Result<()> {
         match status.current_tab().menu_mode {
-            Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
             Menu::Navigate(Navigate::Mount) => status.go_to_normal_drive(),
             _ => Ok(()),
         }

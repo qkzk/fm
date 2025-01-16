@@ -177,10 +177,6 @@ impl EventDispatcher {
             Navigate::Mount if c == 'u' => status.umount_normal_drive(),
             Navigate::Mount if c == 'e' => status.eject_removable_device(),
 
-            Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
-            Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
-            Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
-
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
 

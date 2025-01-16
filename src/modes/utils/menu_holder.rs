@@ -11,10 +11,9 @@ use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu, Flagged,
-    History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount, MountCommands, Navigate,
-    PasswordHolder, Picker, Remote, RemovableDevices, Selectable, Shortcut, TempMarks, Trash,
-    TuiApplications, MAX_MODE,
+    Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu, Flagged, History,
+    Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate, PasswordHolder, Picker, Remote,
+    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -79,8 +78,6 @@ pub struct MenuHolder {
     pub password_holder: PasswordHolder,
     /// basic picker
     pub picker: Picker,
-    /// MTP devices
-    pub removable_devices: RemovableDevices,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     /// TUI application
@@ -112,7 +109,6 @@ impl MenuHolder {
             marks: Marks::default(),
             password_holder: PasswordHolder::default(),
             picker: Picker::default(),
-            removable_devices: RemovableDevices::default(),
             shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
             temp_marks: TempMarks::default(),
@@ -180,16 +176,6 @@ impl MenuHolder {
             }
             _ => (),
         }
-    }
-
-    pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
-        let Some(device) = &self.removable_devices.selected() else {
-            return None;
-        };
-        if !device.is_mounted() {
-            return None;
-        }
-        Some(std::path::PathBuf::from(&device.path))
     }
 
     /// Run sshfs with typed parameters to mount a remote directory in current directory.
@@ -332,7 +318,6 @@ impl MenuHolder {
             Navigate::History => func(&mut self.history),
             Navigate::Marks(_) => func(&mut self.marks),
             Navigate::TempMarks(_) => func(&mut self.temp_marks),
-            Navigate::RemovableDevices => func(&mut self.removable_devices),
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
@@ -354,7 +339,6 @@ impl MenuHolder {
             Navigate::History => func(&self.history),
             Navigate::Marks(_) => func(&self.marks),
             Navigate::TempMarks(_) => func(&self.temp_marks),
-            Navigate::RemovableDevices => func(&self.removable_devices),
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
@@ -378,7 +362,6 @@ impl MenuHolder {
             Navigate::Marks(_) => self.marks.draw_menu(f, rect, &self.window),
             Navigate::TuiApplication => self.tui_applications.draw_menu(f, rect, &self.window),
             Navigate::CliApplication => self.cli_applications.draw_menu(f, rect, &self.window),
-            Navigate::RemovableDevices => self.removable_devices.draw_menu(f, rect, &self.window),
             Navigate::Mount => self.mount.draw_menu(f, rect, &self.window),
             _ => unreachable!("{navigate} requires more information to be displayed."),
         }

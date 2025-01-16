@@ -1411,40 +1411,6 @@ impl Status {
         }
     }
 
-    pub fn umount_removable(&mut self) -> Result<()> {
-        if self.menu.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.menu.removable_devices.content[self.menu.removable_devices.index];
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        if !self.menu.password_holder.has_sudo() && device.is_usb() {
-            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::USB)
-        } else {
-            device.umount_simple(&mut self.menu.password_holder)?;
-            Ok(())
-        }
-    }
-
-    pub fn mount_removable(&mut self) -> Result<()> {
-        if self.menu.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.menu.removable_devices.content[self.menu.removable_devices.index];
-        if device.is_mounted() {
-            return Ok(());
-        }
-        if !self.menu.password_holder.has_sudo() && device.is_usb() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::USB)
-        } else {
-            if device.mount_simple(&mut self.menu.password_holder)? {
-                self.go_to_removable()?;
-            }
-            Ok(())
-        }
-    }
-
     pub fn eject_removable_device(&mut self) -> Result<()> {
         if self.menu.mount.is_empty() {
             return Ok(());
@@ -1454,15 +1420,6 @@ impl Status {
             self.menu.mount.update(self.internal_settings.disks())?;
         }
         Ok(())
-    }
-
-    /// Move to the selected removable device.
-    pub fn go_to_removable(&mut self) -> Result<()> {
-        let Some(path) = self.menu.find_removable_mount_point() else {
-            return Ok(());
-        };
-        self.current_tab_mut().cd(&path)?;
-        self.current_tab_mut().refresh_view()
     }
 
     /// Reads and parse a shell command. Some arguments may be expanded.
@@ -1711,11 +1668,6 @@ impl Status {
         sudo_command: Option<String>,
     ) -> Result<()> {
         match dest {
-            PasswordUsage::USB => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_removable(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_removable(),
-                None => Ok(()),
-            },
             PasswordUsage::ISO => match action {
                 Some(BlockDeviceAction::MOUNT) => self.mount_iso_drive(),
                 Some(BlockDeviceAction::UMOUNT) => self.umount_iso_drive(),

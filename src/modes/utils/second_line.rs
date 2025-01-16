@@ -32,7 +32,6 @@ impl SecondLine for Navigate {
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
             Self::Cloud => "Remote navigation",
-            Self::RemovableDevices => "",
             Self::Picker => "Pick an item",
             Self::Flagged => "Pick a file",
         }

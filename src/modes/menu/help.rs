@@ -161,7 +161,6 @@ Different modes for the bottom window
             History,
             Shortcut,
             Mount,
-            RemovableDevices,
             Search,
             Action,
             Bulk,

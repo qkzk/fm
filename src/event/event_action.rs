@@ -6,8 +6,8 @@ use indicatif::InMemoryTerm;
 
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
-    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
-    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH, GIO,
+    filename_to_clipboard, filepath_to_clipboard, get_clipboard, open_in_current_neovim,
+    set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
 use crate::io::{read_log, External};
@@ -16,7 +16,7 @@ use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, ContentWindow, Direction as FuzzyDirection,
     Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
-    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
+    NeedConfirmation, PreviewBuilder, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -1345,24 +1345,6 @@ impl EventAction {
 
     pub fn trash_restore(status: &mut Status) -> Result<()> {
         LeaveMenu::trash(status)
-    }
-
-    /// Enter the Removable Devices mode where the user can mount an MTP device
-    pub fn removable_devices(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().menu_mode,
-            Menu::Navigate(Navigate::RemovableDevices)
-        ) {
-            status.reset_menu_mode()?;
-        } else {
-            if !is_in_path(GIO) {
-                log_line!("gio must be installed.");
-                return Ok(());
-            }
-            status.menu.removable_devices = RemovableDevices::find().unwrap_or_default();
-            status.set_menu_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
-        }
-        Ok(())
     }
 
     /// Open the config file.
