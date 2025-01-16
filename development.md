@@ -1640,7 +1640,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: resize change dual / preview
   - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
 - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-- [ ] store 4 windows in display to modify instead of recreating
 - [ ] eza / ranger colors for normal files
 - [ ] use readelf for ELF file
   - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf

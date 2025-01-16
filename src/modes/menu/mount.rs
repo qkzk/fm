@@ -2,11 +2,12 @@ use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
+use serde_json::{from_str, from_value, Value};
 use sysinfo::Disks;
 
 use crate::common::{
     current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR, MOUNT,
-    UDISKSCTL,
+    UDISKSCTL, UMOUNT,
 };
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command,
@@ -49,6 +50,7 @@ impl Mtp {
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
         let is_ejected = false;
+        #[cfg(debug_assertions)]
         log_info!("gio {name} - is_mounted {is_mounted}");
         Ok(Self {
             name,
@@ -150,7 +152,7 @@ impl MountParameters for EncryptedBlockDevice {
 
     fn format_mount_parameters(&self, username: &str) -> Vec<String> {
         vec![
-            "mount".to_owned(),
+            MOUNT.to_owned(),
             format!("/dev/mapper/{}", self.uuid.clone().unwrap()),
             format!("/run/media/{}/{}", username, self.uuid.clone().unwrap()),
         ]
@@ -158,7 +160,7 @@ impl MountParameters for EncryptedBlockDevice {
 
     fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
-            "udisksctl".to_owned(),
+            UDISKSCTL.to_owned(),
             "unmount".to_owned(),
             "--block-device".to_owned(),
             self.path.to_owned(),
@@ -401,7 +403,7 @@ impl MountParameters for BlockDevice {
 
     fn format_mount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
-            "udisksctl".to_owned(),
+            UDISKSCTL.to_owned(),
             "mount".to_owned(),
             "--block-device".to_owned(),
             self.path.to_owned(),
@@ -410,7 +412,7 @@ impl MountParameters for BlockDevice {
 
     fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
-            "udisksctl".to_owned(),
+            UDISKSCTL.to_owned(),
             "unmount".to_owned(),
             "--block-device".to_owned(),
             self.path.to_owned(),
@@ -436,26 +438,28 @@ impl MountCommands for BlockDevice {
         // mount
         let args_sudo = self.format_mount_parameters(username);
         let (success, stdout, stderr) = execute_sudo_command(&args_sudo)?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
             return Ok(false);
         }
-        drop_sudo_privileges()?;
+        if !success {
+            reset_sudo_faillock()?;
+        }
         Ok(success)
     }
 
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
-        // sudo
         let success = set_sudo_session(password)?;
         password.reset();
         if !success {
             return Ok(false);
         }
-        // unmount
-        let (_, stdout, stderr) = execute_sudo_command(&self.format_umount_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
-
-        Ok(true)
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_umount_parameters(username))?;
+        if !success {
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        }
+        Ok(success)
     }
 }
 
@@ -479,10 +483,10 @@ impl MountRepr for BlockDevice {
 
 #[derive(Debug)]
 pub enum Mountable {
-    Remote((String, String)),
-    Encrypted(EncryptedBlockDevice),
     Device(BlockDevice),
+    Encrypted(EncryptedBlockDevice),
     MTP(Mtp),
+    Remote((String, String)),
 }
 
 impl Mountable {
@@ -523,6 +527,15 @@ impl Mountable {
             Self::Remote((_, local_path)) => local_path.as_str(),
         }
     }
+
+    fn mountpoint(&self) -> Option<&str> {
+        match self {
+            Mountable::Device(device) => device.mountpoint.as_deref(),
+            Mountable::Encrypted(device) => device.mountpoint.as_deref(),
+            Mountable::MTP(device) => Some(&device.path),
+            Mountable::Remote((_name, mountpoint)) => Some(mountpoint),
+        }
+    }
 }
 
 impl CowStr for Mountable {
@@ -545,6 +558,7 @@ impl Mount {
         self.extend_with_remote(disks);
         self.extend_with_mtp_from_gio();
 
+        #[cfg(debug_assertions)]
         log_info!("{self:#?}");
         Ok(())
     }
@@ -592,7 +606,7 @@ impl Mount {
                 .filter(|line| line.contains("activation_root"))
                 .map(Mtp::from_gio)
                 .filter_map(std::result::Result::ok)
-                .map(|device| Mountable::MTP(device)),
+                .map(Mountable::MTP),
         )
     }
 
@@ -613,13 +627,13 @@ impl Mount {
     fn read_blocks_from_json(
         json_content: String,
     ) -> Result<Vec<BlockDevice>, Box<dyn std::error::Error>> {
-        let mut value: serde_json::Value = serde_json::from_str(&json_content)?;
+        let mut value: Value = from_str(&json_content)?;
 
-        let blockdevices_value: serde_json::Value = value
+        let blockdevices_value: Value = value
             .get_mut("blockdevices")
             .ok_or("Missing 'blockdevices' field in JSON")?
             .take();
-        Ok(serde_json::from_value(blockdevices_value)?)
+        Ok(from_value(blockdevices_value)?)
     }
 
     fn push_children(is_crypto: bool, content: &mut Vec<Mountable>, parent: BlockDevice) {
@@ -650,26 +664,17 @@ impl Mount {
                 unreachable!("Encrypted devices can't be unmounted without password.")
             }
             Mountable::MTP(device) => device.umount(),
-            Mountable::Remote((_name, mountpoint)) => {
-                let output = execute_and_output("umount", [mountpoint.as_str()])?;
-                let success = output.status.success();
-                log_info!(
-                    "umount {mountpoint}:\nstdout: {stdout}\nstderr: {stderr}",
-                    stdout = String::from_utf8(output.stdout)?,
-                    stderr = String::from_utf8(output.stderr)?,
-                );
-                Ok(success)
-            }
+            Mountable::Remote((_name, mountpoint)) => umount_remote_no_password(mountpoint),
         }
     }
 
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {
         match &mut self.content[self.index] {
             Mountable::Device(device) => device.mount_no_password(),
-            Mountable::MTP(device) => device.mount(),
             Mountable::Encrypted(_device) => {
                 unreachable!("Encrypted devices can't be mounted without password.")
             }
+            Mountable::MTP(device) => device.mount(),
             Mountable::Remote(_) => Ok(false),
         }
     }
@@ -677,18 +682,11 @@ impl Mount {
     /// Open and mount the selected device.
     pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
         let success = match &mut self.content[self.index] {
-            Mountable::Device(device) => {
-                let username = current_username()?;
-                let success = device.mount(&username, password_holder)?;
-                if !success {
-                    reset_sudo_faillock()?
-                }
-                success
-            }
-            Mountable::MTP(device) => device.mount()?,
+            Mountable::Device(device) => device.mount(&current_username()?, password_holder)?,
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
+            Mountable::MTP(device) => device.mount()?,
             Mountable::Remote(_) => false,
         };
 
@@ -698,24 +696,7 @@ impl Mount {
     }
 
     pub fn selected_mount_point(&self) -> Option<PathBuf> {
-        let selected = self.selected()?;
-        let mountpoint: &str = match selected {
-            Mountable::Device(device) => {
-                let Some(mountpoint) = &device.mountpoint else {
-                    return None;
-                };
-                mountpoint
-            }
-            Mountable::MTP(device) => &device.path,
-            Mountable::Encrypted(device) => {
-                let Some(mountpoint) = &device.mountpoint else {
-                    return None;
-                };
-                mountpoint
-            }
-            Mountable::Remote((_name, mountpoint)) => mountpoint,
-        };
-        Some(PathBuf::from(mountpoint))
+        Some(PathBuf::from(self.selected()?.mountpoint()?))
     }
 
     pub fn umount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
@@ -750,7 +731,7 @@ fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Resu
     if !success {
         return Ok(false);
     }
-    let (success, stdout, stderr) = execute_sudo_command(&["umount", mountpoint])?;
+    let (success, stdout, stderr) = execute_sudo_command(&[UMOUNT, mountpoint])?;
     if !success {
         log_info!(
             "umount remote failed:\nstdout: {}\nstderr: {}",
@@ -762,22 +743,37 @@ fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Resu
     Ok(success)
 }
 
+fn umount_remote_no_password(mountpoint: &str) -> Result<bool> {
+    let output = execute_and_output(UMOUNT, [mountpoint])?;
+    let success = output.status.success();
+    if !success {
+        log_info!(
+            "umount {mountpoint}:\nstdout: {stdout}\nstderr: {stderr}",
+            stdout = String::from_utf8(output.stdout)?,
+            stderr = String::from_utf8(output.stderr)?,
+        );
+    }
+    Ok(success)
+}
+
 /// True iff `lsblk` and `cryptsetup` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_udisksctl_installed() -> bool {
     is_in_path(LSBLK) && is_in_path(UDISKSCTL)
 }
 
-pub fn get_devices_json() -> Result<String> {
-    let output = execute_and_output(
-        LSBLK,
-        [
-            "--json",
-            "-o",
-            "FSTYPE,PATH,UUID,MOUNTPOINT,NAME,LABEL,HOTPLUG,MODEL",
-        ],
-    )?;
-    Ok(String::from_utf8(output.stdout)?)
+fn get_devices_json() -> Result<String> {
+    Ok(String::from_utf8(
+        execute_and_output(
+            LSBLK,
+            [
+                "--json",
+                "-o",
+                "FSTYPE,PATH,UUID,MOUNTPOINT,NAME,LABEL,HOTPLUG,MODEL",
+            ],
+        )?
+        .stdout,
+    )?)
 }
 
 fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
