@@ -1309,7 +1309,7 @@ impl Status {
             if let Ok(true) =
                 device.open_mount_crypto(&current_username()?, &mut self.menu.password_holder)
             {
-                self.go_to_normal_drive()?;
+                self.go_to_encrypted_drive(device.uuid.clone())?;
             }
             Ok(())
         }
@@ -1346,9 +1346,6 @@ impl Status {
             return Ok(());
         }
         if device.is_crypto() {
-            // self.menu.encrypted_devices.update()?;
-            // self.menu.encrypted_devices.select_by_path(device.path());
-            // return self.mount_encrypted_drive();
             return self.mount_encrypted_drive();
         }
         let Ok(success) = self.menu.mount.mount_selected_no_password() else {
@@ -1380,6 +1377,17 @@ impl Status {
         };
         let tab = self.current_tab_mut();
         tab.cd(&path)?;
+        tab.refresh_view()
+    }
+
+    fn go_to_encrypted_drive(&mut self, uuid: Option<String>) -> Result<()> {
+        self.menu.mount.update(&self.internal_settings.disks)?;
+        let Some(mountpoint) = self.menu.mount.find_encrypted_by_uuid(uuid) else {
+            return Ok(());
+        };
+        log_info!("mountpoint {mountpoint}");
+        let tab = self.current_tab_mut();
+        tab.cd(Path::new(&mountpoint))?;
         tab.refresh_view()
     }
 

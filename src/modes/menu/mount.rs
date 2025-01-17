@@ -134,7 +134,7 @@ impl MountRepr for Mtp {
 #[derive(Debug)]
 pub struct EncryptedBlockDevice {
     pub path: String,
-    uuid: Option<String>,
+    pub uuid: Option<String>,
     mountpoint: Option<String>,
     label: Option<String>,
     model: Option<String>,
@@ -262,6 +262,7 @@ impl EncryptedBlockDevice {
             && self.execute_umount_crypto(username)?
             && self.execute_luks_close()?;
         drop_sudo_privileges()?;
+        password_holder.reset();
         Ok(success)
     }
 
@@ -722,6 +723,20 @@ impl Mount {
             return Ok(false);
         };
         device.power_off()
+    }
+
+    /// We receive the uuid of the _parent_ and must compare it to the parent of the device.
+    /// Returns the mountpoint of the found device, if any.
+    pub fn find_encrypted_by_uuid(&self, parent_uuid: Option<String>) -> Option<String> {
+        for device in self.content() {
+            let Mountable::Encrypted(device) = device else {
+                continue;
+            };
+            if device.parent == parent_uuid && device.is_mounted() {
+                return device.mountpoint.clone();
+            }
+        }
+        None
     }
 }
 
