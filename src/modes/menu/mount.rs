@@ -1,6 +1,10 @@
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::{borrow::Cow, fmt::Display, path::PathBuf};
+use std::{
+    borrow::Cow,
+    fmt::Display,
+    fs::File,
+    io::{self, BufRead, BufReader},
+    path::PathBuf,
+};
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -59,14 +63,11 @@ pub struct NetworkMount {
     pub mountpoint: String,
 }
 
+/// Holds a network mount point.
+/// Parsed from a line of /proc/self/mountinfo
+/// 96 29 0:60 / /home/user/nfs rw,relatime shared:523 - nfs4 hostname:/remote/path rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=remote_ip
+/// 483 29 0:73 / /home/user/cifs rw,relatime shared:424 - cifs //ip_adder/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=yout_ip,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
 impl NetworkMount {
-    //     fn a() {
-    //         "
-    // 96 29 0:60 / /home/quentin/nfs rw,relatime shared:523 - nfs4 qnas:/mnt/raid/data rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=192.168.1.26
-    // 483 29 0:73 / /home/quentin/cifs rw,relatime shared:424 - cifs //192.168.1.26/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=192.168.1.26,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
-    // ";
-    //     }
-    //
     fn umount(&self) -> Result<bool> {
         let success = execute_and_output(UMOUNT, [self.mountpoint.as_str()])?
             .status
@@ -83,9 +84,9 @@ impl NetworkMount {
 impl MountRepr for NetworkMount {
     fn as_string(&self) -> Result<String> {
         Ok(format!(
-            "MN {path} {kind} -> {mountpoint}",
-            path = self.path,
+            "MN {kind} {path} -> {mountpoint}",
             kind = self.kind,
+            path = self.path,
             mountpoint = self.mountpoint
         ))
     }
@@ -666,8 +667,41 @@ impl Mount {
     }
 
     fn extend_with_network(&mut self) -> Result<()> {
-        self.content.extend(get_network_devices()?);
+        self.content.extend(Self::get_network_devices()?);
         Ok(())
+    }
+
+    fn get_network_devices() -> io::Result<Vec<Mountable>> {
+        let file = File::open("/proc/self/mountinfo")?;
+        let reader = BufReader::new(file);
+        let mut network_mountables = vec![];
+
+        for line in reader.lines() {
+            let line = line?;
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() <= 6 {
+                continue;
+            }
+            let Some(fstype) = parts.get(parts.len() - 3) else {
+                continue;
+            };
+            if *fstype == "cifs" || *fstype == "nfs4" {
+                let Some(kind) = NetworkKind::from_fs_type(fstype) else {
+                    continue;
+                };
+                let mountpoint = parts.get(4).unwrap_or(&"").to_string();
+                let path = parts.get(parts.len() - 2).unwrap_or(&"").to_string();
+                if path.is_empty() || mountpoint.is_empty() {
+                    continue;
+                }
+                network_mountables.push(Mountable::Network(NetworkMount {
+                    kind,
+                    mountpoint,
+                    path,
+                }))
+            }
+        }
+        Ok(network_mountables)
     }
 
     fn extend_with_mtp_from_gio(&mut self) {
@@ -873,33 +907,6 @@ fn get_devices_json() -> Result<String> {
         )?
         .stdout,
     )?)
-}
-
-fn get_network_devices() -> io::Result<Vec<Mountable>> {
-    let file = File::open("/proc/self/mountinfo")?;
-    let reader = io::BufReader::new(file);
-    let mut mp = vec![];
-
-    for line in reader.lines() {
-        let line = line?;
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() > 6 {
-            // Vérifie si le type de système de fichiers est "cifs"
-            if let Some(fstype) = parts.get(parts.len() - 3) {
-                if *fstype == "cifs" || *fstype == "nfs4" {
-                    let mountpoint = parts.get(4).unwrap_or(&"").to_string();
-                    let path = parts.get(parts.len() - 2).unwrap_or(&"").to_string();
-                    println!("Samba Mount: {}, Source: {}", mountpoint, path);
-                    mp.push(Mountable::Network(NetworkMount {
-                        kind: NetworkKind::from_fs_type(fstype).unwrap(),
-                        mountpoint,
-                        path,
-                    }))
-                }
-            }
-        }
-    }
-    Ok(mp)
 }
 
 fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
