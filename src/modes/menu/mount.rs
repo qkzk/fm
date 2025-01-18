@@ -1,4 +1,6 @@
-use std::{borrow::Cow, path::PathBuf};
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::{borrow::Cow, fmt::Display, path::PathBuf};
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -21,6 +23,72 @@ use crate::{impl_content, impl_selectable, log_info, log_line};
 pub enum BlockDeviceAction {
     MOUNT,
     UMOUNT,
+}
+
+#[derive(Debug)]
+pub enum NetworkKind {
+    NFS,
+    CIFS,
+}
+
+impl NetworkKind {
+    fn from_fs_type(fs_type: &str) -> Option<Self> {
+        match fs_type {
+            "cifs" => Some(Self::CIFS),
+            "nfs4" => Some(Self::NFS),
+            _ => None,
+        }
+    }
+}
+
+impl Display for NetworkKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let kind = match self {
+            Self::NFS => "nfs",
+            Self::CIFS => "smb",
+        };
+
+        write!(f, "{kind}")
+    }
+}
+
+#[derive(Debug)]
+pub struct NetworkMount {
+    pub kind: NetworkKind,
+    pub path: String,
+    pub mountpoint: String,
+}
+
+impl NetworkMount {
+    //     fn a() {
+    //         "
+    // 96 29 0:60 / /home/quentin/nfs rw,relatime shared:523 - nfs4 qnas:/mnt/raid/data rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=192.168.1.26
+    // 483 29 0:73 / /home/quentin/cifs rw,relatime shared:424 - cifs //192.168.1.26/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=192.168.1.26,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
+    // ";
+    //     }
+    //
+    fn umount(&self) -> Result<bool> {
+        let success = execute_and_output(UMOUNT, [self.mountpoint.as_str()])?
+            .status
+            .success();
+
+        log_info!(
+            "Unmounted {device}. Success ? {success}",
+            device = self.mountpoint,
+        );
+        Ok(success)
+    }
+}
+
+impl MountRepr for NetworkMount {
+    fn as_string(&self) -> Result<String> {
+        Ok(format!(
+            "MN {path} {kind} -> {mountpoint}",
+            path = self.path,
+            kind = self.kind,
+            mountpoint = self.mountpoint
+        ))
+    }
 }
 
 /// Holds a MTP device name, a path and a flag set to true
@@ -488,6 +556,7 @@ pub enum Mountable {
     Encrypted(EncryptedBlockDevice),
     MTP(Mtp),
     Remote((String, String)),
+    Network(NetworkMount),
 }
 
 impl Mountable {
@@ -496,6 +565,7 @@ impl Mountable {
             Self::Device(device) => device.as_string(),
             Self::Encrypted(device) => device.as_string(),
             Self::MTP(device) => device.as_string(),
+            Self::Network(device) => device.as_string(),
             Self::Remote((remote_desc, local_path)) => {
                 Ok(format!("MS {remote_desc} -> {local_path}"))
             }
@@ -506,7 +576,8 @@ impl Mountable {
         match &self {
             Self::Device(device) => device.is_crypto(),
             Self::Encrypted(device) => device.is_crypto(),
-            Self::MTP(_device) => false,
+            Self::Network(_) => false,
+            Self::MTP(_) => false,
             Self::Remote(_) => false,
         }
     }
@@ -516,6 +587,7 @@ impl Mountable {
             Self::Device(device) => device.is_mounted(),
             Self::Encrypted(device) => device.is_mounted(),
             Self::MTP(device) => device.is_mounted(),
+            Self::Network(_) => true,
             Self::Remote(_) => true,
         }
     }
@@ -525,6 +597,7 @@ impl Mountable {
             Self::Device(device) => device.path.as_str(),
             Self::Encrypted(device) => device.path.as_str(),
             Self::MTP(device) => device.path.as_str(),
+            Self::Network(device) => device.path.as_str(),
             Self::Remote((_, local_path)) => local_path.as_str(),
         }
     }
@@ -534,6 +607,7 @@ impl Mountable {
             Mountable::Device(device) => device.mountpoint.as_deref(),
             Mountable::Encrypted(device) => device.mountpoint.as_deref(),
             Mountable::MTP(device) => Some(&device.path),
+            Mountable::Network(device) => Some(&device.mountpoint),
             Mountable::Remote((_name, mountpoint)) => Some(mountpoint),
         }
     }
@@ -558,6 +632,7 @@ impl Mount {
         self.content = Self::build_from_json()?;
         self.extend_with_remote(disks);
         self.extend_with_mtp_from_gio();
+        self.extend_with_network()?;
 
         #[cfg(debug_assertions)]
         log_info!("{self:#?}");
@@ -588,6 +663,11 @@ impl Mount {
                 })
                 .collect::<Vec<_>>(),
         );
+    }
+
+    fn extend_with_network(&mut self) -> Result<()> {
+        self.content.extend(get_network_devices()?);
+        Ok(())
     }
 
     fn extend_with_mtp_from_gio(&mut self) {
@@ -665,6 +745,7 @@ impl Mount {
                 unreachable!("Encrypted devices can't be unmounted without password.")
             }
             Mountable::MTP(device) => device.umount(),
+            Mountable::Network(device) => device.umount(),
             Mountable::Remote((_name, mountpoint)) => umount_remote_no_password(mountpoint),
         }
     }
@@ -676,6 +757,7 @@ impl Mount {
                 unreachable!("Encrypted devices can't be mounted without password.")
             }
             Mountable::MTP(device) => device.mount(),
+            Mountable::Network(_) => Ok(false),
             Mountable::Remote(_) => Ok(false),
         }
     }
@@ -688,6 +770,7 @@ impl Mount {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
             Mountable::MTP(device) => device.mount()?,
+            Mountable::Network(_) => false,
             Mountable::Remote(_) => false,
         };
 
@@ -705,6 +788,7 @@ impl Mount {
         let success = match &mut self.content[self.index] {
             Mountable::Device(device) => device.umount(&username, password_holder)?,
             Mountable::MTP(device) => device.umount()?,
+            Mountable::Network(device) => device.umount()?,
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
@@ -789,6 +873,33 @@ fn get_devices_json() -> Result<String> {
         )?
         .stdout,
     )?)
+}
+
+fn get_network_devices() -> io::Result<Vec<Mountable>> {
+    let file = File::open("/proc/self/mountinfo")?;
+    let reader = io::BufReader::new(file);
+    let mut mp = vec![];
+
+    for line in reader.lines() {
+        let line = line?;
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() > 6 {
+            // Vérifie si le type de système de fichiers est "cifs"
+            if let Some(fstype) = parts.get(parts.len() - 3) {
+                if *fstype == "cifs" || *fstype == "nfs4" {
+                    let mountpoint = parts.get(4).unwrap_or(&"").to_string();
+                    let path = parts.get(parts.len() - 2).unwrap_or(&"").to_string();
+                    println!("Samba Mount: {}, Source: {}", mountpoint, path);
+                    mp.push(Mountable::Network(NetworkMount {
+                        kind: NetworkKind::from_fs_type(fstype).unwrap(),
+                        mountpoint,
+                        path,
+                    }))
+                }
+            }
+        }
+    }
+    Ok(mp)
 }
 
 fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
