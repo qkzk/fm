@@ -68,15 +68,16 @@ pub struct NetworkMount {
 /// 96 29 0:60 / /home/user/nfs rw,relatime shared:523 - nfs4 hostname:/remote/path rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=remote_ip
 /// 483 29 0:73 / /home/user/cifs rw,relatime shared:424 - cifs //ip_adder/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=yout_ip,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
 impl NetworkMount {
-    fn umount(&self) -> Result<bool> {
-        let success = execute_and_output(UMOUNT, [self.mountpoint.as_str()])?
-            .status
-            .success();
-
+    fn umount(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        if !set_sudo_session(password_holder)? {
+            return Ok(false);
+        }
+        let (success, _, _) = execute_sudo_command(&[UMOUNT, self.mountpoint.as_str()])?;
         log_info!(
             "Unmounted {device}. Success ? {success}",
             device = self.mountpoint,
         );
+        drop_sudo_privileges()?;
         Ok(success)
     }
 }
@@ -689,11 +690,14 @@ impl Mount {
                 let Some(kind) = NetworkKind::from_fs_type(fstype) else {
                     continue;
                 };
-                let mountpoint = parts.get(4).unwrap_or(&"").to_string();
-                let path = parts.get(parts.len() - 2).unwrap_or(&"").to_string();
-                if path.is_empty() || mountpoint.is_empty() {
+                let Some(mountpoint) = parts.get(4) else {
                     continue;
-                }
+                };
+                let Some(path) = parts.get(parts.len() - 2) else {
+                    continue;
+                };
+                let mountpoint = mountpoint.to_string();
+                let path = path.to_string();
                 network_mountables.push(Mountable::Network(NetworkMount {
                     kind,
                     mountpoint,
@@ -779,7 +783,7 @@ impl Mount {
                 unreachable!("Encrypted devices can't be unmounted without password.")
             }
             Mountable::MTP(device) => device.umount(),
-            Mountable::Network(device) => device.umount(),
+            Mountable::Network(_device) => Ok(false),
             Mountable::Remote((_name, mountpoint)) => umount_remote_no_password(mountpoint),
         }
     }
@@ -822,7 +826,7 @@ impl Mount {
         let success = match &mut self.content[self.index] {
             Mountable::Device(device) => device.umount(&username, password_holder)?,
             Mountable::MTP(device) => device.umount()?,
-            Mountable::Network(device) => device.umount()?,
+            Mountable::Network(device) => device.umount(password_holder)?,
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
