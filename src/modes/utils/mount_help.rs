@@ -29,14 +29,14 @@ pub trait MountRepr {
     /// # Errors
     ///
     /// It may fail while parsing a path
-    fn as_string(&self) -> Result<String>;
+    fn as_string(&self) -> String;
 
     /// Name of the device
     ///
     /// # Errors
     ///
     /// It may fail while accessing the device name
-    fn device_name(&self) -> Result<String> {
+    fn device_name(&self) -> String {
         self.as_string()
     }
 }
