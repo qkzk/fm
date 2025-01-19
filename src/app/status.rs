@@ -1268,8 +1268,11 @@ impl Status {
             if iso_device.mount(&current_username()?, &mut self.menu.password_holder)? {
                 log_info!("iso mounter mounted {iso_device:?}");
                 log_line!("iso : {}", iso_device.as_string());
-                let path = iso_device.mountpoints.clone().context("no mount point")?;
-                self.current_tab_mut().cd(&path)?;
+                let path = iso_device
+                    .mountpoints
+                    .clone()
+                    .expect("mountpoint should be set");
+                self.current_tab_mut().cd(Path::new(&path))?;
             };
             self.menu.iso_device = None;
         };

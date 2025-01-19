@@ -30,7 +30,7 @@ pub struct IsoDevice {
     /// The source, aka the iso file itself.
     pub path: String,
     /// None when creating, updated once the device is mounted.
-    pub mountpoints: Option<std::path::PathBuf>,
+    pub mountpoints: Option<String>,
     is_mounted: bool,
 }
 
@@ -47,11 +47,11 @@ impl IsoDevice {
         }
     }
 
-    fn mountpoints(username: &str) -> std::path::PathBuf {
-        let mut mountpoint = std::path::PathBuf::from("/run/media");
-        mountpoint.push(username);
-        mountpoint.push(Self::FILENAME);
-        mountpoint
+    fn mountpoints(username: &str) -> String {
+        format!(
+            "/run/media/{username}/{filename}",
+            filename = Self::FILENAME
+        )
     }
 }
 
@@ -75,9 +75,7 @@ impl MountParameters for IsoDevice {
             self.path.clone(),
             self.mountpoints
                 .clone()
-                .expect("mountpoint should be set already")
-                .to_string_lossy()
-                .to_string(),
+                .expect("mountpoint should be set already"),
         ]
     }
 
@@ -86,7 +84,7 @@ impl MountParameters for IsoDevice {
             "umount".to_owned(),
             format!(
                 "/run/media/{username}/{mountpoint}",
-                mountpoint = Self::mountpoints(username).display(),
+                mountpoint = Self::mountpoints(username),
             ),
         ]
     }
@@ -153,11 +151,7 @@ impl MountRepr for IsoDevice {
     /// String representation of the device.
     fn as_string(&self) -> String {
         match &self.mountpoints {
-            Some(mountpoint) => format!(
-                "mounted {path} to {mountpoint}",
-                path = self.path,
-                mountpoint = mountpoint.display()
-            ),
+            Some(mountpoint) => format!("mounted {path} to {mountpoint}", path = self.path,),
             None => format!("not mounted {path}", path = self.path),
         }
     }
