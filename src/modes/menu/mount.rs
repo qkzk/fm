@@ -19,7 +19,7 @@ use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command,
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder};
+use crate::modes::{MountCommands, MountParameters, PasswordHolder};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Used to mount an iso file as a loop device.
@@ -56,7 +56,7 @@ impl IsoDevice {
 }
 
 impl MountParameters for IsoDevice {
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
+    fn mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             "mkdir".to_owned(),
             "-p".to_owned(),
@@ -67,7 +67,7 @@ impl MountParameters for IsoDevice {
         ]
     }
 
-    fn format_mount_parameters(&self, _username: &str) -> Vec<String> {
+    fn mount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             "mount".to_owned(),
             "-o".to_owned(),
@@ -79,7 +79,7 @@ impl MountParameters for IsoDevice {
         ]
     }
 
-    fn format_umount_parameters(&self, username: &str) -> Vec<String> {
+    fn umount_parameters(&self, username: &str) -> Vec<String> {
         vec![
             "umount".to_owned(),
             format!(
@@ -102,8 +102,7 @@ impl MountCommands for IsoDevice {
         if !success {
             return Ok(false);
         }
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_umount_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if success {
             self.is_mounted = false;
@@ -124,16 +123,14 @@ impl MountCommands for IsoDevice {
             return Ok(false);
         }
         // mkdir
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_mkdir_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         let mut last_success = false;
         if success {
             let mountpoints = Self::mountpoints(username);
             self.mountpoints = Some(mountpoints.clone());
             // mount
-            let (success, stdout, stderr) =
-                execute_sudo_command(&self.format_mount_parameters(username))?;
+            let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
             last_success = success;
             if !success {
                 log_info!("stdout: {}\nstderr: {}", stdout, stderr);
@@ -147,12 +144,11 @@ impl MountCommands for IsoDevice {
     }
 }
 
-impl MountRepr for IsoDevice {
-    /// String representation of the device.
-    fn as_string(&self) -> String {
+impl Display for IsoDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.mountpoints {
-            Some(mountpoint) => format!("mounted {path} to {mountpoint}", path = self.path,),
-            None => format!("not mounted {path}", path = self.path),
+            Some(mountpoint) => write!(f, "mounted {path} to {mountpoint}", path = self.path,),
+            None => write!(f, "not mounted {path}", path = self.path),
         }
     }
 }
@@ -217,9 +213,10 @@ impl NetworkMount {
     }
 }
 
-impl MountRepr for NetworkMount {
-    fn as_string(&self) -> String {
-        format!(
+impl Display for NetworkMount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "MN {kind} {path} -> {mountpoint}",
             kind = self.kind,
             path = self.path,
@@ -318,21 +315,19 @@ impl Mtp {
     }
 }
 
-impl MountRepr for Mtp {
-    /// String representation of the device
-    fn as_string(&self) -> String {
+impl Display for Mtp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let is_mounted = self.is_mounted();
-        let mut repr = format!(
+        write!(
+            f,
             "{mount_repr}P {name}",
             mount_repr = if is_mounted { "M" } else { "U" },
             name = self.name.clone()
-        );
+        )?;
         if is_mounted {
-            repr.push_str(" -> ");
-            repr.push_str(&self.path)
+            write!(f, " -> {path}", path = self.path)?;
         }
-
-        repr
+        Ok(())
     }
 }
 
@@ -347,7 +342,7 @@ pub struct EncryptedBlockDevice {
 }
 
 impl MountParameters for EncryptedBlockDevice {
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
+    fn mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             MKDIR.to_owned(),
             "-p".to_owned(),
@@ -355,7 +350,7 @@ impl MountParameters for EncryptedBlockDevice {
         ]
     }
 
-    fn format_mount_parameters(&self, username: &str) -> Vec<String> {
+    fn mount_parameters(&self, username: &str) -> Vec<String> {
         vec![
             MOUNT.to_owned(),
             format!("/dev/mapper/{}", self.uuid.clone().unwrap()),
@@ -363,7 +358,7 @@ impl MountParameters for EncryptedBlockDevice {
         ]
     }
 
-    fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
+    fn umount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             UDISKSCTL.to_owned(),
             "unmount".to_owned(),
@@ -373,20 +368,19 @@ impl MountParameters for EncryptedBlockDevice {
     }
 }
 
-impl MountRepr for EncryptedBlockDevice {
-    /// String representation of the device.
-    fn as_string(&self) -> String {
-        let mut repr = format!(
+impl Display for EncryptedBlockDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{is_mounted}C {path} {label}",
             is_mounted = if self.is_mounted() { "M" } else { "U" },
             label = self.label_repr(),
             path = truncate_string(&self.path, 20)
-        );
+        )?;
         if let Some(mountpoint) = &self.mountpoint {
-            repr.push_str(" -> ");
-            repr.push_str(&truncate_string(mountpoint, 25));
+            write!(f, " -> {mp}", mp = truncate_string(mountpoint, 25))?;
         }
-        repr
+        Ok(())
     }
 }
 
@@ -407,11 +401,7 @@ impl EncryptedBlockDevice {
         self.parent = parent_uuid.clone()
     }
 
-    pub fn open_mount_crypto(
-        &self,
-        username: &str,
-        password_holder: &mut PasswordHolder,
-    ) -> Result<bool> {
+    pub fn mount(&self, username: &str, password_holder: &mut PasswordHolder) -> Result<bool> {
         let success = is_in_path(CRYPTSETUP)
             && self.set_sudo_session(password_holder)?
             && self.execute_luks_open(password_holder)?
@@ -444,15 +434,13 @@ impl EncryptedBlockDevice {
     }
 
     fn execute_mkdir_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_mkdir_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 
     fn execute_mount_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_mount_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
@@ -472,8 +460,7 @@ impl EncryptedBlockDevice {
     }
 
     fn execute_umount_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_umount_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
         if !success {
             log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         }
@@ -549,13 +536,13 @@ impl BlockDevice {
     }
 
     fn mount_no_password(&self) -> Result<bool> {
-        let mut args = self.format_mount_parameters("");
+        let mut args = self.mount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
         Ok(output.status.success())
     }
 
     fn umount_no_password(&self) -> Result<bool> {
-        let mut args = self.format_umount_parameters("");
+        let mut args = self.umount_parameters("");
         let output = execute_and_output(&args.remove(0), &args)?;
         Ok(output.status.success())
     }
@@ -599,7 +586,7 @@ impl BlockDevice {
 }
 
 impl MountParameters for BlockDevice {
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
+    fn mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             MKDIR.to_owned(),
             "-p".to_owned(),
@@ -607,7 +594,7 @@ impl MountParameters for BlockDevice {
         ]
     }
 
-    fn format_mount_parameters(&self, _username: &str) -> Vec<String> {
+    fn mount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             UDISKSCTL.to_owned(),
             "mount".to_owned(),
@@ -616,7 +603,7 @@ impl MountParameters for BlockDevice {
         ]
     }
 
-    fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
+    fn umount_parameters(&self, _username: &str) -> Vec<String> {
         vec![
             UDISKSCTL.to_owned(),
             "unmount".to_owned(),
@@ -642,7 +629,7 @@ impl MountCommands for BlockDevice {
             return Ok(false);
         }
         // mount
-        let args_sudo = self.format_mount_parameters(username);
+        let args_sudo = self.mount_parameters(username);
         let (success, stdout, stderr) = execute_sudo_command(&args_sudo)?;
         if !success {
             log_info!("stdout: {}\nstderr: {}", stdout, stderr);
@@ -660,8 +647,7 @@ impl MountCommands for BlockDevice {
         if !success {
             return Ok(false);
         }
-        let (success, stdout, stderr) =
-            execute_sudo_command(&self.format_umount_parameters(username))?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
         if !success {
             log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         }
@@ -669,21 +655,20 @@ impl MountCommands for BlockDevice {
     }
 }
 
-impl MountRepr for BlockDevice {
-    /// String representation of the device.
-    fn as_string(&self) -> String {
-        let mut repr = format!(
+impl Display for BlockDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{is_mounted}{prefix} {path} {label}",
             is_mounted = if self.is_mounted() { "M" } else { "U" },
             prefix = self.prefix_repr(),
             label = self.label_repr(),
             path = self.path
-        );
+        )?;
         if let Some(mountpoint) = &self.mountpoint {
-            repr.push_str(" -> ");
-            repr.push_str(mountpoint)
+            write!(f, " -> {mountpoint}")?;
         }
-        repr
+        Ok(())
     }
 }
 
@@ -695,20 +680,21 @@ pub enum Mountable {
     Remote((String, String)),
     Network(NetworkMount),
 }
-
-impl Mountable {
-    fn as_string(&self) -> String {
+impl Display for Mountable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            Self::Device(device) => device.as_string(),
-            Self::Encrypted(device) => device.as_string(),
-            Self::MTP(device) => device.as_string(),
-            Self::Network(device) => device.as_string(),
+            Self::Device(device) => write!(f, "{device}"),
+            Self::Encrypted(device) => write!(f, "{device}"),
+            Self::MTP(device) => write!(f, "{device}"),
+            Self::Network(device) => write!(f, "{device}"),
             Self::Remote((remote_desc, local_path)) => {
-                format!("MS {remote_desc} -> {local_path}")
+                write!(f, "MS {remote_desc} -> {local_path}")
             }
         }
     }
+}
 
+impl Mountable {
     pub fn is_crypto(&self) -> bool {
         match &self {
             Self::Device(device) => device.is_crypto(),
@@ -752,7 +738,7 @@ impl Mountable {
 
 impl CowStr for Mountable {
     fn cow_str(&self) -> Cow<str> {
-        self.as_string().into()
+        self.to_string().into()
     }
 }
 
@@ -923,6 +909,10 @@ impl Mount {
         }
     }
 
+    pub fn selected_mount_point(&self) -> Option<PathBuf> {
+        Some(PathBuf::from(self.selected()?.mountpoint()?))
+    }
+
     pub fn mount_selected_no_password(&mut self) -> Result<bool> {
         match &mut self.content[self.index] {
             Mountable::Device(device) => device.mount_no_password(),
@@ -950,10 +940,6 @@ impl Mount {
         password_holder.reset();
         drop_sudo_privileges()?;
         Ok(success)
-    }
-
-    pub fn selected_mount_point(&self) -> Option<PathBuf> {
-        Some(PathBuf::from(self.selected()?.mountpoint()?))
     }
 
     pub fn umount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {

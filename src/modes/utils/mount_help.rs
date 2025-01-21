@@ -22,33 +22,14 @@ pub trait MountCommands {
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
 }
 
-/// Methods used to display the mounted device in terminal
-pub trait MountRepr {
-    /// String representation of the device
-    ///
-    /// # Errors
-    ///
-    /// It may fail while parsing a path
-    fn as_string(&self) -> String;
-
-    /// Name of the device
-    ///
-    /// # Errors
-    ///
-    /// It may fail while accessing the device name
-    fn device_name(&self) -> String {
-        self.as_string()
-    }
-}
-
 /// Parameters used to create the commands : mkdir, mount & umount.
 pub trait MountParameters {
     /// Parameters used to `sudo mkdir mountpoint`
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3];
+    fn mkdir_parameters(&self, username: &str) -> [String; 3];
 
     /// Parameters used to mount the device
-    fn format_mount_parameters(&self, username: &str) -> Vec<String>;
+    fn mount_parameters(&self, username: &str) -> Vec<String>;
 
     /// Parameters used to umount the device
-    fn format_umount_parameters(&self, username: &str) -> Vec<String>;
+    fn umount_parameters(&self, username: &str) -> Vec<String>;
 }

@@ -29,9 +29,8 @@ use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
     ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
     FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, MountRepr, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
-    SAME_WINDOW_TOKEN,
+    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1267,7 +1266,7 @@ impl Status {
             };
             if iso_device.mount(&current_username()?, &mut self.menu.password_holder)? {
                 log_info!("iso mounter mounted {iso_device:?}");
-                log_line!("iso : {}", iso_device.as_string());
+                log_line!("iso : {iso_device}");
                 let path = iso_device
                     .mountpoints
                     .clone()
@@ -1309,9 +1308,7 @@ impl Status {
             let Some(Mountable::Encrypted(device)) = &self.menu.mount.selected() else {
                 return Ok(());
             };
-            if let Ok(true) =
-                device.open_mount_crypto(&current_username()?, &mut self.menu.password_holder)
-            {
+            if let Ok(true) = device.mount(&current_username()?, &mut self.menu.password_holder) {
                 self.go_to_encrypted_drive(device.uuid.clone())?;
             }
             Ok(())
