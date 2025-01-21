@@ -1622,7 +1622,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] refactor the whole file
       - [x] remove RemovableDevices
     - [x] FIX: unmounting an encrypted drive doesn't reset password
-    - [ ] Add NFS & network drives
+    - [x] NFS & network drives
 
 - [ ] store 4 windows in display to modify instead of recreating
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
