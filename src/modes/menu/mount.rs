@@ -195,10 +195,28 @@ pub struct NetworkMount {
 }
 
 /// Holds a network mount point.
-/// Parsed from a line of /proc/self/mountinfo
-/// 96 29 0:60 / /home/user/nfs rw,relatime shared:523 - nfs4 hostname:/remote/path rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=remote_ip
-/// 483 29 0:73 / /home/user/cifs rw,relatime shared:424 - cifs //ip_adder/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=yout_ip,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
 impl NetworkMount {
+    /// Returns a `NetWorkMount` parsed from a line of /proc/self/mountinfo
+    /// 96 29 0:60 / /home/user/nfs rw,relatime shared:523 - nfs4 hostname:/remote/path rw,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=900,retrans=5,sec=sys,clientaddr=192.168.1.17,local_lock=none,addr=remote_ip
+    /// 483 29 0:73 / /home/user/cifs rw,relatime shared:424 - cifs //ip_adder/qnas rw,vers=3.1.1,cache=strict,username=quentin,uid=0,noforceuid,gid=0,noforcegid,addr=yout_ip,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,reparse=nfs,rsize=4194304,wsize=4194304,bsize=1048576,retrans=1,echo_interval=60,actimeo=1,closetimeo=1
+    fn from_network_line(line: io::Result<String>) -> Option<Self> {
+        let Ok(line) = line else {
+            return None;
+        };
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() <= 6 {
+            return None;
+        }
+        let kind = NetworkKind::from_fs_type(parts.get(parts.len() - 3)?)?;
+        let mountpoint = parts.get(4)?.to_string();
+        let path = parts.get(parts.len() - 2)?.to_string();
+        Some(Self {
+            kind,
+            mountpoint,
+            path,
+        })
+    }
+
     fn umount(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
         if !set_sudo_session(password_holder)? {
             return Ok(false);
@@ -794,37 +812,14 @@ impl Mount {
     }
 
     fn get_network_devices() -> io::Result<Vec<Mountable>> {
-        let file = File::open("/proc/self/mountinfo")?;
-        let reader = BufReader::new(file);
+        let reader = BufReader::new(File::open("/proc/self/mountinfo")?);
         let mut network_mountables = vec![];
 
         for line in reader.lines() {
-            let line = line?;
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() <= 6 {
-                continue;
-            }
-            let Some(fstype) = parts.get(parts.len() - 3) else {
+            let Some(network_mount) = NetworkMount::from_network_line(line) else {
                 continue;
             };
-            if *fstype == "cifs" || *fstype == "nfs4" {
-                let Some(kind) = NetworkKind::from_fs_type(fstype) else {
-                    continue;
-                };
-                let Some(mountpoint) = parts.get(4) else {
-                    continue;
-                };
-                let Some(path) = parts.get(parts.len() - 2) else {
-                    continue;
-                };
-                let mountpoint = mountpoint.to_string();
-                let path = path.to_string();
-                network_mountables.push(Mountable::Network(NetworkMount {
-                    kind,
-                    mountpoint,
-                    path,
-                }))
-            }
+            network_mountables.push(Mountable::Network(network_mount));
         }
         Ok(network_mountables)
     }
