@@ -16,7 +16,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
     prelude::*,
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::{Line, Span, Text as RataText},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame, Terminal,
 };
@@ -35,8 +35,6 @@ use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
     colored_skip_take,
 };
-
-use super::CowStr;
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -1122,16 +1120,40 @@ impl<'a> Menu<'a> {
     fn mount(&self, f: &mut Frame, rect: &Rect) {
         let selectable = &self.status.menu.mount;
         let window = &self.status.menu.window;
-        let mut p_rect = rect.offseted(4, 3);
+        let mut p_rect = rect.offseted(2, 3);
         p_rect.height = p_rect.height.saturating_sub(2);
+        p_rect.width = p_rect.width.saturating_sub(2);
+
+        let header_style = MENU_STYLES
+            .get()
+            .expect("Menu colors should be set")
+            .palette_4
+            .fg
+            .unwrap_or(Color::Rgb(0, 0, 0));
+        let header = Row::new([
+            Cell::from("sym"),
+            Cell::from("path"),
+            Cell::from("label"),
+            Cell::from("mountpoint"),
+        ])
+        .style(header_style);
         let content = selectable.content();
-        let rows: Vec<_> = colored_skip_take!(content, window)
+        let rows = colored_skip_take!(content, window)
             .map(|(index, item, style)| {
-                let text = Cell::from(ratatui::text::Text::from(item.cow_str()));
-                Row::new([text]).style(selectable.style(index, &style))
+                let symbols = Cell::from(RataText::from(item.symbols()));
+                let path = Cell::from(RataText::from(item.path_repr()));
+                let label = Cell::from(RataText::from(item.label()));
+                let mountpoint = Cell::from(RataText::from(item.mountpoint_repr()));
+                Row::new([symbols, path, label, mountpoint]).style(selectable.style(index, &style))
             })
-            .collect();
-        let table = Table::new(rows, [Constraint::Min(1)]);
+            .collect::<Vec<Row>>();
+        let widths = [
+            Constraint::Length(3),
+            Constraint::Max(28),
+            Constraint::Length(10),
+            Constraint::Min(1),
+        ];
+        let table = Table::new(rows, widths).header(header);
         f.render_widget(table, p_rect);
     }
 

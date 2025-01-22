@@ -229,6 +229,10 @@ impl NetworkMount {
         drop_sudo_privileges()?;
         Ok(success)
     }
+
+    fn symbols(&self) -> String {
+        " MN".to_string()
+    }
 }
 
 impl Display for NetworkMount {
@@ -330,6 +334,12 @@ impl Mtp {
             success = self.is_mounted
         );
         Ok(!self.is_mounted)
+    }
+
+    fn symbols(&self) -> String {
+        let is_mounted = self.is_mounted();
+        let mount_repr = if is_mounted { "M" } else { "U" };
+        format!(" {mount_repr}P")
     }
 }
 
@@ -530,6 +540,13 @@ impl EncryptedBlockDevice {
     fn is_mounted(&self) -> bool {
         self.mountpoint.is_some()
     }
+
+    fn symbols(&self) -> String {
+        format!(
+            " {is_mounted}C",
+            is_mounted = if self.is_mounted() { "M" } else { "U" }
+        )
+    }
 }
 
 #[derive(Default, Deserialize, Debug)]
@@ -592,6 +609,14 @@ impl BlockDevice {
         } else {
             ""
         }
+    }
+
+    fn symbols(&self) -> String {
+        format!(
+            " {is_mounted}{prefix}",
+            is_mounted = if self.is_mounted() { "M" } else { "U" },
+            prefix = self.prefix_repr()
+        )
     }
 
     pub fn power_off(&self) -> Result<bool> {
@@ -733,7 +758,7 @@ impl Mountable {
         }
     }
 
-    pub fn path(&self) -> &str {
+    fn path(&self) -> &str {
         match &self {
             Self::Device(device) => device.path.as_str(),
             Self::Encrypted(device) => device.path.as_str(),
@@ -743,6 +768,10 @@ impl Mountable {
         }
     }
 
+    pub fn path_repr(&self) -> String {
+        truncate_string(self.path(), 25)
+    }
+
     fn mountpoint(&self) -> Option<&str> {
         match self {
             Mountable::Device(device) => device.mountpoint.as_deref(),
@@ -750,6 +779,30 @@ impl Mountable {
             Mountable::MTP(device) => Some(&device.path),
             Mountable::Network(device) => Some(&device.mountpoint),
             Mountable::Remote((_name, mountpoint)) => Some(mountpoint),
+        }
+    }
+
+    pub fn mountpoint_repr(&self) -> &str {
+        self.mountpoint().unwrap_or_default()
+    }
+
+    pub fn symbols(&self) -> String {
+        match &self {
+            Self::Device(device) => device.symbols(),
+            Self::Encrypted(device) => device.symbols(),
+            Self::MTP(device) => device.symbols(),
+            Self::Network(device) => device.symbols(),
+            Self::Remote((_, _local_path)) => " MR".to_string(),
+        }
+    }
+
+    pub fn label(&self) -> String {
+        match self {
+            Self::Device(device) => device.label_repr().to_string(),
+            Self::Encrypted(device) => device.label_repr().to_string(),
+            Self::MTP(_) => "".to_string(),
+            Self::Network(device) => device.kind.to_string(),
+            Self::Remote(_) => "".to_string(),
         }
     }
 }

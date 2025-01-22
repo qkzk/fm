@@ -1623,6 +1623,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] remove RemovableDevices
     - [x] FIX: unmounting an encrypted drive doesn't reset password
     - [x] NFS & network drives
+    - [x] use ratatui `Table` to display mount menu and improve alignment.
 
 - [ ] store 4 windows in display to modify instead of recreating
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
