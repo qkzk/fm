@@ -1,4 +1,5 @@
 use std::{
+    cmp::min,
     io::{self, Stdout, Write},
     rc::Rc,
 };
@@ -16,11 +17,10 @@ use ratatui::{
     prelude::*,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame, Terminal,
 };
 
-use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
 use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
@@ -31,6 +31,12 @@ use crate::modes::{
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, Remote,
     SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
+use crate::{
+    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
+    colored_skip_take,
+};
+
+use super::CowStr;
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -1108,8 +1114,25 @@ impl<'a> Menu<'a> {
             Navigate::History => self.history(f, rect),
             Navigate::Picker => self.picker(f, rect),
             Navigate::Trash => self.trash(f, rect),
+            Navigate::Mount => self.mount(f, rect),
             _ => unreachable!("menu.simple_draw_menu should cover this mode"),
         }
+    }
+
+    fn mount(&self, f: &mut Frame, rect: &Rect) {
+        let selectable = &self.status.menu.mount;
+        let window = &self.status.menu.window;
+        let mut p_rect = rect.offseted(4, 3);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        let content = selectable.content();
+        let rows: Vec<_> = colored_skip_take!(content, window)
+            .map(|(index, item, style)| {
+                let text = Cell::from(ratatui::text::Text::from(item.cow_str()));
+                Row::new([text]).style(selectable.style(index, &style))
+            })
+            .collect();
+        let table = Table::new(rows, [Constraint::Min(1)]);
+        f.render_widget(table, p_rect);
     }
 
     fn history(&self, f: &mut Frame, rect: &Rect) {

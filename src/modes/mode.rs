@@ -272,8 +272,7 @@ impl Navigate {
                 | Self::Shortcut
                 | Self::TuiApplication
                 | Self::CliApplication
-                | Self::Marks(_)
-                | Self::Mount
+                | Self::Marks(_) // | Self::Mount
         )
     }
 }
