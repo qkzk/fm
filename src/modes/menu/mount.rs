@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cmp::min,
     fmt::Display,
     fs::File,
     io::{self, BufRead, BufReader},
@@ -7,20 +8,40 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use ratatui::{
+    layout::{Constraint, Rect},
+    style::Color,
+    text::Text,
+    widgets::{Cell, Row, Table},
+    Frame,
+};
 use serde::Deserialize;
 use serde_json::{from_str, from_value, Value};
 use sysinfo::Disks;
 
-use crate::common::{
-    current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR, MOUNT,
-    UDISKSCTL, UMOUNT,
+use crate::{
+    colored_skip_take,
+    common::{
+        current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR,
+        MOUNT, UDISKSCTL, UMOUNT,
+    },
+    config::{ColorG, Gradient},
+    io::color_to_style,
+    modes::ContentWindow,
 };
-use crate::io::{
-    drop_sudo_privileges, execute_and_output, execute_sudo_command,
-    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
+use crate::{
+    config::MENU_STYLES,
+    io::{
+        drop_sudo_privileges, execute_and_output, execute_sudo_command,
+        execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr,
+        DrawMenu,
+    },
 };
-use crate::modes::{MountCommands, MountParameters, PasswordHolder};
 use crate::{impl_content, impl_selectable, log_info, log_line};
+use crate::{
+    io::Offseted,
+    modes::{MountCommands, MountParameters, PasswordHolder},
+};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).
@@ -1092,4 +1113,43 @@ fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
 }
 impl_selectable!(Mount);
 impl_content!(Mount, Mountable);
-impl DrawMenu<Mountable> for Mount {}
+
+impl DrawMenu<Mountable> for Mount {
+    fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow) {
+        let mut p_rect = rect.offseted(2, 3);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        p_rect.width = p_rect.width.saturating_sub(2);
+
+        let header_style = MENU_STYLES
+            .get()
+            .expect("Menu colors should be set")
+            .palette_4
+            .fg
+            .unwrap_or(Color::Rgb(0, 0, 0));
+        let header = Row::new([
+            Cell::from("sym"),
+            Cell::from("path"),
+            Cell::from("label"),
+            Cell::from("mountpoint"),
+        ])
+        .style(header_style);
+        let content = self.content();
+        let rows = colored_skip_take!(content, window)
+            .map(|(index, item, style)| {
+                let symbols = Cell::from(Text::from(item.symbols()));
+                let path = Cell::from(Text::from(item.path_repr()));
+                let label = Cell::from(Text::from(item.label()));
+                let mountpoint = Cell::from(Text::from(item.mountpoint_repr()));
+                Row::new([symbols, path, label, mountpoint]).style(self.style(index, &style))
+            })
+            .collect::<Vec<Row>>();
+        let widths = [
+            Constraint::Length(3),
+            Constraint::Max(28),
+            Constraint::Length(10),
+            Constraint::Min(1),
+        ];
+        let table = Table::new(rows, widths).header(header);
+        f.render_widget(table, p_rect);
+    }
+}

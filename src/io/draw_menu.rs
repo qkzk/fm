@@ -4,10 +4,8 @@ use std::cmp::min;
 use ratatui::{layout::Rect, prelude::Widget, style::Color, text::Line, widgets::Paragraph, Frame};
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::color_to_style;
+use crate::io::{color_to_style, Offseted};
 use crate::modes::{Content, ContentWindow};
-
-use super::Offseted;
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
