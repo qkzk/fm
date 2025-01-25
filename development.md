@@ -1588,6 +1588,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
 - Use char keybinds in tuimenu & cli menus for quick actions
+- Preview compiled executables with readelf
 
 
 
@@ -1629,6 +1630,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
 - [x] FIX: substract with overflow footer
+- [x] use readelf for ELF file
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 
 ## TODO
@@ -1645,8 +1647,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
 - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
 - [ ] eza / ranger colors for normal files
-- [ ] use readelf for ELF file
-  - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster

@@ -233,5 +233,7 @@ pub const ZOXIDE: &str = "zoxide";
 pub const PDFTOPPM: &str = "pdftoppm";
 /// pdinfo
 pub const PDFINFO: &str = "pdfinfo";
+/// readelf
+pub const READELF: &str = "readelf";
 /// default nerdfont icon used for directories.
 pub const DIR_ICON: &str = " ";

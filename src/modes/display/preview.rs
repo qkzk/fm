@@ -18,8 +18,8 @@ use syntect::{
 
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT,
-    SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
+    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
@@ -354,10 +354,26 @@ impl PreviewBuilder {
     }
 
     fn text_or_binary(&self) -> Result<Preview> {
-        if self.is_binary()? {
+        if let Some(elf) = self.read_elf() {
+            Ok(Preview::Text(Text::from_readelf(&self.path, elf)?))
+        } else if self.is_binary()? {
             Ok(Preview::Binary(BinaryContent::new(&self.path)?))
         } else {
             Ok(Preview::Text(Text::from_file(&self.path)?))
+        }
+    }
+
+    fn read_elf(&self) -> Option<String> {
+        let Ok(output) = execute_and_capture_output_without_check(
+            READELF,
+            &["-WCa", self.path.to_string_lossy().as_ref()],
+        ) else {
+            return None;
+        };
+        if output.is_empty() {
+            None
+        } else {
+            Some(output)
         }
     }
 
@@ -408,6 +424,7 @@ pub enum TextKind {
     Archive,
     Blockdevice,
     CommandStdout,
+    Elf,
     Epub,
     FifoChardevice,
     Help,
@@ -427,6 +444,7 @@ impl TextKind {
             Self::Archive => "an archive",
             Self::Blockdevice => "a Blockdevice file",
             Self::CommandStdout => "a command stdout",
+            Self::Elf => "an elf file",
             Self::Epub => "an epub",
             Self::FifoChardevice => "a Fifo or Chardevice file",
             Self::Help => "Help",
@@ -502,6 +520,15 @@ impl Text {
             kind: TextKind::TEXTFILE,
             length: content.len(),
             content,
+        })
+    }
+
+    fn from_readelf(path: &Path, elf: String) -> Result<Self> {
+        Ok(Self {
+            title: filename_from_path(path).context("")?.to_owned(),
+            kind: TextKind::Elf,
+            length: elf.len(),
+            content: elf.lines().map(|line| line.to_owned()).collect(),
         })
     }
 

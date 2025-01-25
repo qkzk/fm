@@ -23,8 +23,7 @@ use crate::{log_info, log_line};
 /// we return the first disk whose mount point match the path.
 pub fn disk_used_by_path<'a>(disks: &'a [&'a Disk], path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&Disk> = disks.to_vec();
-    disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
-    disks.reverse();
+    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().as_os_str().len());
     disks
         .into_iter()
         .find(|&disk| path.starts_with(disk.mount_point()))
