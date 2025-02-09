@@ -1582,13 +1582,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - shell would open in other tab path
 - open config file did nothing
 
-#### Changelog
-
 - Removed "terminal" from configuration. Doesn't break config file. It's just not used anymore.
 - VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
 - Use char keybinds in tuimenu & cli menus for quick actions
 - Preview compiled executables with readelf
+
+#### Changelog
 
 
 
@@ -1637,6 +1637,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
+- [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
