@@ -6,8 +6,8 @@ use indicatif::InMemoryTerm;
 
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
-    filename_to_clipboard, filepath_to_clipboard, get_clipboard, open_in_current_neovim,
-    set_clipboard, set_current_dir, tilde, CONFIG_PATH,
+    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
+    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
 use crate::io::{read_log, External};
@@ -1251,6 +1251,22 @@ impl EventAction {
         Ok(())
     }
 
+    /// Copy the content of the selected text file in normal mode.
+    pub fn copy_content(status: &Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                content_to_clipboard(&file_info.path);
+            }
+            _ => return Ok(()),
+        }
+        Ok(())
+    }
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
         if !status.focus.is_file() {

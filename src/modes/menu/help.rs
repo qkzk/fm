@@ -125,6 +125,7 @@ Different modes for the bottom window
             FuzzyFindLine,
             FuzzyFindHelp,
             RefreshView,
+            CopyContent,
             CopyFilename,
             CopyFilepath,
             OpenConfig,

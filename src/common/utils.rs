@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
 use std::env;
-use std::fs::{metadata, File};
+use std::fs::{metadata, read_to_string, File};
 use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -13,6 +13,7 @@ use sysinfo::Disk;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
+use crate::io::Extension;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
 
@@ -139,6 +140,24 @@ pub fn set_clipboard(content: String) {
     };
     // For some reason, it's not writen if you don't read it back...
     let _ = ctx.get_contents();
+}
+
+/// Copy the filename to the clipboard. Only the filename.
+pub fn content_to_clipboard(path: &std::path::Path) {
+    let Some(extension) = path.extension() else {
+        return;
+    };
+    if !matches!(
+        Extension::matcher(&extension.to_string_lossy()),
+        Extension::Text
+    ) {
+        return;
+    }
+    let Ok(content) = read_to_string(path) else {
+        return;
+    };
+    set_clipboard(content);
+    log_line!("Copied {path} content to clipboard", path = path.display());
 }
 
 /// Copy the filename to the clipboard. Only the filename.

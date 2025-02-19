@@ -324,6 +324,7 @@ impl Bindings {
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
 
+            (KeyEvent::new(KeyCode::Char('a'),    KeyModifiers::CONTROL), ActionMap::CopyContent),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::CONTROL), ActionMap::CopyFilename),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::CONTROL), ActionMap::PageDown),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::CONTROL), ActionMap::FuzzyFind),

@@ -1575,6 +1575,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Removed "terminal" & "terminal flags" from configuration. Shell programs are opened in the same window and doesn't require new terminal.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
 - More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
+- Copy text file content to clipbloard with Ctrl+a. Only works for "text" file as guessed by their extension. 
 
 **Bugfixes :**
 
@@ -1631,7 +1632,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: click on menu is off by 2
 - [x] FIX: substract with overflow footer
 - [x] use readelf for ELF file
+- [x] IMP: copy file content to clipbloard
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
+- [ ] BUG: Camera folder crash. Can't reproduce
 
 ## TODO
 
