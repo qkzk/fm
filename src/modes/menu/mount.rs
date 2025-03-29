@@ -1127,6 +1127,7 @@ impl DrawMenu<Mountable> for Mount {
             .fg
             .unwrap_or(Color::Rgb(0, 0, 0));
         let header = Row::new([
+            Cell::from(""),
             Cell::from("sym"),
             Cell::from("path"),
             Cell::from("label"),
@@ -1136,14 +1137,16 @@ impl DrawMenu<Mountable> for Mount {
         let content = self.content();
         let rows = colored_skip_take!(content, window)
             .map(|(index, item, style)| {
+                let bind = Cell::from(format!("{bind:2<}", bind = index + 1));
                 let symbols = Cell::from(Text::from(item.symbols()));
                 let path = Cell::from(Text::from(item.path_repr()));
                 let label = Cell::from(Text::from(item.label()));
                 let mountpoint = Cell::from(Text::from(item.mountpoint_repr()));
-                Row::new([symbols, path, label, mountpoint]).style(self.style(index, &style))
+                Row::new([bind, symbols, path, label, mountpoint]).style(self.style(index, &style))
             })
             .collect::<Vec<Row>>();
         let widths = [
+            Constraint::Length(2),
             Constraint::Length(3),
             Constraint::Max(28),
             Constraint::Length(10),

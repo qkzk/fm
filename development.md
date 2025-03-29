@@ -1626,8 +1626,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] FIX: unmounting an encrypted drive doesn't reset password
     - [x] NFS & network drives
     - [x] use ratatui `Table` to display mount menu and improve alignment.
+    - [x] use numeric keybinds to goto quickly
 
-- [ ] store 4 windows in display to modify instead of recreating
 - [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
 - [x] FIX: click on menu is off by 2
 - [x] FIX: substract with overflow footer
@@ -1641,6 +1641,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
+- [ ] store 4 windows in display to modify instead of recreating
 - [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.

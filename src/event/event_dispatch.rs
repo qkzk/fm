@@ -176,6 +176,7 @@ impl EventDispatcher {
             Navigate::Mount if c == 'g' => status.go_to_normal_drive(),
             Navigate::Mount if c == 'u' => status.umount_normal_drive(),
             Navigate::Mount if c == 'e' => status.eject_removable_device(),
+            Navigate::Mount if c.is_ascii_digit() => status.go_to_mount_per_index(c),
 
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),

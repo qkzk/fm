@@ -1370,7 +1370,7 @@ impl Status {
         }
     }
 
-    /// Move to the selected crypted device mount point.
+    /// Move to the selected device mount point.
     pub fn go_to_normal_drive(&mut self) -> Result<()> {
         let Some(path) = self.menu.mount.selected_mount_point() else {
             return Ok(());
@@ -1378,6 +1378,15 @@ impl Status {
         let tab = self.current_tab_mut();
         tab.cd(&path)?;
         tab.refresh_view()
+    }
+
+    /// Move to the mount point based on its onscreen index
+    pub fn go_to_mount_per_index(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        self.menu.mount.set_index(index.saturating_sub(1) as _);
+        self.go_to_normal_drive()
     }
 
     fn go_to_encrypted_drive(&mut self, uuid: Option<String>) -> Result<()> {
