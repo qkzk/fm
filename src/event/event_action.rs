@@ -88,8 +88,10 @@ impl EventAction {
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         if !status.session.dual() {
             Self::toggle_dualpane(status)?;
+            status.session.set_preview();
+        } else {
+            status.session.toggle_preview();
         }
-        status.session.toggle_preview();
         if status.session.preview() {
             status.update_second_pane_for_preview()
         } else {

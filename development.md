@@ -1633,6 +1633,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: substract with overflow footer
 - [x] use readelf for ELF file
 - [x] IMP: copy file content to clipbloard
+- [x] FIX: single tab, Alt+p (preview) should open the preview instead of a second tab
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 

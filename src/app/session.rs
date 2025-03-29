@@ -126,6 +126,11 @@ impl Session {
         self.update_yaml_file();
     }
 
+    pub fn set_preview(&mut self) {
+        self.preview = true;
+        self.update_yaml_file();
+    }
+
     pub fn toggle_preview(&mut self) {
         self.preview = !self.preview;
         self.update_yaml_file();
