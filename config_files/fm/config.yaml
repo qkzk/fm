@@ -151,6 +151,6 @@ keys:
 # 'alt-u': "/usr/bin/ls %f" # will run `ls /path/to/the/selected/file`... be won't print anything.
 custom:
   # open the selected file with chrome
-  'alt-u': "/usr/bin/google-chrome-stable %s"
+  'shift-u': "/usr/bin/google-chrome-stable %s"
   # drag & drop the selected file to a GUI application
   'shift-d': "/usr/bin/dragon-drop %s"  

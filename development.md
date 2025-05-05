@@ -1599,7 +1599,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow letter binds in every navigate + selection menu like tui & cli applications
 - [x] FIX: open config (Alt + c) does nothing
 - [x] swap keybinds: Alt + c open compression menu and Shift + c opens the configuration file.
-- [ ] Remote mount QOL
+- [x] Remote mount QOL
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
   - [x] Remote mount shows the command that will be generated
   - [x] expand local path with tilde
