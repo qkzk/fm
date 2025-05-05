@@ -349,7 +349,7 @@ impl Tab {
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self.clone_selected_path()?;
         self.refresh_view()?;
-        self.reselect(selected_path);
+        self.select_by_path(selected_path);
         Ok(())
     }
 
@@ -361,9 +361,16 @@ impl Tab {
             .clone())
     }
 
-    fn reselect(&mut self, selected_path: Arc<path::Path>) {
+    /// Select the given file from its path.
+    /// Action depends of the display mode.
+    /// For directory or tree, it selects the file and scroll to it.
+    /// when the file doesn't exists,
+    /// - in directory mode, the first file is selected;
+    /// - in tree mode, the root is selected.
+    ///
+    /// For preview or fuzzy, it does nothing
+    pub fn select_by_path(&mut self, selected_path: Arc<path::Path>) {
         match self.display_mode {
-            Display::Preview => (),
             Display::Directory => {
                 let index = self.directory.select_file(&selected_path);
                 self.scroll_to(index)
@@ -373,7 +380,7 @@ impl Tab {
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
             }
-            Display::Fuzzy => (),
+            Display::Preview | Display::Fuzzy => (),
         }
     }
 

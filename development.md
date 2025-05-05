@@ -1636,6 +1636,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: single tab, Alt+p (preview) should open the preview instead of a second tab
 - [x] FIX: sort shouldn't be reset when directory view is reset
 - [x] FIX: sort, <CR> should reset but change focus
+- [x] FIX: sorting should always display the selected file 
+- [ ] BUG: after rename selection is lost
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce

@@ -297,6 +297,12 @@ where
         ));
     };
     let new_path = old_parent.join(new_name);
+    if new_path.exists() {
+        return Err(anyhow::anyhow!(
+            "File already exists {new_path}",
+            new_path = new_path.display()
+        ));
+    }
     let Some(new_parent) = new_path.parent() else {
         return Err(anyhow::anyhow!(
             "no parent for {new_path}",
