@@ -52,7 +52,7 @@ impl EventDispatcher {
                 kind: _,
                 state: _,
             } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
-                self.menu_key_matcher(status, c)?
+                self.menu_char_key_matcher(status, c)?
             }
             key => self.file_key_matcher(status, key)?,
         };
@@ -153,7 +153,7 @@ impl EventDispatcher {
         Ok(true)
     }
 
-    fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
+    fn menu_char_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.menu_mode {
             Menu::InputSimple(InputSimple::Sort) => status.sort_by_char(c),
