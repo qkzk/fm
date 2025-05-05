@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 
@@ -217,18 +218,28 @@ impl LeaveMenu {
     /// It uses the `fs::rename` function and has the same limitations.
     /// Intermediates directory are created if needed.
     /// It acts like a move (without any confirmation...)
-
     fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
-        if let Err(error) = rename(&old_path, &new_name) {
-            log_info!(
-                "Error renaming {old_path} to {new_name}. Error: {error}",
-                old_path = old_path.display()
-            );
-            return Err(error);
-        };
-        status.current_tab_mut().refresh_view()
+        match rename(&old_path, &new_name) {
+            Ok(new_path) => {
+                status.current_tab_mut().refresh_view()?;
+                status
+                    .current_tab_mut()
+                    .select_by_path(Arc::from(new_path.as_ref()));
+            }
+            Err(error) => {
+                log_info!(
+                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    old_path = old_path.display()
+                );
+                log_line!(
+                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    old_path = old_path.display()
+                );
+            }
+        }
+        Ok(())
     }
 
     /// Creates a new file with input string as name.

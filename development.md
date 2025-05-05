@@ -1588,6 +1588,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
 - Use char keybinds in tuimenu & cli menus for quick actions
 - Preview compiled executables with readelf
+- Rename: renamed file stays selected. You can't overwrite an existing file anymore.
 
 #### Changelog
 
@@ -1637,7 +1638,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: sort shouldn't be reset when directory view is reset
 - [x] FIX: sort, <CR> should reset but change focus
 - [x] FIX: sorting should always display the selected file 
-- [ ] BUG: after rename selection is lost
+- [x] FIX: after rename selection is lost
+- [x] FIX: rename shouldn't overwrite existing file
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
