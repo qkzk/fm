@@ -10,7 +10,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use ratatui::{
     layout::{Constraint, Rect},
-    style::Color,
+    style::{Color, Style},
     text::Text,
     widgets::{Cell, Row, Table},
     Frame,
@@ -841,6 +841,14 @@ pub struct Mount {
 }
 
 impl Mount {
+    const WIDTHS: [Constraint; 5] = [
+        Constraint::Length(2),
+        Constraint::Length(3),
+        Constraint::Max(28),
+        Constraint::Length(10),
+        Constraint::Min(1),
+    ];
+
     pub fn update(&mut self, disks: &Disks) -> Result<()> {
         self.index = 0;
 
@@ -1050,6 +1058,32 @@ impl Mount {
         }
         None
     }
+
+    fn header() -> Row<'static> {
+        let header_style = MENU_STYLES
+            .get()
+            .expect("Menu colors should be set")
+            .palette_4
+            .fg
+            .unwrap_or(Color::Rgb(0, 0, 0));
+        Row::new([
+            Cell::from(""),
+            Cell::from("sym"),
+            Cell::from("path"),
+            Cell::from("label"),
+            Cell::from("mountpoint"),
+        ])
+        .style(header_style)
+    }
+
+    fn row<'a>(&self, index: usize, item: &'a Mountable, style: Style) -> Row<'a> {
+        let bind = Cell::from(format!("{bind:2<}", bind = index + 1));
+        let symbols = Cell::from(Text::from(item.symbols()));
+        let path = Cell::from(Text::from(item.path_repr()));
+        let label = Cell::from(Text::from(item.label()));
+        let mountpoint = Cell::from(Text::from(item.mountpoint_repr()));
+        Row::new([bind, symbols, path, label, mountpoint]).style(self.style(index, &style))
+    }
 }
 
 fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Result<bool> {
@@ -1120,39 +1154,13 @@ impl DrawMenu<Mountable> for Mount {
         p_rect.height = p_rect.height.saturating_sub(2);
         p_rect.width = p_rect.width.saturating_sub(2);
 
-        let header_style = MENU_STYLES
-            .get()
-            .expect("Menu colors should be set")
-            .palette_4
-            .fg
-            .unwrap_or(Color::Rgb(0, 0, 0));
-        let header = Row::new([
-            Cell::from(""),
-            Cell::from("sym"),
-            Cell::from("path"),
-            Cell::from("label"),
-            Cell::from("mountpoint"),
-        ])
-        .style(header_style);
         let content = self.content();
-        let rows = colored_skip_take!(content, window)
-            .map(|(index, item, style)| {
-                let bind = Cell::from(format!("{bind:2<}", bind = index + 1));
-                let symbols = Cell::from(Text::from(item.symbols()));
-                let path = Cell::from(Text::from(item.path_repr()));
-                let label = Cell::from(Text::from(item.label()));
-                let mountpoint = Cell::from(Text::from(item.mountpoint_repr()));
-                Row::new([bind, symbols, path, label, mountpoint]).style(self.style(index, &style))
-            })
-            .collect::<Vec<Row>>();
-        let widths = [
-            Constraint::Length(2),
-            Constraint::Length(3),
-            Constraint::Max(28),
-            Constraint::Length(10),
-            Constraint::Min(1),
-        ];
-        let table = Table::new(rows, widths).header(header);
+        let table = Table::new(
+            colored_skip_take!(content, window)
+                .map(|(index, item, style)| self.row(index, item, style)),
+            Self::WIDTHS,
+        )
+        .header(Self::header());
         f.render_widget(table, p_rect);
     }
 }
