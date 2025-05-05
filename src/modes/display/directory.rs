@@ -111,7 +111,7 @@ impl Directory {
     /// Select the first file if any.
     pub fn reset_files(&mut self, settings: &TabSettings, users: &Users) -> Result<()> {
         self.content = Self::files(&self.path, settings.show_hidden, &settings.filter, users)?;
-        self.sort(&SortKind::default());
+        self.sort(&settings.sort_kind);
         self.index = 0;
         Ok(())
     }

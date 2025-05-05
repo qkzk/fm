@@ -1634,13 +1634,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] use readelf for ELF file
 - [x] IMP: copy file content to clipbloard
 - [x] FIX: single tab, Alt+p (preview) should open the preview instead of a second tab
+- [x] FIX: sort shouldn't be reset when directory view is reset
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
+- [ ] opening a video and focus is sticked to second pane : can't reproduce
 
 ## TODO
 
 ### Other ideas
 
+- [ ] stability aka 1.0
+- [ ] code clean
 - [ ] store 4 windows in display to modify instead of recreating
 - [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
