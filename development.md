@@ -1674,7 +1674,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
-- [ ] open a shell while hiding fm, restore after leaving
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control
