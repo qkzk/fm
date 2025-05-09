@@ -367,7 +367,7 @@ impl Thumbnail {
             "-an",
             "-sn",
             "-vf",
-            "fps=1/100,scale=320:-1",
+            "fps=1/10,scale=320:-1",
             "-threads",
             "2",
             "-frames:v",

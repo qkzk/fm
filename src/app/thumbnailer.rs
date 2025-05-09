@@ -122,13 +122,13 @@ impl Worker {
         }
         drop(locked_queue);
         log_info!("Worker {id} received task {p}", p = path.display());
-        Self::make_thumbnail(path);
+        Self::make_thumbnail(id, path);
     }
 
-    fn make_thumbnail(path: PathBuf) {
+    fn make_thumbnail(id: usize, path: PathBuf) {
         match Thumbnail::create_video(&path.to_string_lossy()) {
-            Ok(_) => log_info!("thumbnail built successfully"),
-            Err(e) => log_info!("error building thumbnail {e}"),
+            Ok(_) => log_info!("worker {id} thumbnail built successfully"),
+            Err(e) => log_info!("worker {id} error building thumbnail {e}"),
         }
     }
 }
