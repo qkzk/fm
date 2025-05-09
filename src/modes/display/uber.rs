@@ -9,7 +9,7 @@ use crate::common::{
     filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
     PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, TMP_THUMBNAILS_DIR,
 };
-use crate::io::{execute_and_capture_output, execute_and_output_no_log};
+use crate::io::{execute_and_capture_output, execute_and_output_no_log, Scalers, UeConf, Ueberzug};
 use crate::log_info;
 use crate::modes::ExtensionKind;
 
@@ -93,12 +93,12 @@ pub struct Ueber {
     images: Vec<PathBuf>,
     length: usize,
     pub index: usize,
-    ueberzug: ueberzug::Ueberzug,
+    ueberzug: Ueberzug,
 }
 
 impl Ueber {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
-        let ueberzug = ueberzug::Ueberzug::new();
+        let ueberzug = Ueberzug::new();
         let index = 0;
         let length = images.len();
         let since = Instant::now();
@@ -157,14 +157,14 @@ impl Ueber {
             image = self.images[self.index].display(),
             index = self.index
         );
-        self.ueberzug.draw(&ueberzug::UeConf {
+        self.ueberzug.draw(&UeConf {
             identifier: &self.identifier,
             path: &self.images[self.image_index()].to_string_lossy(),
             x,
             y,
             width: Some(width),
             height: Some(height),
-            scaler: Some(ueberzug::Scalers::FitContain),
+            scaler: Some(Scalers::FitContain),
             ..Default::default()
         });
     }

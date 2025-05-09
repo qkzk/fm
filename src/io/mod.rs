@@ -20,6 +20,7 @@ mod input_history;
 mod log;
 mod opendal;
 mod opener;
+mod ueberzug;
 
 pub use args::Args;
 pub use commands::*;
@@ -30,3 +31,4 @@ pub use input_history::*;
 pub use log::{read_last_log_line, read_log, set_loggers, write_log_info_once, write_log_line};
 pub use opendal::*;
 pub use opener::*;
+pub use ueberzug::*;

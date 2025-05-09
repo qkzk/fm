@@ -66,7 +66,6 @@ syntect = "5.0.0"
 sysinfo = "0.31.4"
 tar = "0.4.38"
 tokio = { version = "1", features = ["full"] }
-ueberzug = "0.1.0"
 unicode-segmentation = "1.11.0"
 url = "2.5.2"
 url-escape = "0.1.1"

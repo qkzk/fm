@@ -1640,6 +1640,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: sorting should always display the selected file 
 - [x] FIX: after rename selection is lost
 - [x] FIX: rename shouldn't overwrite existing file
+- [x] Integrate Ueberzug-rs in src. Wasn't maintened anymore.
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
