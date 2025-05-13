@@ -40,22 +40,43 @@ use std::sync::RwLock;
 use anyhow::{Context, Result};
 
 /// Main Ueberzug Struct
-pub struct Ueberzug(RwLock<Option<Child>>);
+pub struct Ueberzug {
+    driver: RwLock<Option<Child>>,
+    last_displayed: Option<String>,
+}
 
 impl Default for Ueberzug {
     /// Creates the Default Ueberzug instance
     /// One instance can handel multiple images provided they have different identifiers
     fn default() -> Self {
-        Self(RwLock::new(None))
+        Self {
+            driver: RwLock::new(None),
+            last_displayed: None,
+        }
     }
 }
 
 impl Ueberzug {
     /// Draws the Image using UeConf
-    pub fn draw(&self, config: &UeConf) -> Result<()> {
+    pub fn draw(&mut self, config: &UeConf) -> Result<()> {
+        self.save_current_image(config)?;
         let cmd = config.to_json();
         self.run(&cmd)
     }
+
+    fn save_current_image(&mut self, config: &UeConf) -> Result<()> {
+        let current = config.identifier;
+        if let Some(last) = &self.last_displayed {
+            if last != current {
+                self.clear(last)?;
+                self.last_displayed = Some(current.to_owned());
+            }
+        } else {
+            self.last_displayed = Some(current.to_owned());
+        };
+        Ok(())
+    }
+
     /// Clear the drawn image only requires the identifier
     pub fn clear(&self, identifier: &str) -> Result<()> {
         let config = UeConf::remove(identifier);
@@ -64,7 +85,7 @@ impl Ueberzug {
     }
 
     fn run(&self, cmd: &str) -> Result<()> {
-        let mut ueberzug = self.0.write().unwrap();
+        let mut ueberzug = self.driver.write().unwrap();
         if ueberzug.is_none() {
             *ueberzug = Some(
                 std::process::Command::new("ueberzug")

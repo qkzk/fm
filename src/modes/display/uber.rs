@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::ffi::OsStr;
 use std::fs::metadata;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
@@ -93,12 +94,10 @@ pub struct Ueber {
     images: Vec<PathBuf>,
     length: usize,
     pub index: usize,
-    ueberzug: Ueberzug,
 }
 
 impl Ueber {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
-        let ueberzug = Ueberzug::default();
         let index = 0;
         let length = images.len();
         let since = Instant::now();
@@ -109,7 +108,6 @@ impl Ueber {
             images,
             length,
             index,
-            ueberzug,
         }
     }
     /// Only affect pdf thumbnail. Will decrease the index if possible.
@@ -151,14 +149,14 @@ impl Ueber {
     /// Draw the image with ueberzug in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn draw(&self, x: u16, y: u16, width: u16, height: u16) {
+    pub fn draw(&self, x: u16, y: u16, width: u16, height: u16, ueberzug: Arc<Mutex<Ueberzug>>) {
         log_info!(
             "ueber draws {image} {index}",
             image = self.images[self.index].display(),
             index = self.index
         );
         let path = &self.images[self.image_index()].to_string_lossy();
-        if let Err(e) = self.ueberzug.draw(&UeConf {
+        if let Err(e) = ueberzug.lock().unwrap().draw(&UeConf {
             identifier: &self.identifier,
             path,
             x,

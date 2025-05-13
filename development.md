@@ -1643,8 +1643,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Integrate Ueberzug-rs in src. Wasn't maintened anymore.
 - [ ] share a common ueberzug instance for all image drawing 
   - [x] simplified ueberzug commands build
-  - [ ] where to attach it ?
-  - [ ] how to call it
+  - [x] where to attach it ? Display itself. 
+  - [x] how to call it ? as deep as possible, from Ueber inside preview
+  - [x] problem: where to store the last modified image ? it should be stored in ueberzug itself... Doing so delegates the clearing to ueberzug itself. 
+  - [ ] BUG: preview, quit preview, doesn't erease.
+  - [ ] BUG: multiple previews are a mess
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce

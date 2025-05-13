@@ -1,6 +1,7 @@
 use std::{
     io::{self, Stdout, Write},
     rc::Rc,
+    sync::{Arc, Mutex},
 };
 
 use anyhow::{Context, Result};
@@ -20,7 +21,6 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
 use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu};
@@ -30,6 +30,10 @@ use crate::modes::{
     ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, Remote,
     SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+};
+use crate::{
+    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
+    io::Ueberzug,
 };
 
 pub trait Offseted {
@@ -167,20 +171,20 @@ struct Files<'a> {
     attributes: FilesAttributes,
 }
 
-impl<'a> Draw for Files<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect) {
+impl<'a> Files<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
         let use_log_line = self.use_log_line();
         let rects = Rects::files(rect, use_log_line);
 
         if self.should_preview_in_right_tab() {
-            self.preview_in_right_tab(f, &rects[0], &rects[2]);
+            self.preview_in_right_tab(f, &rects[0], &rects[2], ueberzug);
             return;
         }
 
         self.header(f, &rects[0]);
         self.copy_progress_bar(f, &rects[1]);
         self.second_line(f, &rects[1]);
-        self.content(f, &rects[1], &rects[2]);
+        self.content(f, &rects[1], &rects[2], ueberzug);
         if use_log_line {
             self.log_line(f, &rects[3]);
         }
@@ -209,14 +213,24 @@ impl<'a> Files<'a> {
         self.status.session.dual() && self.is_right() && self.status.session.preview()
     }
 
-    fn preview_in_right_tab(&self, f: &mut Frame, header_rect: &Rect, content_rect: &Rect) {
+    fn preview_in_right_tab(
+        &self,
+        f: &mut Frame,
+        header_rect: &Rect,
+        content_rect: &Rect,
+        ueberzug: Arc<Mutex<Ueberzug>>,
+    ) {
         let tab = &self.status.tabs[1];
         PreviewHeader::into_default_preview(self.status, tab, content_rect.width).draw_left(
             f,
             *header_rect,
             self.status.index == 1,
         );
-        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(f, content_rect);
+        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(
+            f,
+            content_rect,
+            ueberzug,
+        );
     }
 
     fn is_right(&self) -> bool {
@@ -246,11 +260,17 @@ impl<'a> Files<'a> {
         }
     }
 
-    fn content(&self, f: &mut Frame, second_line_rect: &Rect, content_rect: &Rect) {
+    fn content(
+        &self,
+        f: &mut Frame,
+        second_line_rect: &Rect,
+        content_rect: &Rect,
+        ueberzug: Arc<Mutex<Ueberzug>>,
+    ) {
         match &self.tab.display_mode {
             DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, content_rect),
             DisplayMode::Tree => TreeDisplay::new(self).draw(f, content_rect),
-            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect),
+            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect, ueberzug),
             DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect),
         }
     }
@@ -655,9 +675,9 @@ struct PreviewDisplay<'a> {
 /// else the content is supposed to be text and shown as such.
 /// It may fail to recognize some usual extensions, notably `.toml`.
 /// It may fail to recognize small files (< 1024 bytes).
-impl<'a> Draw for PreviewDisplay<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect) {
-        self.preview(f, rect)
+impl<'a> PreviewDisplay<'a> {
+    fn draw(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
+        self.preview(f, rect, ueberzug)
     }
 }
 
@@ -678,7 +698,7 @@ impl<'a> PreviewDisplay<'a> {
         }
     }
 
-    fn preview(&self, f: &mut Frame, rect: &Rect) {
+    fn preview(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
@@ -688,7 +708,7 @@ impl<'a> PreviewDisplay<'a> {
                 self.syntaxed(f, syntaxed, length, rect, number_col_width, window)
             }
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
-            Preview::Ueberzug(image) => self.ueberzug(image, rect),
+            Preview::Ueberzug(image) => self.ueberzug(image, rect, ueberzug),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
             Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
                 self.ansi_text(f, ansi_text, length, rect, window)
@@ -799,7 +819,7 @@ impl<'a> PreviewDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    fn ueberzug(&self, image: &Ueber, rect: &Rect) {
+    fn ueberzug(&self, image: &Ueber, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
         let width = rect.width;
         let height = rect.height;
         image.draw(
@@ -807,6 +827,7 @@ impl<'a> PreviewDisplay<'a> {
             2,
             width,
             height.saturating_sub(1),
+            ueberzug,
         );
     }
 
@@ -1503,16 +1524,19 @@ impl Rects {
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
 pub struct Display {
-    /// The Tuikit terminal attached to the display.
+    /// The Crossterm terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Terminal<CrosstermBackend<Stdout>>,
+    /// The ueberzug instance used to draw the images
+    ueberzug: Arc<Mutex<Ueberzug>>,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a terminal object.
     pub fn new(term: Terminal<CrosstermBackend<Stdout>>) -> Self {
         log_info!("starting display...");
-        Self { term }
+        let ueberzug = Arc::new(Mutex::new(Ueberzug::default()));
+        Self { term, ueberzug }
     }
 
     /// Display every possible content in the terminal.
@@ -1546,7 +1570,13 @@ impl Display {
         if Self::use_dual_pane(status, width) {
             self.draw_dual(full_rect, inside_border_rect, borders, status);
         } else {
-            self.draw_single(full_rect, inside_border_rect, borders, status);
+            self.draw_single(
+                full_rect,
+                inside_border_rect,
+                borders,
+                status,
+                self.ueberzug.clone(),
+            );
         };
     }
 
@@ -1586,6 +1616,7 @@ impl Display {
             inside_wins,
             (file_left, file_right),
             (menu_left, menu_right),
+            self.ueberzug.clone(),
         );
     }
 
@@ -1596,6 +1627,7 @@ impl Display {
         inside_wins: Vec<Rect>,
         files: (Files, Files),
         menus: (Menu, Menu),
+        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         self.term
             .draw(|f| {
@@ -1603,9 +1635,9 @@ impl Display {
                 // 1 padding   | 4 padding
                 // 2 Menu Left | 5 Menu Right
                 Self::draw_dual_borders(borders, f, &bordered_wins);
-                files.0.draw(f, &inside_wins[0]);
+                files.0.draw(f, &inside_wins[0], ueberzug.clone());
                 menus.0.draw(f, &inside_wins[2]);
-                files.1.draw(f, &inside_wins[3]);
+                files.1.draw(f, &inside_wins[3], ueberzug);
                 menus.1.draw(f, &inside_wins[5]);
             })
             .unwrap();
@@ -1617,13 +1649,21 @@ impl Display {
         inside_border_rect: Rect,
         borders: [Style; 4],
         status: &Status,
+        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         let file_left = FilesBuilder::single(status);
         let menu_left = Menu::new(status, 0);
         let need_menu = status.tabs[0].need_menu_window();
         let bordered_wins = Rects::vertical_split_border(rect, need_menu);
         let inside_wins = Rects::vertical_split_inner(inside_border_rect, need_menu);
-        self.render_single(borders, bordered_wins, inside_wins, file_left, menu_left)
+        self.render_single(
+            borders,
+            bordered_wins,
+            inside_wins,
+            file_left,
+            menu_left,
+            ueberzug,
+        )
     }
 
     fn render_single(
@@ -1633,11 +1673,12 @@ impl Display {
         inside_wins: Rc<[Rect]>,
         file_left: Files,
         menu_left: Menu,
+        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         self.term
             .draw(|f| {
                 Self::draw_single_borders(borders, f, &bordered_wins);
-                file_left.draw(f, &inside_wins[0]);
+                file_left.draw(f, &inside_wins[0], ueberzug);
                 menu_left.draw(f, &inside_wins[2]);
             })
             .unwrap();
