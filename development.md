@@ -1641,6 +1641,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: after rename selection is lost
 - [x] FIX: rename shouldn't overwrite existing file
 - [x] Integrate Ueberzug-rs in src. Wasn't maintened anymore.
+- [ ] share a common ueberzug instance for all image drawing 
+  - [x] simplified ueberzug commands build
+  - [ ] where to attach it ?
+  - [ ] how to call it
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce

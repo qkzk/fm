@@ -37,46 +37,33 @@ use std::process::Child;
 use std::process::Stdio;
 use std::sync::RwLock;
 
-use crate::log_info;
+use anyhow::{Context, Result};
 
 /// Main Ueberzug Struct
 pub struct Ueberzug(RwLock<Option<Child>>);
 
 impl Default for Ueberzug {
+    /// Creates the Default Ueberzug instance
+    /// One instance can handel multiple images provided they have different identifiers
     fn default() -> Self {
-        Self::new()
+        Self(RwLock::new(None))
     }
 }
 
 impl Ueberzug {
-    /// Creates the Default Ueberzug instance
-    /// One instance can handel multiple images provided they have different identifiers
-    pub fn new() -> Self {
-        Self(RwLock::new(None))
-    }
     /// Draws the Image using UeConf
-    pub fn draw(&self, config: &UeConf) {
+    pub fn draw(&self, config: &UeConf) -> Result<()> {
         let cmd = config.to_json();
-        if let Err(e) = self.run(&cmd) {
-            log_info!(
-                "Ueberzug could not draw {}, from path {}.\n{e}",
-                config.identifier,
-                config.path
-            );
-        };
+        self.run(&cmd)
     }
     /// Clear the drawn image only requires the identifier
-    pub fn clear(&self, identifier: &str) {
-        let config = UeConf {
-            action: Actions::Remove,
-            identifier,
-            ..Default::default()
-        };
+    pub fn clear(&self, identifier: &str) -> Result<()> {
+        let config = UeConf::remove(identifier);
         let cmd = config.to_json();
-        self.run(&cmd).expect("Failed to Clear Image");
+        self.run(&cmd)
     }
 
-    fn run(&self, cmd: &str) -> Result<(), std::io::Error> {
+    fn run(&self, cmd: &str) -> Result<()> {
         let mut ueberzug = self.0.write().unwrap();
         if ueberzug.is_none() {
             *ueberzug = Some(
@@ -88,7 +75,12 @@ impl Ueberzug {
             );
         }
 
-        let stdin = (*ueberzug).as_mut().unwrap().stdin.as_mut().unwrap();
+        let stdin = (*ueberzug)
+            .as_mut()
+            .context("bla")?
+            .stdin
+            .as_mut()
+            .context("truc")?;
         stdin.write_all(cmd.as_bytes())?;
 
         Ok(())
@@ -204,6 +196,13 @@ macro_rules! if_not_none {
 }
 
 impl<'a> UeConf<'a> {
+    fn remove(identifier: &'a str) -> Self {
+        Self {
+            action: Actions::Remove,
+            identifier,
+            ..Default::default()
+        }
+    }
     fn to_json(&self) -> String {
         if self.identifier.is_empty() {
             panic!("Incomplete Information : Itentifier Not Found");

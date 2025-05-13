@@ -98,7 +98,7 @@ pub struct Ueber {
 
 impl Ueber {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
-        let ueberzug = Ueberzug::new();
+        let ueberzug = Ueberzug::default();
         let index = 0;
         let length = images.len();
         let since = Instant::now();
@@ -157,16 +157,23 @@ impl Ueber {
             image = self.images[self.index].display(),
             index = self.index
         );
-        self.ueberzug.draw(&UeConf {
+        let path = &self.images[self.image_index()].to_string_lossy();
+        if let Err(e) = self.ueberzug.draw(&UeConf {
             identifier: &self.identifier,
-            path: &self.images[self.image_index()].to_string_lossy(),
+            path,
             x,
             y,
             width: Some(width),
             height: Some(height),
             scaler: Some(Scalers::FitContain),
             ..Default::default()
-        });
+        }) {
+            log_info!(
+                "Ueberzug could not draw {}, from path {}.\n{e}",
+                &self.identifier,
+                path
+            );
+        };
     }
 }
 
