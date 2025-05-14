@@ -3,14 +3,13 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::ffi::OsStr;
 use std::fs::metadata;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
     filename_from_path, hash_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
     PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, TMP_THUMBNAILS_DIR,
 };
-use crate::io::{execute_and_capture_output, execute_and_output_no_log, Scalers, UeConf, Ueberzug};
+use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
 use crate::modes::ExtensionKind;
 
@@ -92,7 +91,7 @@ pub struct Ueber {
     since: Instant,
     pub kind: Kind,
     pub identifier: String,
-    images: Vec<PathBuf>,
+    pub images: Vec<PathBuf>,
     length: usize,
     pub index: usize,
 }
@@ -139,40 +138,12 @@ impl Ueber {
         elapsed % self.images.len()
     }
 
-    fn image_index(&self) -> usize {
+    pub fn image_index(&self) -> usize {
         if matches!(self.kind, Kind::Video) {
             self.video_index()
         } else {
             self.index
         }
-    }
-
-    /// Draw the image with ueberzug in the current window.
-    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn draw(&self, x: u16, y: u16, width: u16, height: u16, ueberzug: Arc<Mutex<Ueberzug>>) {
-        log_info!(
-            "ueber draws {image} {index}",
-            image = self.images[self.index].display(),
-            index = self.index
-        );
-        let path = &self.images[self.image_index()].to_string_lossy();
-        if let Err(e) = ueberzug.lock().unwrap().draw(&UeConf {
-            identifier: &self.identifier,
-            path,
-            x,
-            y,
-            width: Some(width),
-            height: Some(height),
-            scaler: Some(Scalers::FitContain),
-            ..Default::default()
-        }) {
-            log_info!(
-                "Ueberzug could not draw {}, from path {}.\n{e}",
-                &self.identifier,
-                path
-            );
-        };
     }
 }
 

@@ -33,7 +33,7 @@ use crate::modes::{
 };
 use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
-    io::Ueberzug,
+    io::{Scalers, UeConf, Ueberzug},
 };
 
 pub trait Offseted {
@@ -819,16 +819,38 @@ impl<'a> PreviewDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
+    /// Draw the image with ueberzug in the current window.
+    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     fn ueberzug(&self, image: &Ueber, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
-        let width = rect.width;
-        let height = rect.height;
-        image.draw(
-            self.attributes.x_position + 1,
-            2,
+        let identifier = &image.identifier;
+        let path = &image.images[image.image_index()].to_string_lossy();
+        let x = self.attributes.x_position + 1;
+        let y = 2;
+        let width = Some(rect.width);
+        let height = Some(rect.height.saturating_sub(1));
+        let scaler = Some(Scalers::FitContain);
+        let config = &UeConf {
+            identifier,
+            path,
+            x,
+            y,
             width,
-            height.saturating_sub(1),
-            ueberzug,
-        );
+            height,
+            scaler,
+            ..Default::default()
+        };
+
+        if let Err(e) = ueberzug
+            .lock()
+            .expect("Couldn't lock ueberzug")
+            .draw(config)
+        {
+            log_info!(
+                "Ueberzug could not draw {}, from path {}.\n{e}",
+                image.identifier,
+                path
+            );
+        };
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
