@@ -33,7 +33,7 @@ impl Displayer {
             loop {
                 match rx.try_recv() {
                     Ok(_) | Err(TryRecvError::Disconnected) => {
-                        crate::log_info!("terminating displayer");
+                        log_info!("terminating displayer");
                         display.restore_terminal()?;
                         drop(display);
                         break;
@@ -41,12 +41,9 @@ impl Displayer {
                     Err(TryRecvError::Empty) => {}
                 }
                 let mut status = status.lock();
-                if status.tabs[0].settings.should_clear_image
-                    || status.tabs[1].settings.should_clear_image
-                {
-                    display.clear_ueberzug()?;
-                    status.tabs[0].settings.should_clear_image = false;
-                    status.tabs[1].settings.should_clear_image = false;
+                if status.should_tabs_images_be_cleared() {
+                    display.clear_ueberzug();
+                    status.set_tabs_images_cleared();
                 }
                 if !status.internal_settings.is_disabled() {
                     display.display_all(&status);
@@ -56,7 +53,7 @@ impl Displayer {
                 }
                 drop(status);
 
-                std::thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
+                thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
             }
             Ok(())
         });
@@ -64,7 +61,7 @@ impl Displayer {
     }
 
     pub fn quit(self) {
-        crate::log_info!("stopping display loop");
+        log_info!("stopping display loop");
         match self.tx.send(()) {
             Ok(()) => (),
             Err(e) => log_info!("Displayer::quit error {e:?}"),

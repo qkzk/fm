@@ -1723,11 +1723,12 @@ impl Display {
         Self::draw_n_borders(2, borders, f, wins)
     }
 
-    pub fn clear_ueberzug(&mut self) -> Result<()> {
+    /// Clear all ueberzug images.
+    pub fn clear_ueberzug(&mut self) {
         self.ueberzug
             .lock()
             .expect("Couldn't lock ueberzug")
-            .clear_last()
+            .clear_all()
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {

@@ -43,6 +43,7 @@ use anyhow::{Context, Result};
 pub struct Ueberzug {
     driver: RwLock<Option<Child>>,
     last_displayed: Option<String>,
+    is_displaying: bool,
 }
 
 impl Default for Ueberzug {
@@ -52,6 +53,7 @@ impl Default for Ueberzug {
         Self {
             driver: RwLock::new(None),
             last_displayed: None,
+            is_displaying: false,
         }
     }
 }
@@ -59,30 +61,39 @@ impl Default for Ueberzug {
 impl Ueberzug {
     /// Draws the Image using UeConf
     pub fn draw(&mut self, config: &UeConf) -> Result<()> {
-        self.save_current_image(config)?;
-        let cmd = config.to_json();
-        self.run(&cmd)
+        if !self.change_current_image(config)? {
+            let cmd = config.to_json();
+            self.is_displaying = true;
+            self.run(&cmd)
+        } else {
+            Ok(())
+        }
     }
 
-    fn save_current_image(&mut self, config: &UeConf) -> Result<()> {
+    /// true iff the same image was already displayed
+    /// Doesn't draw the image itself but update the last image value
+    /// and clear the last one if it was different.
+    /// It's useful to avoid calling ueberzug multiple times to
+    /// display the same image at the same place.
+    fn change_current_image(&mut self, config: &UeConf) -> Result<bool> {
         let current = config.identifier;
         if let Some(last) = &self.last_displayed {
             if last != current {
                 self.clear(last)?;
                 self.last_displayed = Some(current.to_owned());
+                Ok(false)
+            } else {
+                Ok(self.is_displaying)
             }
         } else {
             self.last_displayed = Some(current.to_owned());
-        };
-        Ok(())
+            Ok(false)
+        }
     }
 
-    pub fn clear_last(&mut self) -> Result<()> {
-        if let Some(last) = &self.last_displayed {
-            self.clear(last)?;
-            self.last_displayed = None;
-        };
-        Ok(())
+    /// Clear all images by droping the current driver.
+    pub fn clear_all(&mut self) {
+        self.driver = RwLock::new(None);
     }
 
     /// Clear the drawn image only requires the identifier

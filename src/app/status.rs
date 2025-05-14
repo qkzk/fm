@@ -728,6 +728,17 @@ impl Status {
         }
     }
 
+    /// Does any tab set its flag for image to be cleared on next display ?
+    pub fn should_tabs_images_be_cleared(&self) -> bool {
+        self.tabs[0].settings.should_clear_image || self.tabs[1].settings.should_clear_image
+    }
+
+    /// Reset the tab flags to false. Called when their image have be cleared.
+    pub fn set_tabs_images_cleared(&mut self) {
+        self.tabs[0].settings.should_clear_image = false;
+        self.tabs[1].settings.should_clear_image = false;
+    }
+
     /// Set an edit mode for the tab at `index`. Refresh the view.
     pub fn set_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         self.set_menu_mode_no_refresh(index, menu_mode)?;
