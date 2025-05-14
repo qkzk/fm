@@ -85,8 +85,9 @@ pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
     )
 }
 
-/// Holds an instance of [`ueberzug::Ueberzug`] and a few information about the display.
+/// Holds the informations about the displayed image.
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
+/// The command driver (`crate::io::ueberzug::Ueberzug`) isn't held here. It's held in display which call a method to display the image.
 pub struct Ueber {
     since: Instant,
     pub kind: Kind,

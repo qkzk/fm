@@ -41,6 +41,13 @@ impl Displayer {
                     Err(TryRecvError::Empty) => {}
                 }
                 let mut status = status.lock();
+                if status.tabs[0].settings.should_clear_image
+                    || status.tabs[1].settings.should_clear_image
+                {
+                    display.clear_ueberzug()?;
+                    status.tabs[0].settings.should_clear_image = false;
+                    status.tabs[1].settings.should_clear_image = false;
+                }
                 if !status.internal_settings.is_disabled() {
                     display.display_all(&status);
                 }

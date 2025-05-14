@@ -77,6 +77,14 @@ impl Ueberzug {
         Ok(())
     }
 
+    pub fn clear_last(&mut self) -> Result<()> {
+        if let Some(last) = &self.last_displayed {
+            self.clear(last)?;
+            self.last_displayed = None;
+        };
+        Ok(())
+    }
+
     /// Clear the drawn image only requires the identifier
     pub fn clear(&self, identifier: &str) -> Result<()> {
         let config = UeConf::remove(identifier);

@@ -1646,7 +1646,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] where to attach it ? Display itself. 
   - [x] how to call it ? as deep as possible, from Ueber inside preview
   - [x] problem: where to store the last modified image ? it should be stored in ueberzug itself... Doing so delegates the clearing to ueberzug itself. 
-  - [ ] BUG: preview, quit preview, doesn't erease.
+  - [x] FIX: preview, quit preview, doesn't erease.
   - [ ] BUG: multiple previews are a mess
 - [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
 - [ ] BUG: Camera folder crash. Can't reproduce

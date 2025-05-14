@@ -1701,6 +1701,13 @@ impl Display {
         Self::draw_n_borders(2, borders, f, wins)
     }
 
+    pub fn clear_ueberzug(&mut self) -> Result<()> {
+        self.ueberzug
+            .lock()
+            .expect("Couldn't lock ueberzug")
+            .clear_last()
+    }
+
     pub fn restore_terminal(&mut self) -> Result<()> {
         disable_raw_mode()?;
         execute!(self.term.backend_mut(), LeaveAlternateScreen)?;

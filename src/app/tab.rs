@@ -26,6 +26,8 @@ pub struct TabSettings {
     pub filter: FilterKind,
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
+    /// should the last displayed image be erased by ueberzug ?
+    pub should_clear_image: bool,
 }
 
 impl TabSettings {
@@ -33,10 +35,12 @@ impl TabSettings {
         let filter = FilterKind::All;
         let show_hidden = args.all;
         let sort_kind = SortKind::default();
+        let should_clear_image = false;
         Self {
             show_hidden,
             filter,
             sort_kind,
+            should_clear_image,
         }
     }
 
@@ -218,6 +222,9 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) {
+        if matches!(self.preview, Preview::Ueberzug(_)) {
+            self.settings.should_clear_image = true;
+        }
         self.preview = PreviewBuilder::empty();
         if self.display_mode.is_tree() {
             self.remake_same_tree()
@@ -340,6 +347,9 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
+        if matches!(self.preview, Preview::Ueberzug(_)) {
+            self.settings.should_clear_image = true;
+        }
         if self.display_mode.is_tree() {
             self.preview = PreviewBuilder::empty();
         }
