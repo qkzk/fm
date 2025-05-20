@@ -1558,10 +1558,7 @@ impl EventAction {
         Ok(())
     }
 
-    /// Open the trash.
-    /// Displays a navigable content of the trash.
-    /// Each item can be restored or deleted.
-    /// Each opening refresh the trash content.
+    /// Open the mount menu
     pub fn mount(status: &mut Status) -> Result<()> {
         if matches!(
             status.current_tab().menu_mode,

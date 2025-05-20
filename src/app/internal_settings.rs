@@ -117,8 +117,7 @@ impl InternalSettings {
     }
 
     pub fn mount_points(&mut self) -> Vec<&Path> {
-        self.disks.refresh_list();
-        self.disks
+        self.disks()
             .iter()
             .map(|d| {
                 log_info!("{d:#?}");

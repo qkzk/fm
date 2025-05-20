@@ -1649,7 +1649,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: preview, quit preview, doesn't erease.
   - [x] display should draw the ueberzug image itself
   - [ ] BUG: multiple previews are a mess
-- [ ] refactor disk_space without using internal_settings.disks.collect. Make this attr private.
+- [x] refactor disk_space without using internal_settings.disks.collect as often
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
 

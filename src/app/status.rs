@@ -9,7 +9,7 @@ use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
-use sysinfo::{Disk, Disks};
+use sysinfo::Disks;
 
 use crate::app::{
     ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
@@ -397,14 +397,12 @@ impl Status {
         );
     }
 
-    /// Returns an array of Disks
-    pub fn disks(&self) -> Vec<&Disk> {
-        self.internal_settings.disks.into_iter().collect()
-    }
-
     /// Returns the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
-        disk_space(&self.disks(), self.current_tab().current_path())
+        disk_space(
+            &self.internal_settings.disks,
+            self.current_tab().current_path(),
+        )
     }
 
     /// Returns the sice of the terminal (width, height)
@@ -498,6 +496,7 @@ impl Status {
         self.force_clear();
         self.refresh_users()?;
         self.refresh_tabs()?;
+        self.refresh_shortcuts();
         Ok(())
     }
 
@@ -918,11 +917,11 @@ impl Status {
         if sources.len() != 1 {
             return false;
         }
-        let disks = &self.disks();
-        let Some(s) = disk_used_by_path(disks, &sources[0]) else {
+        // let disks = &self.disks();
+        let Some(s) = disk_used_by_path(&self.internal_settings.disks, &sources[0]) else {
             return false;
         };
-        let Some(d) = disk_used_by_path(disks, dest) else {
+        let Some(d) = disk_used_by_path(&self.internal_settings.disks, dest) else {
             return false;
         };
         s.mount_point() == d.mount_point()

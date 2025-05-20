@@ -10,6 +10,7 @@ use std::str::FromStr;
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::Disk;
+use sysinfo::Disks;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
@@ -22,11 +23,12 @@ use crate::{log_info, log_line};
 ///
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
-pub fn disk_used_by_path<'a>(disks: &'a [&'a Disk], path: &Path) -> Option<&'a Disk> {
-    let mut disks: Vec<&Disk> = disks.to_vec();
+pub fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
+    let mut disks: Vec<&'a Disk> = disks.list().iter().collect();
     disks.sort_by_key(|disk| usize::MAX - disk.mount_point().as_os_str().len());
     disks
-        .into_iter()
+        .iter()
+        .copied()
         .find(|&disk| path.starts_with(disk.mount_point()))
 }
 
@@ -41,7 +43,7 @@ fn disk_space_used(disk: Option<&Disk>) -> String {
 /// We can't be sure what's the disk of a given path, so we have to look
 /// if the mount point is a parent of given path.
 /// This solution is ugly but... for a lack of a better one...
-pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
+pub fn disk_space(disks: &Disks, path: &Path) -> String {
     if path.as_os_str().is_empty() {
         return "".to_owned();
     }
