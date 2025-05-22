@@ -1592,13 +1592,7 @@ impl Display {
         if Self::use_dual_pane(status, width) {
             self.draw_dual(full_rect, inside_border_rect, borders, status);
         } else {
-            self.draw_single(
-                full_rect,
-                inside_border_rect,
-                borders,
-                status,
-                self.ueberzug.clone(),
-            );
+            self.draw_single(full_rect, inside_border_rect, borders, status);
         };
     }
 
@@ -1638,7 +1632,6 @@ impl Display {
             inside_wins,
             (file_left, file_right),
             (menu_left, menu_right),
-            self.ueberzug.clone(),
         );
     }
 
@@ -1649,7 +1642,6 @@ impl Display {
         inside_wins: Vec<Rect>,
         files: (Files, Files),
         menus: (Menu, Menu),
-        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         self.term
             .draw(|f| {
@@ -1657,9 +1649,9 @@ impl Display {
                 // 1 padding   | 4 padding
                 // 2 Menu Left | 5 Menu Right
                 Self::draw_dual_borders(borders, f, &bordered_wins);
-                files.0.draw(f, &inside_wins[0], ueberzug.clone());
+                files.0.draw(f, &inside_wins[0], self.ueberzug.clone());
                 menus.0.draw(f, &inside_wins[2]);
-                files.1.draw(f, &inside_wins[3], ueberzug);
+                files.1.draw(f, &inside_wins[3], self.ueberzug.clone());
                 menus.1.draw(f, &inside_wins[5]);
             })
             .unwrap();
@@ -1671,21 +1663,13 @@ impl Display {
         inside_border_rect: Rect,
         borders: [Style; 4],
         status: &Status,
-        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         let file_left = FilesBuilder::single(status);
         let menu_left = Menu::new(status, 0);
         let need_menu = status.tabs[0].need_menu_window();
         let bordered_wins = Rects::vertical_split_border(rect, need_menu);
         let inside_wins = Rects::vertical_split_inner(inside_border_rect, need_menu);
-        self.render_single(
-            borders,
-            bordered_wins,
-            inside_wins,
-            file_left,
-            menu_left,
-            ueberzug,
-        )
+        self.render_single(borders, bordered_wins, inside_wins, file_left, menu_left)
     }
 
     fn render_single(
@@ -1695,12 +1679,11 @@ impl Display {
         inside_wins: Rc<[Rect]>,
         file_left: Files,
         menu_left: Menu,
-        ueberzug: Arc<Mutex<Ueberzug>>,
     ) {
         self.term
             .draw(|f| {
                 Self::draw_single_borders(borders, f, &bordered_wins);
-                file_left.draw(f, &inside_wins[0], ueberzug);
+                file_left.draw(f, &inside_wins[0], self.ueberzug.clone());
                 menu_left.draw(f, &inside_wins[2]);
             })
             .unwrap();
