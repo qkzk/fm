@@ -117,10 +117,10 @@ impl Ueberzug {
 
         let stdin = (*ueberzug)
             .as_mut()
-            .context("bla")?
+            .context("Ueberzug shouldn't be None")?
             .stdin
             .as_mut()
-            .context("truc")?;
+            .context("stdin shouldn't be None")?;
         stdin.write_all(cmd.as_bytes())?;
 
         Ok(())
