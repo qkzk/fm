@@ -41,6 +41,14 @@ use anyhow::{Context, Result};
 
 use crate::log_info;
 
+/// Check if user has display capabilities.
+/// Call it before trying to spawn ueberzug.
+///
+/// Normal session (terminal emulator from X11 window manager) should have:
+/// - A "DISPLAY" environment variable set,
+/// - no error while running `xset q`, which displays informations about X11 sessions.
+///
+/// If either of these conditions isn't satisfied, the user can't display with ueberzug.
 fn user_has_x11() -> bool {
     if var("DISPLAY").is_err() {
         return false;
@@ -57,6 +65,9 @@ fn user_has_x11() -> bool {
 }
 
 /// Main Ueberzug Struct
+///
+/// If `self.has_x11` is false, nothing will ever be displayed.
+/// it prevents ueberzug to crash for nothing, trying to open a session.
 pub struct Ueberzug {
     has_x11: bool,
     driver: RwLock<Option<Child>>,

@@ -1653,6 +1653,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
 - [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
+  - [x] dumb solution: check if user has x11 before spawning 
+  - [ ] better solution, don't create anything (use Option<ueberzug>) if user hasn't x11
 
 ## TODO
 
