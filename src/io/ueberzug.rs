@@ -49,7 +49,7 @@ use crate::log_info;
 /// - no error while running `xset q`, which displays informations about X11 sessions.
 ///
 /// If either of these conditions isn't satisfied, the user can't display with ueberzug.
-fn user_has_x11() -> bool {
+pub fn user_has_x11() -> bool {
     if var("DISPLAY").is_err() {
         return false;
     }

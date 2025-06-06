@@ -1655,6 +1655,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
   - [x] dumb solution: check if user has x11 before spawning 
   - [ ] better solution, don't create anything (use Option<ueberzug>) if user hasn't x11
+- [ ] support other way of displaying image, sharing API : 
+  - [ ] support [Inline Images protocol](https://iterm2.com/documentation-images.html)
+    - [x] detect the terminal, default to ueberzug
+      - wezterm : $WEZTERM_EXECUTABLE
+      - warp : $WARP_HONOR_PS1
+      - tabby : TABBY_CONFIG_DIRECTORY
+      - vs code : VSCODE_INJECTION
+    - [ ] replace display.ueberzug with an enum ?
+    - [ ] build ?
+    - [ ] display
+    - [ ] clear : for each line, write empty string
 
 ## TODO
 
