@@ -31,16 +31,34 @@
 //! sleep(Duration::from_secs(1));
 //! ```
 
+use std::env::var;
 use std::fmt;
 use std::io::Write;
-use std::process::Child;
-use std::process::Stdio;
+use std::process::{Child, Command, Stdio};
 use std::sync::RwLock;
 
 use anyhow::{Context, Result};
 
+use crate::log_info;
+
+fn user_has_x11() -> bool {
+    if var("DISPLAY").is_err() {
+        return false;
+    }
+
+    Command::new("xset")
+        .arg("q")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 /// Main Ueberzug Struct
 pub struct Ueberzug {
+    has_x11: bool,
     driver: RwLock<Option<Child>>,
     last_displayed: Option<String>,
     is_displaying: bool,
@@ -51,6 +69,7 @@ impl Default for Ueberzug {
     /// One instance can handel multiple images provided they have different identifiers
     fn default() -> Self {
         Self {
+            has_x11: user_has_x11(),
             driver: RwLock::new(None),
             last_displayed: None,
             is_displaying: false,
@@ -96,6 +115,15 @@ impl Ueberzug {
         self.driver = RwLock::new(None);
     }
 
+    fn spawn_ueberzug() -> std::io::Result<Child> {
+        std::process::Command::new("ueberzug")
+            .args(["layer", "--silent"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+    }
+
     /// Clear the drawn image only requires the identifier
     pub fn clear(&self, identifier: &str) -> Result<()> {
         let config = UeConf::remove(identifier);
@@ -104,15 +132,13 @@ impl Ueberzug {
     }
 
     fn run(&self, cmd: &str) -> Result<()> {
+        if !self.has_x11 {
+            log_info!("Can't display since user hasn't x11");
+            return Ok(());
+        }
         let mut ueberzug = self.driver.write().unwrap();
         if ueberzug.is_none() {
-            *ueberzug = Some(
-                std::process::Command::new("ueberzug")
-                    .args(["layer", "--silent"])
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::null())
-                    .spawn()?,
-            );
+            *ueberzug = Some(Self::spawn_ueberzug()?);
         }
 
         let stdin = (*ueberzug)

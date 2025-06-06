@@ -1652,6 +1652,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor disk_space without using internal_settings.disks.collect as often
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
+- [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
 
 ## TODO
 
