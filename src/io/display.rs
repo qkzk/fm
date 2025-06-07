@@ -1662,7 +1662,8 @@ impl Display {
         log_info!("display.clear_images()");
         self.image_adapter
             .clear_all()
-            .expect("Couldn't clear all the images")
+            .expect("Couldn't clear all the images");
+        self.term.clear().expect("Couldn't clear the terminal");
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {
