@@ -1,7 +1,6 @@
 use std::{
     io::{self, Stdout, Write},
     rc::Rc,
-    sync::{Arc, Mutex},
 };
 
 use anyhow::{Context, Result};
@@ -21,9 +20,10 @@ use ratatui::{
     Frame, Terminal,
 };
 
+use crate::app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::path_to_string;
 use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
-use crate::io::{read_last_log_line, DrawMenu};
+use crate::io::{read_last_log_line, DrawMenu, ImageAdapter};
 use crate::log_info;
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
@@ -31,10 +31,8 @@ use crate::modes::{
     LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, Remote,
     SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
 };
-use crate::{
-    app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
-    io::{Scalers, UeConf, Ueberzug},
-};
+
+use super::ImageDisplayer;
 
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
@@ -101,8 +99,6 @@ enum TabPosition {
 /// Bunch of attributes describing the state of a main window
 /// relatively to other windows
 struct FilesAttributes {
-    /// horizontal position, in cells
-    x_position: u16,
     /// is this the left or right window ?
     tab_position: TabPosition,
     /// is this tab selected ?
@@ -112,14 +108,8 @@ struct FilesAttributes {
 }
 
 impl FilesAttributes {
-    fn new(
-        x_position: u16,
-        tab_position: TabPosition,
-        is_selected: bool,
-        has_window_below: bool,
-    ) -> Self {
+    fn new(tab_position: TabPosition, is_selected: bool, has_window_below: bool) -> Self {
         Self {
-            x_position,
             tab_position,
             is_selected,
             has_window_below,
@@ -134,18 +124,16 @@ impl FilesAttributes {
 struct FilesBuilder;
 
 impl FilesBuilder {
-    fn dual(status: &Status, width: u16) -> (Files, Files) {
+    fn dual(status: &Status) -> (Files, Files) {
         let first_selected = status.focus.is_left();
         let menu_selected = !first_selected;
         let attributes_left = FilesAttributes::new(
-            0,
             TabPosition::Left,
             first_selected,
             status.tabs[0].need_menu_window(),
         );
         let files_left = Files::new(status, 0, attributes_left);
         let attributes_right = FilesAttributes::new(
-            width / 2,
             TabPosition::Right,
             menu_selected,
             status.tabs[1].need_menu_window(),
@@ -155,12 +143,8 @@ impl FilesBuilder {
     }
 
     fn single(status: &Status) -> Files {
-        let attributes_left = FilesAttributes::new(
-            0,
-            TabPosition::Left,
-            true,
-            status.tabs[0].need_menu_window(),
-        );
+        let attributes_left =
+            FilesAttributes::new(TabPosition::Left, true, status.tabs[0].need_menu_window());
         Files::new(status, 0, attributes_left)
     }
 }
@@ -172,19 +156,19 @@ struct Files<'a> {
 }
 
 impl<'a> Files<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
+    fn draw(&self, f: &mut Frame, rect: &Rect, image_adapter: &mut ImageAdapter) {
         let use_log_line = self.use_log_line();
         let rects = Rects::files(rect, use_log_line);
 
         if self.should_preview_in_right_tab() {
-            self.preview_in_right_tab(f, &rects[0], &rects[2], ueberzug);
+            self.preview_in_right_tab(f, &rects[0], &rects[2], image_adapter);
             return;
         }
 
         self.header(f, &rects[0]);
         self.copy_progress_bar(f, &rects[1]);
         self.second_line(f, &rects[1]);
-        self.content(f, &rects[1], &rects[2], ueberzug);
+        self.content(f, &rects[1], &rects[2], image_adapter);
         if use_log_line {
             self.log_line(f, &rects[3]);
         }
@@ -218,7 +202,7 @@ impl<'a> Files<'a> {
         f: &mut Frame,
         header_rect: &Rect,
         content_rect: &Rect,
-        ueberzug: Arc<Mutex<Ueberzug>>,
+        image_adapter: &mut ImageAdapter,
     ) {
         let tab = &self.status.tabs[1];
         PreviewHeader::into_default_preview(self.status, tab, content_rect.width).draw_left(
@@ -226,11 +210,7 @@ impl<'a> Files<'a> {
             *header_rect,
             self.status.index == 1,
         );
-        PreviewDisplay::new_with_args(self.status, tab, &self.attributes).draw(
-            f,
-            content_rect,
-            ueberzug,
-        );
+        PreviewDisplay::new_with_args(self.status, tab).draw(f, content_rect, image_adapter);
     }
 
     fn is_right(&self) -> bool {
@@ -265,12 +245,12 @@ impl<'a> Files<'a> {
         f: &mut Frame,
         second_line_rect: &Rect,
         content_rect: &Rect,
-        ueberzug: Arc<Mutex<Ueberzug>>,
+        image_adapter: &mut ImageAdapter,
     ) {
         match &self.tab.display_mode {
             DisplayMode::Directory => DirectoryDisplay::new(self).draw(f, content_rect),
             DisplayMode::Tree => TreeDisplay::new(self).draw(f, content_rect),
-            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect, ueberzug),
+            DisplayMode::Preview => PreviewDisplay::new(self).draw(f, content_rect, image_adapter),
             DisplayMode::Fuzzy => FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect),
         }
     }
@@ -665,7 +645,6 @@ impl<'a> TreeDisplay<'a> {
 struct PreviewDisplay<'a> {
     status: &'a Status,
     tab: &'a Tab,
-    attributes: &'a FilesAttributes,
 }
 
 /// Display a scrollable preview of a file.
@@ -676,8 +655,8 @@ struct PreviewDisplay<'a> {
 /// It may fail to recognize some usual extensions, notably `.toml`.
 /// It may fail to recognize small files (< 1024 bytes).
 impl<'a> PreviewDisplay<'a> {
-    fn draw(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
-        self.preview(f, rect, ueberzug)
+    fn draw(&self, f: &mut Frame, rect: &Rect, image_adapter: &mut ImageAdapter) {
+        self.preview(f, rect, image_adapter)
     }
 }
 
@@ -686,19 +665,14 @@ impl<'a> PreviewDisplay<'a> {
         Self {
             status: files.status,
             tab: files.tab,
-            attributes: &files.attributes,
         }
     }
 
-    fn new_with_args(status: &'a Status, tab: &'a Tab, attributes: &'a FilesAttributes) -> Self {
-        Self {
-            status,
-            tab,
-            attributes,
-        }
+    fn new_with_args(status: &'a Status, tab: &'a Tab) -> Self {
+        Self { status, tab }
     }
 
-    fn preview(&self, f: &mut Frame, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
+    fn preview(&self, f: &mut Frame, rect: &Rect, image_adapter: &mut ImageAdapter) {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
@@ -708,7 +682,7 @@ impl<'a> PreviewDisplay<'a> {
                 self.syntaxed(f, syntaxed, length, rect, number_col_width, window)
             }
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
-            Preview::Ueberzug(image) => self.ueberzug(image, rect, ueberzug),
+            Preview::Ueberzug(image) => self.image(image, rect, image_adapter),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
             Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
                 self.ansi_text(f, ansi_text, length, rect, window)
@@ -819,38 +793,10 @@ impl<'a> PreviewDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    /// Draw the image with ueberzug in the current window.
+    /// Draw the image with correct adapter in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    fn ueberzug(&self, image: &Ueber, rect: &Rect, ueberzug: Arc<Mutex<Ueberzug>>) {
-        let identifier = &image.identifier;
-        let path = &image.images[image.image_index()].to_string_lossy();
-        let x = self.attributes.x_position + 1;
-        let y = 2;
-        let width = Some(rect.width);
-        let height = Some(rect.height.saturating_sub(1));
-        let scaler = Some(Scalers::FitContain);
-        let config = &UeConf {
-            identifier,
-            path,
-            x,
-            y,
-            width,
-            height,
-            scaler,
-            ..Default::default()
-        };
-
-        if let Err(e) = ueberzug
-            .lock()
-            .expect("Couldn't lock ueberzug")
-            .draw(config)
-        {
-            log_info!(
-                "Ueberzug could not draw {}, from path {}.\n{e}",
-                image.identifier,
-                path
-            );
-        };
+    fn image(&self, image: &Ueber, rect: &Rect, image_adapter: &mut ImageAdapter) {
+        image_adapter.draw(image, *rect)
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
@@ -1549,16 +1495,19 @@ pub struct Display {
     /// The Crossterm terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Terminal<CrosstermBackend<Stdout>>,
-    /// The ueberzug instance used to draw the images
-    ueberzug: Arc<Mutex<Ueberzug>>,
+    /// The adapter instance used to draw the images
+    image_adapter: ImageAdapter,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a terminal object.
     pub fn new(term: Terminal<CrosstermBackend<Stdout>>) -> Self {
         log_info!("starting display...");
-        let ueberzug = Arc::new(Mutex::new(Ueberzug::default()));
-        Self { term, ueberzug }
+        let image_adapter = ImageAdapter::detect();
+        Self {
+            term,
+            image_adapter,
+        }
     }
 
     /// Display every possible content in the terminal.
@@ -1617,7 +1566,7 @@ impl Display {
         borders: [Style; 4],
         status: &Status,
     ) {
-        let (file_left, file_right) = FilesBuilder::dual(status, full_rect.width);
+        let (file_left, file_right) = FilesBuilder::dual(status);
         let menu_left = Menu::new(status, 0);
         let menu_right = Menu::new(status, 1);
         let parent_wins = Rects::left_right_inside_rects(full_rect);
@@ -1649,9 +1598,9 @@ impl Display {
                 // 1 padding   | 4 padding
                 // 2 Menu Left | 5 Menu Right
                 Self::draw_dual_borders(borders, f, &bordered_wins);
-                files.0.draw(f, &inside_wins[0], self.ueberzug.clone());
+                files.0.draw(f, &inside_wins[0], &mut self.image_adapter);
                 menus.0.draw(f, &inside_wins[2]);
-                files.1.draw(f, &inside_wins[3], self.ueberzug.clone());
+                files.1.draw(f, &inside_wins[3], &mut self.image_adapter);
                 menus.1.draw(f, &inside_wins[5]);
             })
             .unwrap();
@@ -1683,7 +1632,7 @@ impl Display {
         self.term
             .draw(|f| {
                 Self::draw_single_borders(borders, f, &bordered_wins);
-                file_left.draw(f, &inside_wins[0], self.ueberzug.clone());
+                file_left.draw(f, &inside_wins[0], &mut self.image_adapter);
                 menu_left.draw(f, &inside_wins[2]);
             })
             .unwrap();
@@ -1706,12 +1655,9 @@ impl Display {
         Self::draw_n_borders(2, borders, f, wins)
     }
 
-    /// Clear all ueberzug images.
-    pub fn clear_ueberzug(&mut self) {
-        self.ueberzug
-            .lock()
-            .expect("Couldn't lock ueberzug")
-            .clear_all()
+    /// Clear all images.
+    pub fn clear_images(&mut self) {
+        self.image_adapter.clear_all()
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {

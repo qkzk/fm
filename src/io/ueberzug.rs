@@ -35,7 +35,6 @@ use std::env::var;
 use std::fmt;
 use std::io::Write;
 use std::process::{Child, Command, Stdio};
-use std::sync::RwLock;
 
 use anyhow::{Context, Result};
 
@@ -70,7 +69,7 @@ pub fn user_has_x11() -> bool {
 /// it prevents ueberzug to crash for nothing, trying to open a session.
 pub struct Ueberzug {
     has_x11: bool,
-    driver: RwLock<Option<Child>>,
+    driver: Child,
     last_displayed: Option<String>,
     is_displaying: bool,
 }
@@ -81,7 +80,7 @@ impl Default for Ueberzug {
     fn default() -> Self {
         Self {
             has_x11: user_has_x11(),
-            driver: RwLock::new(None),
+            driver: Self::spawn_ueberzug().unwrap(),
             last_displayed: None,
             is_displaying: false,
         }
@@ -106,10 +105,10 @@ impl Ueberzug {
     /// It's useful to avoid calling ueberzug multiple times to
     /// display the same image at the same place.
     fn change_current_image(&mut self, config: &UeConf) -> Result<bool> {
-        let current = config.identifier;
+        let current = config.path;
         if let Some(last) = &self.last_displayed {
             if last != current {
-                self.clear(last)?;
+                self.clear(&last.clone())?;
                 self.last_displayed = Some(current.to_owned());
                 Ok(false)
             } else {
@@ -121,45 +120,92 @@ impl Ueberzug {
         }
     }
 
-    /// Clear all images by droping the current driver.
-    pub fn clear_all(&mut self) {
-        self.driver = RwLock::new(None);
+    /// Clear the last image.
+    pub fn clear_all(&mut self) -> Result<()> {
+        if let Some(last_displayed) = &self.last_displayed {
+            self.clear(last_displayed.clone().as_str())?;
+        }
+        Ok(())
     }
 
     fn spawn_ueberzug() -> std::io::Result<Child> {
         std::process::Command::new("ueberzug")
-            .args(["layer", "--silent"])
+            .arg("layer")
+            // .arg("--silent")
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
     }
 
     /// Clear the drawn image only requires the identifier
-    pub fn clear(&self, identifier: &str) -> Result<()> {
+    pub fn clear(&mut self, identifier: &str) -> Result<()> {
         let config = UeConf::remove(identifier);
         let cmd = config.to_json();
         self.run(&cmd)
     }
 
-    fn run(&self, cmd: &str) -> Result<()> {
+    fn run(&mut self, cmd: &str) -> Result<()> {
         if !self.has_x11 {
             log_info!("Can't display since user hasn't x11");
             return Ok(());
         }
-        let mut ueberzug = self.driver.write().unwrap();
-        if ueberzug.is_none() {
-            *ueberzug = Some(Self::spawn_ueberzug()?);
-        }
+        // let mut ueberzug = self.driver.write().unwrap();
+        // if ueberzug.is_none() {
+        //     log_info!("Spawned a new ueberzug");
+        //     *ueberzug = Some(Self::spawn_ueberzug()?);
+        // }
 
-        let stdin = (*ueberzug)
-            .as_mut()
-            .context("Ueberzug shouldn't be None")?
+        // let mut buf_stdout = vec![];
+        // let stdout = (*ueberzug)
+        //     .as_mut()
+        //     .context("Ueberzug shouldn't be None")?
+        //     .stdout
+        //     .as_mut()
+        //     .context("stdout shouldn't be None")?;
+        // stdout.read_to_end(&mut buf_stdout)?;
+        // let mut buf_stderr = vec![];
+        // let stderr = (*ueberzug)
+        //     .as_mut()
+        //     .context("Ueberzug shouldn't be None")?
+        //     .stderr
+        //     .as_mut()
+        //     .context("stderr shouldn't be None")?;
+        // stderr.read_to_end(&mut buf_stderr)?;
+        // log_info!(
+        //     "before {out} - {err}",
+        //     out = String::from_utf8(buf_stdout).unwrap(),
+        //     err = String::from_utf8(buf_stderr).unwrap()
+        // );
+
+        let stdin = self
+            .driver
             .stdin
             .as_mut()
             .context("stdin shouldn't be None")?;
         stdin.write_all(cmd.as_bytes())?;
 
+        // let mut buf_stdout = vec![];
+        // let stdout = (*ueberzug)
+        //     .as_mut()
+        //     .context("Ueberzug shouldn't be None")?
+        //     .stdout
+        //     .as_mut()
+        //     .context("stdout shouldn't be None")?;
+        // stdout.read_to_end(&mut buf_stdout)?;
+        // let mut buf_stderr = vec![];
+        // let stderr = (*ueberzug)
+        //     .as_mut()
+        //     .context("Ueberzug shouldn't be None")?
+        //     .stderr
+        //     .as_mut()
+        //     .context("stderr shouldn't be None")?;
+        // stderr.read_to_end(&mut buf_stderr)?;
+        // log_info!(
+        //     "after {out} - {err}",
+        //     out = String::from_utf8(buf_stdout).unwrap(),
+        //     err = String::from_utf8(buf_stderr).unwrap()
+        // );
         Ok(())
     }
 }

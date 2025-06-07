@@ -42,7 +42,7 @@ impl Displayer {
                 }
                 let mut status = status.lock();
                 if status.should_tabs_images_be_cleared() {
-                    display.clear_ueberzug();
+                    display.clear_images();
                     status.set_tabs_images_cleared();
                 }
                 if !status.internal_settings.is_disabled() {
