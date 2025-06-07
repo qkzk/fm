@@ -27,9 +27,9 @@ use crate::io::{read_last_log_line, DrawMenu, ImageAdapter};
 use crate::log_info;
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
-    ContentWindow, Display as DisplayMode, FileInfo, FuzzyFinder, HLContent, Input, InputSimple,
-    LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview, Remote,
-    SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree, Ueber,
+    ContentWindow, Display as DisplayMode, DisplayedImage, FileInfo, FuzzyFinder, HLContent, Input,
+    InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview,
+    Remote, SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree,
 };
 
 use super::ImageDisplayer;
@@ -795,7 +795,7 @@ impl<'a> PreviewDisplay<'a> {
 
     /// Draw the image with correct adapter in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    fn image(&self, image: &Ueber, rect: &Rect, image_adapter: &mut ImageAdapter) {
+    fn image(&self, image: &DisplayedImage, rect: &Rect, image_adapter: &mut ImageAdapter) {
         image_adapter.draw(image, *rect)
     }
 
@@ -1657,7 +1657,9 @@ impl Display {
 
     /// Clear all images.
     pub fn clear_images(&mut self) {
-        self.image_adapter.clear_all()
+        self.image_adapter
+            .clear_all()
+            .expect("Couldn't clear all the images")
     }
 
     pub fn restore_terminal(&mut self) -> Result<()> {

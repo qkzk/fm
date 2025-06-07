@@ -86,8 +86,7 @@ pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
 
 /// Holds the informations about the displayed image.
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
-/// The command driver (`crate::io::ueberzug::Ueberzug`) isn't held here. It's held in display which call a method to display the image.
-pub struct Ueber {
+pub struct DisplayedImage {
     since: Instant,
     pub kind: Kind,
     pub identifier: String,
@@ -96,7 +95,7 @@ pub struct Ueber {
     pub index: usize,
 }
 
-impl Ueber {
+impl DisplayedImage {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
         let index = 0;
         let length = images.len();
@@ -147,14 +146,14 @@ impl Ueber {
     }
 }
 
-/// Build an [`Ueber`] instance for a given source.
+/// Build an [`DisplayedImage`] instance for a given source.
 /// All thumbnails are built here.
-pub struct UeberBuilder {
+pub struct DisplayedImageBuilder {
     kind: Kind,
     source: PathBuf,
 }
 
-impl UeberBuilder {
+impl DisplayedImageBuilder {
     pub fn video_thumbnails(hashed_path: &str) -> [String; 4] {
         [
             format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_1.jpg"),
@@ -169,7 +168,7 @@ impl UeberBuilder {
         Self { source, kind }
     }
 
-    pub fn build(self) -> Result<Ueber> {
+    pub fn build(self) -> Result<DisplayedImage> {
         match &self.kind {
             Kind::Font => self.build_font(),
             Kind::Image => self.build_image(),
@@ -181,7 +180,7 @@ impl UeberBuilder {
         }
     }
 
-    fn build_office(self) -> Result<Ueber> {
+    fn build_office(self) -> Result<DisplayedImage> {
         let calc_str = path_to_string(&self.source);
         Self::convert_office_to_pdf(&calc_str)?;
         let pdf = Self::office_to_pdf_filename(
@@ -197,7 +196,7 @@ impl UeberBuilder {
         let images = Self::make_pdf_images_paths(Self::get_pdf_length(&pdf)?)?;
         std::fs::remove_file(&pdf)?;
 
-        Ok(Ueber::new(Kind::Pdf, identifier, images))
+        Ok(DisplayedImage::new(Kind::Pdf, identifier, images))
     }
 
     fn convert_office_to_pdf(calc_str: &str) -> Result<std::process::Output> {
@@ -239,16 +238,16 @@ impl UeberBuilder {
         }
     }
 
-    fn build_pdf(self) -> Result<Ueber> {
+    fn build_pdf(self) -> Result<DisplayedImage> {
         let length = Self::get_pdf_length(&self.source)?;
         let identifier = filename_from_path(&self.source)?.to_owned();
         Thumbnail::create(&self.kind, self.source.to_string_lossy().as_ref());
         let images = Self::make_pdf_images_paths(length)?;
         log_info!("build_pdf images: {images:?}");
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_video(self) -> Result<Ueber> {
+    fn build_video(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -261,15 +260,15 @@ impl UeberBuilder {
             .filter(|p| p.exists())
             .collect();
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_single_image(self, images: Vec<PathBuf>) -> Result<Ueber> {
+    fn build_single_image(self, images: Vec<PathBuf>) -> Result<DisplayedImage> {
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_font(self) -> Result<Ueber> {
+    fn build_font(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -280,12 +279,12 @@ impl UeberBuilder {
         self.build_single_image(images)
     }
 
-    fn build_image(self) -> Result<Ueber> {
+    fn build_image(self) -> Result<DisplayedImage> {
         let images = vec![self.source.clone()];
         self.build_single_image(images)
     }
 
-    fn build_svg(self) -> Result<Ueber> {
+    fn build_svg(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -329,7 +328,7 @@ impl Thumbnail {
 
     pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
-        let images_paths = UeberBuilder::video_thumbnails(&rand);
+        let images_paths = DisplayedImageBuilder::video_thumbnails(&rand);
         if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
             return Ok(());
         }

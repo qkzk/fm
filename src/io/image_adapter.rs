@@ -6,7 +6,7 @@ use ratatui::layout::Rect;
 use crate::common::{is_in_path, UEBERZUG};
 use crate::io::{user_has_x11, Scalers, UeConf, Ueberzug};
 use crate::log_info;
-use crate::modes::Ueber;
+use crate::modes::DisplayedImage;
 
 const COMPATIBLES: [&str; 4] = [
     "WEZTERM_EXECUTABLE",
@@ -44,13 +44,13 @@ impl ImageAdapter {
 }
 
 pub trait ImageDisplayer {
-    fn draw(&mut self, image: &Ueber, rect: Rect);
-    fn clear(&mut self, image: &Ueber) -> Result<()>;
+    fn draw(&mut self, image: &DisplayedImage, rect: Rect);
+    fn clear(&mut self, image: &DisplayedImage) -> Result<()>;
     fn clear_all(&mut self) -> Result<()>;
 }
 
 impl ImageDisplayer for ImageAdapter {
-    fn draw(&mut self, image: &Ueber, rect: Rect) {
+    fn draw(&mut self, image: &DisplayedImage, rect: Rect) {
         match self {
             Self::Unable => (),
             Self::Ueberzug(ueberzug) => {
@@ -83,7 +83,7 @@ impl ImageDisplayer for ImageAdapter {
         }
     }
 
-    fn clear(&mut self, _image: &Ueber) -> Result<()> {
+    fn clear(&mut self, _image: &DisplayedImage) -> Result<()> {
         match self {
             Self::Unable => (),
             Self::Ueberzug(ueberzug) => {

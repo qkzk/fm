@@ -24,8 +24,8 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
-    Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
+    DisplayedImageBuilder, FileKind, FilterKind, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -154,7 +154,7 @@ pub enum Preview {
     Syntaxed(HLContent),
     Text(Text),
     Binary(BinaryContent),
-    Ueberzug(Ueber),
+    Ueberzug(DisplayedImage),
     Tree(Tree),
     #[default]
     Empty,
@@ -298,7 +298,7 @@ impl PreviewBuilder {
     }
 
     fn ueber(path: &Path, kind: ExtensionKind) -> Result<Preview> {
-        let preview = UeberBuilder::new(path, kind.into()).build()?;
+        let preview = DisplayedImageBuilder::new(path, kind.into()).build()?;
         if preview.is_empty() {
             Ok(Preview::Empty)
         } else {
