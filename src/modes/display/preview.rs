@@ -154,7 +154,7 @@ pub enum Preview {
     Syntaxed(HLContent),
     Text(Text),
     Binary(BinaryContent),
-    Ueberzug(DisplayedImage),
+    Image(DisplayedImage),
     Tree(Tree),
     #[default]
     Empty,
@@ -169,7 +169,7 @@ impl Preview {
             Self::Syntaxed(preview) => preview.len(),
             Self::Text(preview) => preview.len(),
             Self::Binary(preview) => preview.len(),
-            Self::Ueberzug(preview) => preview.len(),
+            Self::Image(preview) => preview.len(),
             Self::Tree(tree) => tree.displayable().lines().len(),
         }
     }
@@ -180,7 +180,7 @@ impl Preview {
             Self::Syntaxed(_) => "an highlighted text",
             Self::Text(text) => text.kind.for_first_line(),
             Self::Binary(_) => "a binary file",
-            Self::Ueberzug(uber) => uber.kind.for_first_line(),
+            Self::Image(uber) => uber.kind.for_first_line(),
             Self::Tree(_) => "a tree",
         }
     }
@@ -201,7 +201,7 @@ impl Preview {
             Self::Syntaxed(preview) => preview.filepath().to_owned(),
             Self::Text(preview) => preview.title.to_owned(),
             Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
-            Self::Ueberzug(preview) => preview.identifier.to_owned(),
+            Self::Image(preview) => preview.identifier.to_owned(),
             Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
         }
     }
@@ -302,7 +302,7 @@ impl PreviewBuilder {
         if preview.is_empty() {
             Ok(Preview::Empty)
         } else {
-            Ok(Preview::Ueberzug(preview))
+            Ok(Preview::Image(preview))
         }
     }
 

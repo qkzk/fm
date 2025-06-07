@@ -222,7 +222,7 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) {
-        if matches!(self.preview, Preview::Ueberzug(_)) {
+        if matches!(self.preview, Preview::Image(_)) {
             self.settings.should_clear_image = true;
         }
         self.preview = PreviewBuilder::empty();
@@ -347,7 +347,9 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
-        if matches!(self.preview, Preview::Ueberzug(_)) {
+        log_info!("{prev}", prev = self.preview.kind_display());
+        if matches!(self.preview, Preview::Image(_)) {
+            log_info!("Clear the image");
             self.settings.should_clear_image = true;
         }
         if self.display_mode.is_tree() {
@@ -771,7 +773,7 @@ impl Tab {
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
         match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.up_one_row(),
+            Preview::Image(ref mut image) => image.up_one_row(),
             Preview::Binary(_) => self.window.preview_page_up(self.preview_binary_scroll()),
             _ => self.window.preview_page_up(self.preview_scroll()),
         }
@@ -781,7 +783,7 @@ impl Tab {
     pub fn preview_page_down(&mut self) {
         let len = self.preview.len();
         match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.down_one_row(),
+            Preview::Image(ref mut image) => image.down_one_row(),
             Preview::Binary(_) => self
                 .window
                 .preview_page_down(self.preview_binary_scroll(), len),

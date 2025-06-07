@@ -682,7 +682,7 @@ impl<'a> PreviewDisplay<'a> {
                 self.syntaxed(f, syntaxed, length, rect, number_col_width, window)
             }
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
-            Preview::Ueberzug(image) => self.image(image, rect, image_adapter),
+            Preview::Image(image) => self.image(image, rect, image_adapter),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
             Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
                 self.ansi_text(f, ansi_text, length, rect, window)
@@ -796,7 +796,9 @@ impl<'a> PreviewDisplay<'a> {
     /// Draw the image with correct adapter in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     fn image(&self, image: &DisplayedImage, rect: &Rect, image_adapter: &mut ImageAdapter) {
-        image_adapter.draw(image, *rect)
+        if let Err(e) = image_adapter.draw(image, *rect) {
+            log_info!("Couldn't display {path}: {e:?}", path = image.identifier);
+        }
     }
 
     fn tree_preview(&self, f: &mut Frame, tree: &Tree, window: &ContentWindow, rect: &Rect) {
@@ -1657,6 +1659,7 @@ impl Display {
 
     /// Clear all images.
     pub fn clear_images(&mut self) {
+        log_info!("display.clear_images()");
         self.image_adapter
             .clear_all()
             .expect("Couldn't clear all the images")

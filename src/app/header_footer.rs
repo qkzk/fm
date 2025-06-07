@@ -496,7 +496,7 @@ mod inner {
         fn strings_right(tab: &Tab) -> Vec<(String, Align)> {
             let index = match &tab.preview {
                 Preview::Empty => 0,
-                Preview::Ueberzug(image) => image.index + 1,
+                Preview::Image(image) => image.index + 1,
                 _ => tab.window.bottom,
             };
             vec![(

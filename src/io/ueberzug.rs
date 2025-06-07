@@ -37,8 +37,11 @@ use std::io::Write;
 use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result};
+use ratatui::layout::Rect;
 
-use crate::log_info;
+use crate::common::UEBERZUG;
+use crate::io::ImageDisplayer;
+use crate::modes::DisplayedImage;
 
 /// Check if user has display capabilities.
 /// Call it before trying to spawn ueberzug.
@@ -68,7 +71,6 @@ pub fn user_has_x11() -> bool {
 /// If `self.has_x11` is false, nothing will ever be displayed.
 /// it prevents ueberzug to crash for nothing, trying to open a session.
 pub struct Ueberzug {
-    has_x11: bool,
     driver: Child,
     last_displayed: Option<String>,
     is_displaying: bool,
@@ -79,7 +81,6 @@ impl Default for Ueberzug {
     /// One instance can handel multiple images provided they have different identifiers
     fn default() -> Self {
         Self {
-            has_x11: user_has_x11(),
             driver: Self::spawn_ueberzug().unwrap(),
             last_displayed: None,
             is_displaying: false,
@@ -87,49 +88,59 @@ impl Default for Ueberzug {
     }
 }
 
-impl Ueberzug {
-    /// Draws the Image using UeConf
-    pub fn draw(&mut self, config: &UeConf) -> Result<()> {
-        if !self.change_current_image(config)? {
-            let cmd = config.to_json();
+impl ImageDisplayer for Ueberzug {
+    /// Draws the Image using
+    fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
+        let path = &image.images[image.image_index()].to_string_lossy();
+        let dont_change = self.change_current_image(path);
+        if dont_change {
+            Ok(())
+        } else {
+            crate::log_info!("ueberzug.draw() new image {path}");
+            self.clear_all()?;
+            let cmd = UeConf::build_json(image, rect);
             self.is_displaying = true;
+            self.last_displayed = Some(path.to_string());
             self.run(&cmd)
+        }
+    }
+
+    /// Clear the drawn image only requires the identifier
+    fn clear(&mut self, _: &DisplayedImage) -> Result<()> {
+        if self.is_displaying {
+            self.clear_internal()
         } else {
             Ok(())
         }
     }
 
-    /// true iff the same image was already displayed
-    /// Doesn't draw the image itself but update the last image value
-    /// and clear the last one if it was different.
-    /// It's useful to avoid calling ueberzug multiple times to
-    /// display the same image at the same place.
-    fn change_current_image(&mut self, config: &UeConf) -> Result<bool> {
-        let current = config.path;
-        if let Some(last) = &self.last_displayed {
-            if last != current {
-                self.clear(&last.clone())?;
-                self.last_displayed = Some(current.to_owned());
-                Ok(false)
-            } else {
-                Ok(self.is_displaying)
-            }
-        } else {
-            self.last_displayed = Some(current.to_owned());
-            Ok(false)
-        }
-    }
-
     /// Clear the last image.
-    pub fn clear_all(&mut self) -> Result<()> {
-        if let Some(last_displayed) = &self.last_displayed {
-            self.clear(last_displayed.clone().as_str())?;
-        }
+    fn clear_all(&mut self) -> Result<()> {
+        crate::log_info!("ueberzug.clear_all()");
+        self.is_displaying = false;
+        self.last_displayed = None;
+        self.driver = Self::spawn_ueberzug()?;
         Ok(())
+    }
+}
+
+impl Ueberzug {
+    fn clear_internal(&mut self) -> Result<()> {
+        self.is_displaying = false;
+        self.last_displayed = None;
+        let cmd = UeConf::remove("fm_tui").to_json();
+        self.run(&cmd)
+    }
+    /// true iff the same image was already displayed
+    fn change_current_image(&mut self, new: &str) -> bool {
+        let Some(last) = &self.last_displayed else {
+            return false;
+        };
+        last == new
     }
 
     fn spawn_ueberzug() -> std::io::Result<Child> {
-        std::process::Command::new("ueberzug")
+        std::process::Command::new(UEBERZUG)
             .arg("layer")
             // .arg("--silent")
             .stdin(Stdio::piped())
@@ -138,74 +149,12 @@ impl Ueberzug {
             .spawn()
     }
 
-    /// Clear the drawn image only requires the identifier
-    pub fn clear(&mut self, identifier: &str) -> Result<()> {
-        let config = UeConf::remove(identifier);
-        let cmd = config.to_json();
-        self.run(&cmd)
-    }
-
     fn run(&mut self, cmd: &str) -> Result<()> {
-        if !self.has_x11 {
-            log_info!("Can't display since user hasn't x11");
-            return Ok(());
-        }
-        // let mut ueberzug = self.driver.write().unwrap();
-        // if ueberzug.is_none() {
-        //     log_info!("Spawned a new ueberzug");
-        //     *ueberzug = Some(Self::spawn_ueberzug()?);
-        // }
-
-        // let mut buf_stdout = vec![];
-        // let stdout = (*ueberzug)
-        //     .as_mut()
-        //     .context("Ueberzug shouldn't be None")?
-        //     .stdout
-        //     .as_mut()
-        //     .context("stdout shouldn't be None")?;
-        // stdout.read_to_end(&mut buf_stdout)?;
-        // let mut buf_stderr = vec![];
-        // let stderr = (*ueberzug)
-        //     .as_mut()
-        //     .context("Ueberzug shouldn't be None")?
-        //     .stderr
-        //     .as_mut()
-        //     .context("stderr shouldn't be None")?;
-        // stderr.read_to_end(&mut buf_stderr)?;
-        // log_info!(
-        //     "before {out} - {err}",
-        //     out = String::from_utf8(buf_stdout).unwrap(),
-        //     err = String::from_utf8(buf_stderr).unwrap()
-        // );
-
-        let stdin = self
-            .driver
+        self.driver
             .stdin
             .as_mut()
-            .context("stdin shouldn't be None")?;
-        stdin.write_all(cmd.as_bytes())?;
-
-        // let mut buf_stdout = vec![];
-        // let stdout = (*ueberzug)
-        //     .as_mut()
-        //     .context("Ueberzug shouldn't be None")?
-        //     .stdout
-        //     .as_mut()
-        //     .context("stdout shouldn't be None")?;
-        // stdout.read_to_end(&mut buf_stdout)?;
-        // let mut buf_stderr = vec![];
-        // let stderr = (*ueberzug)
-        //     .as_mut()
-        //     .context("Ueberzug shouldn't be None")?
-        //     .stderr
-        //     .as_mut()
-        //     .context("stderr shouldn't be None")?;
-        // stderr.read_to_end(&mut buf_stderr)?;
-        // log_info!(
-        //     "after {out} - {err}",
-        //     out = String::from_utf8(buf_stdout).unwrap(),
-        //     err = String::from_utf8(buf_stderr).unwrap()
-        // );
+            .context("stdin shouldn't be None")?
+            .write_all(cmd.as_bytes())?;
         Ok(())
     }
 }
@@ -326,6 +275,7 @@ impl<'a> UeConf<'a> {
             ..Default::default()
         }
     }
+
     fn to_json(&self) -> String {
         if self.identifier.is_empty() {
             panic!("Incomplete Information : Itentifier Not Found");
@@ -356,6 +306,26 @@ impl<'a> UeConf<'a> {
                 self.identifier
             ),
         }
+    }
+
+    fn build_json(image: &DisplayedImage, rect: Rect) -> String {
+        let path = &image.images[image.image_index()].to_string_lossy();
+        let x = rect.x;
+        let y = rect.y.saturating_sub(1);
+        let width = Some(rect.width);
+        let height = Some(rect.height.saturating_sub(1));
+        let scaler = Some(Scalers::FitContain);
+        let config = &UeConf {
+            identifier: "fm_tui",
+            path,
+            x,
+            y,
+            width,
+            height,
+            scaler,
+            ..Default::default()
+        };
+        config.to_json()
     }
 }
 
