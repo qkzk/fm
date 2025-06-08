@@ -1655,9 +1655,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
   - [x] dumb solution: check if user has x11 before spawning 
   - [ ] better solution, don't create anything (use Option<ueberzug>) if user hasn't x11
-- [x] support other way of displaying image, sharing API : 
+- [ ] support other way of displaying image, sharing API : 
     Support for inline image protocol & ueberzug display of images. Detection is made at start.
-  
+
+  - [ ] downscale large images with fast libs instead of letting ueberzug/terminal do the hard work
   - [x] ueberzug. Simplify, holds into an enum variant
   - [x] support [Inline Images protocol](https://iterm2.com/documentation-images.html)
     - [x] detect the terminal, default to ueberzug
@@ -1669,6 +1670,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] build ?
     - [x] display
     - [x] clear : for each line, write empty string
+  - [ ] debugging / testing : scrolling through large directories should be fast
 
 ## TODO
 
