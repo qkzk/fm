@@ -137,12 +137,17 @@ impl DisplayedImage {
         elapsed % self.images.len()
     }
 
-    pub fn image_index(&self) -> usize {
+    fn image_index(&self) -> usize {
         if matches!(self.kind, Kind::Video) {
             self.video_index()
         } else {
             self.index
         }
+    }
+
+    /// Path of the currently selected image as a COW &str.
+    pub fn selected_path(&self) -> std::borrow::Cow<'_, str> {
+        self.images[self.image_index()].to_string_lossy()
     }
 }
 

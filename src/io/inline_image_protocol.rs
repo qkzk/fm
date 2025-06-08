@@ -42,7 +42,7 @@ pub struct InlineImage {
 
 impl ImageDisplayer for InlineImage {
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
-        let path = &image.images[image.image_index()].to_string_lossy();
+        let path = &image.selected_path();
         if self.image_can_be_reused(path, rect) {
             return Ok(());
         }

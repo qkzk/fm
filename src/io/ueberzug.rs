@@ -91,17 +91,15 @@ impl Default for Ueberzug {
 impl ImageDisplayer for Ueberzug {
     /// Draws the Image using
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
-        let path = &image.images[image.image_index()].to_string_lossy();
-        let dont_change = self.change_current_image(path);
-        if dont_change {
+        let path = image.selected_path();
+        if self.is_the_same_image(&path) {
             Ok(())
         } else {
             crate::log_info!("ueberzug.draw() new image {path}");
-            self.clear_all()?;
-            let cmd = UeConf::build_json(image, rect);
+            self.clear(image)?;
             self.is_displaying = true;
             self.last_displayed = Some(path.to_string());
-            self.run(&cmd)
+            self.run(&UeConf::build_json(image, rect))
         }
     }
 
@@ -132,7 +130,7 @@ impl Ueberzug {
         self.run(&cmd)
     }
     /// true iff the same image was already displayed
-    fn change_current_image(&mut self, new: &str) -> bool {
+    fn is_the_same_image(&mut self, new: &str) -> bool {
         let Some(last) = &self.last_displayed else {
             return false;
         };
@@ -309,7 +307,7 @@ impl<'a> UeConf<'a> {
     }
 
     fn build_json(image: &DisplayedImage, rect: Rect) -> String {
-        let path = &image.images[image.image_index()].to_string_lossy();
+        let path = &image.selected_path();
         let x = rect.x;
         let y = rect.y.saturating_sub(1);
         let width = Some(rect.width);
