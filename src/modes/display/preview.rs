@@ -111,7 +111,7 @@ impl ExtensionKind {
         }
     }
 
-    fn is_ueber_kind(&self) -> bool {
+    fn is_image_kind(&self) -> bool {
         matches!(
             &self,
             ExtensionKind::Font
@@ -180,7 +180,7 @@ impl Preview {
             Self::Syntaxed(_) => "an highlighted text",
             Self::Text(text) => text.kind.for_first_line(),
             Self::Binary(_) => "a binary file",
-            Self::Image(uber) => uber.kind.for_first_line(),
+            Self::Image(image) => image.kind.for_first_line(),
             Self::Tree(_) => "a tree",
         }
     }
@@ -289,7 +289,7 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(&self.path, kind),
+            _ if kind.is_image_kind() && kind.has_programs() => Self::image(&self.path, kind),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -297,7 +297,7 @@ impl PreviewBuilder {
         }
     }
 
-    fn ueber(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+    fn image(path: &Path, kind: ExtensionKind) -> Result<Preview> {
         let preview = DisplayedImageBuilder::new(path, kind.into()).build()?;
         if preview.is_empty() {
             Ok(Preview::Empty)
