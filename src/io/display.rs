@@ -676,6 +676,7 @@ impl<'a> PreviewDisplay<'a> {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
+        log_info!("preview display: {kind}", kind = tab.preview.kind_display());
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 let number_col_width = Self::number_width(length);
@@ -1531,6 +1532,9 @@ impl Display {
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) {
         io::stdout().flush().expect("Couldn't flush the stdout");
+        if status.should_tabs_images_be_cleared() {
+            self.clear_images();
+        }
         if status.should_be_cleared() {
             self.term.clear().expect("Couldn't clear the terminal");
         }

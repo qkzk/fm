@@ -41,12 +41,11 @@ impl Displayer {
                     Err(TryRecvError::Empty) => {}
                 }
                 let mut status = status.lock();
-                if status.should_tabs_images_be_cleared() {
-                    display.clear_images();
-                    status.set_tabs_images_cleared();
-                }
                 if !status.internal_settings.is_disabled() {
                     display.display_all(&status);
+                }
+                if status.should_tabs_images_be_cleared() {
+                    status.set_tabs_images_cleared();
                 }
                 if status.should_be_cleared() {
                     status.internal_settings.reset_clear()
