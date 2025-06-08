@@ -17,10 +17,10 @@ const COMPATIBLES: [&str; 4] = [
 
 #[derive(Default)]
 pub enum ImageAdapter {
-    Ueberzug(Ueberzug),
-    Iterm2(InlineImage),
     #[default]
     Unable,
+    Ueberzug(Ueberzug),
+    InlineImage(InlineImage),
 }
 
 impl ImageAdapter {
@@ -32,12 +32,12 @@ impl ImageAdapter {
     pub fn detect() -> Self {
         for variable in COMPATIBLES {
             if var(variable).is_ok() {
-                log_info!("iterm2");
-                return Self::Iterm2(InlineImage::default());
+                log_info!("detected Inline Image Protocol compatible terminal from {variable}");
+                return Self::InlineImage(InlineImage::default());
             }
         }
         if is_in_path(UEBERZUG) && user_has_x11() {
-            log_info!("ueberzug");
+            log_info!("detected ueberzug");
             Self::Ueberzug(Ueberzug::default())
         } else {
             log_info!("unable to display image");
@@ -57,7 +57,7 @@ impl ImageDisplayer for ImageAdapter {
         match self {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.draw(image, rect),
-            Self::Iterm2(inline_image) => inline_image.draw(image, rect),
+            Self::InlineImage(inline_image) => inline_image.draw(image, rect),
         }
     }
 
@@ -65,7 +65,7 @@ impl ImageDisplayer for ImageAdapter {
         match self {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.clear(image),
-            Self::Iterm2(inline_image) => inline_image.clear(image),
+            Self::InlineImage(inline_image) => inline_image.clear(image),
         }
     }
 
@@ -73,7 +73,7 @@ impl ImageDisplayer for ImageAdapter {
         match self {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.clear_all(),
-            Self::Iterm2(inline_image) => inline_image.clear_all(),
+            Self::InlineImage(inline_image) => inline_image.clear_all(),
         }
     }
 }

@@ -89,7 +89,7 @@ impl Default for Ueberzug {
 }
 
 impl ImageDisplayer for Ueberzug {
-    /// Draws the Image using
+    /// Draws the Image using ueberzug
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
         let path = image.selected_path();
         if self.is_the_same_image(&path) {

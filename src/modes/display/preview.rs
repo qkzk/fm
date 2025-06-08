@@ -19,7 +19,7 @@ use syntect::{
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
     ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
-    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
@@ -96,14 +96,12 @@ impl ExtensionKind {
             Self::Audio     => is_in_path(MEDIAINFO),
             Self::Office    => is_in_path(LIBREOFFICE),
             Self::Torrent   => is_in_path(TRANSMISSION_SHOW),
-            Self::Image     => is_in_path(UEBERZUG),
             Self::Sevenz    => is_in_path(SEVENZ),
-            Self::Svg       => is_in_path(UEBERZUG) && is_in_path(RSVG_CONVERT),
-            Self::Video     => is_in_path(UEBERZUG) && is_in_path(FFMPEG),
-            Self::Font      => is_in_path(UEBERZUG) && is_in_path(FONTIMAGE),
+            Self::Svg       => is_in_path(RSVG_CONVERT),
+            Self::Video     => is_in_path(FFMPEG),
+            Self::Font      => is_in_path(FONTIMAGE),
             Self::Pdf       => {
-                               is_in_path(UEBERZUG)
-                            && is_in_path(PDFINFO)
+                               is_in_path(PDFINFO)
                             && is_in_path(PDFTOPPM)
             }
 
