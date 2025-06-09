@@ -1670,6 +1670,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] build ?
     - [x] display
     - [x] clear : for each line, write empty string
+    - [ ] BUG: wrong sizes for vertical images left pane has wrong size
   - [ ] debugging / testing : scrolling through large directories should be fast
 
 ## TODO

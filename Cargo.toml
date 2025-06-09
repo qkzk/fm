@@ -30,6 +30,7 @@ fs_extra = "1.2.0"
 
 [dependencies]
 anyhow = "1.0.90"
+base64 = "0.22.1"
 beef = "0.5.2"
 chrono = "0.4.38"
 clap = { version = "4.5.17", features = ["derive"] }
@@ -38,6 +39,7 @@ copypasta = "0.10.1"
 crossterm = "0.28.1"
 flate2 = "1.0"
 fs_extra = "1.3.0"
+image = { version = "0.25.6" }
 indicatif = { version = "0.17.8", features = ["in_memory"] }
 iterm2img = "0.1.0"
 log = { version = "0.4.22", features = ["std"] }
