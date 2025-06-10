@@ -676,7 +676,6 @@ impl<'a> PreviewDisplay<'a> {
         let tab = self.tab;
         let window = &tab.window;
         let length = tab.preview.len();
-        log_info!("preview display: {kind}", kind = tab.preview.kind_display());
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 let number_col_width = Self::number_width(length);
@@ -1541,6 +1540,7 @@ impl Display {
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
+        log_info!("terminal size: {width}, {height}");
         let full_rect = Rects::full_rect(width, height);
         let inside_border_rect = Rects::inside_border_rect(width, height);
         let borders = Self::borders(status);

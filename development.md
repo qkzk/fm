@@ -1576,6 +1576,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
 - More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
 - Copy text file content to clipbloard with Ctrl+a. Only works for "text" file as guessed by their extension. 
+- iterm2 Inline Image Protocol. comptabible terminal emulators (WezTerm etc.) can use their own image displayer. 
+  You can display images without having ueberzug installed
 
 **Bugfixes :**
 
@@ -1655,23 +1657,24 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
   - [x] dumb solution: check if user has x11 before spawning 
   - [ ] better solution, don't create anything (use Option<ueberzug>) if user hasn't x11
-- [ ] support other way of displaying image, sharing API : 
+- [x] support other way of displaying image, sharing API : 
     Support for inline image protocol & ueberzug display of images. Detection is made at start.
 
-  - [ ] downscale large images with fast libs instead of letting ueberzug/terminal do the hard work
+   downscaling large images with fast libs instead of letting ueberzug/terminal do the hard work isn't fast.
+   I should let ueberzug & wezterm do the hard work.
+
   - [x] ueberzug. Simplify, holds into an enum variant
   - [x] support [Inline Images protocol](https://iterm2.com/documentation-images.html)
-    - [x] detect the terminal, default to ueberzug
+    - [x] detect the terminal, default to "unable" if not comptabile nor ueberzug is available
       - wezterm : $WEZTERM_EXECUTABLE
       - warp : $WARP_HONOR_PS1
       - tabby : TABBY_CONFIG_DIRECTORY
       - vs code : VSCODE_INJECTION
-    - [x] replace display.ueberzug with an enum ?
-    - [x] build ?
-    - [x] display
-    - [x] clear : for each line, write empty string
+    - [x] build the string
+    - [x] display the string
+    - [x] clear (for each line of rect, write empty string)
     - [ ] BUG: wrong sizes for vertical images left pane has wrong size
-  - [ ] debugging / testing : scrolling through large directories should be fast
+  - [x] debugging / testing : scrolling through large directories isn't fast.
 
 ## TODO
 

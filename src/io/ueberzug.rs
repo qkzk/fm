@@ -43,7 +43,7 @@ use crate::common::UEBERZUG;
 use crate::io::ImageDisplayer;
 use crate::modes::DisplayedImage;
 
-/// Check if user has display capabilities.
+/// Check if user has X11 display capabilities.
 /// Call it before trying to spawn ueberzug.
 ///
 /// Normal session (terminal emulator from X11 window manager) should have:
@@ -95,7 +95,6 @@ impl ImageDisplayer for Ueberzug {
         if self.is_the_same_image(&path) {
             Ok(())
         } else {
-            crate::log_info!("ueberzug.draw() new image {path}");
             self.clear(image)?;
             self.is_displaying = true;
             self.last_displayed = Some(path.to_string());
@@ -103,7 +102,8 @@ impl ImageDisplayer for Ueberzug {
         }
     }
 
-    /// Clear the drawn image only requires the identifier
+    /// Clear the drawn image.
+    /// Only requires the identifier
     fn clear(&mut self, _: &DisplayedImage) -> Result<()> {
         if self.is_displaying {
             self.clear_internal()
@@ -114,7 +114,6 @@ impl ImageDisplayer for Ueberzug {
 
     /// Clear the last image.
     fn clear_all(&mut self) -> Result<()> {
-        crate::log_info!("ueberzug.clear_all()");
         self.is_displaying = false;
         self.last_displayed = None;
         self.driver = Self::spawn_ueberzug()?;
@@ -140,7 +139,7 @@ impl Ueberzug {
     fn spawn_ueberzug() -> std::io::Result<Child> {
         std::process::Command::new(UEBERZUG)
             .arg("layer")
-            // .arg("--silent")
+            .arg("--silent")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

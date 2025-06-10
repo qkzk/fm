@@ -32,7 +32,7 @@ Options:
 
 ## Platform
 
-Linux is the only supported platform. It may be usable on MacOS but I can't be sure.
+X11-Linux is the only supported platform. It may be usable on MacOS and Wayland but I can't be sure since I can't test them.
 
 ## Video
 
@@ -78,7 +78,7 @@ Display settings (use two panes, display metadata, use second pane as preview) a
 
 ### Moving
 
-Many ways to jump somewhere :
+Many ways to jump somewhere:
 
 - Alt+g: type the full address (with completion enabled),
 - Ctrl+g: a predefined shortcut (default root folders, home and mount points, gitroot, config folder),
@@ -113,6 +113,24 @@ Many ways to jump somewhere :
 - Find files with / (with completion: Tab, enter to search),
 - flag files matching a regex with w
 
+### Preview
+
+You can preview a file directly (Shift-p) or by toggling preview mode in the right tab (Alt-p). While in this mode, navigating will update the display.
+
+A lot of different file kinds can be previewed directly withing fm:
+
+- images, pdf, videos, office document and fonts are displayed as an image using Inline Image Protocol from iterm2 or ueberzug,
+- structured text (code) is highlighted,
+- simple text and epub are displayed without formating,
+- executable with read_elf,
+- binary files are displayed with something looking like hexdump (endianness may be wrong),
+- metadata of audio files,
+- file content of archives is listed. It supports many formats (zip, xz, gz, 7z, iso, torrent etc.)
+
+Most of this previewing is done externaly through shell commands. They require the appropriate software to be installed.
+
+Note: previewing a LARGE directory of videos may be really slow.
+
 ### Fuzzy finders
 
 - Ctrl-f : search in filenames and move there,
@@ -125,7 +143,7 @@ We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written 
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
 
-As long as Neovim is runnging, it should always work, even outside of neovim.
+As long as Neovim is running, it should always work, even outside of neovim.
 
 The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
 environment variable set by neovim itself.
@@ -408,7 +426,7 @@ Most of the openers and tui applications are configurable from config files. Som
 - [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
-- [libreoffice](https://www.libreoffice.org) preview open & MS-office documents
+- [libreoffice](https://www.libreoffice.org) preview OpenOffice & MS-office documents
 - [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
 - [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
 
