@@ -253,7 +253,8 @@ Only developpers of fm should be concerned.
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
 - Set the selected image as wallpaper with W.
 - Enter "command mode" with ':'. Type the name of a command and it will be executed.
-- Mount a remote filesystem using ssfhs with Alt-r.
+- Change permissions (chmod) with Alt+m or '+'. A nice menu will help you.
+- Mount a remote filesystem using sshfs with Alt-r.
 - Mount a MTP device with Alt-R.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
@@ -420,7 +421,7 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
 - [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
-- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
+- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. You can display images within WezTerm directly with the help of iterm2's Inline Image Protocol
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
 - [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
@@ -429,6 +430,7 @@ Most of the openers and tui applications are configurable from config files. Som
 - [libreoffice](https://www.libreoffice.org) preview OpenOffice & MS-office documents
 - [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
 - [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
+- [sshfs](https://github.com/libfuse/sshfs) to mount remote filesystem over SFTP.
 
 ## Contribution
 
