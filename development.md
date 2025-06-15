@@ -1591,6 +1591,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Use char keybinds in tuimenu & cli menus for quick actions
 - Preview compiled executables with readelf
 - Rename: renamed file stays selected. You can't overwrite an existing file anymore.
+- Permissions: special bits (setuid s/S, setgid s/S, sticky t/T) wasn't displayed or parsed properly.
+  - They're all displayed properly.
+  - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
+    It's still possible to do !chmod whatever %s to change the permissions
 
 #### Changelog
 
@@ -1678,7 +1682,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   ref : [wikipedia permissions](https://en.wikipedia.org/wiki/File-system_permissions#Symbolic_notation) && [chmodcommand](https://chmodcommand.com/chmod-7755/)
   - [x] read (with or without special flags)
   - [x] write (2755, rwsrw-rw-, a+x etc. are accepted)
-  - [ ] move all this to permissions.rs
 
 ## TODO
 

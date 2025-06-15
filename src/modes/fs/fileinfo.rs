@@ -8,12 +8,9 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use ratatui::style::Style;
 
-use crate::common::{
-    NORMAL_PERMISSIONS_STR, SETGID_PERMISSIONS_STR, SETUID_PERMISSIONS_STR, STICKY_PERMISSIONS_STR,
-};
 use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
-use crate::modes::{human_size, Icon, ToPath, Users, MAX_FILE_MODE};
+use crate::modes::{human_size, permission_mode_to_str, Icon, ToPath, Users};
 
 type Valid = bool;
 
@@ -395,62 +392,6 @@ pub fn extract_datetime(time: std::time::SystemTime) -> Result<Arc<str>> {
     Ok(Arc::from(
         format!("{}", datetime.format("%Y/%m/%d %T")).as_str(),
     ))
-}
-
-trait ToBool {
-    fn to_bool(self) -> bool;
-}
-
-impl ToBool for u32 {
-    fn to_bool(self) -> bool {
-        (self & 1) == 1
-    }
-}
-
-#[inline]
-fn extract_setuid_flag(special: u32) -> bool {
-    (special >> 2).to_bool()
-}
-
-#[inline]
-fn extract_setgid_flag(special: u32) -> bool {
-    (special >> 1).to_bool()
-}
-
-#[inline]
-fn extract_sticky_flag(special: u32) -> bool {
-    special.to_bool()
-}
-
-/// Reads the permission and converts them into a string.
-pub fn permission_mode_to_str(mode: u32) -> Arc<str> {
-    let mode = mode & 0o7777;
-    let special = mode >> 9;
-    let owner_strs = if extract_setuid_flag(special) {
-        SETUID_PERMISSIONS_STR
-    } else {
-        NORMAL_PERMISSIONS_STR
-    };
-    let group_strs = if extract_setgid_flag(special) {
-        SETGID_PERMISSIONS_STR
-    } else {
-        NORMAL_PERMISSIONS_STR
-    };
-    let sticky_strs = if extract_sticky_flag(special) {
-        STICKY_PERMISSIONS_STR
-    } else {
-        NORMAL_PERMISSIONS_STR
-    };
-    let normal_mode = (mode & MAX_FILE_MODE) as usize;
-    let s_o = convert_octal_mode(owner_strs, normal_mode >> 6);
-    let s_g = convert_octal_mode(group_strs, (normal_mode >> 3) & 7);
-    let s_a = convert_octal_mode(sticky_strs, normal_mode & 7);
-    Arc::from([s_o, s_g, s_a].join(""))
-}
-
-/// Convert an integer like `Oo7` into its string representation like `"rwx"`
-fn convert_octal_mode(permission_str: [&'static str; 8], mode: usize) -> &'static str {
-    permission_str[mode]
 }
 
 /// Reads the owner name and returns it as a string.
