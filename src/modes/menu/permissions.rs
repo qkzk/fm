@@ -2,6 +2,7 @@ use std::os::unix::fs::PermissionsExt;
 
 use anyhow::Result;
 
+use crate::common::NORMAL_PERMISSIONS_STR;
 use crate::io::execute_without_output;
 use crate::modes::{convert_octal_mode, Flagged};
 use crate::{log_info, log_line};
@@ -11,8 +12,8 @@ type Mode = u32;
 /// Empty struct used to regroup some methods.
 pub struct Permissions;
 
-/// Maximum possible mode, 0o777 = 511 (decimal), aka "rwx".
-pub const MAX_MODE: Mode = 0o777;
+/// Maximum possible mode for a file, ignoring special bits, 0o777 = 511 (decimal), aka "rwx".
+pub const MAX_FILE_MODE: Mode = 0o777;
 
 impl Permissions {
     /// Change permission of the flagged files.
@@ -119,7 +120,10 @@ pub fn parse_input_permission(mode_str: &str) -> Vec<(&str, IsValid)> {
     let mut display = vec![];
     for char in mode_str.chars() {
         if char.is_digit(8) {
-            let mode = convert_octal_mode(char.to_digit(8).unwrap_or_default() as usize);
+            let mode = convert_octal_mode(
+                NORMAL_PERMISSIONS_STR,
+                char.to_digit(8).unwrap_or_default() as usize,
+            );
             display.push((mode, true));
         } else {
             display.push(("???", false));
@@ -193,6 +197,6 @@ impl ModeParser {
     }
 
     const fn is_valid_permissions(mode: Mode) -> bool {
-        mode <= MAX_MODE
+        mode <= MAX_FILE_MODE
     }
 }

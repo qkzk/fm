@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::fs::{symlink_metadata, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -8,10 +9,12 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use ratatui::style::Style;
 
-use crate::common::PERMISSIONS_STR;
+use crate::common::{
+    NORMAL_PERMISSIONS_STR, SETGID_PERMISSIONS_STR, SETUID_PERMISSIONS_STR, STICKY_PERMISSIONS_STR,
+};
 use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
-use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
+use crate::modes::{human_size, Icon, ToPath, Users, MAX_FILE_MODE};
 
 type Valid = bool;
 
@@ -167,8 +170,6 @@ pub struct FileInfo {
     pub group: Arc<str>,
     /// System time of last modification
     pub system_time: Arc<str>,
-    /// Is this file currently selected ?
-    // is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
@@ -183,6 +184,7 @@ impl FileInfo {
     pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
+        let mode = metadata.mode();
         let true_size = true_size(path, &metadata);
         let path = Arc::from(path);
         let owner = extract_owner(&metadata, users);
@@ -192,6 +194,9 @@ impl FileInfo {
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
+        if *filename == *"sudo" || *filename == *"sum" {
+            crate::log_info!("filename {filename} mode {mode}");
+        }
 
         Ok(FileInfo {
             path,
@@ -222,13 +227,13 @@ impl FileInfo {
         Ok(file_info)
     }
 
-    fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(symlink_metadata(&self.path)?)
+    fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
+        symlink_metadata(&self.path)
     }
 
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
-        Ok(extract_permissions_string(&self.metadata()?))
+        Ok(extract_permissions_string(self.metadata()?.mode()))
     }
 
     /// Format the file line.
@@ -393,18 +398,50 @@ pub fn extract_datetime(time: std::time::SystemTime) -> Result<Arc<str>> {
     ))
 }
 
+#[inline]
+fn extract_setuid_flag(mode: u32) -> bool {
+    ((mode >> 11) & 1) == 1
+}
+
+#[inline]
+fn extract_setgid_flag(mode: u32) -> bool {
+    ((mode >> 10) & 1) == 1
+}
+
+#[inline]
+fn extract_sticky_flag(mode: u32) -> bool {
+    ((mode >> 9) & 1) == 1
+}
+
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(metadata: &Metadata) -> Arc<str> {
-    let mode = (metadata.mode() & MAX_MODE) as usize;
-    let s_o = convert_octal_mode(mode >> 6);
-    let s_g = convert_octal_mode((mode >> 3) & 7);
-    let s_a = convert_octal_mode(mode & 7);
-    Arc::from(format!("{s_o}{s_g}{s_a}").as_str())
+fn extract_permissions_string(mode: u32) -> Arc<str> {
+    let owner_strs = if extract_setuid_flag(mode) {
+        SETUID_PERMISSIONS_STR
+    } else {
+        NORMAL_PERMISSIONS_STR
+    };
+    let group_strs = if extract_setgid_flag(mode) {
+        SETGID_PERMISSIONS_STR
+    } else {
+        NORMAL_PERMISSIONS_STR
+    };
+    let sticky_strs = if extract_sticky_flag(mode) {
+        STICKY_PERMISSIONS_STR
+    } else {
+        NORMAL_PERMISSIONS_STR
+    };
+    let normal_mode = (mode & MAX_FILE_MODE) as usize;
+    let s_o = convert_octal_mode(owner_strs, normal_mode >> 6);
+    let s_g = convert_octal_mode(group_strs, (normal_mode >> 3) & 7);
+    let s_a = convert_octal_mode(sticky_strs, normal_mode & 7);
+    let mut s = String::with_capacity(3);
+    write!(s, "{s_o}{s_g}{s_a}").expect("Couldn't write permission string");
+    Arc::from(s.as_str())
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
-pub fn convert_octal_mode(mode: usize) -> &'static str {
-    PERMISSIONS_STR[mode]
+pub fn convert_octal_mode(permission_str: [&'static str; 8], mode: usize) -> &'static str {
+    permission_str[mode]
 }
 
 /// Reads the owner name and returns it as a string.
@@ -481,4 +518,10 @@ impl ToPath for FileInfo {
     fn to_path(&self) -> &path::Path {
         self.path.as_ref()
     }
+}
+
+fn mode(mode: u32) {
+    // filename sudo mode 35309
+    // filename sum mode 33261
+    // 35309 - 33261 = 2048
 }

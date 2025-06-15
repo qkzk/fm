@@ -48,7 +48,13 @@ pub const OPENER_VECT: (&str, bool) = ("inkscape", false);
 pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
 /// Array of text representation of a file permissions.
 /// The index of each string gives a correct representation.
-pub const PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+pub const NORMAL_PERMISSIONS_STR: [&str; 8] =
+    ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+pub const SETUID_PERMISSIONS_STR: [&str; 8] =
+    ["--S", "--s", "-wS", "-ws", "r-S", "r-s", "rwS", "rws"];
+pub const SETGID_PERMISSIONS_STR: [&str; 8] = SETUID_PERMISSIONS_STR;
+pub const STICKY_PERMISSIONS_STR: [&str; 8] =
+    ["--T", "--t", "-w-", "-wt", "r-T", "r-t", "rwT", "rwt"];
 /// Description of the application.
 pub const HELP_FIRST_SENTENCE: &str = " fm: a dired / ranger like file manager. ";
 /// Description of the content below, aka the help itself.

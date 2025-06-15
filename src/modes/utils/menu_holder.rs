@@ -13,7 +13,7 @@ use crate::log_line;
 use crate::modes::{
     Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu, Flagged, History,
     Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate, PasswordHolder, Picker, Remote,
-    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
+    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -148,7 +148,7 @@ impl MenuHolder {
         let Ok(metadata) = flagged.metadata() else {
             return;
         };
-        let mode = metadata.mode() & MAX_MODE;
+        let mode = metadata.mode() & MAX_FILE_MODE;
         self.input.replace(&format!("{mode:o}"));
     }
 

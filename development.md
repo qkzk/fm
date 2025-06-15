@@ -1666,7 +1666,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] support [Inline Images protocol](https://iterm2.com/documentation-images.html)
     - [x] detect the terminal, default to "unable" if not comptabile nor ueberzug is available
       - wezterm : $WEZTERM_EXECUTABLE
-      - warp : $WARP_HONOR_PS1
+      - warp : $WARP_HONOR_PS1  
       - tabby : TABBY_CONFIG_DIRECTORY
       - vs code : VSCODE_INJECTION
     - [x] build the string
@@ -1674,6 +1674,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] clear (for each line of rect, write empty string)
     - [ ] BUG: wrong sizes for vertical images left pane has wrong size
   - [x] debugging / testing : scrolling through large directories isn't fast.
+- [x] BUG: permissions are wrong. 
+  setuid, setgid and sticky bits aren't shown and changed properly. see Man chmod, "A numeric mode is from one to four octal digits (0-7), derived by adding up the bits with values 4, 2, and 1.  Omitted digits are assumed to be leading zeros.  The first digit selects the set user ID (4) and set group ID (2) and restricted deletion or sticky (1) attributes". chmod must accept 4 numbers, assuming leading 0. Should recognize the set thing flag
+ - read see [wikipedia permissions](https://en.wikipedia.org/wiki/File-system_permissions#Symbolic_notation)
+ - write see https://chmodcommand.com/chmod-7755/
+
+  - [x] read : .src/modes/fs/fileinfo.rs permissions [wikpedia](https://en.wikipedia.org/wiki/File-system_permissions#Symbolic_notation) && [chmodcommand](https://chmodcommand.com/chmod-4777/)
+  - [ ] write : ./src/modes/menu/permissions.rs : rewrite the whole parser ? :/
 
 ## TODO
 
