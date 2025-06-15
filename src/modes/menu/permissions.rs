@@ -1,10 +1,10 @@
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::common::NORMAL_PERMISSIONS_STR;
 use crate::io::execute_without_output;
-use crate::modes::{convert_octal_mode, Flagged};
+use crate::modes::{permission_mode_to_str, Flagged};
 use crate::{log_info, log_line};
 
 type Mode = u32;
@@ -14,6 +14,7 @@ pub struct Permissions;
 
 /// Maximum possible mode for a file, ignoring special bits, 0o777 = 511 (decimal), aka "rwx".
 pub const MAX_FILE_MODE: Mode = 0o777;
+pub const MAX_SPECIAL_MODE: Mode = 0o7777;
 
 impl Permissions {
     /// Change permission of the flagged files.
@@ -26,9 +27,10 @@ impl Permissions {
     ///
     /// It may fail if the permissions can't be set by the user.
     pub fn set_permissions_of_flagged(mode_str: &str, flagged: &Flagged) -> Result<()> {
+        log_info!("set_permissions_of_flagged mode_str {mode_str}");
         if let Some(mode) = ModeParser::from_str(mode_str) {
             for path in &flagged.content {
-                std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode.octal()))?;
+                std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode.numeric()))?;
             }
             log_line!("Changed permissions to {mode_str}");
         } else if Self::validate_chmod_args(mode_str) {
@@ -77,8 +79,8 @@ impl Permissions {
             );
             return false;
         }
-        if !"Xrstwx".contains(permission) {
-            log_info!("{permission} isn't a valid chmod argument. The third char should be 'X', 'r', 's', 't', 'w' or 'x'.");
+        if !"XrstwxT".contains(permission) {
+            log_info!("{permission} isn't a valid chmod argument. The third char should be 'X', 'r', 's', 't', 'w' or 'x' or 'T'.");
             return false;
         }
         true
@@ -101,6 +103,17 @@ impl Permissions {
     }
 }
 
+trait AsOctal<T> {
+    /// Converts itself to an octal if possible, 0 otherwise.
+    fn as_octal(&self) -> T;
+}
+
+impl AsOctal<u32> for str {
+    fn as_octal(&self) -> u32 {
+        u32::from_str_radix(self, 8).unwrap_or_default()
+    }
+}
+
 type IsValid = bool;
 
 /// Parse an inputstring into a displayed textual permission.
@@ -110,36 +123,21 @@ type IsValid = bool;
 /// It also returns a flag for any char, set to true if the char
 /// is a valid permission.
 /// It's used to display a valid mode or not.
-pub fn parse_input_permission(mode_str: &str) -> Vec<(&str, IsValid)> {
+pub fn parse_input_permission(mode_str: &str) -> (Arc<str>, IsValid) {
+    log_info!("parse_input_permission: {mode_str}");
     if mode_str.chars().any(|c| c.is_alphabetic()) {
-        return vec![];
+        (Arc::from(""), true)
+    } else if mode_str.chars().all(|c| c.is_digit(8)) {
+        (permission_mode_to_str(mode_str.as_octal()), true)
+    } else {
+        (Arc::from("Unreadable mode"), false)
     }
-    if mode_str.len() > 3 {
-        return vec![("Mode is too long", false)];
-    }
-    let mut display = vec![];
-    for char in mode_str.chars() {
-        if char.is_digit(8) {
-            let mode = convert_octal_mode(
-                NORMAL_PERMISSIONS_STR,
-                char.to_digit(8).unwrap_or_default() as usize,
-            );
-            display.push((mode, true));
-        } else {
-            display.push(("???", false));
-        }
-    }
-    display
 }
 
 struct ModeParser(Mode);
 
 impl ModeParser {
-    const VALID: [char; 3] = ['r', 'w', 'x'];
-    const ACCEPTED: [char; 2] = ['.', '-'];
-    /// Max valid mode, ie `0o777`.
-
-    const fn octal(&self) -> Mode {
+    const fn numeric(&self) -> Mode {
         self.0
     }
 
@@ -159,35 +157,29 @@ impl ModeParser {
         None
     }
 
-    /// Convert a 9 char len long string into a mode.
+    /// Convert a string of 9 chars a numeric mode.
     /// It will only accept basic strings like "rw.r...." or "rw-r----".
-    /// It won't accept specific chmod syntax like a+x or +X or s or t.
-    /// User can execute a command like !chmod a+x %s and use chmod directly.
+    /// Special chars (s, S, t, T) are recognized correctly.
+    ///
+    /// If `mode_str` isn't 9 chars long, it's rejected.
+    /// mode is set to 0.
+    /// We simply read the chars and add :
+    ///     - Reject if the position isn't possible (S can't be the last char (index=8), it should be in .-xtT)
+    ///         This step is just for logging, we could simply add u32::MAX and let the last step do the rejection.
+    ///     - Add the corresponding value to the mode.
     fn from_alphabetic(mode_str: &str) -> Option<Self> {
         // rwxrwxrwx
         if mode_str.len() != 9 {
             return None;
         }
-        let mut exponent;
-        let mut current_index: usize;
-        let mut current_char: char;
-        let mut mode: u32 = 0;
 
-        let chars: Vec<_> = mode_str.chars().collect();
-        for part in 0..3 {
-            mode <<= 3;
-            exponent = 4;
-            for (index, valid) in Self::VALID.iter().enumerate() {
-                current_index = part * 3 + index;
-                current_char = chars[current_index];
-                if current_char == *valid {
-                    mode += exponent;
-                } else if current_char != Self::ACCEPTED[0] && current_char != Self::ACCEPTED[1] {
-                    log_info!("Invalid char in permissions {current_char}");
-                    return None;
-                }
-                exponent >>= 1;
-            }
+        let mut mode = 0;
+        for (index, current_char) in mode_str.chars().enumerate() {
+            let Some(increment) = Self::evaluate_index_char(index, current_char) else {
+                log_info!("Invalid char in permissions '{current_char}' at position {index}");
+                return None;
+            };
+            mode += increment;
         }
         if Self::is_valid_permissions(mode) {
             return Some(Self(mode));
@@ -196,7 +188,35 @@ impl ModeParser {
         None
     }
 
+    /// Since every symbol has a value according to its position, we simply associate it.
+    /// It should be impossible to have an invalid char
+    fn evaluate_index_char(index: usize, current_char: char) -> Option<u32> {
+        match current_char {
+            '-' | '.' => Some(0o000),
+
+            'r' if index == 0 => Some(0o0400),
+            'w' if index == 1 => Some(0o0200),
+            'x' if index == 2 => Some(0o0100),
+            'S' if index == 2 => Some(0o4000),
+            's' if index == 2 => Some(0o4100),
+
+            'r' if index == 3 => Some(0o0040),
+            'w' if index == 4 => Some(0o0020),
+            'x' if index == 5 => Some(0o0010),
+            'S' if index == 5 => Some(0o2000),
+            's' if index == 5 => Some(0o2010),
+
+            'r' if index == 6 => Some(0o0004),
+            'w' if index == 7 => Some(0o0002),
+            'x' if index == 8 => Some(0o0001),
+            'T' if index == 8 => Some(0o1000),
+            't' if index == 8 => Some(0o1001),
+
+            _ => None,
+        }
+    }
+
     const fn is_valid_permissions(mode: Mode) -> bool {
-        mode <= MAX_FILE_MODE
+        mode <= MAX_SPECIAL_MODE
     }
 }

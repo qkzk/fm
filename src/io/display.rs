@@ -1037,15 +1037,17 @@ impl<'a> Menu<'a> {
 
     fn menu_line_chmod(&self, f: &mut Frame, rect: &Rect, first: Style, menu: Style) {
         let input = self.status.menu.input.string();
-        let spans: Vec<_> = parse_input_permission(&input)
-            .iter()
-            .map(|(text, is_valid)| {
-                let style = if *is_valid { first } else { menu };
-                Span::styled(*text, style)
-            })
-            .collect();
+        let (text, is_valid) = parse_input_permission(&input);
+        let style = if is_valid { first } else { menu };
+        // let spans: Vec<_> = parse_input_permission(&input)
+        //     .iter()
+        //     .map(|(text, is_valid)| {
+        //         let style = if *is_valid { first } else { menu };
+        //         Span::styled(*text, style)
+        //     })
+        //     .collect();
         let p_rect = rect.offseted(11, 1);
-        Line::from(spans).render(p_rect, f.buffer_mut());
+        Line::styled(text.as_ref(), style).render(p_rect, f.buffer_mut());
     }
 
     fn menu_line_remote(&self, f: &mut Frame, rect: &Rect, first: Style) {
@@ -1540,7 +1542,6 @@ impl Display {
         let Ok(Size { width, height }) = self.term.size() else {
             return;
         };
-        log_info!("terminal size: {width}, {height}");
         let full_rect = Rects::full_rect(width, height);
         let inside_border_rect = Rects::inside_border_rect(width, height);
         let borders = Self::borders(status);

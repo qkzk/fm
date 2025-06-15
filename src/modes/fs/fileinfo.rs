@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::fs::{symlink_metadata, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -233,7 +232,7 @@ impl FileInfo {
 
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
-        Ok(extract_permissions_string(self.metadata()?.mode()))
+        Ok(permission_mode_to_str(self.metadata()?.mode()))
     }
 
     /// Format the file line.
@@ -398,34 +397,46 @@ pub fn extract_datetime(time: std::time::SystemTime) -> Result<Arc<str>> {
     ))
 }
 
-#[inline]
-fn extract_setuid_flag(mode: u32) -> bool {
-    ((mode >> 11) & 1) == 1
+trait ToBool {
+    fn to_bool(self) -> bool;
+}
+
+impl ToBool for u32 {
+    fn to_bool(self) -> bool {
+        (self & 1) == 1
+    }
 }
 
 #[inline]
-fn extract_setgid_flag(mode: u32) -> bool {
-    ((mode >> 10) & 1) == 1
+fn extract_setuid_flag(special: u32) -> bool {
+    (special >> 2).to_bool()
 }
 
 #[inline]
-fn extract_sticky_flag(mode: u32) -> bool {
-    ((mode >> 9) & 1) == 1
+fn extract_setgid_flag(special: u32) -> bool {
+    (special >> 1).to_bool()
+}
+
+#[inline]
+fn extract_sticky_flag(special: u32) -> bool {
+    special.to_bool()
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(mode: u32) -> Arc<str> {
-    let owner_strs = if extract_setuid_flag(mode) {
+pub fn permission_mode_to_str(mode: u32) -> Arc<str> {
+    let mode = mode & 0o7777;
+    let special = mode >> 9;
+    let owner_strs = if extract_setuid_flag(special) {
         SETUID_PERMISSIONS_STR
     } else {
         NORMAL_PERMISSIONS_STR
     };
-    let group_strs = if extract_setgid_flag(mode) {
+    let group_strs = if extract_setgid_flag(special) {
         SETGID_PERMISSIONS_STR
     } else {
         NORMAL_PERMISSIONS_STR
     };
-    let sticky_strs = if extract_sticky_flag(mode) {
+    let sticky_strs = if extract_sticky_flag(special) {
         STICKY_PERMISSIONS_STR
     } else {
         NORMAL_PERMISSIONS_STR
@@ -434,13 +445,11 @@ fn extract_permissions_string(mode: u32) -> Arc<str> {
     let s_o = convert_octal_mode(owner_strs, normal_mode >> 6);
     let s_g = convert_octal_mode(group_strs, (normal_mode >> 3) & 7);
     let s_a = convert_octal_mode(sticky_strs, normal_mode & 7);
-    let mut s = String::with_capacity(3);
-    write!(s, "{s_o}{s_g}{s_a}").expect("Couldn't write permission string");
-    Arc::from(s.as_str())
+    Arc::from([s_o, s_g, s_a].join(""))
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
-pub fn convert_octal_mode(permission_str: [&'static str; 8], mode: usize) -> &'static str {
+fn convert_octal_mode(permission_str: [&'static str; 8], mode: usize) -> &'static str {
     permission_str[mode]
 }
 
@@ -518,10 +527,4 @@ impl ToPath for FileInfo {
     fn to_path(&self) -> &path::Path {
         self.path.as_ref()
     }
-}
-
-fn mode(mode: u32) {
-    // filename sudo mode 35309
-    // filename sum mode 33261
-    // 35309 - 33261 = 2048
 }
