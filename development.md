@@ -1654,9 +1654,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor disk_space without using internal_settings.disks.collect as often
 - [ ] BUG: Camera folder crash. Can't reproduce
 - [ ] opening a video and focus is sticked to second pane : can't reproduce
-- [ ] BUG: ssh sessions or whatever which can't create windows should try to ...
-  - [x] dumb solution: check if user has x11 before spawning 
-  - [ ] better solution, don't create anything (use Option<ueberzug>) if user hasn't x11
+- [x] FIX: ssh sessions or whatever which can't create windows should try to ...
+  - [x] don't create anything image related if user hasn't x11
 - [x] support other way of displaying image, sharing API : 
     Support for inline image protocol & ueberzug display of images. Detection is made at start.
 
