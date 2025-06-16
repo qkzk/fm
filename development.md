@@ -1595,6 +1595,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - They're all displayed properly.
   - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
     It's still possible to do !chmod whatever %s to change the permissions
+- Files with size between 9.5units and 10.0units weren't properly aligned.
 
 #### Changelog
 
