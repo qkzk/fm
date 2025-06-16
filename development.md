@@ -1682,6 +1682,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   ref : [wikipedia permissions](https://en.wikipedia.org/wiki/File-system_permissions#Symbolic_notation) && [chmodcommand](https://chmodcommand.com/chmod-7755/)
   - [x] read (with or without special flags)
   - [x] write (2755, rwsrw-rw-, a+x etc. are accepted)
+- [x] FIX: wrong alignment for files with size between 9.5 units and 10.0 units.
 
 ## TODO
 
