@@ -1576,15 +1576,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
 - More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
 - Copy text file content to clipbloard with Ctrl+a. Only works for "text" file as guessed by their extension. 
-- iterm2 Inline Image Protocol. comptabible terminal emulators (WezTerm etc.) can use their own image displayer. 
+- iterm2 Inline Image Protocol. Compatible terminal emulators (WezTerm etc.) can use their own image displayer. 
   You can display images without having ueberzug installed
-
-**Bugfixes :**
-
-- click in menus was offset by 2
-- shell would open in other tab path
-- open config file did nothing
-
+- removed "clips" for videos animations. It was too slow :( I'll try again someday
 - Removed "terminal" from configuration. Doesn't break config file. It's just not used anymore.
 - VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
@@ -1596,6 +1590,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
     It's still possible to do !chmod whatever %s to change the permissions
 - Files with size between 9.5units and 10.0units weren't properly aligned.
+
+**Bugfixes :**
+
+- click in menus was offset by 2
+- shell would open in other tab path
+- open config file did nothing
+- Updated syntect to `5.2.0` since older versions required a crate which didn't compile anymore.
 
 #### Changelog
 
@@ -1684,6 +1685,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] read (with or without special flags)
   - [x] write (2755, rwsrw-rw-, a+x etc. are accepted)
 - [x] FIX: wrong alignment for files with size between 9.5 units and 10.0 units.
+- [x] Video thumbnails were slow. No more "clip", only a static image.
+- [x] updated syntect version since "onig" crate couldn't compile anymore.
+- [ ] replace syntect with automnus ?
+  - pros : seems well maintened, use treesitter for parsing, no regex, can output ANSI and use raw terminal mode.., more themes, customizable ?
+  - cons : new, "CLAUDE.md" wtf, users & dev complains about slow compilation (& heavy code ?), seems to ship with all the parsers
+  - should test to use syntect with raw mode first instead of switching..
+- [ ] remove more deps instead of adding more. cargo tree is scary
 
 ## TODO
 
