@@ -10,6 +10,7 @@ use std::slice::Iter;
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
+use syntect::dumps::{dump_to_file, from_binary, from_dump_file};
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
@@ -715,10 +716,11 @@ impl HLContent {
 
     fn get_or_init_monokai() -> &'static Theme {
         MONOKAI_THEME.get_or_init(|| {
-            let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-                "../../../assets/themes/Monokai_Extended.tmTheme"
-            )));
-            ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
+            // let mut monokai = BufReader::new(Cursor::new(include_bytes!(
+            //     "../../../assets/themes/Glow.tmTheme"
+            // )));
+            // ThemeSet::load_from_reader(&mut monokai).expect("Couldn't load glow")
+            from_binary(include_bytes!("../../../assets/themes/monokai.themedump"))
         })
     }
 

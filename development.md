@@ -1687,11 +1687,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: wrong alignment for files with size between 9.5 units and 10.0 units.
 - [x] Video thumbnails were slow. No more "clip", only a static image.
 - [x] updated syntect version since "onig" crate couldn't compile anymore.
-- [ ] replace syntect with automnus ?
-  - pros : seems well maintened, use treesitter for parsing, no regex, can output ANSI and use raw terminal mode.., more themes, customizable ?
-  - cons : new, "CLAUDE.md" wtf, users & dev complains about slow compilation (& heavy code ?), seems to ship with all the parsers
-  - should test to use syntect with raw mode first instead of switching..
 - [ ] remove more deps instead of adding more. cargo tree is scary
+- [ ] syntect: use themedeump themeload whatever to store theme as small binary in code.
+- [ ] syntect: allow more themes in .config/assets or whatever and lazyly load them after reading from config
 
 ## TODO
 
