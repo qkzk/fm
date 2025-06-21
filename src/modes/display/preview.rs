@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::convert::Into;
 use std::fmt::{Display, Write as _};
 use std::fs::symlink_metadata;
-use std::io::{BufRead, BufReader, Cursor, Read};
+use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;

@@ -1,6 +1,5 @@
 use std::{
     fs::File,
-    io::BufReader,
     ops::DerefMut,
     path::{Path, PathBuf},
     sync::OnceLock,
@@ -16,7 +15,7 @@ use syntect::{
     highlighting::{Theme, ThemeSet},
 };
 
-use crate::common::{tilde, CONFIG_FOLDER, CONFIG_PATH, SYNTECT_THEMES_PATH};
+use crate::common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH};
 use crate::config::{
     read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, SyntectTheme,
     MAX_GRADIENT_NORMAL,
@@ -48,67 +47,77 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
+/// Reads the syntect_theme configuration value and tries to load if from configuration files.
+///
+/// If it doesn't work, it will load the default set from binary file itself: monokai.
 pub fn set_syntect_theme() -> Result<()> {
-    let set_theme = SyntectTheme::load_config(CONFIG_PATH)?;
-    set_syntect_theme_from_config(&set_theme.theme)
-        .map_err(|_| anyhow!("Couldn't set SYNTECT_THEME"))
-}
-
-fn set_syntect_theme_from_config(syntect_theme: &str) -> Result<()> {
-    let syntect_theme_path = PathBuf::from(tilde(SYNTECT_THEMES_PATH).as_ref());
-    let mut tm_theme = syntect_theme_path.clone();
-    tm_theme.push(format!("{syntect_theme}.tmTheme"));
-    if tm_theme.exists() {
-        crate::log_info!(
-            "SYNTECT_THEME. Found {tm_theme}. Loading...",
-            tm_theme = tm_theme.display()
-        );
-        let mut buf = BufReader::new(File::open(&tm_theme).expect("Couldn't open tm_theme file"));
-        match ThemeSet::load_from_reader(&mut buf) {
-            Ok(theme) => match SYNTECT_THEME.set(theme) {
-                Ok(()) => {
-                    crate::log_info!("Found & loaded {tm_theme}!", tm_theme = tm_theme.display())
-                }
-                Err(e) => crate::log_info!("SYNTECT_THEME was already set : {e:?}"),
-            },
-            Err(e) => {
-                crate::log_info!(
-                    "Syntect couldn't load {tm_theme}: {e}",
-                    tm_theme = tm_theme.display()
-                );
-            }
-        }
-    } else {
-        let mut dump_theme = syntect_theme_path;
-        dump_theme.push(format!("{syntect_theme}.themedump"));
-        if dump_theme.exists() {
-            crate::log_info!(
-                "SYNTECT_THEME. Found {dump_theme}. Loading...",
-                dump_theme = dump_theme.display()
-            );
-            match from_dump_file(&dump_theme) {
-                Ok(theme) => match SYNTECT_THEME.set(theme) {
-                    Ok(()) => crate::log_info!(
-                        "Found & loaded {dump_theme}!",
-                        dump_theme = dump_theme.display()
-                    ),
-                    Err(e) => crate::log_info!("SYNTECT_THEME was already set : {e:?}"),
-                },
-                Err(e) => {
-                    crate::log_info!(
-                        "Syntect couldn't load {dump_theme}: {e}",
-                        dump_theme = dump_theme.display()
-                    );
-                }
-            }
-        }
+    let config_theme = SyntectTheme::from_config(CONFIG_PATH)?;
+    if !set_syntect_theme_from_config(&config_theme.theme) {
+        set_syntect_theme_from_source_code()
     }
-    let _ = SYNTECT_THEME.set(from_binary(include_bytes!(
-        "../../assets/themes/monokai.themedump"
-    )));
     Ok(())
 }
 
+enum SyntectThemeKind {
+    TmTheme,
+    Dump,
+}
+
+impl SyntectThemeKind {
+    fn extension(&self) -> &str {
+        match self {
+            Self::TmTheme => "tmTheme",
+            Self::Dump => "themedump",
+        }
+    }
+
+    fn load(&self, themepath: &Path) -> Result<Theme> {
+        match self {
+            Self::TmTheme => ThemeSet::get_theme(themepath)
+                .map_err(|e| anyhow!("Couldn't load syntect theme {e:}")),
+            Self::Dump => {
+                from_dump_file(themepath).map_err(|e| anyhow!("Couldn't load syntect theme {e:}"))
+            }
+        }
+    }
+}
+
+fn set_syntect_theme_from_config(syntect_theme: &str) -> bool {
+    let syntect_theme_path = PathBuf::from(tilde(SYNTECT_THEMES_PATH).as_ref());
+    for kind in [SyntectThemeKind::TmTheme, SyntectThemeKind::Dump] {
+        if load_syntect(&syntect_theme_path, syntect_theme, &kind) {
+            return true;
+        }
+    }
+    false
+}
+
+fn load_syntect(syntect_theme_path: &Path, syntect_theme: &str, kind: &SyntectThemeKind) -> bool {
+    let mut full_path = syntect_theme_path.to_path_buf();
+    full_path.push(syntect_theme);
+    full_path.set_extension(kind.extension());
+    if !full_path.exists() {
+        return false;
+    }
+    let Ok(theme) = kind.load(&full_path) else {
+        crate::log_info!("Syntect couldn't load {fp}", fp = full_path.display());
+        return false;
+    };
+    if SYNTECT_THEME.set(theme).is_ok() {
+        return true;
+    } else {
+        crate::log_info!("SYNTECT_THEME was already set!")
+    }
+    false
+}
+
+fn set_syntect_theme_from_source_code() {
+    let _ = SYNTECT_THEME.set(from_binary(include_bytes!(
+        "../../assets/themes/monokai.themedump"
+    )));
+}
+
+/// Reads the syntect theme from memory. It should never be `None`.
 pub fn get_syntect_theme() -> Option<&'static Theme> {
     SYNTECT_THEME.get()
 }

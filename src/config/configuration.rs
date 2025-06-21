@@ -252,7 +252,7 @@ impl SyntectTheme {
         Ok(())
     }
 
-    pub fn load_config(path: &str) -> Result<Self> {
+    pub fn from_config(path: &str) -> Result<Self> {
         let mut syntect_theme = Self::default();
         let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
             crate::log_info!("Couldn't read config file at {path}");
