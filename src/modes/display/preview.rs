@@ -10,10 +10,9 @@ use std::slice::Iter;
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
-use syntect::dumps::{dump_to_file, from_binary, from_dump_file};
 use syntect::{
     easy::HighlightLines,
-    highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
+    highlighting::{FontStyle, Style as SyntectStyle},
     parsing::{SyntaxReference, SyntaxSet},
 };
 
@@ -22,7 +21,7 @@ use crate::common::{
     ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
     RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::MONOKAI_THEME;
+use crate::config::get_syntect_theme;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
@@ -714,24 +713,14 @@ impl HLContent {
         &self.path
     }
 
-    fn get_or_init_monokai() -> &'static Theme {
-        MONOKAI_THEME.get_or_init(|| {
-            // let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-            //     "../../../assets/themes/Glow.tmTheme"
-            // )));
-            // ThemeSet::load_from_reader(&mut monokai).expect("Couldn't load glow")
-            from_binary(include_bytes!("../../../assets/themes/monokai.themedump"))
-        })
-    }
-
     fn parse_raw_content(
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut highlighted_content = vec![];
-        let monokai = Self::get_or_init_monokai();
-        let mut highlighter = HighlightLines::new(syntax_ref, monokai);
+        let syntect_theme = get_syntect_theme().context("Syntect set should be set")?;
+        let mut highlighter = HighlightLines::new(syntax_ref, syntect_theme);
 
         for line in raw_content.iter() {
             let mut v_line = vec![];

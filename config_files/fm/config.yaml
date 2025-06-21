@@ -2,11 +2,21 @@
 # Each variable is explained below
 
 # use nerdfont icons for file ? Default false
-# require [nerdfont](https://www.nerdfonts.com/) installed
+# [nerdfont](https://www.nerdfonts.com/) must be installed
 icon: false
 # display icons when metadata are shown ?  Default false
 # no effect if icon is false
 icon_with_metadata: false
+
+# which syntect theme do you want to use ?
+# place them in ~/.config/fm/syntect_themes/ 
+# create the folder if it doesn't exists.
+# textmate themes can be use directly "glow.tmtheme" or compressed by syntect as a dump file "monokai.themedump".
+# if you want to use "glow.tmtheme", use `syntect_theme: glow`
+# if you want to use "dracula.themedump", use `syntect_theme: dracula`
+# you can comment or erase this value and the default theme (monokai) will be loaded.
+# you can find more themes here : https://github.com/filmgirl/textmate-themes 
+syntect_theme: monokai
 
 # configurable colors
 
@@ -17,8 +27,8 @@ icon_with_metadata: false
 #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
 #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
 # Allowed Format for rgb color :
-#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
-#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
+#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included. Example: `rgb(123, 10, 254)`
+#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals. Example: `#750AFE`
 colors:
   # Gradient from start to stop for normal files.
   # the files are colored randomly according to their extension

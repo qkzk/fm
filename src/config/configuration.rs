@@ -229,3 +229,39 @@ impl MenuStyle {
         self.palette().len()
     }
 }
+
+#[derive(Debug)]
+pub struct SyntectTheme {
+    pub theme: String,
+}
+
+impl Default for SyntectTheme {
+    fn default() -> Self {
+        Self {
+            theme: "monokai".to_owned(),
+        }
+    }
+}
+
+impl SyntectTheme {
+    fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
+        if let Some(value) = yaml["syntect_theme"].as_str() {
+            crate::log_info!("Config found: syntect_theme: {value}");
+            self.theme = value.to_owned();
+        }
+        Ok(())
+    }
+
+    pub fn load_config(path: &str) -> Result<Self> {
+        let mut syntect_theme = Self::default();
+        let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+            crate::log_info!("Couldn't read config file at {path}");
+            return Ok(syntect_theme);
+        };
+        let Ok(yaml) = from_reader(file) else {
+            return Ok(syntect_theme);
+        };
+        let _ = syntect_theme.update_from_config(&yaml);
+        Ok(syntect_theme)
+    }
+}

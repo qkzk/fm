@@ -1,5 +1,6 @@
 use std::{
     fs::File,
+    io::BufReader,
     ops::DerefMut,
     path::{Path, PathBuf},
     sync::OnceLock,
@@ -10,11 +11,14 @@ use nucleo::Matcher;
 use parking_lot::{Mutex, MutexGuard};
 use ratatui::style::Color;
 use serde_yml::{from_reader, Value};
-use syntect::highlighting::Theme;
+use syntect::{
+    dumps::{from_binary, from_dump_file},
+    highlighting::{Theme, ThemeSet},
+};
 
-use crate::common::{tilde, CONFIG_PATH};
+use crate::common::{tilde, CONFIG_FOLDER, CONFIG_PATH, SYNTECT_THEMES_PATH};
 use crate::config::{
-    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
+    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, SyntectTheme,
     MAX_GRADIENT_NORMAL,
 };
 
@@ -42,7 +46,72 @@ pub static COLORER: OnceLock<fn(usize) -> Color> = OnceLock::new();
 pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::new();
 
 /// Highlighting theme color used to preview code file
-pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
+static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
+
+pub fn set_syntect_theme() -> Result<()> {
+    let set_theme = SyntectTheme::load_config(CONFIG_PATH)?;
+    set_syntect_theme_from_config(&set_theme.theme)
+        .map_err(|_| anyhow!("Couldn't set SYNTECT_THEME"))
+}
+
+fn set_syntect_theme_from_config(syntect_theme: &str) -> Result<()> {
+    let syntect_theme_path = PathBuf::from(tilde(SYNTECT_THEMES_PATH).as_ref());
+    let mut tm_theme = syntect_theme_path.clone();
+    tm_theme.push(format!("{syntect_theme}.tmTheme"));
+    if tm_theme.exists() {
+        crate::log_info!(
+            "SYNTECT_THEME. Found {tm_theme}. Loading...",
+            tm_theme = tm_theme.display()
+        );
+        let mut buf = BufReader::new(File::open(&tm_theme).expect("Couldn't open tm_theme file"));
+        match ThemeSet::load_from_reader(&mut buf) {
+            Ok(theme) => match SYNTECT_THEME.set(theme) {
+                Ok(()) => {
+                    crate::log_info!("Found & loaded {tm_theme}!", tm_theme = tm_theme.display())
+                }
+                Err(e) => crate::log_info!("SYNTECT_THEME was already set : {e:?}"),
+            },
+            Err(e) => {
+                crate::log_info!(
+                    "Syntect couldn't load {tm_theme}: {e}",
+                    tm_theme = tm_theme.display()
+                );
+            }
+        }
+    } else {
+        let mut dump_theme = syntect_theme_path;
+        dump_theme.push(format!("{syntect_theme}.themedump"));
+        if dump_theme.exists() {
+            crate::log_info!(
+                "SYNTECT_THEME. Found {dump_theme}. Loading...",
+                dump_theme = dump_theme.display()
+            );
+            match from_dump_file(&dump_theme) {
+                Ok(theme) => match SYNTECT_THEME.set(theme) {
+                    Ok(()) => crate::log_info!(
+                        "Found & loaded {dump_theme}!",
+                        dump_theme = dump_theme.display()
+                    ),
+                    Err(e) => crate::log_info!("SYNTECT_THEME was already set : {e:?}"),
+                },
+                Err(e) => {
+                    crate::log_info!(
+                        "Syntect couldn't load {dump_theme}: {e}",
+                        dump_theme = dump_theme.display()
+                    );
+                }
+            }
+        }
+    }
+    let _ = SYNTECT_THEME.set(from_binary(include_bytes!(
+        "../../assets/themes/monokai.themedump"
+    )));
+    Ok(())
+}
+
+pub fn get_syntect_theme() -> Option<&'static Theme> {
+    SYNTECT_THEME.get()
+}
 
 static ICON: OnceLock<bool> = OnceLock::new();
 static ICON_WITH_METADATA: OnceLock<bool> = OnceLock::new();
@@ -142,7 +211,8 @@ pub fn set_configurable_static(start_folder: &str) -> Result<()> {
     set_menu_styles()?;
     set_file_styles()?;
     set_normal_file_colorer()?;
-    set_icon_icon_with_metadata()
+    set_icon_icon_with_metadata()?;
+    set_syntect_theme()
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)

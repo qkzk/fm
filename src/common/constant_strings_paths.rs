@@ -12,6 +12,8 @@ pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
 pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
 /// Inputhistory
 pub const INPUT_HISTORY_PATH: &str = "~/.config/fm/log/input_history.log";
+/// Syntect theme paths
+pub const SYNTECT_THEMES_PATH: &str = "~/.config/fm/syntect_themes/";
 /// Filepath of the LOG configuration file
 pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
 /// Path to the action log file
