@@ -1594,6 +1594,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Themes should be stored in `~/.config/fm/syntect_themes/` and can either be .tmTheme (textmate-themes) or .themedump (compressed).
   All textmate themes should be compatible. You can find more themes here : https://github.com/filmgirl/textmate-themes 
   If anything goes wrong while loading your theme, it defaults to monokai which is hardcoded. It should never fail.
+- Display inode number after size in context menu, opened with (Alt + t) or (Right Click)
 
 **Bugfixes :**
 
@@ -1697,6 +1698,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] parsing the config file,
   - [x] document the config file 
   - [x] load .tmTheme & .themedump 
+- [x] Display inode number after size in context menu
 
 ## TODO
 

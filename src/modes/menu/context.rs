@@ -3,7 +3,7 @@ use crate::io::Opener;
 use crate::modes::{extract_datetime, ExtensionKind, FileInfo, FileKind};
 use crate::{impl_content, impl_draw_menu_with_char, impl_selectable};
 
-const CONTEXT: [(&str, ActionMap); 10] = [
+const CONTEXT_ACTIONS: [(&str, ActionMap); 10] = [
     ("Open", ActionMap::OpenFile),
     ("Open with", ActionMap::Exec),
     ("Open in Neovim", ActionMap::NvimFilepicker),
@@ -27,8 +27,8 @@ pub struct ContextMenu {
 
 impl ContextMenu {
     pub fn setup(&mut self) {
-        self.content = CONTEXT.iter().map(|(s, _)| *s).collect();
-        self.actions = CONTEXT.iter().map(|(_, a)| a).collect();
+        self.content = CONTEXT_ACTIONS.iter().map(|(s, _)| *s).collect();
+        self.actions = CONTEXT_ACTIONS.iter().map(|(_, a)| a).collect();
     }
 
     pub fn matcher(&self) -> &ActionMap {
@@ -63,7 +63,7 @@ impl<'a> MoreInfos<'a> {
 
         self.owner_group(&mut lines);
         self.perms(&mut lines);
-        self.size(&mut lines);
+        self.size_inode(&mut lines);
         self.times(&mut lines);
         self.opener(&mut lines);
         self.kind(&mut lines);
@@ -88,11 +88,12 @@ impl<'a> MoreInfos<'a> {
         }
     }
 
-    fn size(&self, lines: &mut Vec<String>) {
+    fn size_inode(&self, lines: &mut Vec<String>) {
         lines.push(format!(
-            "{size_kind} {size}",
+            "{size_kind} {size} / {inode}",
             size_kind = self.file_info.file_kind.size_description(),
-            size = self.file_info.size_column.trimed()
+            size = self.file_info.size_column.trimed(),
+            inode = self.file_info.ino()
         ));
     }
 

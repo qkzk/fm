@@ -96,13 +96,13 @@ impl FileKind<Valid> {
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size:       ",
-            Self::Socket            => "Size:       ",
-            Self::Directory         => "Elements:   ",
-            Self::NormalFile        => "Size:       ",
-            Self::CharDevice        => "Major,Minor:",
-            Self::BlockDevice       => "Major,Minor:",
-            Self::SymbolicLink(_)   => "Size:       ",
+            Self::Fifo              => "Size/Inode:  ",
+            Self::Socket            => "Size/Inode:  ",
+            Self::Directory         => "Elements/Ino:",
+            Self::NormalFile        => "Size/Inode:  ",
+            Self::CharDevice        => "Maj,Min/Ino: ",
+            Self::BlockDevice       => "Maj,Min/Ino: ",
+            Self::SymbolicLink(_)   => "Size/Inode:  ",
         }
     }
 }
@@ -180,7 +180,6 @@ impl FileInfo {
     pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
-        let mode = metadata.mode();
         let true_size = true_size(path, &metadata);
         let path = Arc::from(path);
         let owner = extract_owner(&metadata, users);
@@ -190,9 +189,6 @@ impl FileInfo {
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
-        if *filename == *"sudo" || *filename == *"sum" {
-            crate::log_info!("filename {filename} mode {mode}");
-        }
 
         Ok(FileInfo {
             path,
@@ -225,6 +221,15 @@ impl FileInfo {
 
     fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
         symlink_metadata(&self.path)
+    }
+
+    /// Returns the Inode number.
+    ///
+    /// Returns 0 if the metadata can't be read.
+    pub fn ino(&self) -> u64 {
+        self.metadata()
+            .map(|metadata| metadata.ino())
+            .unwrap_or_default()
     }
 
     /// String representation of file permissions
