@@ -96,14 +96,18 @@ impl FileKind<Valid> {
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size/Inode:  ",
-            Self::Socket            => "Size/Inode:  ",
-            Self::Directory         => "Elements/Ino:",
-            Self::NormalFile        => "Size/Inode:  ",
-            Self::CharDevice        => "Maj,Min/Ino: ",
-            Self::BlockDevice       => "Maj,Min/Ino: ",
-            Self::SymbolicLink(_)   => "Size/Inode:  ",
+            Self::Fifo              => "Size: ",
+            Self::Socket            => "Size: ",
+            Self::Directory         => "Elements:",
+            Self::NormalFile        => "Size: ",
+            Self::CharDevice        => "Major,Minor:",
+            Self::BlockDevice       => "Major,Minor:",
+            Self::SymbolicLink(_)   => "Size: ",
         }
+    }
+
+    pub fn is_normal_file(&self) -> bool {
+        matches!(self, Self::NormalFile)
     }
 }
 
@@ -219,7 +223,15 @@ impl FileInfo {
         Ok(file_info)
     }
 
-    fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
+    /// Symlink metadata of the file.
+    /// Doesn't follow the symlinks.
+    /// Correspond to `lstat` function on Linux.
+    /// See [`std::fs::symlink_metadata`].
+    ///
+    /// # Errors
+    ///
+    /// Could return an error if the file doesn't exist or if the user can't stat it.
+    pub fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
         symlink_metadata(&self.path)
     }
 
