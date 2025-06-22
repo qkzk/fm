@@ -1602,6 +1602,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - shell would open in other tab path
 - open config file did nothing
 - Updated syntect to `5.2.0` since older versions required a crate which didn't compile anymore.
+- Could crash if a processus was terminated between file listing and file display
 
 #### Changelog
 
@@ -1699,6 +1700,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] document the config file 
   - [x] load .tmTheme & .themedump 
 - [x] Display inode number after size in context menu
+- [x] FIX: if a processus is terminated between listing (Directory) and display, the display crashes. Removed all unecessary unwrap.
+  Display empty lines for those processes.
+- [ ] numeric filenames aren't sorted properly. Check eza, ranger in /proc and investigate. Do they sort like (1, 10, 2) or (1, 2, 10) ?
 
 ## TODO
 

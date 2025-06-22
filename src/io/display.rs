@@ -523,20 +523,21 @@ impl<'a> DirectoryDisplay<'a> {
     }
 
     fn format_file_metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_metadata(owner_sizes.1, owner_sizes.0).unwrap()
+        file.format_metadata(owner_sizes.1, owner_sizes.0)
+            .unwrap_or_default()
     }
 
     fn format_file_metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata_icon(owner_sizes.1, owner_sizes.0)
-            .unwrap()
+            .unwrap_or_default()
     }
 
     fn format_file_simple(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        file.format_simple().unwrap()
+        file.format_simple().unwrap_or_default()
     }
 
     fn format_file_simple_icon(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        file.format_simple_icon().unwrap()
+        file.format_simple_icon().unwrap_or_default()
     }
 }
 
@@ -1193,13 +1194,13 @@ impl<'a> Menu<'a> {
     }
 
     fn context_more_infos(&self, f: &mut Frame, rect: &Rect) {
+        let Ok(file_info) = &self.tab.current_file() else {
+            return;
+        };
         let space_used = self.status.menu.context.content.len() as u16;
-        let more_info = MoreInfos::new(
-            &self.tab.current_file().unwrap(),
-            &self.status.internal_settings.opener,
-        )
-        .to_lines();
-        Self::render_content(&more_info, f, rect, 4, 3 + space_used);
+        let lines = MoreInfos::new(file_info, &self.status.internal_settings.opener).to_lines();
+        let more_infos: Vec<&String> = lines.iter().filter(|line| !line.is_empty()).collect();
+        Self::render_content(&more_infos, f, rect, 4, 3 + space_used);
     }
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
@@ -1239,7 +1240,12 @@ impl<'a> Menu<'a> {
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn confirm(&self, confirmed_mode: NeedConfirmation, f: &mut Frame, rect: &Rect) {
-        let dest = path_to_string(&self.tab.directory_of_selected().unwrap());
+        let dest = path_to_string(
+            &self
+                .tab
+                .directory_of_selected()
+                .unwrap_or_else(|_| std::path::Path::new("")),
+        );
 
         Self::content_line(
             f,
@@ -1303,7 +1309,7 @@ impl<'a> Menu<'a> {
             MENU_STYLES
                 .get()
                 .context("MENU_STYLES should be set")
-                .unwrap()
+                .expect("Couldn't read MENU_STYLES")
                 .palette_4,
         );
     }
@@ -1599,18 +1605,16 @@ impl Display {
         files: (Files, Files),
         menus: (Menu, Menu),
     ) {
-        self.term
-            .draw(|f| {
-                // 0 File Left | 3 File Right
-                // 1 padding   | 4 padding
-                // 2 Menu Left | 5 Menu Right
-                Self::draw_dual_borders(borders, f, &bordered_wins);
-                files.0.draw(f, &inside_wins[0], &mut self.image_adapter);
-                menus.0.draw(f, &inside_wins[2]);
-                files.1.draw(f, &inside_wins[3], &mut self.image_adapter);
-                menus.1.draw(f, &inside_wins[5]);
-            })
-            .unwrap();
+        let _ = self.term.draw(|f| {
+            // 0 File Left | 3 File Right
+            // 1 padding   | 4 padding
+            // 2 Menu Left | 5 Menu Right
+            Self::draw_dual_borders(borders, f, &bordered_wins);
+            files.0.draw(f, &inside_wins[0], &mut self.image_adapter);
+            menus.0.draw(f, &inside_wins[2]);
+            files.1.draw(f, &inside_wins[3], &mut self.image_adapter);
+            menus.1.draw(f, &inside_wins[5]);
+        });
     }
 
     fn draw_single(
@@ -1636,13 +1640,11 @@ impl Display {
         file_left: Files,
         menu_left: Menu,
     ) {
-        self.term
-            .draw(|f| {
-                Self::draw_single_borders(borders, f, &bordered_wins);
-                file_left.draw(f, &inside_wins[0], &mut self.image_adapter);
-                menu_left.draw(f, &inside_wins[2]);
-            })
-            .unwrap();
+        let _ = self.term.draw(|f| {
+            Self::draw_single_borders(borders, f, &bordered_wins);
+            file_left.draw(f, &inside_wins[0], &mut self.image_adapter);
+            menu_left.draw(f, &inside_wins[2]);
+        });
     }
 
     fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
