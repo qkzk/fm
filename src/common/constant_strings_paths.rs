@@ -30,6 +30,8 @@ pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 pub const TMP_FOLDER_PATH: &str = "/tmp";
 /// Video thumbnails
 pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
+/// Default syntect theme, theme is hardcoded into binary
+pub const SYNTECT_DEFAULT_THEME: &str = "monokai";
 /// setsid. Installed in most distros
 pub const SETSID: &str = "setsid";
 /// Opener used to play audio files. Does it require a terminal ?

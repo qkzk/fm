@@ -4,7 +4,7 @@ use anyhow::Result;
 use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
-use crate::common::{tilde, CONFIG_PATH};
+use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
 use crate::config::{Bindings, ColorG};
 use crate::io::color_to_style;
 
@@ -232,36 +232,33 @@ impl MenuStyle {
 
 #[derive(Debug)]
 pub struct SyntectTheme {
-    pub theme: String,
+    pub name: String,
 }
 
 impl Default for SyntectTheme {
     fn default() -> Self {
         Self {
-            theme: "monokai".to_owned(),
+            name: SYNTECT_DEFAULT_THEME.to_owned(),
         }
     }
 }
 
 impl SyntectTheme {
-    fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
-        if let Some(value) = yaml["syntect_theme"].as_str() {
-            crate::log_info!("Config found: syntect_theme: {value}");
-            self.theme = value.to_owned();
-        }
-        Ok(())
-    }
-
     pub fn from_config(path: &str) -> Result<Self> {
-        let mut syntect_theme = Self::default();
         let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
             crate::log_info!("Couldn't read config file at {path}");
-            return Ok(syntect_theme);
+            return Ok(Self::default());
         };
-        let Ok(yaml) = from_reader(file) else {
-            return Ok(syntect_theme);
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return Ok(Self::default());
         };
-        let _ = syntect_theme.update_from_config(&yaml);
-        Ok(syntect_theme)
+        let Some(name) = yaml["syntect_theme"].as_str() else {
+            return Ok(Self::default());
+        };
+        crate::log_info!("Config: found syntect theme: {name}");
+
+        Ok(Self {
+            name: name.to_string(),
+        })
     }
 }

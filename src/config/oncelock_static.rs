@@ -10,6 +10,7 @@ use nucleo::Matcher;
 use parking_lot::{Mutex, MutexGuard};
 use ratatui::style::Color;
 use serde_yml::{from_reader, Value};
+use strum::{EnumIter, IntoEnumIterator};
 use syntect::{
     dumps::{from_binary, from_dump_file},
     highlighting::{Theme, ThemeSet},
@@ -52,12 +53,13 @@ static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 /// If it doesn't work, it will load the default set from binary file itself: monokai.
 pub fn set_syntect_theme() -> Result<()> {
     let config_theme = SyntectTheme::from_config(CONFIG_PATH)?;
-    if !set_syntect_theme_from_config(&config_theme.theme) {
+    if !set_syntect_theme_from_config(&config_theme.name) {
         set_syntect_theme_from_source_code()
     }
     Ok(())
 }
 
+#[derive(EnumIter)]
 enum SyntectThemeKind {
     TmTheme,
     Dump,
@@ -84,7 +86,7 @@ impl SyntectThemeKind {
 
 fn set_syntect_theme_from_config(syntect_theme: &str) -> bool {
     let syntect_theme_path = PathBuf::from(tilde(SYNTECT_THEMES_PATH).as_ref());
-    for kind in [SyntectThemeKind::TmTheme, SyntectThemeKind::Dump] {
+    for kind in SyntectThemeKind::iter() {
         if load_syntect(&syntect_theme_path, syntect_theme, &kind) {
             return true;
         }
@@ -104,11 +106,11 @@ fn load_syntect(syntect_theme_path: &Path, syntect_theme: &str, kind: &SyntectTh
         return false;
     };
     if SYNTECT_THEME.set(theme).is_ok() {
-        return true;
+        true
     } else {
-        crate::log_info!("SYNTECT_THEME was already set!")
+        crate::log_info!("SYNTECT_THEME was already set!");
+        false
     }
-    false
 }
 
 fn set_syntect_theme_from_source_code() {
