@@ -1590,6 +1590,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
     It's still possible to do !chmod whatever %s to change the permissions
 - Files with size between 9.5units and 10.0units weren't properly aligned.
+- Theming. Use custom themes for syntax highlighting.
+  Themes should be stored in `~/.config/fm/syntect_themes/` and can either be .tmTheme (textmate-themes) or .themedump (compressed).
+  All textmate themes should be compatible. You can find more themes here : https://github.com/filmgirl/textmate-themes 
+  If anything goes wrong while loading your theme, it defaults to monokai which is hardcoded. It should never fail.
 
 **Bugfixes :**
 
@@ -1688,8 +1692,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Video thumbnails were slow. No more "clip", only a static image.
 - [x] updated syntect version since "onig" crate couldn't compile anymore.
 - [ ] remove more deps instead of adding more. cargo tree is scary
-- [ ] syntect: use themedeump themeload whatever to store theme as small binary in code.
-- [ ] syntect: allow more themes in .config/assets or whatever and lazyly load them after reading from config
+- [x] theming. Use custom themes for syntax highlighting. 
+  - [x] default to monokai
+  - [x] parsing the config file,
+  - [x] document the config file 
+  - [x] load .tmTheme & .themedump 
 
 ## TODO
 
