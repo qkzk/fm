@@ -1702,7 +1702,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Display inode number after size in context menu
 - [x] FIX: if a processus is terminated between listing (Directory) and display, the display crashes. Removed all unecessary unwrap.
   Display empty lines for those processes.
+- [ ] BUG: inacessible files doesn't crash display anymore but are rendered as empty lines. See /proc
 - [ ] numeric filenames aren't sorted properly. Check eza, ranger in /proc and investigate. Do they sort like (1, 10, 2) or (1, 2, 10) ?
+- [ ] FEAT: use lazylock or whatever to store tab width/height. When too small, show less metadata. Updates the lazylock when resizing or toggling dual
 
 ## TODO
 

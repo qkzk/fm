@@ -453,23 +453,34 @@ impl<'a> DirectoryDisplay<'a> {
     fn files(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
         let p_rect = rect.offseted(2, 0);
-        let formater = self.pick_formater();
+        let formater = self.pick_formater(p_rect.width);
         let lines: Vec<_> = self
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| self.files_line(group_owner_sizes, index, file, &formater))
             .collect();
+        log_info!("files rect {p_rect:#?}");
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    fn pick_formater(&self) -> fn(&FileInfo, (usize, usize)) -> String {
+    fn pick_formater(&self, width: u16) -> fn(&FileInfo, (usize, usize)) -> String {
         let with_metadata = self.status.session.metadata();
         let with_icon = with_icon();
         let with_icon_metadata = with_icon_metadata();
-        if with_metadata && with_icon_metadata {
-            Self::format_file_metadata_icon
-        } else if with_metadata {
-            Self::format_file_metadata
+        let wide_enough_for_metadata = width > 50;
+        let too_small_for_group = width < 70;
+        if with_metadata && with_icon_metadata && wide_enough_for_metadata {
+            if too_small_for_group {
+                Self::format_file_metadata_icon_no_group
+            } else {
+                Self::format_file_metadata_icon
+            }
+        } else if with_metadata && wide_enough_for_metadata {
+            if too_small_for_group {
+                Self::format_file_metadata_no_group
+            } else {
+                Self::format_file_metadata
+            }
         } else if with_icon {
             Self::format_file_simple_icon
         } else {
@@ -529,6 +540,16 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn format_file_metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata_icon(owner_sizes.1, owner_sizes.0)
+            .unwrap_or_default()
+    }
+
+    fn format_file_metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_no_group(owner_sizes.1)
+            .unwrap_or_default()
+    }
+
+    fn format_file_metadata_icon_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_icon_no_group(owner_sizes.1)
             .unwrap_or_default()
     }
 

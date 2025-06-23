@@ -279,6 +279,25 @@ impl FileInfo {
         Ok(repr)
     }
 
+    #[inline]
+    pub fn format_metadata_no_group(&self, owner_col_width: usize) -> Result<String> {
+        let mut repr = self.format_no_group(owner_col_width)?;
+        repr.push(' ');
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_icon_no_group(&self, owner_col_width: usize) -> Result<String> {
+        let mut repr = self.format_no_group(owner_col_width)?;
+        repr.push(' ');
+        repr.push_str(self.icon());
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
     fn expand_symlink(&self, repr: &mut String) {
         if let FileKind::SymbolicLink(_) = self.file_kind {
             match std::fs::read_link(&self.path) {
@@ -288,6 +307,18 @@ impl FileInfo {
                 _ => repr.push_str("  broken link"),
             }
         }
+    }
+
+    fn format_no_group(&self, owner_col_width: usize) -> Result<String> {
+        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
+        let repr = format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
+            dir_symbol = self.dir_symbol(),
+            permissions = self.permissions()?,
+            file_size = self.size_column,
+            system_time = self.system_time,
+        );
+        Ok(repr)
     }
 
     fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
