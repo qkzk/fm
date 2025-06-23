@@ -298,6 +298,44 @@ impl FileInfo {
         Ok(repr)
     }
 
+    #[inline]
+    pub fn format_metadata_no_permissions(&self, owner_col_width: usize) -> Result<String> {
+        let mut repr = self.format_no_permissions(owner_col_width)?;
+        repr.push(' ');
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_icon_no_permissions(&self, owner_col_width: usize) -> Result<String> {
+        let mut repr = self.format_no_permissions(owner_col_width)?;
+        repr.push(' ');
+        repr.push_str(self.icon());
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_no_owner(&self) -> Result<String> {
+        let mut repr = self.format_no_owner()?;
+        repr.push(' ');
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    #[inline]
+    pub fn format_metadata_icon_no_owner(&self) -> Result<String> {
+        let mut repr = self.format_no_owner()?;
+        repr.push(' ');
+        repr.push_str(self.icon());
+        repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
     fn expand_symlink(&self, repr: &mut String) {
         if let FileKind::SymbolicLink(_) = self.file_kind {
             match std::fs::read_link(&self.path) {
@@ -318,6 +356,21 @@ impl FileInfo {
             file_size = self.size_column,
             system_time = self.system_time,
         );
+        Ok(repr)
+    }
+
+    fn format_no_permissions(&self, owner_col_width: usize) -> Result<String> {
+        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
+        let repr = format!(
+            "{file_size} {owner:<owner_col_width$} {system_time}",
+            file_size = self.size_column,
+            system_time = self.system_time,
+        );
+        Ok(repr)
+    }
+
+    fn format_no_owner(&self) -> Result<String> {
+        let repr = format!("{file_size}", file_size = self.size_column,);
         Ok(repr)
     }
 

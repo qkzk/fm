@@ -1705,6 +1705,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: inacessible files doesn't crash display anymore but are rendered as empty lines. See /proc
 - [ ] numeric filenames aren't sorted properly. Check eza, ranger in /proc and investigate. Do they sort like (1, 10, 2) or (1, 2, 10) ?
 - [ ] FEAT: use lazylock or whatever to store tab width/height. When too small, show less metadata. Updates the lazylock when resizing or toggling dual
+  - [x] format picker in display with separate logic
+  - [x] remove: group, permissions, date, owner
+  - [ ] move all formater away from fileinfo: `fn formater_bla(f: &FileInfo, *args) -> String;`
+  - [ ] too much functions, must be refactored
 
 ## TODO
 

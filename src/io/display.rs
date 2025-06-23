@@ -464,27 +464,24 @@ impl<'a> DirectoryDisplay<'a> {
     }
 
     fn pick_formater(&self, width: u16) -> fn(&FileInfo, (usize, usize)) -> String {
-        let with_metadata = self.status.session.metadata();
-        let with_icon = with_icon();
-        let with_icon_metadata = with_icon_metadata();
-        let wide_enough_for_metadata = width > 50;
-        let too_small_for_group = width < 70;
-        if with_metadata && with_icon_metadata && wide_enough_for_metadata {
-            if too_small_for_group {
-                Self::format_file_metadata_icon_no_group
-            } else {
-                Self::format_file_metadata_icon
-            }
-        } else if with_metadata && wide_enough_for_metadata {
-            if too_small_for_group {
-                Self::format_file_metadata_no_group
-            } else {
-                Self::format_file_metadata
-            }
-        } else if with_icon {
-            Self::format_file_simple_icon
-        } else {
-            Self::format_file_simple
+        let kind = FormatKind::from_flags(
+            self.status.session.metadata(),
+            with_icon(),
+            with_icon_metadata(),
+            width,
+        );
+
+        match kind {
+            FormatKind::MetadataIconNoGroup => FileFormater::metadata_icon_no_group,
+            FormatKind::MetadataIcon => FileFormater::metadata_icon,
+            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
+            FormatKind::MetadataIconNoPermissions => FileFormater::metadata_icon_no_permissions,
+            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
+            FormatKind::MetadataIconNoOwner => FileFormater::metadata_icon_no_owner,
+            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
+            FormatKind::Metadata => FileFormater::metadata,
+            FormatKind::SimpleIcon => FileFormater::simple_icon,
+            FormatKind::Simple => FileFormater::simple,
         }
     }
 
@@ -532,33 +529,105 @@ impl<'a> DirectoryDisplay<'a> {
             Span::raw("")
         }
     }
+}
 
-    fn format_file_metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+struct FileFormater;
+
+impl FileFormater {
+    fn metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata(owner_sizes.1, owner_sizes.0)
             .unwrap_or_default()
     }
 
-    fn format_file_metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+    fn metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata_icon(owner_sizes.1, owner_sizes.0)
             .unwrap_or_default()
     }
 
-    fn format_file_metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+    fn metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata_no_group(owner_sizes.1)
             .unwrap_or_default()
     }
 
-    fn format_file_metadata_icon_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+    fn metadata_icon_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_metadata_icon_no_group(owner_sizes.1)
             .unwrap_or_default()
     }
 
-    fn format_file_simple(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+    fn metadata_no_permissions(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_no_permissions(owner_sizes.1)
+            .unwrap_or_default()
+    }
+
+    fn metadata_icon_no_permissions(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_icon_no_permissions(owner_sizes.1)
+            .unwrap_or_default()
+    }
+
+    fn metadata_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_no_owner().unwrap_or_default()
+    }
+
+    fn metadata_icon_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+        file.format_metadata_icon_no_owner().unwrap_or_default()
+    }
+
+    fn simple(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
         file.format_simple().unwrap_or_default()
     }
 
-    fn format_file_simple_icon(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
+    fn simple_icon(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
         file.format_simple_icon().unwrap_or_default()
+    }
+}
+
+#[derive(Debug)]
+enum FormatKind {
+    MetadataIconNoGroup,
+    MetadataIcon,
+    MetadataNoGroup,
+    MetadataIconNoPermissions,
+    MetadataNoPermissions,
+    MetadataIconNoOwner,
+    MetadataNoOwner,
+    Metadata,
+    SimpleIcon,
+    Simple,
+}
+
+impl FormatKind {
+    #[rustfmt::skip]
+    fn from_flags(
+        with_metadata: bool,
+        with_icon: bool,
+        with_icon_metadata: bool,
+        width: u16,
+    ) -> Self {
+        let wide_enough_for_owner = width > 30;
+        let wide_enough_for_permissions = width > 40;
+        let wide_enough_for_metadata = width > 50;
+        let wide_enough_for_group = width > 70;
+
+        match (
+            with_metadata,
+            with_icon_metadata,
+            with_icon,
+            wide_enough_for_group,
+            wide_enough_for_metadata,
+            wide_enough_for_permissions,
+            wide_enough_for_owner,
+        ) {
+            (true, true,  true, true,  _,    _,       _)     => Self::MetadataIcon,
+            (true, false, _,    true,  _,    _,       _)     => Self::Metadata,
+            (true, true,  true, false, true, _,       _)     => Self::MetadataIconNoGroup,
+            (true, false, _,    false, true, _,       _)     => Self::MetadataNoGroup,
+            (true, true,  true, _,     _,    true,    _)     => Self::MetadataIconNoPermissions,
+            (true, _,     _,    _,     _,    true,    _)     => Self::MetadataNoPermissions,
+            (true, true,  true, _,     _,    _,    true)     => Self::MetadataIconNoOwner,
+            (true, _,     _,    _,     _,    _,    true)     => Self::MetadataNoOwner,
+            (_,    _,     true, _,     _,    _,       _)     => Self::SimpleIcon,
+            _ => Self::Simple,
+        }
     }
 }
 
