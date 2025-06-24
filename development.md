@@ -1704,13 +1704,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Display empty lines for those processes.
 - [ ] BUG: inacessible files doesn't crash display anymore but are rendered as empty lines. See /proc
 - [ ] numeric filenames aren't sorted properly. Check eza, ranger in /proc and investigate. Do they sort like (1, 10, 2) or (1, 2, 10) ?
-- [ ] FEAT: use lazylock or whatever to store tab width/height. When too small, show less metadata. Updates the lazylock when resizing or toggling dual
+- [ ] FEAT: responsive display of metadata
+  - [x] responsive: group, permissions, date, owner, whole metadata
   - [x] format picker in display with separate logic
-  - [x] remove: group, permissions, date, owner
-  - [ ] move all formater away from fileinfo: `fn formater_bla(f: &FileInfo, *args) -> String;`
-  - [ ] too much functions, must be refactored
-  - [ ] tree...
-    - [ ] move "name icon symlink" out of formaters 
+  - [x] common formaters for directory & tree
+  - [ ] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
 
 ## TODO
 
