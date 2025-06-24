@@ -469,19 +469,14 @@ impl<'a> DirectoryDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    fn pick_formater(with_metadata: bool, width: u16) -> fn(&FileInfo, (usize, usize)) -> String {
-        let kind = FormatKind::from_flags(with_metadata, with_icon(), with_icon_metadata(), width);
+    fn pick_formater(with_metadata: bool, width: u16) -> Formater {
+        let kind = FormatKind::from_flags(with_metadata, width);
 
         match kind {
-            FormatKind::MetadataIconNoGroup => FileFormater::metadata_icon_no_group,
-            FormatKind::MetadataIcon => FileFormater::metadata_icon,
-            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
-            FormatKind::MetadataIconNoPermissions => FileFormater::metadata_icon_no_permissions,
-            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
-            FormatKind::MetadataIconNoOwner => FileFormater::metadata_icon_no_owner,
-            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
             FormatKind::Metadata => FileFormater::metadata,
-            FormatKind::SimpleIcon => FileFormater::simple_icon,
+            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
+            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
+            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
             FormatKind::Simple => FileFormater::simple,
         }
     }
@@ -540,6 +535,8 @@ impl<'a> DirectoryDisplay<'a> {
     }
 }
 
+type Formater = fn(&FileInfo, (usize, usize)) -> String;
+
 struct FileFormater;
 
 impl FileFormater {
@@ -548,16 +545,7 @@ impl FileFormater {
             .unwrap_or_default()
     }
 
-    fn metadata_icon(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_base(owner_sizes.1, owner_sizes.0)
-            .unwrap_or_default()
-    }
-
     fn metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_no_group(owner_sizes.1).unwrap_or_default()
-    }
-
-    fn metadata_icon_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_no_group(owner_sizes.1).unwrap_or_default()
     }
 
@@ -566,39 +554,21 @@ impl FileFormater {
             .unwrap_or_default()
     }
 
-    fn metadata_icon_no_permissions(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_no_permissions(owner_sizes.1)
-            .unwrap_or_default()
-    }
-
     fn metadata_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        file.format_no_owner().unwrap_or_default()
-    }
-
-    fn metadata_icon_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
         file.format_no_owner().unwrap_or_default()
     }
 
     fn simple(_file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
         " ".to_owned()
     }
-
-    fn simple_icon(_file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        " ".to_owned()
-    }
 }
 
 #[derive(Debug)]
 enum FormatKind {
-    MetadataIconNoGroup,
-    MetadataIcon,
-    MetadataNoGroup,
-    MetadataIconNoPermissions,
-    MetadataNoPermissions,
-    MetadataIconNoOwner,
-    MetadataNoOwner,
     Metadata,
-    SimpleIcon,
+    MetadataNoGroup,
+    MetadataNoPermissions,
+    MetadataNoOwner,
     Simple,
 }
 
@@ -606,33 +576,24 @@ impl FormatKind {
     #[rustfmt::skip]
     fn from_flags(
         with_metadata: bool,
-        with_icon: bool,
-        with_icon_metadata: bool,
         width: u16,
     ) -> Self {
-        let wide_enough_for_owner = width > 30;
-        let wide_enough_for_permissions = width > 40;
-        let wide_enough_for_metadata = width > 50;
         let wide_enough_for_group = width > 70;
+        let wide_enough_for_metadata = width > 50;
+        let wide_enough_for_permissions = width > 40;
+        let wide_enough_for_owner = width > 30;
 
         match (
             with_metadata,
-            with_icon_metadata,
-            with_icon,
             wide_enough_for_group,
             wide_enough_for_metadata,
             wide_enough_for_permissions,
             wide_enough_for_owner,
         ) {
-            (true, true,  true, true,  _,    _,       _)     => Self::MetadataIcon,
-            (true, false, _,    true,  _,    _,       _)     => Self::Metadata,
-            (true, true,  true, false, true, _,       _)     => Self::MetadataIconNoGroup,
-            (true, false, _,    false, true, _,       _)     => Self::MetadataNoGroup,
-            (true, true,  true, _,     _,    true,    _)     => Self::MetadataIconNoPermissions,
-            (true, _,     _,    _,     _,    true,    _)     => Self::MetadataNoPermissions,
-            (true, true,  true, _,     _,    _,    true)     => Self::MetadataIconNoOwner,
-            (true, _,     _,    _,     _,    _,    true)     => Self::MetadataNoOwner,
-            (_,    _,     true, _,     _,    _,       _)     => Self::SimpleIcon,
+            (true, true,  _,    _,       _)     => Self::Metadata,
+            (true, false, true, _,       _)     => Self::MetadataNoGroup,
+            (true, _,     _,    true,    _)     => Self::MetadataNoPermissions,
+            (true, _,     _,    _,    true)     => Self::MetadataNoOwner,
             _ => Self::Simple,
         }
     }
@@ -679,19 +640,21 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
     ) {
         let p_rect = rect.offseted(1, 0);
-        let formatter = DirectoryDisplay::pick_formater(with_metadata, p_rect.width);
+        let width = p_rect.width.saturating_sub(6);
+        let formater = DirectoryDisplay::pick_formater(with_metadata, width);
         let with_icon = Self::use_icon(with_metadata);
         let lines: Vec<_> = tree
             .lines_enum_skip_take(window)
-            .map(|(index, line_builder)| {
+            .filter_map(|(index, line_builder)| {
                 Self::tree_line(
                     status,
                     index == 0,
                     line_builder,
-                    &formatter,
+                    &formater,
                     users,
                     with_icon,
                 )
+                .ok()
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -705,22 +668,20 @@ impl<'a> TreeDisplay<'a> {
         status: &Status,
         with_offset: bool,
         line_builder: &'b TLine,
-        formater: &fn(&FileInfo, (usize, usize)) -> String,
+        formater: &Formater,
         users: &Users,
         with_icon: bool,
-    ) -> Line<'b> {
+    ) -> Result<Line<'b>> {
         let mut style = *line_builder.style();
         let path = line_builder.path();
-        let fileinfo = FileInfo::new(&line_builder.path, users).unwrap();
-        Line::from(vec![
+        let fileinfo = FileInfo::new(&line_builder.path, users)?;
+        Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
-            Span::styled(formater(&fileinfo, (6, 6)), style),
-            // Self::tree_metadata_line(with_medatadata, line_builder, style, width),
-            Span::raw(line_builder.prefix()),
-            Span::raw(" ".repeat(Self::tree_line_calc_flagged_offset_line(status, path))),
-            Span::raw(" ".repeat(with_offset as usize)),
-            Span::styled(line_builder.filename(with_icon), style),
-        ])
+            Self::metadata(&fileinfo, formater, style),
+            Self::prefix(line_builder),
+            Self::whitespaces(status, path, with_offset),
+            Self::filename(line_builder, with_icon, style),
+        ]))
     }
 
     fn span_flagged_symbol<'b>(
@@ -739,22 +700,20 @@ impl<'a> TreeDisplay<'a> {
         }
     }
 
-    // fn tree_metadata_line(
-    //     with_medatadata: bool,
-    //     line_builder: &TLine,
-    //     style: Style,
-    //     width: u16,
-    // ) -> Span {
-    //     if with_medatadata {
-    //         let line = line_builder.metadata();
-    //         Span::styled(line, style)
-    //     } else {
-    //         Span::raw("")
-    //     }
-    // }
+    fn metadata<'b>(fileinfo: &FileInfo, formater: &Formater, style: Style) -> Span<'b> {
+        Span::styled(formater(fileinfo, (6, 6)), style)
+    }
 
-    fn tree_line_calc_flagged_offset_line(status: &Status, path: &std::path::Path) -> usize {
-        status.menu.flagged.contains(path) as usize
+    fn prefix(line_builder: &TLine) -> Span {
+        Span::raw(line_builder.prefix())
+    }
+
+    fn whitespaces<'b>(status: &Status, path: &std::path::Path, with_offset: bool) -> Span<'b> {
+        Span::raw(" ".repeat(status.menu.flagged.contains(path) as usize + with_offset as usize))
+    }
+
+    fn filename<'b>(line_builder: &TLine, with_icon: bool, style: Style) -> Span<'b> {
+        Span::styled(line_builder.filename(with_icon), style)
     }
 }
 

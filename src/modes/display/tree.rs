@@ -515,9 +515,6 @@ impl TLine {
         }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
-        // let metadata = fileinfo
-        //     .format_no_filename()
-        //     .unwrap_or_else(|_| "?".repeat(19));
         let folded = node.folded;
 
         Self {

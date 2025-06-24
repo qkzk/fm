@@ -10,7 +10,7 @@ use ratatui::style::Style;
 
 use crate::config::{extension_color, FILE_STYLES};
 use crate::io::color_to_style;
-use crate::modes::{human_size, permission_mode_to_str, Icon, ToPath, Users};
+use crate::modes::{human_size, permission_mode_to_str, ToPath, Users};
 
 type Valid = bool;
 
@@ -278,42 +278,38 @@ impl FileInfo {
 
     pub fn format_no_group(&self, owner_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        let repr = format!(
+        Ok(format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
             file_size = self.size_column,
             system_time = self.system_time,
-        );
-        Ok(repr)
+        ))
     }
 
     pub fn format_no_permissions(&self, owner_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        let repr = format!(
+        Ok(format!(
             "{file_size} {owner:<owner_col_width$} {system_time}",
             file_size = self.size_column,
             system_time = self.system_time,
-        );
-        Ok(repr)
+        ))
     }
 
     pub fn format_no_owner(&self) -> Result<String> {
-        let repr = format!("{file_size}", file_size = self.size_column,);
-        Ok(repr)
+        Ok(format!("{file_size}", file_size = self.size_column))
     }
 
     pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let group = format!("{group:.group_col_width$}", group = self.group,);
-        let repr = format!(
+        Ok(format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
             file_size = self.size_column,
             system_time = self.system_time,
-        );
-        Ok(repr)
+        ))
     }
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
@@ -323,20 +319,6 @@ impl FileInfo {
 
     pub fn dir_symbol(&self) -> char {
         self.file_kind.dir_symbol()
-    }
-
-    pub fn format_simple(&self) -> Result<String> {
-        Ok(" ".to_owned())
-        // Ok(format!(" {name}", name = self.filename))
-    }
-
-    pub fn format_simple_icon(&self) -> Result<String> {
-        Ok(" ".to_owned())
-        // Ok(format!(
-        //     "{icon} {name}",
-        //     icon = self.icon(),
-        //     name = self.filename
-        // ))
     }
 
     /// True iff the file is hidden (aka starts with a '.').
