@@ -1709,6 +1709,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] remove: group, permissions, date, owner
   - [ ] move all formater away from fileinfo: `fn formater_bla(f: &FileInfo, *args) -> String;`
   - [ ] too much functions, must be refactored
+  - [ ] tree...
+    - [ ] move "name icon symlink" out of formaters 
 
 ## TODO
 

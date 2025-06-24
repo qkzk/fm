@@ -501,8 +501,8 @@ pub struct TLine {
     folded: bool,
     prefix: Arc<str>,
     pub path: Arc<Path>,
-    pub style: Style,
-    metadata: String,
+    style: Style,
+    // metadata: String,
 }
 
 impl TLine {
@@ -515,9 +515,9 @@ impl TLine {
         }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
-        let metadata = fileinfo
-            .format_no_filename()
-            .unwrap_or_else(|_| "?".repeat(19));
+        // let metadata = fileinfo
+        //     .format_no_filename()
+        //     .unwrap_or_else(|_| "?".repeat(19));
         let folded = node.folded;
 
         Self {
@@ -525,8 +525,11 @@ impl TLine {
             prefix,
             path,
             style,
-            metadata,
         }
+    }
+
+    pub fn style(&self) -> &Style {
+        &self.style
     }
 
     /// Formated filename
@@ -545,11 +548,12 @@ impl TLine {
         self.path.borrow()
     }
 
-    /// Metadata string representation
-    /// permission, size, owner, groupe, modification date
-    pub fn metadata(&self) -> &str {
-        &self.metadata
-    }
+    // /// Metadata string representation
+    // /// permission, size, owner, groupe, modification date
+    // pub fn metadata(&self) -> &str {
+    //     // &self.metadata
+    //     todo!()
+    // }
 
     /// Change the current effect to Empty, displaying
     /// the file as not selected

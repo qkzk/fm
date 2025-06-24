@@ -265,77 +265,6 @@ impl FileInfo {
         Ok(repr)
     }
 
-    #[inline]
-    pub fn format_metadata_icon(
-        &self,
-        owner_col_width: usize,
-        group_col_width: usize,
-    ) -> Result<String> {
-        let mut repr = self.format_base(owner_col_width, group_col_width)?;
-        repr.push(' ');
-        repr.push_str(self.icon());
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_no_group(&self, owner_col_width: usize) -> Result<String> {
-        let mut repr = self.format_no_group(owner_col_width)?;
-        repr.push(' ');
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_icon_no_group(&self, owner_col_width: usize) -> Result<String> {
-        let mut repr = self.format_no_group(owner_col_width)?;
-        repr.push(' ');
-        repr.push_str(self.icon());
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_no_permissions(&self, owner_col_width: usize) -> Result<String> {
-        let mut repr = self.format_no_permissions(owner_col_width)?;
-        repr.push(' ');
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_icon_no_permissions(&self, owner_col_width: usize) -> Result<String> {
-        let mut repr = self.format_no_permissions(owner_col_width)?;
-        repr.push(' ');
-        repr.push_str(self.icon());
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_no_owner(&self) -> Result<String> {
-        let mut repr = self.format_no_owner()?;
-        repr.push(' ');
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_icon_no_owner(&self) -> Result<String> {
-        let mut repr = self.format_no_owner()?;
-        repr.push(' ');
-        repr.push_str(self.icon());
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
     fn expand_symlink(&self, repr: &mut String) {
         if let FileKind::SymbolicLink(_) = self.file_kind {
             match std::fs::read_link(&self.path) {
@@ -347,7 +276,7 @@ impl FileInfo {
         }
     }
 
-    fn format_no_group(&self, owner_col_width: usize) -> Result<String> {
+    pub fn format_no_group(&self, owner_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
@@ -359,7 +288,7 @@ impl FileInfo {
         Ok(repr)
     }
 
-    fn format_no_permissions(&self, owner_col_width: usize) -> Result<String> {
+    pub fn format_no_permissions(&self, owner_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let repr = format!(
             "{file_size} {owner:<owner_col_width$} {system_time}",
@@ -369,12 +298,12 @@ impl FileInfo {
         Ok(repr)
     }
 
-    fn format_no_owner(&self) -> Result<String> {
+    pub fn format_no_owner(&self) -> Result<String> {
         let repr = format!("{file_size}", file_size = self.size_column,);
         Ok(repr)
     }
 
-    fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+    pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let group = format!("{group:.group_col_width$}", group = self.group,);
         let repr = format!(
@@ -386,7 +315,6 @@ impl FileInfo {
         );
         Ok(repr)
     }
-
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
     pub fn format_no_filename(&self) -> Result<String> {
@@ -398,15 +326,17 @@ impl FileInfo {
     }
 
     pub fn format_simple(&self) -> Result<String> {
-        Ok(format!(" {name}", name = self.filename))
+        Ok(" ".to_owned())
+        // Ok(format!(" {name}", name = self.filename))
     }
 
     pub fn format_simple_icon(&self) -> Result<String> {
-        Ok(format!(
-            "{icon} {name}",
-            icon = self.icon(),
-            name = self.filename
-        ))
+        Ok(" ".to_owned())
+        // Ok(format!(
+        //     "{icon} {name}",
+        //     icon = self.icon(),
+        //     name = self.filename
+        // ))
     }
 
     /// True iff the file is hidden (aka starts with a '.').
