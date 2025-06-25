@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use ratatui::style::{Modifier, Style};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::impl_index_to_index;
@@ -191,7 +190,7 @@ impl<'a> TreeBuilder<'a> {
             self.filter_kind,
         )
         .build();
-        let displayable_lines = TreeLinesBuilder::new(&nodes, &self.root_path, self.users).build();
+        let displayable_lines = TreeLinesBuilder::new(&nodes, &self.root_path).build();
 
         Tree {
             selected: self.root_path.clone(),
@@ -366,20 +365,11 @@ fn filename_format(current_path: &Path, folded: bool, with_icon: bool) -> String
 struct TreeLinesBuilder<'a> {
     nodes: &'a HashMap<Arc<Path>, Node>,
     root_path: &'a Arc<Path>,
-    users: &'a Users,
 }
 
 impl<'a> TreeLinesBuilder<'a> {
-    fn new(
-        nodes: &'a HashMap<Arc<Path>, Node>,
-        root_path: &'a Arc<Path>,
-        users: &'a Users,
-    ) -> Self {
-        Self {
-            nodes,
-            root_path,
-            users,
-        }
+    fn new(nodes: &'a HashMap<Arc<Path>, Node>, root_path: &'a Arc<Path>) -> Self {
+        Self { nodes, root_path }
     }
 
     /// Create a displayable content from the tree.
@@ -410,11 +400,7 @@ impl<'a> TreeLinesBuilder<'a> {
                 index = lines.len();
             }
 
-            let Ok(fileinfo) = FileInfo::new(&path, self.users) else {
-                continue;
-            };
-
-            lines.push(TLine::new(&fileinfo, &prefix, node, &path));
+            lines.push(TLine::new(&prefix, node, &path));
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
@@ -501,18 +487,14 @@ pub struct TLine {
     folded: bool,
     prefix: Arc<str>,
     pub path: Arc<Path>,
-    style: Style,
-    // metadata: String,
+    pub is_selected: bool,
 }
 
 impl TLine {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
-    fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let mut style = fileinfo.style();
+    fn new(prefix: &str, node: &Node, path: &Path) -> Self {
         // required for some edge cases when opening the tree while "." is the selected file
-        if node.selected() {
-            style.add_modifier |= Modifier::REVERSED;
-        }
+        let is_selected = node.selected();
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
         let folded = node.folded;
@@ -521,12 +503,8 @@ impl TLine {
             folded,
             prefix,
             path,
-            style,
+            is_selected,
         }
-    }
-
-    pub fn style(&self) -> &Style {
-        &self.style
     }
 
     /// Formated filename
@@ -545,23 +523,16 @@ impl TLine {
         self.path.borrow()
     }
 
-    // /// Metadata string representation
-    // /// permission, size, owner, groupe, modification date
-    // pub fn metadata(&self) -> &str {
-    //     // &self.metadata
-    //     todo!()
-    // }
-
     /// Change the current effect to Empty, displaying
     /// the file as not selected
     pub fn unselect(&mut self) {
-        self.style.add_modifier = Modifier::empty();
+        self.is_selected = false;
     }
 
     /// Change the current effect to `REVERSED`, displaying
     /// the file as selected.
     pub fn select(&mut self) {
-        self.style.add_modifier |= Modifier::REVERSED;
+        self.is_selected = true;
     }
 }
 
@@ -826,7 +797,7 @@ impl Tree {
     }
 
     /// Fold selected node
-    pub fn toggle_fold(&mut self, users: &Users) {
+    pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
             if node.folded {
                 node.unfold();
@@ -836,7 +807,7 @@ impl Tree {
                 self.make_children_unreachable()
             }
         }
-        self.remake_displayable(users);
+        self.remake_displayable();
     }
     fn children_of_selected(&self) -> Option<&Vec<Arc<Path>>> {
         self.nodes.get(&self.selected)?.children.as_ref()
@@ -863,24 +834,24 @@ impl Tree {
     }
 
     /// Fold all node from root to end
-    pub fn fold_all(&mut self, users: &Users) {
+    pub fn fold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.fold()
         }
         self.select_root();
-        self.remake_displayable(users);
+        self.remake_displayable();
     }
 
     /// Unfold all node from root to end
-    pub fn unfold_all(&mut self, users: &Users) {
+    pub fn unfold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
         }
-        self.remake_displayable(users);
+        self.remake_displayable();
     }
 
-    fn remake_displayable(&mut self, users: &Users) {
-        self.displayable_lines = TreeLinesBuilder::new(&self.nodes, &self.root_path, users).build();
+    fn remake_displayable(&mut self) {
+        self.displayable_lines = TreeLinesBuilder::new(&self.nodes, &self.root_path).build();
     }
 
     pub fn displayable(&self) -> &TreeLines {

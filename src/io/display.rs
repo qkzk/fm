@@ -672,9 +672,12 @@ impl<'a> TreeDisplay<'a> {
         users: &Users,
         with_icon: bool,
     ) -> Result<Line<'b>> {
-        let mut style = *line_builder.style();
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, users)?;
+        let mut style = fileinfo.style();
+        if line_builder.is_selected {
+            style.add_modifier |= Modifier::REVERSED;
+        }
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
             Self::metadata(&fileinfo, formater, style),

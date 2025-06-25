@@ -118,7 +118,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.toggle_fold(&tab.users);
+        tab.tree.toggle_fold();
         Ok(())
     }
 
@@ -130,7 +130,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.unfold_all(&tab.users);
+        tab.tree.unfold_all();
         Ok(())
     }
 
@@ -142,7 +142,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.fold_all(&tab.users);
+        tab.tree.fold_all();
         Ok(())
     }
 
