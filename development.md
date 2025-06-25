@@ -1708,7 +1708,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] responsive: group, permissions, date, owner, whole metadata
   - [x] format picker in display with separate logic
   - [x] common formaters for directory & tree
-  - [ ] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
+  - [x] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
+  - [ ] a lot of tests
 
 ## TODO
 
