@@ -1,9 +1,13 @@
+use std::fs::{metadata, remove_file, File, OpenOptions};
+use std::io::{BufWriter, Write};
+use std::sync::Mutex;
 use std::sync::RwLock;
 
 use anyhow::Result;
-use log4rs;
+use chrono::Local;
+use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 
-use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::common::{extract_lines, tilde, ACTION_LOG_PATH};
 
 /// Holds the last action which is displayed to the user
 static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
@@ -11,49 +15,81 @@ static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
 /// Holds the last line of the log
 static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
-/// Set the logs.
-/// First we read the `-l` `--log` command line argument which default to false.
-///
-/// If it's false, nothing is done and we return.
-/// No logger is set, nothing is logged.
-///
-/// If it's true :
-/// The configuration is read from a config file defined in `LOG_CONFIG_PATH`
-/// It's a YAML file which defines 2 logs:
+static NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
+const MAX_LOG_SIZE: u64 = 50_000;
+
+/// Setup of 2 loggers
 /// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
 /// - a special one used with `log::info!(target: "special", ...)` to be displayed in the application
-pub fn set_loggers() -> Result<()> {
-    log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
-    // clear_useless_env_home()?;
-
-    log::info!("fm is starting with logs enabled");
-    Ok(())
+pub struct FMLogger {
+    normal_log: Mutex<BufWriter<std::fs::File>>,
+    special_log: Mutex<BufWriter<std::fs::File>>,
 }
 
-/// Delete useless $ENV{HOME} folder created by log4rs.
-/// This folder is created when a log file is big enough to proc a rolling
-/// Since the pattern can't be resolved, it's not created in the config folder but where the app is started...
-/// See [github issue](https://github.com/estk/log4rs/issues/314)
-/// The function log its results and delete nothing.
-// fn clear_useless_env_home() -> Result<()> {
-//     let p = std::path::Path::new(&ENV_HOME);
-//     let cwd = std::env::current_dir();
-//     log::info!(
-//         "looking from {ENV_HOME} - {p}  CWD {cwd}",
-//         p = p.display(),
-//         cwd = cwd?.display()
-//     );
-//     if p.exists() && std::fs::metadata(ENV_HOME)?.is_dir()
-//     // && std::path::Path::new(ENV_HOME).read_dir()?.next().is_none()
-//     {
-//         let z = std::path::Path::new(ENV_HOME).read_dir()?.next();
-//         log::info!("z {z:?}");
-//
-//         // std::fs::remove_dir_all(ENV_HOME)?;
-//         log::info!("Removed {ENV_HOME} empty directory from CWD");
-//     }
-//     Ok(())
-// }
+impl Default for FMLogger {
+    fn default() -> Self {
+        let normal_file = open_or_rotate(tilde(NORMAL_LOG_PATH).as_ref(), MAX_LOG_SIZE);
+        let special_file = open_or_rotate(tilde(ACTION_LOG_PATH).as_ref(), MAX_LOG_SIZE);
+        let normal_log = Mutex::new(BufWriter::new(normal_file));
+        let special_log = Mutex::new(BufWriter::new(special_file));
+        Self {
+            normal_log,
+            special_log,
+        }
+    }
+}
+
+impl FMLogger {
+    pub fn init(self) -> Result<(), SetLoggerError> {
+        log::set_boxed_logger(Box::new(self))?;
+        log::set_max_level(LevelFilter::Info);
+        log::info!("fm is starting with logs enabled");
+        Ok(())
+    }
+
+    fn write(&self, writer: &Mutex<BufWriter<File>>, record: &Record) {
+        let mut writer = writer.lock().unwrap();
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+        let _ = writeln!(writer, "{timestamp} - {msg}", msg = record.args());
+        let _ = writer.flush();
+    }
+}
+
+impl log::Log for FMLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+        if record.target() == "special" {
+            self.write(&self.special_log, record)
+        } else {
+            self.write(&self.normal_log, record)
+        }
+    }
+
+    fn flush(&self) {
+        let _ = self.normal_log.lock().unwrap().flush();
+        let _ = self.special_log.lock().unwrap().flush();
+    }
+}
+
+fn open_or_rotate(path: &str, max_size: u64) -> File {
+    if let Ok(meta) = metadata(path) {
+        if meta.len() > max_size {
+            let _ = remove_file(path);
+        }
+    }
+
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("cannot open log file")
+}
 
 /// Returns the last line of the log file.
 pub fn read_log() -> Result<Vec<String>> {

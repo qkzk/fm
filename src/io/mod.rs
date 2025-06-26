@@ -32,7 +32,7 @@ pub use git::{git, git_root};
 pub use image_adapter::*;
 pub use inline_image_protocol::*;
 pub use input_history::*;
-pub use log::{read_last_log_line, read_log, set_loggers, write_log_info_once, write_log_line};
+pub use log::{read_last_log_line, read_log, write_log_info_once, write_log_line, FMLogger};
 pub use opendal::*;
 pub use opener::*;
 pub use ueberzug::*;

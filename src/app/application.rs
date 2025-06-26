@@ -23,7 +23,7 @@ use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{set_loggers, Args, Opener};
+use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
@@ -104,7 +104,11 @@ impl FM {
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
         if args.log {
-            set_loggers()?;
+            // set_loggers()?;
+            println!("set log...");
+            FMLogger::default().init()?;
+            log_info!("log set !");
+            log_info!("log set !");
         }
         let Ok(config) = load_config(CONFIG_PATH) else {
             Self::exit_wrong_config()
