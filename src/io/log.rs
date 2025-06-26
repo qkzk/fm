@@ -1,11 +1,11 @@
 use std::fs::{metadata, remove_file, File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::sync::Mutex;
 use std::sync::RwLock;
 
 use anyhow::Result;
 use chrono::Local;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use parking_lot::Mutex;
 
 use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, NORMAL_LOG_PATH};
 
@@ -49,7 +49,7 @@ impl FMLogger {
     }
 
     fn write(&self, writer: &Mutex<BufWriter<File>>, record: &Record) {
-        let mut writer = writer.lock().unwrap();
+        let mut writer = writer.lock();
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
         let _ = writeln!(writer, "{timestamp} - {msg}", msg = record.args());
         let _ = writer.flush();
@@ -73,8 +73,8 @@ impl log::Log for FMLogger {
     }
 
     fn flush(&self) {
-        let _ = self.normal_log.lock().unwrap().flush();
-        let _ = self.action_log.lock().unwrap().flush();
+        let _ = self.normal_log.lock().flush();
+        let _ = self.action_log.lock().flush();
     }
 }
 

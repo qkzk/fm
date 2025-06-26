@@ -104,11 +104,7 @@ impl FM {
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
         if args.log {
-            // set_loggers()?;
-            println!("set log...");
             FMLogger::default().init()?;
-            log_info!("log set !");
-            log_info!("log set !");
         }
         let Ok(config) = load_config(CONFIG_PATH) else {
             Self::exit_wrong_config()
