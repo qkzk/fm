@@ -14,8 +14,8 @@ pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
 pub const INPUT_HISTORY_PATH: &str = "~/.config/fm/log/input_history.log";
 /// Syntect theme paths
 pub const SYNTECT_THEMES_PATH: &str = "~/.config/fm/syntect_themes/";
-/// Filepath of the LOG configuration file
-pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
+/// Path to the normal log file
+pub const NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
 /// Path to the action log file
 pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
 /// Path to the trash folder files

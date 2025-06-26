@@ -7,7 +7,7 @@ use anyhow::Result;
 use chrono::Local;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 
-use crate::common::{extract_lines, tilde, ACTION_LOG_PATH};
+use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, NORMAL_LOG_PATH};
 
 /// Holds the last action which is displayed to the user
 static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
@@ -15,26 +15,25 @@ static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
 /// Holds the last line of the log
 static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
-static NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
 const MAX_LOG_SIZE: u64 = 50_000;
 
 /// Setup of 2 loggers
 /// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
-/// - a special one used with `log::info!(target: "special", ...)` to be displayed in the application
+/// - an action one used with `log::info!(target: "action", ...)` to be displayed in the application
 pub struct FMLogger {
     normal_log: Mutex<BufWriter<std::fs::File>>,
-    special_log: Mutex<BufWriter<std::fs::File>>,
+    action_log: Mutex<BufWriter<std::fs::File>>,
 }
 
 impl Default for FMLogger {
     fn default() -> Self {
         let normal_file = open_or_rotate(tilde(NORMAL_LOG_PATH).as_ref(), MAX_LOG_SIZE);
-        let special_file = open_or_rotate(tilde(ACTION_LOG_PATH).as_ref(), MAX_LOG_SIZE);
+        let action_file = open_or_rotate(tilde(ACTION_LOG_PATH).as_ref(), MAX_LOG_SIZE);
         let normal_log = Mutex::new(BufWriter::new(normal_file));
-        let special_log = Mutex::new(BufWriter::new(special_file));
+        let action_log = Mutex::new(BufWriter::new(action_file));
         Self {
             normal_log,
-            special_log,
+            action_log,
         }
     }
 }
@@ -64,8 +63,8 @@ impl log::Log for FMLogger {
         if !self.enabled(record.metadata()) {
             return;
         }
-        if record.target() == "special" {
-            self.write(&self.special_log, record)
+        if record.target() == "action" {
+            self.write(&self.action_log, record)
         } else {
             self.write(&self.normal_log, record)
         }
@@ -73,7 +72,7 @@ impl log::Log for FMLogger {
 
     fn flush(&self) {
         let _ = self.normal_log.lock().unwrap().flush();
-        let _ = self.special_log.lock().unwrap().flush();
+        let _ = self.action_log.lock().unwrap().flush();
     }
 }
 
@@ -120,17 +119,17 @@ where
     *last_log_line = log.to_string();
 }
 
-/// Write a line to both the global variable `LAST_LOG_LINE` and the special log
+/// Write a line to both the global variable `LAST_LOG_LINE` and the action log
 /// which can be displayed with Alt+l
 pub fn write_log_line<S>(log_line: S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    log::info!(target: "special", "{log_line}");
+    log::info!(target: "action", "{log_line}");
     write_last_log_line(log_line);
 }
 
-/// Writes the message to the global variable `LAST_LOG_LINE` and a the special log.
+/// Writes the message to the global variable `LAST_LOG_LINE` and a the action log.
 /// It can be displayed with the default bind ALt+l and at the last line of the display.
 /// Every action which change the filetree, execute an external command or which returns an
 /// error should be logged this way.
