@@ -198,15 +198,11 @@ pub fn is_sudo_command(executable: &str) -> bool {
 
 /// Open the path in neovim.
 pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
-    let command = &format!(
-        "<esc>:e {path}<cr><esc>:set number<cr><esc>:close<cr>",
-        path = path.display()
-    );
     log_info!(
-        "open_in_current_neovim {nvim_server} {path} {command}",
+        "open_in_current_neovim {nvim_server} {path}",
         path = path.display()
     );
-    match nvim(nvim_server, command) {
+    match nvim(nvim_server, &path.display().to_string()) {
         Ok(()) => log_line!(
             "Opened {path} in neovim at {nvim_server}",
             path = path.display()

@@ -1710,6 +1710,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] common formaters for directory & tree
   - [x] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
   - [ ] a lot of tests
+- [ ] remove bloat 
+  - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
+  - [ ] log4rs... most of what I do seems doable from log crate, except rolling
 
 ## TODO
 
