@@ -15,6 +15,8 @@ static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
 /// Holds the last line of the log
 static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
+/// Used to trigger a reset of log files.
+/// Once their size is bigger than `MAX_LOG_SIZE`, the log file is cleared.
 const MAX_LOG_SIZE: u64 = 50_000;
 
 /// Setup of 2 loggers
