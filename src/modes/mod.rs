@@ -17,5 +17,7 @@ mod utils;
 pub use display::*;
 pub use fs::*;
 pub use menu::*;
-pub use mode::{Display, InputSimple, Leave, MarkAction, Menu, Navigate, NeedConfirmation};
+pub use mode::{
+    CursorOffset, Display, InputSimple, Leave, MarkAction, Menu, Navigate, NeedConfirmation,
+};
 pub use utils::*;

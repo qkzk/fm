@@ -25,9 +25,10 @@ use crate::io::{read_last_log_line, DrawMenu, ImageAdapter};
 use crate::log_info;
 use crate::modes::{
     highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
-    ContentWindow, Display as DisplayMode, DisplayedImage, FileInfo, FuzzyFinder, HLContent, Input,
-    InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation, Preview,
-    Remote, SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text, TextKind, Trash, Tree,
+    ContentWindow, CursorOffset, Display as DisplayMode, DisplayedImage, FileInfo, FuzzyFinder,
+    HLContent, Input, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate,
+    NeedConfirmation, Preview, Remote, SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum, Text,
+    TextKind, Trash, Tree,
 };
 use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},

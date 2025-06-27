@@ -7,7 +7,7 @@ use ratatui::style::{Modifier, Style};
 use crate::common::{is_in_path, tilde, UtfWidth, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
-use crate::modes::Leave;
+use crate::modes::{CursorOffset, Leave};
 use crate::{impl_content, impl_selectable};
 
 /// Different kind of completions
@@ -36,8 +36,8 @@ impl fmt::Display for InputCompleted {
     }
 }
 
-impl InputCompleted {
-    pub fn cursor_offset(&self) -> u16 {
+impl CursorOffset for InputCompleted {
+    fn cursor_offset(&self) -> u16 {
         self.to_string().utf_width_u16() + 2
     }
 }

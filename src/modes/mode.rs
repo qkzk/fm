@@ -39,14 +39,6 @@ pub enum NeedConfirmation {
 }
 
 impl NeedConfirmation {
-    /// Offset before the cursor.
-    /// Since we ask the user confirmation, we need to know how much space
-    /// is needed.
-    #[must_use]
-    pub fn cursor_offset(&self) -> u16 {
-        self.to_string().utf_width_u16() + 9
-    }
-
     /// A confirmation message to be displayed before executing the mode.
     /// When files are moved or copied the destination is displayed.
     #[must_use]
@@ -62,6 +54,16 @@ impl NeedConfirmation {
             Self::BulkAction => "Those files will be renamed or created :".to_owned(),
             Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
+    }
+}
+
+impl CursorOffset for NeedConfirmation {
+    /// Offset before the cursor.
+    /// Since we ask the user confirmation, we need to know how much space
+    /// is needed.
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 9
     }
 }
 
@@ -175,7 +177,13 @@ impl InputSimple {
             Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
         }
     }
+}
 
+pub trait CursorOffset {
+    fn cursor_offset(&self) -> u16;
+}
+
+impl CursorOffset for InputSimple {
     fn cursor_offset(&self) -> u16 {
         match *self {
             Self::Sort => Self::SORT_CURSOR_OFFSET,
@@ -253,6 +261,14 @@ impl fmt::Display for Navigate {
     }
 }
 
+impl CursorOffset for Navigate {
+    #[inline]
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        0
+    }
+}
+
 impl Leave for Navigate {
     fn must_refresh(&self) -> bool {
         !matches!(self, Self::CliApplication | Self::Context)
@@ -316,18 +332,6 @@ impl fmt::Display for Menu {
 }
 
 impl Menu {
-    /// Constant offset for the cursor.
-    /// In any mode, we display the mode used and then the cursor if needed.
-    pub fn cursor_offset(&self) -> u16 {
-        match self {
-            Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
-            Self::InputSimple(input_simple) => input_simple.cursor_offset(),
-            Self::Navigate(_) => 0,
-            Self::NeedConfirmation(confirmed_action) => confirmed_action.cursor_offset(),
-            Self::Nothing => 0,
-        }
-    }
-
     /// Does this mode requires a cursor ?
     pub fn show_cursor(&self) -> bool {
         self.cursor_offset() != 0
@@ -359,6 +363,26 @@ impl Menu {
 
     pub fn is_navigate(&self) -> bool {
         matches!(self, Self::Navigate(_))
+    }
+
+    pub fn is_input(&self) -> bool {
+        matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
+    }
+}
+
+impl CursorOffset for Menu {
+    /// Constant offset for the cursor.
+    /// In any mode, we display the mode used and then the cursor if needed.
+    #[inline]
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
+            Self::InputSimple(input_simple) => input_simple.cursor_offset(),
+            Self::Navigate(navigate) => navigate.cursor_offset(),
+            Self::NeedConfirmation(confirmed_action) => confirmed_action.cursor_offset(),
+            Self::Nothing => 0,
+        }
     }
 }
 

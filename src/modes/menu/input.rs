@@ -75,6 +75,17 @@ impl Input {
         }
     }
 
+    /// Move the cursor to the given index, limited to the length of the input.
+    ///
+    /// Used when the user click on the input string.
+    pub fn cursor_move(&mut self, index: usize) {
+        if index <= self.len() {
+            self.cursor_index = index
+        } else {
+            self.cursor_end()
+        }
+    }
+
     /// Backspace, delete the char under the cursor and move left
     pub fn delete_char_left(&mut self) {
         if self.cursor_index > 0 && !self.chars.is_empty() {

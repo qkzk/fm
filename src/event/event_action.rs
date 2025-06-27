@@ -995,7 +995,7 @@ impl EventAction {
     }
 
     /// Click a file at `row`, `col`. Gives the focus to the window container.
-    pub fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+    fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         status.click(binds, row, col)
     }
 

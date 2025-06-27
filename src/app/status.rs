@@ -27,10 +27,11 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    ContentWindow, CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo,
+    FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu,
+    MenuHolder, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -309,7 +310,7 @@ impl Status {
                 self.update_second_pane_for_preview()
             }
             Window::Footer => self.footer_action(col, binds),
-            Window::Menu => self.menu_action(row),
+            Window::Menu => self.menu_action(row, col),
         }
     }
 
@@ -352,13 +353,13 @@ impl Status {
     }
 
     /// Execute a click on a menu item. Action depends on which menu was opened.
-    fn menu_action(&mut self, row: u16) -> Result<()> {
+    fn menu_action(&mut self, row: u16, col: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
-        let offset = row as usize - second_window_height;
+        let row_offset = row as usize - second_window_height;
         const OFFSET: usize =
             ContentWindow::WINDOW_PADDING + ContentWindow::WINDOW_MARGIN_TOP_U16 as usize;
-        if offset >= OFFSET {
-            let index = offset - OFFSET + self.menu.window.top;
+        if row_offset >= OFFSET {
+            let index = row_offset - OFFSET + self.menu.window.top;
             match self.current_tab().menu_mode {
                 Menu::Navigate(navigate) => match navigate {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
@@ -368,7 +369,12 @@ impl Status {
                 _ => (),
             }
             self.menu.window.scroll_to(index);
+        } else if row_offset == 3 && self.current_tab().menu_mode.is_input() {
+            let index =
+                col.saturating_sub(self.current_tab().menu_mode.cursor_offset() + 1) as usize;
+            self.menu.input.cursor_move(index);
         }
+
         Ok(())
     }
 
