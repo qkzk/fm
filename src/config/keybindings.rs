@@ -322,6 +322,8 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
 
+            (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
+
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
 
             (KeyEvent::new(KeyCode::Char('a'),    KeyModifiers::CONTROL), ActionMap::CopyContent),

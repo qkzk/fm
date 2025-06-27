@@ -1596,6 +1596,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   If anything goes wrong while loading your theme, it defaults to monokai which is hardcoded. It should never fail.
 - Display inode number after size in context menu, opened with (Alt + t) or (Right Click)
 - Move the cursor with a click. In menus with text input, you can click a character and move the cursor there.
+- Delete a "word" to the left in input modes with Alt + Backspace.
 
 **Bugfixes :**
 
@@ -1712,7 +1713,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
   - [ ] a lot of tests
 - [x] FEAT: click on input moves the cursor
-- [ ] FEAT: delete a word and to the left, harmonize deletions (shift+delete : right, shift+backspace : left, alt+... delete whole)
+- [x] FEAT: delete a word and to the left with alt+backspace. Stops at any "separator" (non alphanumeric ascii char)
 - [ ] remove bloat without changing API
   - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
   - [x] log4rs : use a custom logger

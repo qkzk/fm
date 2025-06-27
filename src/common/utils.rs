@@ -7,7 +7,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::Disk;
 use sysinfo::Disks;
@@ -289,20 +289,20 @@ where
     Q: AsRef<std::path::Path>,
 {
     let Some(old_parent) = old_path.as_ref().parent() else {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "no parent for {old_path}",
             old_path = old_path.as_ref().display()
         ));
     };
     let new_path = old_parent.join(new_name);
     if new_path.exists() {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "File already exists {new_path}",
             new_path = new_path.display()
         ));
     }
     let Some(new_parent) = new_path.parent() else {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "no parent for {new_path}",
             new_path = new_path.display()
         ));

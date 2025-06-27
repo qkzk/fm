@@ -1087,6 +1087,24 @@ impl EventAction {
         Ok(())
     }
 
+    /// Delete one word to the left in menus with input
+    pub fn delete_left(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
+        match status.current_tab_mut().menu_mode {
+            Menu::InputSimple(_) => {
+                status.menu.input.delete_left();
+            }
+            Menu::InputCompleted(_) => {
+                status.menu.input.delete_left();
+                status.menu.completion_reset();
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+
     /// Move to leftmost char in mode allowing edition.
     pub fn key_home(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {

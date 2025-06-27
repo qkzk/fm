@@ -218,9 +218,15 @@ impl LeaveMenu {
     /// It uses the `fs::rename` function and has the same limitations.
     /// Intermediates directory are created if needed.
     /// It acts like a move (without any confirmation...)
+    /// The new file is selected.
     fn rename(status: &mut Status) -> Result<()> {
-        let old_path = status.current_tab().current_file()?.path;
+        if status.menu.input.is_empty() {
+            log_line!("Can't rename: new name is empty");
+            log_info!("Can't rename: new name is empty");
+            return Ok(());
+        }
         let new_name = status.menu.input.string();
+        let old_path = status.current_tab().current_file()?.path;
         match rename(&old_path, &new_name) {
             Ok(new_path) => {
                 status.current_tab_mut().refresh_view()?;
