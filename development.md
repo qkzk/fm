@@ -1605,6 +1605,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - open config file did nothing
 - Updated syntect to `5.2.0` since older versions required a crate which didn't compile anymore.
 - Could crash if a processus was terminated between file listing and file display
+- Numbered files weren't sorted "naturally". Use Natural Order.
 
 #### Changelog
 
@@ -1695,7 +1696,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: wrong alignment for files with size between 9.5 units and 10.0 units.
 - [x] Video thumbnails were slow. No more "clip", only a static image.
 - [x] updated syntect version since "onig" crate couldn't compile anymore.
-- [ ] remove more deps instead of adding more. cargo tree is scary
 - [x] theming. Use custom themes for syntax highlighting. 
   - [x] default to monokai
   - [x] parsing the config file,
@@ -1705,7 +1705,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: if a processus is terminated between listing (Directory) and display, the display crashes. Removed all unecessary unwrap.
   Display empty lines for those processes.
 - [ ] BUG: inacessible files doesn't crash display anymore but are rendered as empty lines. See /proc
-- [ ] numeric filenames aren't sorted properly. Check eza, ranger in /proc and investigate. Do they sort like (1, 10, 2) or (1, 2, 10) ?
+- [x] FIX: numeric filenames aren't sorted properly. Use [Natural Order](https://github.com/lifthrasiir/rust-natord)
 - [ ] FEAT: responsive display of metadata
   - [x] responsive: group, permissions, date, owner, whole metadata
   - [x] format picker in display with separate logic
@@ -1717,6 +1717,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] remove bloat without changing API
   - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
   - [x] log4rs : use a custom logger
+- [ ] quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
+- [ ] BUG: shift+up in sort menu doesn't move the selection
 
 ## TODO
 

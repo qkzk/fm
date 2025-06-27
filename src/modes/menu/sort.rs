@@ -124,19 +124,20 @@ impl SortKind {
     // 2. a closure returning the correct data.
 
     /// Sort a collection of file depending of enum variants.
+    #[rustfmt::skip]
     pub fn sort(&self, files: &mut [FileInfo]) {
         if matches!(self.order, Order::Ascending) {
             match self.sort_by {
-                SortBy::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
-                SortBy::File => Self::sort_by_key_hrtb(files, |f| &f.filename),
+                SortBy::Kind => files.sort_unstable_by(|a, b| natord::compare(&a.kind_format(), &b.kind_format())),
+                SortBy::File => files.sort_unstable_by(|a, b| natord::compare(&a.filename, &b.filename)),
                 SortBy::Date => Self::sort_by_key_hrtb(files, |f| &f.system_time),
                 SortBy::Size => Self::sort_by_key_hrtb(files, |f| &f.true_size),
                 SortBy::Exte => Self::sort_by_key_hrtb(files, |f| &f.extension),
             }
         } else {
             match self.sort_by {
-                SortBy::Kind => Self::reversed_sort_by_key_hrtb(files, |f| &f.kind_format),
-                SortBy::File => Self::reversed_sort_by_key_hrtb(files, |f| &f.filename),
+                SortBy::Kind => files.sort_unstable_by(|a, b| natord::compare(&b.kind_format(), &a.kind_format())),
+                SortBy::File => files.sort_unstable_by(|a, b| natord::compare(&b.filename, &a.filename)),
                 SortBy::Date => Self::reversed_sort_by_key_hrtb(files, |f| &f.system_time),
                 SortBy::Size => Self::reversed_sort_by_key_hrtb(files, |f| &f.true_size),
                 SortBy::Exte => Self::reversed_sort_by_key_hrtb(files, |f| &f.extension),

@@ -174,10 +174,6 @@ pub struct FileInfo {
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
     pub extension: Arc<str>,
-    /// A formated filename where the "kind" of file
-    /// (directory, char device, block devive, fifo, socket, normal)
-    /// is prepend to the name, allowing a "sort by kind" method.
-    pub kind_format: Arc<str>,
 }
 
 impl FileInfo {
@@ -192,7 +188,6 @@ impl FileInfo {
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
-        let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
@@ -204,7 +199,6 @@ impl FileInfo {
             system_time,
             file_kind,
             extension,
-            kind_format,
         })
     }
 
@@ -219,7 +213,6 @@ impl FileInfo {
     pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
         let mut file_info = Self::new(path, users)?;
         file_info.filename = Arc::from(filename);
-        file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
         Ok(file_info)
     }
 
@@ -249,6 +242,16 @@ impl FileInfo {
         Ok(permission_mode_to_str(self.metadata()?.mode()))
     }
 
+    /// A formated filename where the "kind" of file
+    /// (directory, char device, block devive, fifo, socket, normal)
+    /// is prepend to the name, allowing a "sort by kind" method.
+    pub fn kind_format(&self) -> String {
+        format!(
+            "{c}{filename}",
+            c = self.file_kind.sortable_char(),
+            filename = self.filename
+        )
+    }
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
@@ -466,10 +469,6 @@ pub fn extract_extension(path: &path::Path) -> &str {
     path.extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
-}
-
-fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> Arc<str> {
-    Arc::from(format!("{c}{filename}", c = file_kind.sortable_char()).as_str())
 }
 
 /// true iff the path is a valid symlink (pointing to an existing file).
