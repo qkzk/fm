@@ -1704,7 +1704,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Display inode number after size in context menu
 - [x] FIX: if a processus is terminated between listing (Directory) and display, the display crashes. Removed all unecessary unwrap.
   Display empty lines for those processes.
-- [ ] BUG: inacessible files doesn't crash display anymore but are rendered as empty lines. See /proc
+- [x] FIX: inacessible files should be displayed normally, replace unknown by ???
 - [x] FIX: numeric filenames aren't sorted properly. Use [Natural Order](https://github.com/lifthrasiir/rust-natord)
 - [ ] FEAT: responsive display of metadata
   - [x] responsive: group, permissions, date, owner, whole metadata

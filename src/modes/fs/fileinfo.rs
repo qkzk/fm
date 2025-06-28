@@ -256,16 +256,12 @@ impl FileInfo {
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     #[inline]
-    pub fn format_metadata(
-        &self,
-        owner_col_width: usize,
-        group_col_width: usize,
-    ) -> Result<String> {
-        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+    pub fn format_metadata(&self, owner_col_width: usize, group_col_width: usize) -> String {
+        let mut repr = self.format_base(owner_col_width, group_col_width);
         repr.push(' ');
         repr.push_str(&self.filename);
         self.expand_symlink(&mut repr);
-        Ok(repr)
+        repr
     }
 
     fn expand_symlink(&self, repr: &mut String) {
@@ -279,44 +275,48 @@ impl FileInfo {
         }
     }
 
-    pub fn format_no_group(&self, owner_col_width: usize) -> Result<String> {
+    pub fn format_no_group(&self, owner_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        Ok(format!(
+        let permissions = self
+            .permissions()
+            .unwrap_or_else(|_| Arc::from("?????????"));
+        format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
-            permissions = self.permissions()?,
             file_size = self.size_column,
             system_time = self.system_time,
-        ))
+        )
     }
 
-    pub fn format_no_permissions(&self, owner_col_width: usize) -> Result<String> {
+    pub fn format_no_permissions(&self, owner_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        Ok(format!(
+        format!(
             "{file_size} {owner:<owner_col_width$} {system_time}",
             file_size = self.size_column,
             system_time = self.system_time,
-        ))
+        )
     }
 
-    pub fn format_no_owner(&self) -> Result<String> {
-        Ok(format!("{file_size}", file_size = self.size_column))
+    pub fn format_no_owner(&self) -> String {
+        format!("{file_size}", file_size = self.size_column)
     }
 
-    pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+    pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let group = format!("{group:.group_col_width$}", group = self.group,);
-        Ok(format!(
+        let permissions = self
+            .permissions()
+            .unwrap_or_else(|_| Arc::from("?????????"));
+        format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
-            permissions = self.permissions()?,
             file_size = self.size_column,
             system_time = self.system_time,
-        ))
+        )
     }
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
-    pub fn format_no_filename(&self) -> Result<String> {
+    pub fn format_no_filename(&self) -> String {
         self.format_base(6, 6)
     }
 

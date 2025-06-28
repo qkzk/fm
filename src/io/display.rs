@@ -543,20 +543,18 @@ struct FileFormater;
 impl FileFormater {
     fn metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_base(owner_sizes.1, owner_sizes.0)
-            .unwrap_or_default()
     }
 
     fn metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_no_group(owner_sizes.1).unwrap_or_default()
+        file.format_no_group(owner_sizes.1)
     }
 
     fn metadata_no_permissions(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
         file.format_no_permissions(owner_sizes.1)
-            .unwrap_or_default()
     }
 
     fn metadata_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        file.format_no_owner().unwrap_or_default()
+        file.format_no_owner()
     }
 
     fn simple(_file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
@@ -975,10 +973,7 @@ impl FilesSecondLine {
         style.add_modifier ^= Modifier::REVERSED;
 
         Self {
-            content: Some(
-                file.format_metadata(owner_size, group_size)
-                    .unwrap_or_default(),
-            ),
+            content: Some(file.format_metadata(owner_size, group_size)),
             style: Some(style),
         }
     }
@@ -1299,11 +1294,8 @@ impl<'a> Menu<'a> {
                 return;
             };
             let p_rect = rect.offseted(2, 2);
-            Span::styled(
-                fileinfo.format_metadata(6, 6).unwrap_or_default(),
-                fileinfo.style(),
-            )
-            .render(p_rect, f.buffer_mut());
+            Span::styled(fileinfo.format_metadata(6, 6), fileinfo.style())
+                .render(p_rect, f.buffer_mut());
         };
     }
 
