@@ -1,4 +1,3 @@
-use std::ops::SubAssign;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -555,18 +554,25 @@ impl Status {
         let couldnt_dual_but_want = self.couldnt_dual_but_want();
         self.internal_settings.update_size(width, height);
         if couldnt_dual_but_want {
-            self.set_dual_pane_if_wide_enough(width)?;
+            self.set_dual_pane_if_wide_enough()?;
+        }
+        if !self.wide_enough_for_dual() {
+            self.select_left();
         }
         self.resize_all_windows(height)?;
         self.refresh_status()
     }
 
+    fn wide_enough_for_dual(&self) -> bool {
+        self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+    }
+
     fn couldnt_dual_but_want(&self) -> bool {
-        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.session.dual()
+        !self.wide_enough_for_dual() && self.session.dual()
     }
 
     fn use_dual(&self) -> bool {
-        self.session.dual() && self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+        self.wide_enough_for_dual() && self.session.dual()
     }
 
     fn left_window_width(&self) -> u16 {
@@ -798,12 +804,12 @@ impl Status {
     }
 
     /// Set dual pane if the term is big enough
-    pub fn set_dual_pane_if_wide_enough(&mut self, width: u16) -> Result<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
+    pub fn set_dual_pane_if_wide_enough(&mut self) -> Result<()> {
+        if self.wide_enough_for_dual() {
+            self.session.set_dual(true);
+        } else {
             self.select_left();
             self.session.set_dual(false);
-        } else {
-            self.session.set_dual(true);
         }
         Ok(())
     }

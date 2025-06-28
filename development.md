@@ -1658,17 +1658,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: after rename selection is lost
 - [x] FIX: rename shouldn't overwrite existing file
 - [x] Integrate Ueberzug-rs in src. Wasn't maintened anymore.
-- [ ] share a common ueberzug instance for all image drawing 
+- [x] share a common ueberzug instance for all image drawing 
   - [x] simplified ueberzug commands build
   - [x] where to attach it ? Display itself. 
   - [x] how to call it ? as deep as possible, from Ueber inside preview
   - [x] problem: where to store the last modified image ? it should be stored in ueberzug itself... Doing so delegates the clearing to ueberzug itself. 
   - [x] FIX: preview, quit preview, doesn't erease.
   - [x] display should draw the ueberzug image itself
-  - [ ] BUG: multiple previews are a mess
 - [x] refactor disk_space without using internal_settings.disks.collect as often
-- [ ] BUG: Camera folder crash. Can't reproduce
-- [ ] opening a video and focus is sticked to second pane : can't reproduce
 - [x] FIX: ssh sessions or whatever which can't create windows should try to ...
   - [x] don't create anything image related if user hasn't x11
 - [x] support other way of displaying image, sharing API : 
@@ -1719,9 +1716,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] log4rs : use a custom logger
 - [x] better logs: `date - file:line:col [function name] - content`
 - [x] FIX: display could crash from substraction with overflow if width is very low
-- [ ] quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
-- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
 - [x] FIX: Sync left tab to right tab wasn't doing anything
+- [x] FIX: 2 panes, focus right, resize to lower, right pane is closed but still has focus.
+- [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
+- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
+- [ ] BUG: Camera folder crash. Can't reproduce
+- [ ] BUG: opening a video and focus is sticked to second pane : can't reproduce
 
 ## TODO
 
