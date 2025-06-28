@@ -1717,8 +1717,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] remove bloat without changing API
   - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
   - [x] log4rs : use a custom logger
+- [x] better logs: `date - file:line:col [function name] - content`
 - [ ] quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
-- [ ] BUG: shift+up in sort menu doesn't move the selection
 
 ## TODO
 

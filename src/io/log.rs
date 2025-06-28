@@ -184,9 +184,19 @@ where
 /// It accepts the same formatted messages as `format`.
 #[macro_export]
 macro_rules! log_info {
-    ($($arg:tt)+) => (
-    $crate::io::write_log_info_once(
-      format!("{file}:{line}:{column} - {content}", file=file!(), line=line!(), column = column!(), content=format_args!($($arg)+))
-    )
-  );
+    ($($arg:tt)+) => {{
+        fn __log_info_dummy() {}
+        let function = {
+            let full = std::any::type_name_of_val(&__log_info_dummy);
+            full.trim_end_matches("::__log_info_dummy")
+        };
+
+        $crate::io::write_log_info_once(format!(
+            "{file}:{line}:{column} [{function}] - {content}",
+            file=file!(),
+            line=line!(),
+            column=column!(),
+            content=format_args!($($arg)+)
+        ))
+    }};
 }
