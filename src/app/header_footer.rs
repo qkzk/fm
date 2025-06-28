@@ -51,7 +51,7 @@ mod inner {
             let width = text.utf_width_u16();
             let (left, right) = match align {
                 Align::Left => (col, col + width),
-                Align::Right => (col - width - 3, col - 3),
+                Align::Right => (col.saturating_sub(width + 3), col.saturating_sub(3)),
             };
             Self {
                 text,
