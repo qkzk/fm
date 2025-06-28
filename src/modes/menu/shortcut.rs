@@ -96,11 +96,6 @@ impl Shortcut {
         self.content.dedup();
     }
 
-    pub fn with_mount_points(mut self, mount_points: &[&Path]) -> Self {
-        self.extend_with_mount_points(mount_points);
-        self
-    }
-
     /// Update the shortcuts with the mount points.
     fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
         self.content
@@ -145,7 +140,6 @@ impl Shortcut {
         left_path: &std::path::Path,
         right_path: &std::path::Path,
     ) {
-        log_info!("mount_points {mount_points:#?}");
         self.content = Self::build_content(&self.start_folder);
         self.content.push(left_path.to_owned());
         self.content.push(right_path.to_owned());

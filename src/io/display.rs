@@ -466,7 +466,6 @@ impl<'a> DirectoryDisplay<'a> {
                 self.files_line(group_owner_sizes, index, file, &formater, with_icon)
             })
             .collect();
-        log_info!("files rect {p_rect:#?}");
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 

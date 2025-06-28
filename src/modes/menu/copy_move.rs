@@ -14,7 +14,7 @@ use crate::io::execute;
 use crate::modes::human_size;
 use crate::{log_info, log_line};
 
-// TODO replace with ratatui component
+// Won't replace with ratatui component since it's less flexible
 /// Send the progress bar to event dispatcher, allowing its display
 fn handle_progress_display(
     pb: &ProgressBar,

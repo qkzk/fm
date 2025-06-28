@@ -117,13 +117,7 @@ impl InternalSettings {
     }
 
     pub fn mount_points(&mut self) -> Vec<&Path> {
-        self.disks()
-            .iter()
-            .map(|d| {
-                log_info!("{d:#?}");
-                d.mount_point()
-            })
-            .collect()
+        self.disks().iter().map(|d| d.mount_point()).collect()
     }
 
     pub fn update_nvim_listen_address(&mut self) {
