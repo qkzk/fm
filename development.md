@@ -1718,15 +1718,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: display could crash from substraction with overflow if width is very low
 - [x] FIX: Sync left tab to right tab wasn't doing anything
 - [x] FIX: 2 panes, focus right, resize to lower, right pane is closed but still has focus.
-- [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
-- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
-- [ ] BUG: Camera folder crash. Can't reproduce
-- [ ] BUG: opening a video and focus is sticked to second pane : can't reproduce
 
 ## TODO
 
 ### Other ideas
 
+- [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
+- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
+- [ ] BUG: Camera folder crash. Can't reproduce
+- [ ] BUG: opening a video and focus is sticked to second pane : can't reproduce
 - [ ] reduce bloat without changing API
 - [ ] stability aka 1.0
 - [ ] code clean
