@@ -1606,6 +1606,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Updated syntect to `5.2.0` since older versions required a crate which didn't compile anymore.
 - Could crash if a processus was terminated between file listing and file display
 - Numbered files weren't sorted "naturally". Use Natural Order.
+- Focus could be lost after resizing
 
 #### Changelog
 
@@ -1703,15 +1704,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Display empty lines for those processes.
 - [x] FIX: inacessible files should be displayed normally, replace unknown by ???
 - [x] FIX: numeric filenames aren't sorted properly. Use [Natural Order](https://github.com/lifthrasiir/rust-natord)
-- [ ] FEAT: responsive display of metadata
+- [x] FEAT: responsive display of metadata
   - [x] responsive: group, permissions, date, owner, whole metadata
   - [x] format picker in display with separate logic
   - [x] common formaters for directory & tree
   - [x] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
-  - [ ] a lot of tests
 - [x] FEAT: click on input moves the cursor
 - [x] FEAT: delete a word and to the left with alt+backspace. Stops at any "separator" (non alphanumeric ascii char)
-- [ ] remove bloat without changing API
+- [x] reduce bloat without changing API
   - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
   - [x] log4rs : use a custom logger
 - [x] better logs: `date - file:line:col [function name] - content`
@@ -1727,6 +1727,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Other ideas
 
+- [ ] reduce bloat without changing API
 - [ ] stability aka 1.0
 - [ ] code clean
 - [ ] store 4 windows in display to modify instead of recreating
