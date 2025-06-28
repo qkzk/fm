@@ -186,7 +186,7 @@ where
 macro_rules! log_info {
     ($($arg:tt)+) => (
     $crate::io::write_log_info_once(
-      format!($($arg)+)
+      format!("{file}:{line}:{column} - {content}", file=file!(), line=line!(), column = column!(), content=format_args!($($arg)+))
     )
   );
 }

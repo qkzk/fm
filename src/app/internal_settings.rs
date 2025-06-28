@@ -11,7 +11,6 @@ use sysinfo::Disks;
 use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
 use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Extension, External, Opener};
-use crate::log_info;
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
 /// Internal settings of the status.
