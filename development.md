@@ -1720,6 +1720,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] better logs: `date - file:line:col [function name] - content`
 - [x] FIX: display could crash from substraction with overflow if width is very low
 - [ ] quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
+- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
+- [x] FIX: Sync left tab to right tab wasn't doing anything
 
 ## TODO
 

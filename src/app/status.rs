@@ -99,6 +99,21 @@ impl Focus {
     }
 }
 
+pub enum Direction {
+    RightToLeft,
+    LeftToRight,
+}
+
+impl Direction {
+    /// Returns the indexes of source and destination when tabs are synced
+    const fn source_dest(self) -> (usize, usize) {
+        match self {
+            Self::RightToLeft => (1, 0),
+            Self::LeftToRight => (0, 1),
+        }
+    }
+}
+
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
 /// It holds 2 tabs (left & right), even if only one can be displayed sometimes.
@@ -341,10 +356,9 @@ impl Status {
     }
 
     /// Sync right tab from left tab path or vice versa.
-    pub fn sync_tabs(&mut self, right_to_left: bool) -> Result<()> {
-        let from = right_to_left as usize;
-        let to = 1 - from;
-        self.tabs[to].cd(&self.tabs[from].current_file()?.path)
+    pub fn sync_tabs(&mut self, direction: Direction) -> Result<()> {
+        let (source, dest) = direction.source_dest();
+        self.tabs[dest].cd(&self.tabs[source].current_file()?.path)
     }
 
     pub fn second_window_height(&self) -> Result<usize> {
