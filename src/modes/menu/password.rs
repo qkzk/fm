@@ -75,14 +75,14 @@ impl PasswordHolder {
 
     /// Reads the cryptsetup password
     #[must_use]
-    pub const fn cryptsetup(&self) -> &Option<Password> {
-        &self.cryptsetup
+    pub fn cryptsetup(&mut self) -> Option<Password> {
+        std::mem::take(&mut self.cryptsetup)
     }
 
     /// Reads the sudo password
     #[must_use]
-    pub const fn sudo(&self) -> &Option<Password> {
-        &self.sudo
+    pub fn sudo(&mut self) -> Option<Password> {
+        std::mem::take(&mut self.sudo)
     }
 
     /// True if the sudo password was set

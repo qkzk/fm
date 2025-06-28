@@ -63,6 +63,10 @@ impl IsoDevice {
             filename = Self::FILENAME
         )
     }
+
+    fn set_mountpoint(&mut self, username: &str) {
+        self.mountpoints = Some(Self::mountpoints(username))
+    }
 }
 
 impl MountParameters for IsoDevice {
@@ -113,7 +117,7 @@ impl MountCommands for IsoDevice {
             return Ok(false);
         }
         let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {stdout}\nstderr: {stderr}");
         if success {
             self.is_mounted = false;
         }
@@ -134,16 +138,17 @@ impl MountCommands for IsoDevice {
         }
         // mkdir
         let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        if !stdout.is_empty() || !stderr.is_empty() {
+            log_info!("stdout: {stdout}\nstderr: {stderr}");
+        }
         let mut last_success = false;
         if success {
-            let mountpoints = Self::mountpoints(username);
-            self.mountpoints = Some(mountpoints.clone());
+            self.set_mountpoint(username);
             // mount
             let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
             last_success = success;
             if !success {
-                log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+                log_info!("stdout: {stdout}\nstderr: {stderr}");
             }
             self.is_mounted = success;
         } else {
@@ -227,8 +232,10 @@ impl NetworkMount {
         })
     }
 
-    fn umount(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
-        if !set_sudo_session(password_holder)? {
+    fn umount(&self, password: &mut PasswordHolder) -> Result<bool> {
+        let success = set_sudo_session(password);
+        password.reset();
+        if !matches!(success, Ok(true)) {
             return Ok(false);
         }
         let (success, _, _) = execute_sudo_command(&[UMOUNT, self.mountpoint.as_str()])?;
@@ -348,7 +355,7 @@ impl Mtp {
 
     fn symbols(&self) -> String {
         let is_mounted = self.is_mounted();
-        let mount_repr = if is_mounted { "M" } else { "U" };
+        let mount_repr = if is_mounted { 'M' } else { 'U' };
         format!(" {mount_repr}P")
     }
 }
@@ -359,7 +366,7 @@ impl Display for Mtp {
         write!(
             f,
             "{mount_repr}P {name}",
-            mount_repr = if is_mounted { "M" } else { "U" },
+            mount_repr = if is_mounted { 'M' } else { 'U' },
             name = self.name.clone()
         )?;
         if is_mounted {
@@ -411,7 +418,7 @@ impl Display for EncryptedBlockDevice {
         write!(
             f,
             "{is_mounted}C {path} {label}",
-            is_mounted = if self.is_mounted() { "M" } else { "U" },
+            is_mounted = if self.is_mounted() { 'M' } else { 'U' },
             label = self.label_repr(),
             path = truncate_string(&self.path, 20)
         )?;
@@ -439,47 +446,54 @@ impl EncryptedBlockDevice {
         self.parent = parent_uuid.clone()
     }
 
-    pub fn mount(&self, username: &str, password_holder: &mut PasswordHolder) -> Result<bool> {
+    pub fn mount(&self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
         let success = is_in_path(CRYPTSETUP)
-            && self.set_sudo_session(password_holder)?
-            && self.execute_luks_open(password_holder)?
+            && self.set_sudo_session(password)?
+            && self.execute_luks_open(password)?
             && self.execute_mkdir_crypto(username)?
             && self.execute_mount_crypto(username)?;
         drop_sudo_privileges()?;
         Ok(success)
     }
 
-    fn set_sudo_session(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
-        if !set_sudo_session(password_holder)? {
-            password_holder.reset();
+    fn set_sudo_session(&self, password: &mut PasswordHolder) -> Result<bool> {
+        if !set_sudo_session(password)? {
+            password.reset();
             return Ok(false);
         }
         Ok(true)
     }
 
-    fn execute_luks_open(&self, password_holder: &mut PasswordHolder) -> Result<bool> {
-        let (success, stdout, stderr) = execute_sudo_command_with_password(
+    fn execute_luks_open(&self, password: &mut PasswordHolder) -> Result<bool> {
+        match execute_sudo_command_with_password(
             &self.format_luksopen_parameters(),
-            password_holder
+            password
                 .cryptsetup()
                 .as_ref()
                 .context("cryptsetup password_holder isn't set")?,
             std::path::Path::new("/"),
-        )?;
-        password_holder.reset();
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
-        Ok(success)
+        ) {
+            Ok((success, stdout, stderr)) => {
+                log_info!("stdout: {stdout}\nstderr: {stderr}");
+                password.reset();
+                Ok(success)
+            }
+            Err(error) => {
+                password.reset();
+                Err(error)
+            }
+        }
     }
 
     fn execute_mkdir_crypto(&self, username: &str) -> Result<bool> {
         let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {stdout}\nstderr: {stderr}");
         Ok(success)
     }
 
     fn execute_mount_crypto(&self, username: &str) -> Result<bool> {
         let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {stdout}\nstderr: {stderr}");
         Ok(success)
     }
 
@@ -500,7 +514,7 @@ impl EncryptedBlockDevice {
     fn execute_umount_crypto(&self, username: &str) -> Result<bool> {
         let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
         if !success {
-            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
         Ok(success)
     }
@@ -508,7 +522,7 @@ impl EncryptedBlockDevice {
     fn execute_luks_close(&self) -> Result<bool> {
         let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
         if !success {
-            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
         Ok(success)
     }
@@ -685,7 +699,7 @@ impl MountCommands for BlockDevice {
         let args_sudo = self.mount_parameters(username);
         let (success, stdout, stderr) = execute_sudo_command(&args_sudo)?;
         if !success {
-            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {stdout}\nstderr: {stderr}");
             return Ok(false);
         }
         if !success {
@@ -702,7 +716,7 @@ impl MountCommands for BlockDevice {
         }
         let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
         if !success {
-            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
         Ok(success)
     }

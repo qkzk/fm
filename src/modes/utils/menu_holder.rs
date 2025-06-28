@@ -214,6 +214,7 @@ impl MenuHolder {
         Ok(())
     }
 
+    /// Reset the password holder, drop the sudo privileges (sudo -k) and clear the sudo command.
     pub fn clear_sudo_attributes(&mut self) -> Result<()> {
         self.password_holder.reset();
         drop_sudo_privileges()?;

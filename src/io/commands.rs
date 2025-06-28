@@ -190,7 +190,7 @@ pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output>
 }
 
 /// Spawn a sudo command with stdin, stdout and stderr piped.
-/// sudo is run with -S argument to read the passworo from stdin
+/// sudo is run with -S argument to read the password from stdin
 /// Args are sent.
 /// CWD is set to `path`.
 /// No password is set yet.
@@ -302,7 +302,8 @@ pub fn reset_sudo_faillock() -> Result<()> {
 
 /// Execute `sudo -S ls -l /root`, passing the password into `stdin`.
 /// It sets a sudo session which will be reset later.
-pub fn set_sudo_session(password: &PasswordHolder) -> Result<bool> {
+/// The password isn't reset. It's the responsability of the caller to reset the sudo password afterward.
+pub fn set_sudo_session(password: &mut PasswordHolder) -> Result<bool> {
     let root_path = std::path::Path::new("/");
     // sudo
     let (success, _, _) = execute_sudo_command_with_password(
