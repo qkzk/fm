@@ -19,29 +19,18 @@ use serde::Deserialize;
 use serde_json::{from_str, from_value, Value};
 use sysinfo::Disks;
 
-use crate::{
-    colored_skip_take,
-    common::{
-        current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR,
-        MOUNT, UDISKSCTL, UMOUNT,
-    },
-    config::{ColorG, Gradient},
-    io::color_to_style,
-    modes::ContentWindow,
+use crate::common::{
+    current_uid, current_username, is_dir_empty, is_in_path, CRYPTSETUP, GIO, LSBLK, MKDIR, MOUNT,
+    UDISKSCTL, UMOUNT,
 };
-use crate::{
-    config::MENU_STYLES,
-    io::{
-        drop_sudo_privileges, execute_and_output, execute_sudo_command,
-        execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr,
-        DrawMenu,
-    },
+use crate::config::{ColorG, Gradient, MENU_STYLES};
+use crate::io::{
+    color_to_style, drop_sudo_privileges, execute_and_output, execute_sudo_command,
+    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
+    Offseted,
 };
-use crate::{impl_content, impl_selectable, log_info, log_line};
-use crate::{
-    io::Offseted,
-    modes::{MountCommands, MountParameters, PasswordHolder},
-};
+use crate::modes::{ContentWindow, MountCommands, MountParameters, PasswordHolder};
+use crate::{colored_skip_take, impl_content, impl_selectable, log_info, log_line};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).
