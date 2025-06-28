@@ -1,3 +1,4 @@
+use std::ops::SubAssign;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -369,7 +370,7 @@ impl Status {
     /// Execute a click on a menu item. Action depends on which menu was opened.
     fn menu_action(&mut self, row: u16, col: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
-        let row_offset = row as usize - second_window_height;
+        let row_offset = (row as usize).saturating_sub(second_window_height);
         const OFFSET: usize =
             ContentWindow::WINDOW_PADDING + ContentWindow::WINDOW_MARGIN_TOP_U16 as usize;
         if row_offset >= OFFSET {

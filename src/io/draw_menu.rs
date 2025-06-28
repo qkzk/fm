@@ -125,7 +125,8 @@ macro_rules! impl_draw_menu_with_char {
                     colored_skip_take!(content, window),
                 )
                 .filter(|(_, (index, _, _))| {
-                    (*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1 - window.top as u16
+                    ((*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1)
+                        .saturating_sub(window.top as u16)
                         + 2
                         <= rect.height
                 })
