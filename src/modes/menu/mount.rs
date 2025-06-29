@@ -740,11 +740,38 @@ impl Display for BlockDevice {
 }
 
 #[derive(Debug)]
+pub struct RemoteDevice {
+    name: String,
+    mountpoint: String,
+}
+
+impl RemoteDevice {
+    fn new<S, T>(name: S, mountpoint: T) -> Self
+    where
+        S: Into<String>,
+        T: Into<String>,
+    {
+        Self {
+            name: name.into(),
+            mountpoint: mountpoint.into(),
+        }
+    }
+
+    const fn is_mounted(&self) -> bool {
+        true
+    }
+
+    fn symbols(&self) -> String {
+        " MR".to_string()
+    }
+}
+
+#[derive(Debug)]
 pub enum Mountable {
     Device(BlockDevice),
     Encrypted(EncryptedBlockDevice),
     MTP(Mtp),
-    Remote((String, String)),
+    Remote(RemoteDevice),
     Network(NetworkMount),
 }
 impl Display for Mountable {
@@ -754,8 +781,8 @@ impl Display for Mountable {
             Self::Encrypted(device) => write!(f, "{device}"),
             Self::MTP(device) => write!(f, "{device}"),
             Self::Network(device) => write!(f, "{device}"),
-            Self::Remote((remote_desc, local_path)) => {
-                write!(f, "MS {remote_desc} -> {local_path}")
+            Self::Remote(RemoteDevice { name, mountpoint }) => {
+                write!(f, "MS {name} -> {mountpoint}",)
             }
         }
     }
@@ -778,7 +805,7 @@ impl Mountable {
             Self::Encrypted(device) => device.is_mounted(),
             Self::MTP(device) => device.is_mounted(),
             Self::Network(_) => true,
-            Self::Remote(_) => true,
+            Self::Remote(device) => device.is_mounted(),
         }
     }
 
@@ -788,7 +815,10 @@ impl Mountable {
             Self::Encrypted(device) => device.path.as_str(),
             Self::MTP(device) => device.path.as_str(),
             Self::Network(device) => device.path.as_str(),
-            Self::Remote((_, local_path)) => local_path.as_str(),
+            Self::Remote(RemoteDevice {
+                name: _,
+                mountpoint,
+            }) => mountpoint.as_str(),
         }
     }
 
@@ -802,7 +832,10 @@ impl Mountable {
             Mountable::Encrypted(device) => device.mountpoint.as_deref(),
             Mountable::MTP(device) => Some(&device.path),
             Mountable::Network(device) => Some(&device.mountpoint),
-            Mountable::Remote((_name, mountpoint)) => Some(mountpoint),
+            Mountable::Remote(RemoteDevice {
+                name: _,
+                mountpoint,
+            }) => Some(mountpoint),
         }
     }
 
@@ -816,7 +849,7 @@ impl Mountable {
             Self::Encrypted(device) => device.symbols(),
             Self::MTP(device) => device.symbols(),
             Self::Network(device) => device.symbols(),
-            Self::Remote((_, _local_path)) => " MR".to_string(),
+            Self::Remote(device) => device.symbols(),
         }
     }
 
@@ -882,9 +915,9 @@ impl Mount {
                 .iter()
                 .filter(|d| d.file_system().to_string_lossy().contains("sshfs"))
                 .map(|d| {
-                    Mountable::Remote((
-                        d.name().to_string_lossy().to_string(),
-                        d.mount_point().to_string_lossy().to_string(),
+                    Mountable::Remote(RemoteDevice::new(
+                        d.name().to_string_lossy(),
+                        d.mount_point().to_string_lossy(),
                     ))
                 })
                 .collect::<Vec<_>>(),
@@ -985,7 +1018,10 @@ impl Mount {
             }
             Mountable::MTP(device) => device.umount(),
             Mountable::Network(_device) => Ok(false),
-            Mountable::Remote((_name, mountpoint)) => umount_remote_no_password(mountpoint),
+            Mountable::Remote(RemoteDevice {
+                name: _,
+                mountpoint,
+            }) => umount_remote_no_password(mountpoint),
         }
     }
 
@@ -1031,7 +1067,10 @@ impl Mount {
             Mountable::Encrypted(_device) => {
                 unreachable!("EncryptedBlockDevice should impl its own method")
             }
-            Mountable::Remote((_, mountpoint)) => umount_remote(mountpoint, password_holder)?,
+            Mountable::Remote(RemoteDevice {
+                name: _,
+                mountpoint,
+            }) => umount_remote(mountpoint, password_holder)?,
         };
         if !success {
             reset_sudo_faillock()?
