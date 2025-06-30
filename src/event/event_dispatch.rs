@@ -172,9 +172,9 @@ impl EventDispatcher {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
 
-            Navigate::Mount if c == 'm' => status.mount_normal_drive(),
+            Navigate::Mount if c == 'm' => status.mount_normal_device(),
             Navigate::Mount if c == 'g' => status.go_to_normal_drive(),
-            Navigate::Mount if c == 'u' => status.umount_normal_drive(),
+            Navigate::Mount if c == 'u' => status.umount_normal_device(),
             Navigate::Mount if c == 'e' => status.eject_removable_device(),
             Navigate::Mount if c.is_ascii_digit() => status.go_to_mount_per_index(c),
 

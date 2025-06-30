@@ -1375,7 +1375,7 @@ impl Status {
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
     // TODO: refactor
-    pub fn mount_normal_drive(&mut self) -> Result<()> {
+    pub fn mount_normal_device(&mut self) -> Result<()> {
         let Some(device) = self.menu.mount.selected() else {
             return Ok(());
         };
@@ -1394,7 +1394,7 @@ impl Status {
             return Ok(());
         }
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::MOUNT)
+            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::DEVICE)
         } else {
             if let Ok(true) = self
                 .menu
@@ -1439,7 +1439,7 @@ impl Status {
 
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
-    pub fn umount_normal_drive(&mut self) -> Result<()> {
+    pub fn umount_normal_device(&mut self) -> Result<()> {
         let Some(device) = self.menu.mount.selected() else {
             return Ok(());
         };
@@ -1457,7 +1457,7 @@ impl Status {
             return Ok(());
         }
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::MOUNT)
+            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::DEVICE)
         } else {
             self.menu
                 .mount
@@ -1715,29 +1715,22 @@ impl Status {
 
     /// Dispatch the known password depending of which component set
     /// the `PasswordUsage`.
+    #[rustfmt::skip]
     pub fn dispatch_password(
         &mut self,
         action: Option<BlockDeviceAction>,
         dest: PasswordUsage,
         sudo_command: Option<String>,
     ) -> Result<()> {
-        match dest {
-            PasswordUsage::ISO => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_iso_drive(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_iso_drive(),
-                None => Ok(()),
-            },
-            PasswordUsage::CRYPTSETUP(_) => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_encrypted_drive(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
-                None => Ok(()),
-            },
-            PasswordUsage::MOUNT => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_normal_drive(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_normal_drive(),
-                None => Ok(()),
-            },
-            PasswordUsage::SUDOCOMMAND => self.run_sudo_command(sudo_command),
+        match (dest, action) {
+            (PasswordUsage::ISO,            Some(BlockDeviceAction::MOUNT))  => self.mount_iso_drive(),
+            (PasswordUsage::ISO,            Some(BlockDeviceAction::UMOUNT)) => self.umount_iso_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(BlockDeviceAction::MOUNT))  => self.mount_encrypted_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(BlockDeviceAction::UMOUNT)) => self.umount_encrypted_drive(),
+            (PasswordUsage::DEVICE,         Some(BlockDeviceAction::MOUNT))  => self.mount_normal_device(),
+            (PasswordUsage::DEVICE,         Some(BlockDeviceAction::UMOUNT)) => self.umount_normal_device(),
+            (PasswordUsage::SUDOCOMMAND,    _)                               => self.run_sudo_command(sudo_command),
+            (_,                             _)                               => Ok(()),
         }
     }
 

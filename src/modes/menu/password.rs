@@ -25,7 +25,7 @@ pub enum PasswordUsage {
     ISO,
     CRYPTSETUP(PasswordKind),
     SUDOCOMMAND,
-    MOUNT,
+    DEVICE,
 }
 
 type Password = String;
