@@ -643,7 +643,7 @@ impl BlockDevice {
         )
     }
 
-    pub fn power_off(&self) -> Result<bool> {
+    pub fn try_power_off(&self) -> Result<bool> {
         if !self.hotplug && !self.is_mounted() {
             return Ok(false);
         }
@@ -869,35 +869,9 @@ impl CowStr for Mountable {
         self.to_string().into()
     }
 }
+struct MountBuilder;
 
-#[derive(Default, Debug)]
-pub struct Mount {
-    pub content: Vec<Mountable>,
-    index: usize,
-}
-
-impl Mount {
-    const WIDTHS: [Constraint; 5] = [
-        Constraint::Length(2),
-        Constraint::Length(3),
-        Constraint::Max(28),
-        Constraint::Length(10),
-        Constraint::Min(1),
-    ];
-
-    pub fn update(&mut self, disks: &Disks) -> Result<()> {
-        self.index = 0;
-
-        self.content = Self::build_from_json()?;
-        self.extend_with_remote(disks);
-        self.extend_with_mtp_from_gio();
-        self.extend_with_network()?;
-
-        #[cfg(debug_assertions)]
-        log_info!("{self:#?}");
-        Ok(())
-    }
-
+impl MountBuilder {
     fn build_from_json() -> Result<Vec<Mountable>> {
         let json_content = get_devices_json()?;
         match Self::from_json(json_content) {
@@ -907,60 +881,6 @@ impl Mount {
                 Ok(vec![])
             }
         }
-    }
-
-    fn extend_with_remote(&mut self, disks: &Disks) {
-        self.content.extend(
-            disks
-                .iter()
-                .filter(|d| d.file_system().to_string_lossy().contains("sshfs"))
-                .map(|d| {
-                    Mountable::Remote(RemoteDevice::new(
-                        d.name().to_string_lossy(),
-                        d.mount_point().to_string_lossy(),
-                    ))
-                })
-                .collect::<Vec<_>>(),
-        );
-    }
-
-    fn extend_with_network(&mut self) -> Result<()> {
-        self.content.extend(Self::get_network_devices()?);
-        Ok(())
-    }
-
-    fn get_network_devices() -> io::Result<Vec<Mountable>> {
-        let reader = BufReader::new(File::open("/proc/self/mountinfo")?);
-        let mut network_mountables = vec![];
-
-        for line in reader.lines() {
-            let Some(network_mount) = NetworkMount::from_network_line(line) else {
-                continue;
-            };
-            network_mountables.push(Mountable::Network(network_mount));
-        }
-        Ok(network_mountables)
-    }
-
-    fn extend_with_mtp_from_gio(&mut self) {
-        if !is_in_path(GIO) {
-            return;
-        }
-        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
-            return;
-        };
-        let Ok(stdout) = String::from_utf8(output.stdout) else {
-            return;
-        };
-
-        self.content.extend(
-            stdout
-                .lines()
-                .filter(|line| line.contains("activation_root"))
-                .map(Mtp::from_gio)
-                .filter_map(std::result::Result::ok)
-                .map(Mountable::MTP),
-        )
     }
 
     fn from_json(json_content: String) -> Result<Vec<Mountable>, Box<dyn std::error::Error>> {
@@ -1008,6 +928,89 @@ impl Mount {
         } else {
             content.push(Mountable::Device(parent))
         }
+    }
+
+    fn extend_with_remote(content: &mut Vec<Mountable>, disks: &Disks) {
+        content.extend(
+            disks
+                .iter()
+                .filter(|d| d.file_system().to_string_lossy().contains("sshfs"))
+                .map(|d| {
+                    Mountable::Remote(RemoteDevice::new(
+                        d.name().to_string_lossy(),
+                        d.mount_point().to_string_lossy(),
+                    ))
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    fn extend_with_network(content: &mut Vec<Mountable>) -> Result<()> {
+        content.extend(Self::get_network_devices()?);
+        Ok(())
+    }
+
+    fn get_network_devices() -> io::Result<Vec<Mountable>> {
+        let reader = BufReader::new(File::open("/proc/self/mountinfo")?);
+        let mut network_mountables = vec![];
+
+        for line in reader.lines() {
+            let Some(network_mount) = NetworkMount::from_network_line(line) else {
+                continue;
+            };
+            network_mountables.push(Mountable::Network(network_mount));
+        }
+        Ok(network_mountables)
+    }
+
+    fn extend_with_mtp_from_gio(content: &mut Vec<Mountable>) {
+        if !is_in_path(GIO) {
+            return;
+        }
+        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
+            return;
+        };
+        let Ok(stdout) = String::from_utf8(output.stdout) else {
+            return;
+        };
+
+        content.extend(
+            stdout
+                .lines()
+                .filter(|line| line.contains("activation_root"))
+                .map(Mtp::from_gio)
+                .filter_map(std::result::Result::ok)
+                .map(Mountable::MTP),
+        )
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Mount {
+    pub content: Vec<Mountable>,
+    index: usize,
+}
+
+impl Mount {
+    const WIDTHS: [Constraint; 5] = [
+        Constraint::Length(2),
+        Constraint::Length(3),
+        Constraint::Max(28),
+        Constraint::Length(10),
+        Constraint::Min(1),
+    ];
+
+    pub fn update(&mut self, disks: &Disks) -> Result<()> {
+        self.index = 0;
+
+        self.content = MountBuilder::build_from_json()?;
+        MountBuilder::extend_with_remote(&mut self.content, disks);
+        MountBuilder::extend_with_mtp_from_gio(&mut self.content);
+        MountBuilder::extend_with_network(&mut self.content)?;
+
+        #[cfg(debug_assertions)]
+        log_info!("{self:#?}");
+        Ok(())
     }
 
     pub fn umount_selected_no_password(&mut self) -> Result<bool> {
@@ -1084,7 +1087,7 @@ impl Mount {
         let Some(Mountable::Device(device)) = &self.selected() else {
             return Ok(false);
         };
-        device.power_off()
+        device.try_power_off()
     }
 
     /// We receive the uuid of the _parent_ and must compare it to the parent of the device.

@@ -1643,7 +1643,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] refactor the whole file
         - [ ] deduplicate sudo commands. 2 methods are totally similar and should be merged
         - [x] Mountable::Remote(...) should use a struct instead of 2 strings. Can't even remember what they meant...
-        - [ ] Mount struct should have a builder struct with associated methods
+        - [x] Mount struct should have a builder struct with associated methods
         - [ ] failed sudo commands should display the reason in "log line" : wrong passord ? command failed ? etc.
         - [ ] status.dispatch_password should match agains (dest, action) for simpler code
       - [x] remove RemovableDevices
