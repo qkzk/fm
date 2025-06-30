@@ -5,8 +5,8 @@ use crate::common::{
     NVIM_ADDRESS_LINES, PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES,
     RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
-use crate::modes::BlockDeviceAction;
 use crate::modes::InputCompleted;
+use crate::modes::MountAction;
 use crate::modes::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
@@ -114,7 +114,7 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(Option<BlockDeviceAction>, PasswordUsage),
+    Password(Option<MountAction>, PasswordUsage),
     /// Shell command execute as is
     ShellCommand,
     /// Mount a remote directory with sshfs

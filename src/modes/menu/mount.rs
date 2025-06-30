@@ -170,7 +170,7 @@ impl Display for IsoDevice {
 
 /// Possible actions on mountable devices
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum BlockDeviceAction {
+pub enum MountAction {
     MOUNT,
     UMOUNT,
 }

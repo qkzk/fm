@@ -8,7 +8,7 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, Navigate,
+    Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, MountAction, Navigate,
     NodeCreation, PasswordUsage, PickerCaller, TerminalApplications,
 };
 use crate::{log_info, log_line};
@@ -346,7 +346,7 @@ impl LeaveMenu {
     /// Execute a password command (sudo or device passphrase).
     fn password(
         status: &mut Status,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         usage: PasswordUsage,
     ) -> Result<()> {
         status.execute_password_command(action, usage)

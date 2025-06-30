@@ -26,12 +26,11 @@ use crate::io::{
     Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo,
-    FileKind, FilterKind, FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu,
-    MenuHolder, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
-    SAME_WINDOW_TOKEN,
+    copy_move, parse_line_output, regex_flagger, shell_command_parser, Content, ContentWindow,
+    CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction,
+    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1295,7 +1294,7 @@ impl Status {
     /// Ask a sudo password first if needed. It should always be the case.
     fn mount_iso_drive(&mut self) -> Result<()> {
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::ISO)?;
+            self.ask_password(Some(MountAction::MOUNT), PasswordUsage::ISO)?;
         } else {
             self.ensure_iso_device_is_some()?;
             let Some(ref mut iso_device) = self.menu.iso_device else {
@@ -1321,7 +1320,7 @@ impl Status {
     pub fn umount_iso_drive(&mut self) -> Result<()> {
         if let Some(ref mut iso_device) = self.menu.iso_device {
             if !self.menu.password_holder.has_sudo() {
-                self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::ISO)?;
+                self.ask_password(Some(MountAction::UMOUNT), PasswordUsage::ISO)?;
             } else {
                 iso_device.umount(&current_username()?, &mut self.menu.password_holder)?;
             };
@@ -1333,12 +1332,12 @@ impl Status {
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
-                Some(BlockDeviceAction::MOUNT),
+                Some(MountAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else if !self.menu.password_holder.has_cryptsetup() {
             self.ask_password(
-                Some(BlockDeviceAction::MOUNT),
+                Some(MountAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
@@ -1357,7 +1356,7 @@ impl Status {
     pub fn umount_encrypted_drive(&mut self) -> Result<()> {
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
-                Some(BlockDeviceAction::UMOUNT),
+                Some(MountAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else {
@@ -1394,7 +1393,7 @@ impl Status {
             return Ok(());
         }
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::DEVICE)
+            self.ask_password(Some(MountAction::MOUNT), PasswordUsage::DEVICE)
         } else {
             if let Ok(true) = self
                 .menu
@@ -1457,7 +1456,7 @@ impl Status {
             return Ok(());
         }
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::DEVICE)
+            self.ask_password(Some(MountAction::UMOUNT), PasswordUsage::DEVICE)
         } else {
             self.menu
                 .mount
@@ -1549,7 +1548,7 @@ impl Status {
     /// Ask for a password of some kind (sudo or device passphrase).
     fn ask_password(
         &mut self,
-        encrypted_action: Option<BlockDeviceAction>,
+        encrypted_action: Option<MountAction>,
         password_dest: PasswordUsage,
     ) -> Result<()> {
         log_info!("ask_password");
@@ -1563,7 +1562,7 @@ impl Status {
     /// execute the command requiring a password.
     pub fn execute_password_command(
         &mut self,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         dest: PasswordUsage,
     ) -> Result<()> {
         let password = self.menu.input.string();
@@ -1718,19 +1717,19 @@ impl Status {
     #[rustfmt::skip]
     pub fn dispatch_password(
         &mut self,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         dest: PasswordUsage,
         sudo_command: Option<String>,
     ) -> Result<()> {
         match (dest, action) {
-            (PasswordUsage::ISO,            Some(BlockDeviceAction::MOUNT))  => self.mount_iso_drive(),
-            (PasswordUsage::ISO,            Some(BlockDeviceAction::UMOUNT)) => self.umount_iso_drive(),
-            (PasswordUsage::CRYPTSETUP(_),  Some(BlockDeviceAction::MOUNT))  => self.mount_encrypted_drive(),
-            (PasswordUsage::CRYPTSETUP(_),  Some(BlockDeviceAction::UMOUNT)) => self.umount_encrypted_drive(),
-            (PasswordUsage::DEVICE,         Some(BlockDeviceAction::MOUNT))  => self.mount_normal_device(),
-            (PasswordUsage::DEVICE,         Some(BlockDeviceAction::UMOUNT)) => self.umount_normal_device(),
-            (PasswordUsage::SUDOCOMMAND,    _)                               => self.run_sudo_command(sudo_command),
-            (_,                             _)                               => Ok(()),
+            (PasswordUsage::ISO,            Some(MountAction::MOUNT))  => self.mount_iso_drive(),
+            (PasswordUsage::ISO,            Some(MountAction::UMOUNT)) => self.umount_iso_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(MountAction::MOUNT))  => self.mount_encrypted_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(MountAction::UMOUNT)) => self.umount_encrypted_drive(),
+            (PasswordUsage::DEVICE,         Some(MountAction::MOUNT))  => self.mount_normal_device(),
+            (PasswordUsage::DEVICE,         Some(MountAction::UMOUNT)) => self.umount_normal_device(),
+            (PasswordUsage::SUDOCOMMAND,    _)                         => self.run_sudo_command(sudo_command),
+            (_,                             _)                         => Ok(()),
         }
     }
 
