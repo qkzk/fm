@@ -1572,24 +1572,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary 
 
-- Removed "terminal" & "terminal flags" from configuration. Shell programs are opened in the same window and doesn't require new terminal.
+- Mount menu. All your mount points and non mounted devices in one menu (Alt+u). Select with arrows, enter to navigate to, mount with m, unmount with u.
+- Reponsive display of metadata. In small windows, some metadatas (group, modified times, user etc.) are hidden. Better experience in very small windows.
 - Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
 - More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
-- Copy text file content to clipbloard with Ctrl+a. Only works for "text" file as guessed by their extension. 
 - iterm2 Inline Image Protocol. Compatible terminal emulators (WezTerm etc.) can use their own image displayer. 
-  You can display images without having ueberzug installed
+  You can display images without having ueberzug installed.
+- Copy text file content to clipbloard with Ctrl+a. Only works for "text" files guessed from their extension. 
+- Removed "terminal" & "terminal flags" from configuration.  Doesn't break config file. It's just not used anymore. Shell programs are opened in the same window and doesn't require new terminal.
 - removed "clips" for videos animations. It was too slow :( I'll try again someday
-- Removed "terminal" from configuration. Doesn't break config file. It's just not used anymore.
 - VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
 - swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
 - Use char keybinds in tuimenu & cli menus for quick actions
 - Preview compiled executables with readelf
-- Rename: renamed file stays selected. You can't overwrite an existing file anymore.
-- Permissions: special bits (setuid s/S, setgid s/S, sticky t/T) wasn't displayed or parsed properly.
-  - They're all displayed properly.
-  - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
-    It's still possible to do !chmod whatever %s to change the permissions
-- Files with size between 9.5units and 10.0units weren't properly aligned.
 - Theming. Use custom themes for syntax highlighting.
   Themes should be stored in `~/.config/fm/syntect_themes/` and can either be .tmTheme (textmate-themes) or .themedump (compressed).
   All textmate themes should be compatible. You can find more themes here : https://github.com/filmgirl/textmate-themes 
@@ -1600,6 +1595,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 **Bugfixes :**
 
+- Rename: renamed file stays selected. Also, you can't overwrite an existing file anymore.
+- Permissions: special bits (setuid s/S, setgid s/S, sticky t/T) wasn't displayed or parsed properly.
+  - They're all displayed properly.
+  - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
+    It's still possible to do !chmod whatever %s to change the permissions
+- Files with size between 9.5units and 10.0units weren't properly aligned.
 - click in menus was offset by 2
 - shell would open in other tab path
 - open config file did nothing
