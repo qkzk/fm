@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use nucleo::Injector;
 use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
@@ -216,7 +216,8 @@ fn inject_password(password: &str, child: &mut std::process::Child) -> Result<()
         .stdin
         .as_mut()
         .context("inject_password: couldn't open child stdin")?;
-    child_stdin.write_all(format!("{password}\n").as_bytes())?;
+    child_stdin.write_all(password.as_bytes())?;
+    child_stdin.write_all(b"\n")?;
     Ok(())
 }
 
@@ -232,10 +233,45 @@ where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
     P: AsRef<std::path::Path> + std::fmt::Debug,
 {
-    log_info!("sudo_with_password {args:?} CWD {path:?}");
-    log_line!("running sudo command with password. args: {args:?}, CWD: {path:?}");
-    let mut child = new_sudo_command_awaiting_password(args, path)?;
-    inject_password(password, &mut child)?;
+    execute_sudo_command_inner(args, Some(password), Some(path))
+}
+
+/// Runs a passwordless sudo command.
+/// Returns stdout & stderr
+pub fn execute_sudo_command_passwordless<S>(args: &[S]) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+{
+    execute_sudo_command_inner::<S, &str>(args, None, None)
+}
+
+fn execute_sudo_command_inner<S, P>(
+    args: &[S],
+    password: Option<&str>,
+    path: Option<P>,
+) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+    P: AsRef<std::path::Path> + std::fmt::Debug,
+{
+    log_info!("running sudo {args:?}");
+    log_line!("running sudo command. {args:?}");
+    let child = if let Some(password) = password {
+        let Some(path) = path else {
+            bail!("Password should be set to run a new sudo command");
+        };
+        log_info!("CWD {path:?}");
+        let mut child = new_sudo_command_awaiting_password(args, path)?;
+        log_info!("inject sudo password");
+        inject_password(password, &mut child)?;
+        child
+    } else {
+        new_sudo_command_passwordless(args)?
+    };
+    run_and_output(child)
+}
+
+fn run_and_output(child: std::process::Child) -> Result<(bool, String, String)> {
     let output = child.wait_with_output()?;
     Ok((
         output.status.success(),
@@ -243,7 +279,6 @@ where
         String::from_utf8(output.stderr)?,
     ))
 }
-
 /// Spawn a sudo command which shouldn't require a password.
 /// The command is executed immediatly and we return an handle to it.
 fn new_sudo_command_passwordless<S>(args: &[S]) -> Result<std::process::Child>
@@ -256,23 +291,6 @@ where
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?)
-}
-
-/// Runs a passwordless sudo command.
-/// Returns stdout & stderr
-pub fn execute_sudo_command<S>(args: &[S]) -> Result<(bool, String, String)>
-where
-    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
-{
-    log_info!("running sudo {:?}", args);
-    log_line!("running sudo command. {args:?}");
-    let child = new_sudo_command_passwordless(args)?;
-    let output = child.wait_with_output()?;
-    Ok((
-        output.status.success(),
-        String::from_utf8(output.stdout)?,
-        String::from_utf8(output.stderr)?,
-    ))
 }
 
 /// Runs `sudo -k` removing sudo privileges of current running instance.
@@ -318,7 +336,7 @@ pub fn set_sudo_session(password: &mut PasswordHolder) -> Result<bool> {
 }
 
 #[tokio::main]
-pub async fn inject(mut command: TokioCommand, injector: Injector<String>) {
+pub async fn inject_command(mut command: TokioCommand, injector: Injector<String>) {
     let Ok(mut cmd) = command
         .stdout(Stdio::piped()) // Can do the same for stderr
         .spawn()

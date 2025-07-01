@@ -25,7 +25,7 @@ use crate::common::{
 };
 use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{
-    color_to_style, drop_sudo_privileges, execute_and_output, execute_sudo_command,
+    color_to_style, drop_sudo_privileges, execute_and_output, execute_sudo_command_passwordless,
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
     Offseted,
 };
@@ -116,7 +116,8 @@ impl MountCommands for IsoDevice {
         if !success {
             return Ok(false);
         }
-        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.umount_parameters(username))?;
         log_info!("stdout: {stdout}\nstderr: {stderr}");
         if success {
             self.is_mounted = false;
@@ -137,7 +138,8 @@ impl MountCommands for IsoDevice {
             return Ok(false);
         }
         // mkdir
-        let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.mkdir_parameters(username))?;
         if !stdout.is_empty() || !stderr.is_empty() {
             log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
@@ -145,7 +147,8 @@ impl MountCommands for IsoDevice {
         if success {
             self.set_mountpoint(username);
             // mount
-            let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
+            let (success, stdout, stderr) =
+                execute_sudo_command_passwordless(&self.mount_parameters(username))?;
             last_success = success;
             if !success {
                 log_info!("stdout: {stdout}\nstderr: {stderr}");
@@ -238,7 +241,8 @@ impl NetworkMount {
         if !matches!(success, Ok(true)) {
             return Ok(false);
         }
-        let (success, _, _) = execute_sudo_command(&[UMOUNT, self.mountpoint.as_str()])?;
+        let (success, _, _) =
+            execute_sudo_command_passwordless(&[UMOUNT, self.mountpoint.as_str()])?;
         log_info!(
             "Unmounted {device}. Success ? {success}",
             device = self.mountpoint,
@@ -486,13 +490,15 @@ impl EncryptedBlockDevice {
     }
 
     fn execute_mkdir_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) = execute_sudo_command(&self.mkdir_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.mkdir_parameters(username))?;
         log_info!("stdout: {stdout}\nstderr: {stderr}");
         Ok(success)
     }
 
     fn execute_mount_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) = execute_sudo_command(&self.mount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.mount_parameters(username))?;
         log_info!("stdout: {stdout}\nstderr: {stderr}");
         Ok(success)
     }
@@ -512,7 +518,8 @@ impl EncryptedBlockDevice {
     }
 
     fn execute_umount_crypto(&self, username: &str) -> Result<bool> {
-        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.umount_parameters(username))?;
         if !success {
             log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
@@ -520,7 +527,8 @@ impl EncryptedBlockDevice {
     }
 
     fn execute_luks_close(&self) -> Result<bool> {
-        let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.format_luksclose_parameters())?;
         if !success {
             log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
@@ -697,7 +705,7 @@ impl MountCommands for BlockDevice {
         }
         // mount
         let args_sudo = self.mount_parameters(username);
-        let (success, stdout, stderr) = execute_sudo_command(&args_sudo)?;
+        let (success, stdout, stderr) = execute_sudo_command_passwordless(&args_sudo)?;
         if !success {
             log_info!("stdout: {stdout}\nstderr: {stderr}");
             return Ok(false);
@@ -714,7 +722,8 @@ impl MountCommands for BlockDevice {
         if !success {
             return Ok(false);
         }
-        let (success, stdout, stderr) = execute_sudo_command(&self.umount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_passwordless(&self.umount_parameters(username))?;
         if !success {
             log_info!("stdout: {stdout}\nstderr: {stderr}");
         }
@@ -1137,7 +1146,7 @@ fn umount_remote(mountpoint: &str, password_holder: &mut PasswordHolder) -> Resu
     if !success {
         return Ok(false);
     }
-    let (success, stdout, stderr) = execute_sudo_command(&[UMOUNT, mountpoint])?;
+    let (success, stdout, stderr) = execute_sudo_command_passwordless(&[UMOUNT, mountpoint])?;
     if !success {
         log_info!(
             "umount remote failed:\nstdout: {}\nstderr: {}",

@@ -19,7 +19,7 @@ use walkdir::WalkDir;
 use crate::modes::{extract_extension, ContentWindow, Icon, Input};
 use crate::{
     config::{with_icon, with_icon_metadata},
-    io::inject,
+    io::inject_command,
     modes::FileKind,
 };
 
@@ -376,7 +376,7 @@ impl FuzzyFinder<String> {
     pub fn find_line(&self, tokio_greper: TokioCommand) {
         let injector = self.injector();
         spawn(move || {
-            inject(tokio_greper, injector);
+            inject_command(tokio_greper, injector);
         });
     }
 }

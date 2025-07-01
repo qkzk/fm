@@ -1704,10 +1704,13 @@ impl Status {
             return self.menu.clear_sudo_attributes();
         };
         let directory_of_selected = self.current_tab().directory_of_selected()?;
-        let (success, stdout, _) =
+        let (success, stdout, stderr) =
             execute_sudo_command_with_password(&args, &password, directory_of_selected)?;
         log_info!("sudo command execution. success: {success}");
         self.menu.clear_sudo_attributes()?;
+        if !success {
+            log_line!("sudo command failed: {stderr}");
+        }
         self.preview_command_output(stdout, sudo_command.to_owned());
         Ok(())
     }
