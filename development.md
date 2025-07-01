@@ -1621,7 +1621,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
   - [x] Remote mount shows the command that will be generated
   - [x] expand local path with tilde
-- [ ] mount menu
+- [x] mount menu
     - [x] mount menu
     - [x] display 
     - [x] actions for normal block devices (non encrypted disks)
@@ -1629,7 +1629,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] mount / unmount with sudo 
       - [x] mount / unmount without sudo which opens pkexec
       - [x] encrypted drives
-    - [ ] regroup all mount things `Mount` menu
+    - [x] regroup all mount things `Mount` menu
       - [x] enum with different kinds: BlockDevice, Remote
       - [x] enum variant: `Encrypted` moved most methods to it
       - [x] encrypted drives, it should be doable but annoying 
@@ -1640,7 +1640,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] eject removable devices
       - [x] include GIO (=MTP) devices
         - [ ] test with a working phone...
-      - [ ] refactor the whole file
+      - [x] refactor the whole file
         - [x] deduplicate sudo commands. 2 methods are totally similar and should be merged
         - [x] Mountable::Remote(...) should use a struct instead of 2 strings. Can't even remember what they meant...
         - [x] Mount struct should have a builder struct with associated methods
