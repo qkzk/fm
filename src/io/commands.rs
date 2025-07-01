@@ -256,17 +256,16 @@ where
 {
     log_info!("running sudo {args:?}");
     log_line!("running sudo command. {args:?}");
-    let child = if let Some(password) = password {
-        let Some(path) = path else {
-            bail!("Password should be set to run a new sudo command");
-        };
-        log_info!("CWD {path:?}");
-        let mut child = new_sudo_command_awaiting_password(args, path)?;
-        log_info!("inject sudo password");
-        inject_password(password, &mut child)?;
-        child
-    } else {
-        new_sudo_command_passwordless(args)?
+    let child = match (password, path) {
+        (None, None) => new_sudo_command_passwordless(args)?,
+        (Some(password), Some(path)) => {
+            log_info!("CWD {path:?}");
+            let mut child = new_sudo_command_awaiting_password(args, path)?;
+            inject_password(password, &mut child)?;
+            log_info!("injected sudo password");
+            child
+        }
+        _ => bail!("Password and Path should be set together"),
     };
     run_and_output(child)
 }
