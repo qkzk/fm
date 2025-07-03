@@ -15,6 +15,10 @@ const COMPATIBLES: [&str; 4] = [
     "VSCODE_INJECTION",
 ];
 
+/// What image adapter is used ?
+/// - Unable means no supported image adapter. ie. image can't be displayed.
+/// - Ueberzug if it's installed,
+/// - InlineImage if the terminal emulator supports it.
 #[derive(Default)]
 pub enum ImageAdapter {
     #[default]
@@ -46,6 +50,10 @@ impl ImageAdapter {
     }
 }
 
+/// Methods used to display images :
+/// - `draw` asks the adapter to do the drawing,
+/// - `clear` erases an image from its path,
+/// - `clear_all` erases all drawed images.
 pub trait ImageDisplayer {
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()>;
     fn clear(&mut self, image: &DisplayedImage) -> Result<()>;

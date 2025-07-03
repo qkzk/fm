@@ -1724,6 +1724,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: display could crash from substraction with overflow if width is very low
 - [x] FIX: Sync left tab to right tab wasn't doing anything
 - [x] FIX: 2 panes, focus right, resize to lower, right pane is closed but still has focus.
+- [x] Removed useless function color_to_style
 
 ## TODO
 

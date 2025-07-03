@@ -25,7 +25,7 @@ use crate::common::{
 };
 use crate::config::{ColorG, Gradient, MENU_STYLES};
 use crate::io::{
-    color_to_style, drop_sudo_privileges, execute_and_output, execute_sudo_command_passwordless,
+    drop_sudo_privileges, execute_and_output, execute_sudo_command_passwordless,
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
     Offseted,
 };

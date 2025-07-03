@@ -9,7 +9,8 @@ use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
 use crate::log_info;
 
-/// inspired by tuikit 0.5 : <https://github.com/lotabout/tuikit/blob/master/src/key.rs#L72-L271>
+/// Used to parse keynames from config file into [`crossterm::event::KeyEvent`].
+/// Inspired by tuikit 0.5 : <https://github.com/lotabout/skim-rs/blob/master/src/key.rs#L72-L271>
 #[rustfmt::skip]
 pub fn from_keyname(keyname: &str) -> Option<KeyEvent> {
     match keyname.to_lowercase().as_ref() {

@@ -42,6 +42,7 @@ impl PathRect {
     }
 }
 
+/// Which image was displayed, where on the screen and is it displayed ?
 #[derive(Default, Debug)]
 pub struct InlineImage {
     last_displayed: Option<PathRect>,
@@ -49,7 +50,7 @@ pub struct InlineImage {
 }
 
 impl ImageDisplayer for InlineImage {
-    /// Draw the image to the terminal using [iterm2 Inline Image Protocol](https://iterm2.com/documentation-images.html).
+    /// Draws the image to the terminal using [iterm2 Inline Image Protocol](https://iterm2.com/documentation-images.html).
     ///
     /// The drawing itself is done by the terminal emulator.
     /// It requires a string to be "written" to the terminal itself which will parse it and display the image.

@@ -4,6 +4,8 @@ use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
 use crate::{log_info, log_line};
 
+/// Token used while parsing a command to execute it using the current window.
+/// Useful for applications which output to stdout like TUI or CLI applications.
 pub const SAME_WINDOW_TOKEN: &str = "%t";
 
 /// Analyse, parse and builds arguments from a shell command.

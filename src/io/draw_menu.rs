@@ -4,7 +4,7 @@ use std::cmp::min;
 use ratatui::{layout::Rect, prelude::Widget, style::Color, text::Line, widgets::Paragraph, Frame};
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, Offseted};
+use crate::io::Offseted;
 use crate::modes::{Content, ContentWindow};
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
@@ -35,7 +35,7 @@ macro_rules! colored_skip_take {
                 $t.len(),
             )
             .gradient()
-            .map(|color| color_to_style(color)),
+            .map(|color| color.into()),
         )
         .map(|((index, line), style)| (index, line, style))
         .skip($u.top)
@@ -93,6 +93,13 @@ pub trait DrawMenu<T: CowStr> {
     }
 }
 
+/// Used to implement a [`crate::io::DrawMenu`] trait for Navigable menu which
+/// allows their item to be selected with a `char` bind.
+/// Every menu which allows the user to select an item from a list without reading input
+/// should use this macro for the rendering.
+///
+/// It will display a `char` alongside the item. Typing this char should execute the
+/// corresponding element.
 #[macro_export]
 macro_rules! impl_draw_menu_with_char {
     ($struct:ident, $field_type:ty) => {
@@ -109,7 +116,7 @@ macro_rules! impl_draw_menu_with_char {
 
         use $crate::colored_skip_take;
         use $crate::config::{ColorG, Gradient, MENU_STYLES};
-        use $crate::io::{color_to_style, CowStr, DrawMenu};
+        use $crate::io::{CowStr, DrawMenu};
         use $crate::modes::ContentWindow;
 
         impl DrawMenu<$field_type> for $struct {

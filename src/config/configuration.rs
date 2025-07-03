@@ -6,7 +6,6 @@ use serde_yml::{from_reader, Value};
 
 use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
 use crate::config::{Bindings, ColorG};
-use crate::io::color_to_style;
 
 /// Holds every configurable aspect of the application.
 /// All styles are hardcoded then updated from optional values
@@ -93,7 +92,7 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
 macro_rules! update_style {
     ($self_style:expr, $yaml:ident, $key:expr) => {
         if let Some(color) = read_yaml_string($yaml, $key) {
-            $self_style = color_to_style(crate::config::str_to_ratatui(color));
+            $self_style = crate::config::str_to_ratatui(color).into();
         }
     };
 }
@@ -125,13 +124,13 @@ pub struct FileStyle {
 impl FileStyle {
     fn new() -> Self {
         Self {
-            directory: color_to_style(Color::Red),
-            block: color_to_style(Color::Yellow),
-            char: color_to_style(Color::Green),
-            fifo: color_to_style(Color::Blue),
-            socket: color_to_style(Color::Cyan),
-            symlink: color_to_style(Color::Magenta),
-            broken: color_to_style(Color::White),
+            directory: Color::Red.into(),
+            block: Color::Yellow.into(),
+            char: Color::Green.into(),
+            fifo: Color::Blue.into(),
+            socket: Color::Cyan.into(),
+            symlink: Color::Magenta.into(),
+            broken: Color::White.into(),
         }
     }
 
@@ -184,14 +183,14 @@ pub struct MenuStyle {
 impl Default for MenuStyle {
     fn default() -> Self {
         Self {
-            first: color_to_style(Color::Rgb(45, 250, 209)),
-            second: color_to_style(Color::Rgb(230, 189, 87)),
-            selected_border: color_to_style(Color::Rgb(45, 250, 209)),
-            inert_border: color_to_style(Color::Rgb(248, 248, 248)),
-            palette_1: color_to_style(Color::Rgb(45, 250, 209)),
-            palette_2: color_to_style(Color::Rgb(230, 189, 87)),
-            palette_3: color_to_style(Color::Rgb(230, 167, 255)),
-            palette_4: color_to_style(Color::Rgb(59, 204, 255)),
+            first: Color::Rgb(45, 250, 209).into(),
+            second: Color::Rgb(230, 189, 87).into(),
+            selected_border: Color::Rgb(45, 250, 209).into(),
+            inert_border: Color::Rgb(248, 248, 248).into(),
+            palette_1: Color::Rgb(45, 250, 209).into(),
+            palette_2: Color::Rgb(230, 189, 87).into(),
+            palette_3: Color::Rgb(230, 167, 255).into(),
+            palette_4: Color::Rgb(59, 204, 255).into(),
         }
     }
 }

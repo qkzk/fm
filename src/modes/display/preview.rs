@@ -737,7 +737,7 @@ impl HLContent {
 }
 
 /// Holds a string to be displayed with given .
-/// We have to read the  from Syntect and parse it into tuikit attr
+/// We have to read the  from Syntect and parse it into ratatui attr
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {

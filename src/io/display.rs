@@ -87,7 +87,7 @@ macro_rules! colored_iter {
                 $t.len(),
             )
             .gradient()
-            .map(|color| color_to_style(color)),
+            .map(|color| Style::from(color)),
         )
     };
 }
@@ -1747,16 +1747,5 @@ impl Display {
         execute!(self.term.backend_mut(), LeaveAlternateScreen)?;
         self.term.show_cursor()?;
         Ok(())
-    }
-}
-
-#[inline]
-pub const fn color_to_style(color: Color) -> Style {
-    Style {
-        fg: Some(color),
-        bg: None,
-        add_modifier: Modifier::empty(),
-        sub_modifier: Modifier::empty(),
-        underline_color: None,
     }
 }

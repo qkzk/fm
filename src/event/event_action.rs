@@ -19,7 +19,7 @@ use crate::modes::{
     NeedConfirmation, PreviewBuilder, Search, Selectable,
 };
 
-/// Links events from tuikit to custom actions.
+/// Links events from ratatui to custom actions.
 /// It mutates `Status` or its children `Tab`.
 pub struct EventAction {}
 
@@ -999,7 +999,7 @@ impl EventAction {
         status.click(binds, row, col)
     }
 
-    /// Left click select the focus. This is an alias to [`crate::event::EventAction::click`]
+    /// Left Click a file at `row`, `col`. Gives the focus to the window container.
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         Self::click(status, binds, row, col)
     }
