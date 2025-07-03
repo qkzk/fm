@@ -27,7 +27,7 @@ impl Default for Config {
 }
 
 impl Config {
-    /// Updates the config from  a configuration content.
+    /// Updates the config from a yaml value read in the configuration file.
     fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
@@ -229,6 +229,7 @@ impl MenuStyle {
     }
 }
 
+/// Name of the syntect theme used.
 #[derive(Debug)]
 pub struct SyntectTheme {
     pub name: String,

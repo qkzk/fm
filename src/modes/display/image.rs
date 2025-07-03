@@ -301,6 +301,7 @@ impl DisplayedImageBuilder {
     }
 }
 
+/// Empty struct with methods relative to thubmnail creation.
 pub struct Thumbnail;
 
 impl Thumbnail {

@@ -205,6 +205,8 @@ impl Display for NetworkKind {
     }
 }
 
+/// A mounted device from a remote location.
+/// Only NTFS & CIFS are supported ATM.
 #[derive(Debug)]
 pub struct NetworkMount {
     pub kind: NetworkKind,
@@ -380,6 +382,8 @@ impl Display for Mtp {
     }
 }
 
+/// Encrypted devices which can be mounted.
+/// Mounting an encrypted device requires a password.
 #[derive(Debug)]
 pub struct EncryptedBlockDevice {
     pub path: String,
@@ -581,6 +585,10 @@ impl EncryptedBlockDevice {
     }
 }
 
+/// A device which can be mounted.
+/// Default "mountable" struct for any kind of device **except** encrypted devices.
+/// They require special methods to be mounted since it requires a password which
+/// can't be provided from here.
 #[derive(Default, Deserialize, Debug)]
 pub struct BlockDevice {
     fstype: Option<String>,
@@ -748,6 +756,7 @@ impl Display for BlockDevice {
     }
 }
 
+/// A mounted partition using sshfs.
 #[derive(Debug)]
 pub struct RemoteDevice {
     name: String,
@@ -775,6 +784,7 @@ impl RemoteDevice {
     }
 }
 
+/// A mountable device which can be of many forms.
 #[derive(Debug)]
 pub enum Mountable {
     Device(BlockDevice),
@@ -994,6 +1004,7 @@ impl MountBuilder {
     }
 }
 
+/// Holds the mountable devices.
 #[derive(Debug, Default)]
 pub struct Mount {
     pub content: Vec<Mountable>,

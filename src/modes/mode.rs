@@ -179,6 +179,7 @@ impl InputSimple {
     }
 }
 
+/// Used to know how many cells are used before the cursor is drawned it the input line.
 pub trait CursorOffset {
     fn cursor_offset(&self) -> u16;
 }
