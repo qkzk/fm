@@ -780,7 +780,6 @@ dependencies = [
  "pgs-files",
  "ratatui",
  "regex",
- "rust-lzma",
  "serde",
  "serde_json",
  "serde_yml",
@@ -2084,16 +2083,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-lzma"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d62915608f6cee1d7f2fc00f28b4f058ff79d6e4ec3c2fe0006b09b52437c84"
-dependencies = [
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2800,12 +2789,6 @@ dependencies = [
  "getrandom",
  "serde",
 ]
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

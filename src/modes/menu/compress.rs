@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
-use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
 use crate::common::{is_in_path, SEVENZ};
@@ -19,7 +18,6 @@ pub enum CompressionMethod {
     Defl,
     Gz,
     Zlib,
-    Lzma,
     Sevenz,
 }
 
@@ -28,7 +26,6 @@ impl CompressionMethod {
         match self {
             Self::Zip => "ZIP:     archive.zip",
             Self::Defl => "DEFLATE: archive.tar.gz",
-            Self::Lzma => "LZMA:    archive.tar.xz",
             Self::Gz => "GZ:      archive.tar.gz",
             Self::Zlib => "ZLIB:    archive.tar.xz",
             Self::Sevenz => "7Z:      archive.7z",
@@ -47,7 +44,6 @@ impl Compresser {
     pub fn setup(&mut self) {
         self.content = vec![
             CompressionMethod::Zip,
-            CompressionMethod::Lzma,
             CompressionMethod::Zlib,
             CompressionMethod::Gz,
             CompressionMethod::Defl,
@@ -64,7 +60,6 @@ impl Compresser {
         match selected {
             #[rustfmt::skip]
             CompressionMethod::Zip  => Self::zip (Self::archive(here, "archive.zip")?, files)?,
-            CompressionMethod::Lzma => Self::lzma(Self::archive(here, "archive.tar.xz")?, files)?,
             CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
             CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
             CompressionMethod::Defl => Self::defl(Self::archive(here, "archive.tar.gz")?, files)?,
@@ -128,18 +123,6 @@ impl Compresser {
         Self::make_tar(files, tar::Builder::new(&mut encoder))?;
 
         // Finish zlib file
-        encoder.finish()?;
-
-        Ok(())
-    }
-
-    fn lzma(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
-        let mut encoder = LzmaWriter::new_compressor(archive, 6)?;
-
-        // Create tar archive and compress files
-        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
-
-        // Finish lzma file
         encoder.finish()?;
 
         Ok(())
