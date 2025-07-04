@@ -1728,8 +1728,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 Tried to fix cargo doc but failed... :(
 
-## Current dev
-
 ### Version 0.1.35
 
 #### Summary
@@ -1744,6 +1742,20 @@ Updated some dependencies to avoid yanked version of crates. Documentation shoul
 - [x] fixe future-utils yanked version
 
 Once that's done, it's all. No not implement anything else
+
+
+## Current dev
+
+### Version 0.2.1 : plugins
+
+
+#### Summary
+
+#### Changelog
+
+- [ ] plugin system 
+  - [ ] hello world
+
 
 ## TODO
 
