@@ -125,6 +125,7 @@ pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
 }
 
+/// Returns the clipboard content if it's set
 pub fn get_clipboard() -> Option<String> {
     let Ok(mut ctx) = ClipboardContext::new() else {
         return None;
@@ -132,6 +133,7 @@ pub fn get_clipboard() -> Option<String> {
     ctx.get_contents().ok()
 }
 
+/// Sets the clipboard content.
 pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
     let Ok(mut ctx) = ClipboardContext::new() else {
@@ -245,6 +247,7 @@ pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
     Ok(path.read_dir()?.next().is_none())
 }
 
+/// Converts a [`std::path::Path`] to `String`.
 pub fn path_to_string<P>(path: &P) -> String
 where
     P: AsRef<std::path::Path>,
@@ -412,6 +415,7 @@ pub fn tilde(input_str: &str) -> Cow<str> {
     }
 }
 
+/// Sets the current working directory environment
 pub fn set_current_dir<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(env::set_current_dir(path.as_ref())?)
 }

@@ -155,6 +155,7 @@ where
     Ok(String::from_utf8(output.stdout)?)
 }
 
+/// Execute a command with some arguments, returns its output. stdin & stderr are branched to /dev/null.
 pub fn execute_and_output<S, I>(exe: S, args: I) -> Result<std::process::Output>
 where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
@@ -168,6 +169,7 @@ where
         .output()?)
 }
 
+/// Executes a command with some arguments, returns its output. Doesn't log the call.
 pub fn execute_and_output_no_log<S, I>(exe: S, args: I) -> Result<std::process::Output>
 where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
@@ -176,6 +178,9 @@ where
     Ok(Command::new(exe).args(args).stdin(Stdio::null()).output()?)
 }
 
+/// Executes a command with `CLICOLOR_FORCE=1` and `COLORTERM=ansi` environement variables.
+/// Returns the output.
+/// Used to run & display commands which may returns colored text.
 pub fn execute_with_ansi_colors(args: &[String]) -> Result<std::process::Output> {
     log_info!("execute. {args:?}");
     log_line!("Executed {args:?}");
@@ -334,6 +339,7 @@ pub fn set_sudo_session(password: &mut PasswordHolder) -> Result<bool> {
     Ok(success)
 }
 
+/// Inject. the command in a spawned [`tokio::process::Command`]
 #[tokio::main]
 pub async fn inject_command(mut command: TokioCommand, injector: Injector<String>) {
     let Ok(mut cmd) = command
@@ -358,6 +364,7 @@ pub async fn inject_command(mut command: TokioCommand, injector: Injector<String
     }
 }
 
+/// Creates the tokio greper for fuzzy finding.
 pub fn build_tokio_greper() -> Option<TokioCommand> {
     let shell_command = if is_in_path(RG_EXECUTABLE) {
         RG_EXECUTABLE
@@ -376,6 +383,7 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
     Some(tokio_greper)
 }
 
+/// Executes a command in a new shell.
 pub fn execute_in_shell(args: &[&str]) -> Result<bool> {
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let mut command = Command::new(&shell);

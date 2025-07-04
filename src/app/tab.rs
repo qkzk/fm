@@ -19,6 +19,11 @@ use crate::modes::{
     TreeBuilder, Users,
 };
 
+/// Settings of a tab.
+/// Do we display hidden files ?
+/// What kind of filter is used ?
+/// What kind of sort is used ?
+/// Should the last image be cleared ?
 pub struct TabSettings {
     /// read from command line
     pub show_hidden: bool,
@@ -26,7 +31,7 @@ pub struct TabSettings {
     pub filter: FilterKind,
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
-    /// should the last displayed image be erased by ueberzug ?
+    /// should the last displayed image be erased ?
     pub should_clear_image: bool,
 }
 

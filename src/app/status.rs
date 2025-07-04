@@ -93,11 +93,13 @@ impl Focus {
         *self as usize
     }
 
+    /// Is the window a left menu ?
     pub fn is_left_menu(&self) -> bool {
         matches!(self, Self::LeftMenu)
     }
 }
 
+/// What direction is used to sync tabs ? Left to right or right to left ?
 pub enum Direction {
     RightToLeft,
     LeftToRight,
@@ -127,7 +129,6 @@ pub struct Status {
     pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
-
     /// Fuzzy finder of files by name
     pub fuzzy: Option<FuzzyFinder<String>>,
     /// Navigable menu
@@ -220,12 +221,14 @@ impl Status {
         self.internal_settings.must_quit
     }
 
+    /// Give the focus to the selected tab.
     pub fn focus_follow_index(&mut self) {
         if (self.index == 0 && !self.focus.is_left()) || (self.index == 1 && self.focus.is_left()) {
             self.focus = self.focus.switch();
         }
     }
 
+    /// Give to focus to the left / right file / menu depending of which mode is selected.
     pub fn set_focus_from_mode(&mut self) {
         if self.index == 0 {
             if self.tabs[0].menu_mode.is_nothing() {
@@ -281,6 +284,8 @@ impl Status {
         }
     }
 
+    /// Set focus from a mouse coordinates.
+    /// When a mouse event occurs, focus is given to the window where it happened.
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
         let window = self.window_from_row(row, self.term_size().1);
@@ -360,6 +365,8 @@ impl Status {
         self.tabs[dest].cd(&self.tabs[source].current_file()?.path)
     }
 
+    /// Height of the second window (menu).
+    /// Watchout : it's always ~height / 2 - 2, even if menu is closed.
     pub fn second_window_height(&self) -> Result<usize> {
         let (_, height) = self.term_size();
         Ok((height / 2).saturating_sub(2) as usize)
@@ -433,6 +440,7 @@ impl Status {
         self.term_size().0
     }
 
+    /// Clears the right preview
     pub fn clear_preview_right(&mut self) {
         if self.session.dual() && self.session.preview() && !self.tabs[1].preview.is_empty() {
             self.tabs[1].preview = PreviewBuilder::empty()
@@ -658,6 +666,7 @@ impl Status {
         self.thumbnail_manager = Some(ThumbnailManager::default());
     }
 
+    /// Clear the thumbnail queue
     pub fn thumbnail_queue_clear(&self) {
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
             thumbnail_manager.clear()
@@ -771,6 +780,7 @@ impl Status {
         self.refresh_status()
     }
 
+    /// Set the menu and without querying a refresh.
     pub fn set_menu_mode_no_refresh(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
@@ -786,6 +796,7 @@ impl Status {
         Ok(())
     }
 
+    /// Set the height of the menu and scroll to the selected item.
     pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         let height = self.internal_settings.term_size().1;
         let prim_window_height = if menu_mode.is_nothing() {
@@ -910,6 +921,7 @@ impl Status {
         }
     }
 
+    /// Jumps to the selected flagged file.
     pub fn jump_flagged(&mut self) -> Result<()> {
         let Some(path) = self.menu.flagged.selected() else {
             return Ok(());
@@ -1005,11 +1017,13 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
+    /// Copy the next file in copy queue
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
         self.internal_settings
             .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
     }
 
+    /// Init the fuzzy finder
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {
         self.fuzzy = Some(FuzzyFinder::new(kind).set_height(self.current_tab().window.height));
     }
@@ -1018,6 +1032,7 @@ impl Status {
         self.fuzzy = None;
     }
 
+    /// Sets the fuzzy finder to find files
     pub fn fuzzy_find_files(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1027,6 +1042,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sets the fuzzy finder to match against help lines
     pub fn fuzzy_help(&mut self, help: String) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1035,6 +1051,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sets the fuzzy finder to match against text file content
     pub fn fuzzy_find_lines(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1055,6 +1072,10 @@ impl Status {
         }
     }
 
+    /// Action when a fuzzy item is selected.
+    /// It depends of the kind of fuzzy:
+    /// files / line: go to this file,
+    /// help: execute the selected action.
     pub fn fuzzy_select(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1081,12 +1102,14 @@ impl Status {
         Ok(())
     }
 
+    /// Exits the fuzzy finder and drops its instance
     pub fn fuzzy_leave(&mut self) -> Result<()> {
         self.fuzzy_drop();
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.refresh_view()
     }
 
+    /// Deletes a char to the left in fuzzy finder.
     pub fn fuzzy_backspace(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1096,6 +1119,7 @@ impl Status {
         Ok(())
     }
 
+    /// Delete all chars to the right in fuzzy finder.
     pub fn fuzzy_delete(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1105,6 +1129,7 @@ impl Status {
         Ok(())
     }
 
+    /// Move cursor to the left in fuzzy finder
     pub fn fuzzy_left(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1113,6 +1138,7 @@ impl Status {
         Ok(())
     }
 
+    /// Move cursor to the right in fuzzy finder
     pub fn fuzzy_right(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1121,14 +1147,17 @@ impl Status {
         Ok(())
     }
 
+    /// Move selection to the start (top)
     pub fn fuzzy_start(&mut self) -> Result<()> {
         self.fuzzy_navigate(FuzzyDirection::Start)
     }
 
+    /// Move selection to the end (bottom)
     pub fn fuzzy_end(&mut self) -> Result<()> {
         self.fuzzy_navigate(FuzzyDirection::End)
     }
 
+    /// Navigate to a [`FuzzyDirection`].
     pub fn fuzzy_navigate(&mut self, direction: FuzzyDirection) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1140,6 +1169,7 @@ impl Status {
         Ok(())
     }
 
+    /// Issue a tick to the fuzzy finder
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
             Some(fuzzy) => {
@@ -1149,6 +1179,7 @@ impl Status {
         }
     }
 
+    /// Resize the fuzzy finder according to given height
     pub fn fuzzy_resize(&mut self, height: usize) {
         match &mut self.fuzzy {
             Some(fuzzy) => fuzzy.resize(height),
@@ -1224,6 +1255,7 @@ impl Status {
         self.menu.input_complete(&mut self.tabs[self.index])
     }
 
+    /// Move to the input path if possible.
     pub fn complete_cd_move(&mut self) -> Result<()> {
         if let Menu::InputCompleted(InputCompleted::Cd) = self.current_tab().menu_mode {
             let input = self.menu.input.string();
@@ -1267,6 +1299,7 @@ impl Status {
         self.open_single_file(&path)
     }
 
+    /// Opens the selected file (single)
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
@@ -1329,6 +1362,10 @@ impl Status {
         Ok(())
     }
 
+    /// Mount an encrypted device.
+    /// If sudo password isn't set, asks for it and returns,
+    /// Else if device keypass isn't set, asks for it and returns,
+    /// Else, mount the device.
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
@@ -1373,7 +1410,6 @@ impl Status {
     /// Mount the selected encrypted device. Will ask first for sudo password and
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
-    // TODO: refactor
     pub fn mount_normal_device(&mut self) -> Result<()> {
         let Some(device) = self.menu.mount.selected() else {
             return Ok(());
@@ -1464,6 +1500,7 @@ impl Status {
         }
     }
 
+    /// Ejects a removable device (usb key, mtp etc.).
     pub fn eject_removable_device(&mut self) -> Result<()> {
         if self.menu.mount.is_empty() {
             return Ok(());
@@ -1490,6 +1527,7 @@ impl Status {
         }
     }
 
+    /// Parse a shell command and expand tokens like %s, %t etc.
     pub fn parse_shell_command(
         &mut self,
         shell_command: String,
@@ -1662,6 +1700,7 @@ impl Status {
         Ok(())
     }
 
+    /// Execute a bulk create / rename
     pub fn bulk_execute(&mut self) -> Result<()> {
         self.menu.bulk.get_new_names()?;
         self.set_menu_mode(
@@ -1850,10 +1889,6 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Flagged))
-    }
-
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
@@ -1877,6 +1912,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sort all file in a tab with a sort key which is selected according to which char was pressed.
     pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();

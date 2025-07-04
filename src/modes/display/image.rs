@@ -74,6 +74,7 @@ impl std::fmt::Display for Kind {
     }
 }
 
+/// True iff the path points to a video file. Recognized from its extenion.
 pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
     let Some(ext) = path.as_ref().extension() else {
         return false;

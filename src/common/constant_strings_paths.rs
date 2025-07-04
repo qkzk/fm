@@ -87,10 +87,15 @@ pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
+/// Ripgrep & its parameters
 pub const RG_EXECUTABLE: &str = "rg --line-number --color=never .";
+/// Grep and its parameters
 pub const GREP_EXECUTABLE: &str = "grep -rI --line-number .";
+/// sshfs executable
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
+/// Notify app executable
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
+/// Eject (of removable device) executable
 pub const EJECT_EXECUTABLE: &str = "eject";
 /// Encrypted devices bind description
 pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
@@ -106,6 +111,7 @@ pub const SORT_LINES: [&str; 9] = [
     "",
     "r:  reverse current sort",
 ];
+/// Remote menu presentation
 pub const REMOTE_LINES: [&str; 5] = [
     "Mount a directory with sshfs",
     "Type the arguments as below, separated by a space.",
@@ -113,6 +119,7 @@ pub const REMOTE_LINES: [&str; 5] = [
     "",
     "username hostname:port remote_path local_path",
 ];
+/// Presentation of new dir. creation in cloud
 pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
@@ -136,6 +143,7 @@ pub const PASSWORD_LINES_SUDO: [&str; 2] = [
     "Type your sudo password.",
     "It will be forgotten immediatly after use.",
 ];
+/// Presentation of the passkey input
 pub const PASSWORD_LINES_DEVICE: [&str; 2] = [
     "Type the device passkey.",
     "It will be forgotten immediatly after use.",
@@ -187,6 +195,7 @@ pub const RENAME_LINES: [&str; 3] = [
     "",
     "Nothing is done if the file already exists",
 ];
+/// Trash presentation
 pub const TRASH_CONFIRM_LINE: &str =
     "Up, Down: navigation - Enter: restore the selected file - x: delete permanently - ";
 /// Mediainfo (used to preview media files) executable

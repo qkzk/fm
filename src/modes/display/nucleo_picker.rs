@@ -381,6 +381,7 @@ impl FuzzyFinder<String> {
     }
 }
 
+/// Parse a line output from the fuzzy finder.
 pub fn parse_line_output(item: &str) -> Result<PathBuf> {
     Ok(canonicalize(PathBuf::from(
         item.split_once(':').unwrap_or(("", "")).0.to_owned(),
@@ -415,6 +416,7 @@ fn format_display(display: &Utf32String) -> String {
         .collect::<String>()
 }
 
+/// Build a [`ratatui::text::Line`] for a given fuzzy output line.
 pub fn highlighted_text<'a>(
     text: &'a str,
     highlighted: &[usize],
