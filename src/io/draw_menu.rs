@@ -4,10 +4,8 @@ use std::cmp::min;
 use ratatui::{layout::Rect, prelude::Widget, style::Color, text::Line, widgets::Paragraph, Frame};
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::color_to_style;
+use crate::io::Offseted;
 use crate::modes::{Content, ContentWindow};
-
-use super::Offseted;
 
 /// Iter over the content, returning a triplet of `(index, line, style)`.
 #[macro_export]
@@ -37,7 +35,7 @@ macro_rules! colored_skip_take {
                 $t.len(),
             )
             .gradient()
-            .map(|color| color_to_style(color)),
+            .map(|color| color.into()),
         )
         .map(|((index, line), style)| (index, line, style))
         .skip($u.top)
@@ -69,6 +67,12 @@ impl CowStr for String {
     }
 }
 
+impl CowStr for &str {
+    fn cow_str(&self) -> Cow<str> {
+        (*self).into()
+    }
+}
+
 /// Trait used to display a scrollable content
 /// Element are itered from the top to the bottom of the window index
 /// and printed in the canvas.
@@ -87,4 +91,61 @@ pub trait DrawMenu<T: CowStr> {
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
+}
+
+/// Used to implement a [`crate::io::DrawMenu`] trait for Navigable menu which
+/// allows their item to be selected with a `char` bind.
+/// Every menu which allows the user to select an item from a list without reading input
+/// should use this macro for the rendering.
+///
+/// It will display a `char` alongside the item. Typing this char should execute the
+/// corresponding element.
+#[macro_export]
+macro_rules! impl_draw_menu_with_char {
+    ($struct:ident, $field_type:ty) => {
+        use std::{cmp::min, iter::zip};
+
+        use ratatui::{
+            layout::{Offset, Rect},
+            prelude::Widget,
+            style::Color,
+            text::Line,
+            widgets::Paragraph,
+            Frame,
+        };
+
+        use $crate::colored_skip_take;
+        use $crate::config::{ColorG, Gradient, MENU_STYLES};
+        use $crate::io::{CowStr, DrawMenu};
+        use $crate::modes::ContentWindow;
+
+        impl DrawMenu<$field_type> for $struct {
+            fn draw_menu(&self, f: &mut Frame, rect: &Rect, window: &ContentWindow)
+            where
+                Self: Content<$field_type>,
+            {
+                let mut p_rect = rect.offset(Offset { x: 2, y: 3 }).intersection(*rect);
+                p_rect.height = p_rect.height.saturating_sub(2);
+                let content = self.content();
+                let lines: Vec<_> = zip(
+                    ('a'..='z').cycle().skip(window.top),
+                    colored_skip_take!(content, window),
+                )
+                .filter(|(_, (index, _, _))| {
+                    ((*index) as u16 + ContentWindow::WINDOW_MARGIN_TOP_U16 + 1)
+                        .saturating_sub(window.top as u16)
+                        + 2
+                        <= rect.height
+                })
+                .map(|(letter, (index, path, style))| {
+                    Line::styled(
+                        format!("{letter} {path}", path = path.cow_str()),
+                        self.style(index, &style),
+                    )
+                })
+                .collect();
+                Paragraph::new(lines).render(p_rect, f.buffer_mut());
+            }
+        }
+    };
 }

@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 
@@ -7,7 +8,7 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, Navigate,
+    Content, InputCompleted, InputSimple, Leave, MarkAction, Menu, MountAction, Navigate,
     NodeCreation, PasswordUsage, PickerCaller, TerminalApplications,
 };
 use crate::{log_info, log_line};
@@ -52,14 +53,13 @@ impl LeaveMenu {
                 LeaveMenu::cloud_enter(status)?;
                 return Ok(());
             }
-            Menu::Navigate(Navigate::EncryptedDrive) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
             Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
             Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
             Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)) => LeaveMenu::tempmark_jp(status),
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
+            Menu::Navigate(Navigate::Mount) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
-            Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
             Menu::Navigate(Navigate::Picker) => {
                 LeaveMenu::picker(status)?;
                 return Ok(());
@@ -218,18 +218,34 @@ impl LeaveMenu {
     /// It uses the `fs::rename` function and has the same limitations.
     /// Intermediates directory are created if needed.
     /// It acts like a move (without any confirmation...)
-
+    /// The new file is selected.
     fn rename(status: &mut Status) -> Result<()> {
-        let old_path = status.current_tab().current_file()?.path;
+        if status.menu.input.is_empty() {
+            log_line!("Can't rename: new name is empty");
+            log_info!("Can't rename: new name is empty");
+            return Ok(());
+        }
         let new_name = status.menu.input.string();
-        if let Err(error) = rename(&old_path, &new_name) {
-            log_info!(
-                "Error renaming {old_path} to {new_name}. Error: {error}",
-                old_path = old_path.display()
-            );
-            return Err(error);
-        };
-        status.current_tab_mut().refresh_view()
+        let old_path = status.current_tab().current_file()?.path;
+        match rename(&old_path, &new_name) {
+            Ok(new_path) => {
+                status.current_tab_mut().refresh_view()?;
+                status
+                    .current_tab_mut()
+                    .select_by_path(Arc::from(new_path.as_ref()));
+            }
+            Err(error) => {
+                log_info!(
+                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    old_path = old_path.display()
+                );
+                log_line!(
+                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    old_path = old_path.display()
+                );
+            }
+        }
+        Ok(())
     }
 
     /// Creates a new file with input string as name.
@@ -330,7 +346,7 @@ impl LeaveMenu {
     /// Execute a password command (sudo or device passphrase).
     fn password(
         status: &mut Status,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         usage: PasswordUsage,
     ) -> Result<()> {
         status.execute_password_command(action, usage)
@@ -388,8 +404,7 @@ impl LeaveMenu {
     /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
     fn go_to_mount(status: &mut Status) -> Result<()> {
         match status.current_tab().menu_mode {
-            Menu::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
-            Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
+            Menu::Navigate(Navigate::Mount) => status.go_to_normal_drive(),
             _ => Ok(()),
         }
     }

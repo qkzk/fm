@@ -4,22 +4,22 @@ use std::path;
 use anyhow::{Context, Result};
 use indicatif::InMemoryTerm;
 
-use crate::app::{Focus, Status, Tab};
+use crate::app::{Direction, Focus, Status, Tab};
 use crate::common::{
-    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
-    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO,
+    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
+    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{open_shell_in_window, read_log};
+use crate::io::{read_log, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, ContentWindow, Direction as FuzzyDirection,
+    help_string, lsblk_and_udisksctl_installed, ContentWindow, Direction as FuzzyDirection,
     Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
-    NeedConfirmation, PreviewBuilder, RemovableDevices, Search, Selectable,
+    NeedConfirmation, PreviewBuilder, Search, Selectable,
 };
 
-/// Links events from tuikit to custom actions.
+/// Links events from ratatui to custom actions.
 /// It mutates `Status` or its children `Tab`.
 pub struct EventAction {}
 
@@ -59,6 +59,7 @@ impl EventAction {
             status.leave_preview()?;
         }
         if matches!(status.current_tab().menu_mode, Menu::Nothing) {
+            status.current_tab_mut().reset_visual();
             return Ok(());
         };
         status.leave_menu_mode()?;
@@ -87,8 +88,10 @@ impl EventAction {
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         if !status.session.dual() {
             Self::toggle_dualpane(status)?;
+            status.session.set_preview();
+        } else {
+            status.session.toggle_preview();
         }
-        status.session.toggle_preview();
         if status.session.preview() {
             status.update_second_pane_for_preview()
         } else {
@@ -115,7 +118,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.toggle_fold(&tab.users);
+        tab.tree.toggle_fold();
         Ok(())
     }
 
@@ -127,7 +130,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.unfold_all(&tab.users);
+        tab.tree.unfold_all();
         Ok(())
     }
 
@@ -139,7 +142,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.current_tab_mut();
-        tab.tree.fold_all(&tab.users);
+        tab.tree.fold_all();
         Ok(())
     }
 
@@ -583,8 +586,9 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
+        set_current_dir(status.current_tab().current_path())?;
         status.internal_settings.disable_display();
-        open_shell_in_window()?;
+        External::open_shell_in_window()?;
         status.internal_settings.enable_display();
         Ok(())
     }
@@ -735,7 +739,7 @@ impl EventAction {
             status.reset_menu_mode()?;
         } else {
             status.refresh_shortcuts();
-            std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
+            set_current_dir(status.current_tab().directory_of_selected()?)?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Shortcut))?;
         }
         Ok(())
@@ -889,9 +893,15 @@ impl EventAction {
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Directory => tab.normal_up_one_row(),
+            Display::Directory => {
+                tab.normal_up_one_row();
+                status.toggle_flag_visual();
+            }
             Display::Preview => tab.preview_page_up(),
-            Display::Tree => tab.tree_select_prev(),
+            Display::Tree => {
+                tab.tree_select_prev();
+                status.toggle_flag_visual();
+            }
             Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Up)?,
         }
         Ok(())
@@ -900,9 +910,15 @@ impl EventAction {
     fn move_display_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Directory => tab.normal_down_one_row(),
+            Display::Directory => {
+                tab.normal_down_one_row();
+                status.toggle_flag_visual();
+            }
             Display::Preview => tab.preview_page_down(),
-            Display::Tree => tab.tree_select_next(),
+            Display::Tree => {
+                tab.tree_select_next();
+                status.toggle_flag_visual()
+            }
             Display::Fuzzy => status.fuzzy_navigate(FuzzyDirection::Down)?,
         }
         Ok(())
@@ -979,11 +995,11 @@ impl EventAction {
     }
 
     /// Click a file at `row`, `col`. Gives the focus to the window container.
-    pub fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+    fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         status.click(binds, row, col)
     }
 
-    /// Left click select the focus. This is an alias to [`crate::event::EventAction::click`]
+    /// Left Click a file at `row`, `col`. Gives the focus to the window container.
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         Self::click(status, binds, row, col)
     }
@@ -1056,7 +1072,7 @@ impl EventAction {
 
     pub fn delete_line(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
-            status.sync_tabs(true)?;
+            status.sync_tabs(Direction::RightToLeft)?;
         }
         match status.current_tab_mut().menu_mode {
             Menu::InputSimple(_) => {
@@ -1064,6 +1080,24 @@ impl EventAction {
             }
             Menu::InputCompleted(_) => {
                 status.menu.input.delete_line();
+                status.menu.completion_reset();
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+
+    /// Delete one word to the left in menus with input
+    pub fn delete_left(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
+        match status.current_tab_mut().menu_mode {
+            Menu::InputSimple(_) => {
+                status.menu.input.delete_left();
+            }
+            Menu::InputCompleted(_) => {
+                status.menu.input.delete_left();
                 status.menu.completion_reset();
             }
             _ => (),
@@ -1237,6 +1271,22 @@ impl EventAction {
         Ok(())
     }
 
+    /// Copy the content of the selected text file in normal mode.
+    pub fn copy_content(status: &Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                content_to_clipboard(&file_info.path);
+            }
+            _ => return Ok(()),
+        }
+        Ok(())
+    }
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
         if !status.focus.is_file() {
@@ -1333,55 +1383,12 @@ impl EventAction {
         LeaveMenu::trash(status)
     }
 
-    /// Enter the encrypted device menu, allowing the user to mount/umount
-    /// a luks encrypted device.
-    pub fn encrypted_drive(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().menu_mode,
-            Menu::Navigate(Navigate::EncryptedDrive)
-        ) {
-            status.reset_menu_mode()?;
-        } else {
-            if !lsblk_and_cryptsetup_installed() {
-                log_line!("lsblk and cryptsetup must be installed.");
-                return Ok(());
-            }
-            if status.menu.encrypted_devices.is_empty() {
-                status.menu.encrypted_devices.update()?;
-            }
-            status.set_menu_mode(status.index, Menu::Navigate(Navigate::EncryptedDrive))?;
-        }
-        Ok(())
-    }
-
-    /// Enter the Removable Devices mode where the user can mount an MTP device
-    pub fn removable_devices(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().menu_mode,
-            Menu::Navigate(Navigate::RemovableDevices)
-        ) {
-            status.reset_menu_mode()?;
-        } else {
-            if !is_in_path(GIO) {
-                log_line!("gio must be installed.");
-                return Ok(());
-            }
-            status.menu.removable_devices = RemovableDevices::find().unwrap_or_default();
-            status.set_menu_mode(status.index, Menu::Navigate(Navigate::RemovableDevices))?;
-        }
-        Ok(())
-    }
-
     /// Open the config file.
     pub fn open_config(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
         }
-        match status
-            .internal_settings
-            .opener
-            .open_single(&path::PathBuf::from(tilde(CONFIG_PATH).to_string()))
-        {
+        match status.open_single_file(&path::PathBuf::from(tilde(CONFIG_PATH).to_string())) {
             Ok(_) => log_line!("Opened the config file {CONFIG_PATH}"),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
@@ -1529,7 +1536,7 @@ impl EventAction {
 
     pub fn sync_ltr(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
-            status.sync_tabs(false)?;
+            status.sync_tabs(Direction::LeftToRight)?;
         }
         Ok(())
     }
@@ -1560,5 +1567,26 @@ impl EventAction {
     pub fn check_preview_fuzzy_tick(status: &mut Status) -> Result<()> {
         status.fuzzy_tick();
         status.check_preview()
+    }
+
+    pub fn visual(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().toggle_visual();
+        status.toggle_flag_visual();
+
+        Ok(())
+    }
+
+    /// Open the mount menu
+    pub fn mount(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().menu_mode,
+            Menu::Navigate(Navigate::Mount)
+        ) {
+            status.reset_menu_mode()?;
+        } else if lsblk_and_udisksctl_installed() {
+            status.menu.mount.update(status.internal_settings.disks())?;
+            status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
+        }
+        Ok(())
     }
 }

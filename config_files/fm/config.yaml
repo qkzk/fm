@@ -1,16 +1,22 @@
 # fm configuration file.
 # Each variable is explained below
 
-
-# the terminal emulator, which must be accessible from $PATH
-terminal: st
-
 # use nerdfont icons for file ? Default false
-# require [nerdfont](https://www.nerdfonts.com/) installed
+# [nerdfont](https://www.nerdfonts.com/) must be installed
 icon: false
 # display icons when metadata are shown ?  Default false
 # no effect if icon is false
 icon_with_metadata: false
+
+# which syntect theme do you want to use ?
+# place them in ~/.config/fm/syntect_themes/ 
+# create the folder if it doesn't exists.
+# textmate themes can be use directly "glow.tmtheme" or compressed by syntect as a dump file "monokai.themedump".
+# if you want to use "glow.tmtheme", use `syntect_theme: glow`
+# if you want to use "dracula.themedump", use `syntect_theme: dracula`
+# you can comment or erase this value and the default theme (monokai) will be loaded.
+# you can find more themes here : https://github.com/filmgirl/textmate-themes 
+syntect_theme: monokai
 
 # configurable colors
 
@@ -21,8 +27,8 @@ icon_with_metadata: false
 #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
 #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
 # Allowed Format for rgb color :
-#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
-#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
+#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included. Example: `rgb(123, 10, 254)`
+#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals. Example: `#750AFE`
 colors:
   # Gradient from start to stop for normal files.
   # the files are colored randomly according to their extension
@@ -155,34 +161,6 @@ keys:
 # 'alt-u': "/usr/bin/ls %f" # will run `ls /path/to/the/selected/file`... be won't print anything.
 custom:
   # open the selected file with chrome
-  'alt-u': "/usr/bin/google-chrome-stable %s"
+  'shift-u': "/usr/bin/google-chrome-stable %s"
   # drag & drop the selected file to a GUI application
   'shift-d': "/usr/bin/dragon-drop %s"  
-
-# DO NOT EDIT UNLESS YOU WANT TO ADD AN UNKNOWN TERMINAL EMULATOR
-#
-# The flag is used to open a terminal application (TUI, CLI etc.) like bat or htop.
-# We need to execute the terminal itself and pass it a new command as an argument
-# It requires a flag which is often, but not always "-e".
-# See the documentation of your emulator and add the correct argument like below.
-terminal_emulator_flags:
-  alacritty: "-e"
-  st: "-e"
-  terminology: "-e"
-  kitty: "--"
-  sakura: "-e"
-  lilyterm: "-e"
-  coo: "-r"
-  termite: "-x"
-  yakuake: "-e"
-  guake: "-n"
-  tilda: "-c"
-  terminator: "-x"
-  urxvt: "-e"
-  pantheo: "-t"
-  lxterminal: "-e"
-  mat: "-t"
-  xfce: "-t"
-  konsole: "-e"
-  gnom: "-t"
-  xterm: "-e"

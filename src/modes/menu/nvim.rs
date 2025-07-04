@@ -1,24 +1,23 @@
-/// All credits goes to [nvim-send](https://github.com/alopatindev/nvim-send)
-/// This is just a copy-paste of what is done in this crate.
-use anyhow::Result;
-use nvim_rs::{
-    create::tokio::{new_path, new_tcp},
-    rpc::handler::Dummy,
-};
+use std::process::{Command, Stdio};
 
-/// Send a `command` to a Neovim running instance at `server_address`.
-#[tokio::main]
-pub async fn nvim(server_address: &str, command: &str) -> Result<()> {
-    let handler = Dummy::new();
-    if let Ok((neovim, _job_handler)) = new_path(server_address, handler).await {
-        neovim.input(command).await?;
-        return Ok(());
-    } else {
-        let handler = Dummy::new();
-        if let Ok((neovim, _job_handler)) = new_tcp(server_address, handler).await {
-            neovim.input(command).await?;
-            return Ok(());
-        }
+use anyhow::Result;
+
+/// Use `nvim --server $server_address --remote $filepath` to open the file in the neovim session.
+pub fn nvim(server_address: &str, filepath: &str) -> Result<()> {
+    let args = ["--server", server_address, "--remote", filepath];
+    let output = Command::new("nvim")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+
+    if !output.stdout.is_empty() || !output.stderr.is_empty() {
+        crate::log_info!(
+            "nvim {args:?}\nstdout: {stdout}\nstderr: {stderr}",
+            stdout = String::from_utf8_lossy(&output.stdout),
+            stderr = String::from_utf8_lossy(&output.stderr),
+        );
     }
 
     Ok(())

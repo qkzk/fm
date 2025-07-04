@@ -3,20 +3,19 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, TUIS_PATH};
-use crate::io::{open_command_in_window, open_shell_in_window, DrawMenu};
-use crate::log_info;
+use crate::io::External;
 use crate::modes::{Execute, TerminalApplications};
-use crate::{impl_content, impl_selectable};
+use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info};
 
 /// Directly open a a TUI application
 /// The TUI application shares the same window as fm.
 /// If the user picked "shell", we use the environment variable `$SHELL` or `bash` if it's not set.
 pub fn open_tui_program(program: &str) -> Result<()> {
     if program == "shell" {
-        open_shell_in_window()
+        External::open_shell_in_window()
     } else if is_in_path(program) {
         log_info!("Tui menu execute {program}");
-        open_command_in_window(&[program])
+        External::open_command_in_window(&[program])
     } else {
         log_info!("Tui menu program {program} isn't in path");
         Ok(())
@@ -68,6 +67,5 @@ impl TerminalApplications<String, ()> for TuiApplications {
 }
 
 impl_selectable!(TuiApplications);
-impl_content!(String, TuiApplications);
-
-impl DrawMenu<String> for TuiApplications {}
+impl_content!(TuiApplications, String);
+impl_draw_menu_with_char!(TuiApplications, String);

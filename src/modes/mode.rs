@@ -5,8 +5,8 @@ use crate::common::{
     NVIM_ADDRESS_LINES, PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES,
     RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
-use crate::modes::BlockDeviceAction;
 use crate::modes::InputCompleted;
+use crate::modes::MountAction;
 use crate::modes::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
@@ -39,14 +39,6 @@ pub enum NeedConfirmation {
 }
 
 impl NeedConfirmation {
-    /// Offset before the cursor.
-    /// Since we ask the user confirmation, we need to know how much space
-    /// is needed.
-    #[must_use]
-    pub fn cursor_offset(&self) -> u16 {
-        self.to_string().utf_width_u16() + 9
-    }
-
     /// A confirmation message to be displayed before executing the mode.
     /// When files are moved or copied the destination is displayed.
     #[must_use]
@@ -62,6 +54,16 @@ impl NeedConfirmation {
             Self::BulkAction => "Those files will be renamed or created :".to_owned(),
             Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
+    }
+}
+
+impl CursorOffset for NeedConfirmation {
+    /// Offset before the cursor.
+    /// Since we ask the user confirmation, we need to know how much space
+    /// is needed.
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        self.to_string().utf_width_u16() + 9
     }
 }
 
@@ -112,7 +114,7 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(Option<BlockDeviceAction>, PasswordUsage),
+    Password(Option<MountAction>, PasswordUsage),
     /// Shell command execute as is
     ShellCommand,
     /// Mount a remote directory with sshfs
@@ -175,7 +177,14 @@ impl InputSimple {
             Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
         }
     }
+}
 
+/// Used to know how many cells are used before the cursor is drawned it the input line.
+pub trait CursorOffset {
+    fn cursor_offset(&self) -> u16;
+}
+
+impl CursorOffset for InputSimple {
     fn cursor_offset(&self) -> u16 {
         match *self {
             Self::Sort => Self::SORT_CURSOR_OFFSET,
@@ -194,7 +203,7 @@ impl Leave for InputSimple {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::ShellCommand | Self::Password(_, _) | Self::Sort)
+        !matches!(self, Self::ShellCommand | Self::Password(_, _))
     }
 }
 
@@ -209,14 +218,12 @@ pub enum Navigate {
     Shortcut,
     /// Manipulate trash files
     Trash,
-    /// Manipulate an encrypted device
-    EncryptedDrive,
-    /// Removable devices
-    RemovableDevices,
     /// Edit a mark or cd to it
     Marks(MarkAction),
     /// Edit a temporary mark or cd to it
     TempMarks(MarkAction),
+    /// See mount points, mount, unmount partions
+    Mount,
     /// Pick a compression method
     Compress,
     /// Shell menu applications. Start a new shell with this application.
@@ -245,18 +252,21 @@ impl fmt::Display for Navigate {
                 write!(f, "Start a new shell running a command:")
             }
             Self::Compress => write!(f, "Compress :"),
-            Self::EncryptedDrive => {
-                write!(f, "Encrypted devices :")
-            }
-            Self::RemovableDevices => {
-                write!(f, "Removable devices :")
-            }
+            Self::Mount => write!(f, "Mount :"),
             Self::CliApplication => write!(f, "Display infos :"),
             Self::Context => write!(f, "Context"),
             Self::Cloud => write!(f, "Cloud"),
             Self::Picker => write!(f, "Picker"),
             Self::Flagged => write!(f, "Flagged"),
         }
+    }
+}
+
+impl CursorOffset for Navigate {
+    #[inline]
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        0
     }
 }
 
@@ -279,9 +289,8 @@ impl Navigate {
                 | Self::Shortcut
                 | Self::TuiApplication
                 | Self::CliApplication
-                | Self::EncryptedDrive
-                | Self::RemovableDevices
                 | Self::Marks(_)
+                | Self::Mount
         )
     }
 }
@@ -324,18 +333,6 @@ impl fmt::Display for Menu {
 }
 
 impl Menu {
-    /// Constant offset for the cursor.
-    /// In any mode, we display the mode used and then the cursor if needed.
-    pub fn cursor_offset(&self) -> u16 {
-        match self {
-            Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
-            Self::InputSimple(input_simple) => input_simple.cursor_offset(),
-            Self::Navigate(_) => 0,
-            Self::NeedConfirmation(confirmed_action) => confirmed_action.cursor_offset(),
-            Self::Nothing => 0,
-        }
-    }
-
     /// Does this mode requires a cursor ?
     pub fn show_cursor(&self) -> bool {
         self.cursor_offset() != 0
@@ -353,6 +350,7 @@ impl Menu {
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
             Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
             Self::Navigate(Navigate::Trash) => "Up, Down: navigate.",
+            Self::Navigate(Navigate::Mount) => "m: mount, u: umount, e: eject (removable), g/ENTER: go to",
             Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",
@@ -366,6 +364,26 @@ impl Menu {
 
     pub fn is_navigate(&self) -> bool {
         matches!(self, Self::Navigate(_))
+    }
+
+    pub fn is_input(&self) -> bool {
+        matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
+    }
+}
+
+impl CursorOffset for Menu {
+    /// Constant offset for the cursor.
+    /// In any mode, we display the mode used and then the cursor if needed.
+    #[inline]
+    #[must_use]
+    fn cursor_offset(&self) -> u16 {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
+            Self::InputSimple(input_simple) => input_simple.cursor_offset(),
+            Self::Navigate(navigate) => navigate.cursor_offset(),
+            Self::NeedConfirmation(confirmed_action) => confirmed_action.cursor_offset(),
+            Self::Nothing => 0,
+        }
     }
 }
 

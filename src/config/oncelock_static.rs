@@ -10,11 +10,15 @@ use nucleo::Matcher;
 use parking_lot::{Mutex, MutexGuard};
 use ratatui::style::Color;
 use serde_yml::{from_reader, Value};
-use syntect::highlighting::Theme;
+use strum::{EnumIter, IntoEnumIterator};
+use syntect::{
+    dumps::{from_binary, from_dump_file},
+    highlighting::{Theme, ThemeSet},
+};
 
-use crate::common::{tilde, CONFIG_PATH};
+use crate::common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH};
 use crate::config::{
-    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
+    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, SyntectTheme,
     MAX_GRADIENT_NORMAL,
 };
 
@@ -42,7 +46,83 @@ pub static COLORER: OnceLock<fn(usize) -> Color> = OnceLock::new();
 pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::new();
 
 /// Highlighting theme color used to preview code file
-pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
+static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
+
+/// Reads the syntect_theme configuration value and tries to load if from configuration files.
+///
+/// If it doesn't work, it will load the default set from binary file itself: monokai.
+pub fn set_syntect_theme() -> Result<()> {
+    let config_theme = SyntectTheme::from_config(CONFIG_PATH)?;
+    if !set_syntect_theme_from_config(&config_theme.name) {
+        set_syntect_theme_from_source_code()
+    }
+    Ok(())
+}
+
+#[derive(EnumIter)]
+enum SyntectThemeKind {
+    TmTheme,
+    Dump,
+}
+
+impl SyntectThemeKind {
+    fn extension(&self) -> &str {
+        match self {
+            Self::TmTheme => "tmTheme",
+            Self::Dump => "themedump",
+        }
+    }
+
+    fn load(&self, themepath: &Path) -> Result<Theme> {
+        match self {
+            Self::TmTheme => ThemeSet::get_theme(themepath)
+                .map_err(|e| anyhow!("Couldn't load syntect theme {e:}")),
+            Self::Dump => {
+                from_dump_file(themepath).map_err(|e| anyhow!("Couldn't load syntect theme {e:}"))
+            }
+        }
+    }
+}
+
+fn set_syntect_theme_from_config(syntect_theme: &str) -> bool {
+    let syntect_theme_path = PathBuf::from(tilde(SYNTECT_THEMES_PATH).as_ref());
+    for kind in SyntectThemeKind::iter() {
+        if load_syntect(&syntect_theme_path, syntect_theme, &kind) {
+            return true;
+        }
+    }
+    false
+}
+
+fn load_syntect(syntect_theme_path: &Path, syntect_theme: &str, kind: &SyntectThemeKind) -> bool {
+    let mut full_path = syntect_theme_path.to_path_buf();
+    full_path.push(syntect_theme);
+    full_path.set_extension(kind.extension());
+    if !full_path.exists() {
+        return false;
+    }
+    let Ok(theme) = kind.load(&full_path) else {
+        crate::log_info!("Syntect couldn't load {fp}", fp = full_path.display());
+        return false;
+    };
+    if SYNTECT_THEME.set(theme).is_ok() {
+        true
+    } else {
+        crate::log_info!("SYNTECT_THEME was already set!");
+        false
+    }
+}
+
+fn set_syntect_theme_from_source_code() {
+    let _ = SYNTECT_THEME.set(from_binary(include_bytes!(
+        "../../assets/themes/monokai.themedump"
+    )));
+}
+
+/// Reads the syntect theme from memory. It should never be `None`.
+pub fn get_syntect_theme() -> Option<&'static Theme> {
+    SYNTECT_THEME.get()
+}
 
 static ICON: OnceLock<bool> = OnceLock::new();
 static ICON_WITH_METADATA: OnceLock<bool> = OnceLock::new();
@@ -142,7 +222,8 @@ pub fn set_configurable_static(start_folder: &str) -> Result<()> {
     set_menu_styles()?;
     set_file_styles()?;
     set_normal_file_colorer()?;
-    set_icon_icon_with_metadata()
+    set_icon_icon_with_metadata()?;
+    set_syntect_theme()
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)

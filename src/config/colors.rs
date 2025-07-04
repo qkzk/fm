@@ -3,7 +3,7 @@ use ratatui::style::Color;
 use crate::config::{ARRAY_GRADIENT, COLORER};
 
 /// How many colors are possible in a gradient.
-/// ATM it's 254 which should be enought to distinguish every
+/// ATM it's 254 which should be enough to distinguish every
 /// displayed extension.
 pub const MAX_GRADIENT_NORMAL: usize = 254;
 
@@ -65,7 +65,7 @@ impl ColorG {
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
-    /// Parse a tuikit color into it's rgb values.
+    /// Parse a ratatui color into it's rgb values.
     /// Non parsable colors returns None.
     pub fn from_ratatui(color: Color) -> Option<Self> {
         match color {
@@ -117,7 +117,7 @@ impl ColorG {
 }
 
 /// Tries to parse a string color into a [`ratatui::style::Color`].
-/// Ansi colors are converted to their corresponding version in tuikit.
+/// Ansi colors are converted to their corresponding version in ratatui.
 /// rgb and hexadecimal formats are parsed also.
 /// rgb( 123,   78,          0)     -> Color::Rgb(123, 78, 0)
 /// #FF00FF                         -> Color::Rgb(255, 0, 255)

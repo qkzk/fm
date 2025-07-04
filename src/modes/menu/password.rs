@@ -24,20 +24,45 @@ impl std::fmt::Display for PasswordKind {
 pub enum PasswordUsage {
     ISO,
     CRYPTSETUP(PasswordKind),
-    USB,
     SUDOCOMMAND,
+    DEVICE,
 }
 
 type Password = String;
 
 /// Holds passwords allowing to mount or unmount an encrypted drive.
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone)]
 pub struct PasswordHolder {
     sudo: Option<Password>,
     cryptsetup: Option<Password>,
 }
 
+/// Custom debug format to prevent leaking passwords in logs.
+impl std::fmt::Debug for PasswordHolder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PasswordHodler")
+            .field("sudo", &self.hide_option(PasswordKind::SUDO))
+            .field("cryptsetup", &self.hide_option(PasswordKind::CRYPTSETUP))
+            .finish()
+    }
+}
+
 impl PasswordHolder {
+    const fn hide_option(&self, password_kind: PasswordKind) -> &str {
+        match password_kind {
+            PasswordKind::SUDO => Self::hide(self.has_sudo()),
+            PasswordKind::CRYPTSETUP => Self::hide(self.has_cryptsetup()),
+        }
+    }
+
+    const fn hide(is_set: bool) -> &'static str {
+        if is_set {
+            "Some(****)"
+        } else {
+            "None"
+        }
+    }
+
     /// Set the sudo password.
     pub fn set_sudo(&mut self, password: Password) {
         self.sudo = Some(password);
@@ -50,14 +75,14 @@ impl PasswordHolder {
 
     /// Reads the cryptsetup password
     #[must_use]
-    pub const fn cryptsetup(&self) -> &Option<Password> {
-        &self.cryptsetup
+    pub fn cryptsetup(&mut self) -> Option<Password> {
+        std::mem::take(&mut self.cryptsetup)
     }
 
     /// Reads the sudo password
     #[must_use]
-    pub const fn sudo(&self) -> &Option<Password> {
-        &self.sudo
+    pub fn sudo(&mut self) -> Option<Password> {
+        std::mem::take(&mut self.sudo)
     }
 
     /// True if the sudo password was set
@@ -75,6 +100,8 @@ impl PasswordHolder {
     /// Reset every known password, dropping them.
     /// It should be called ASAP.
     pub fn reset(&mut self) {
+        std::mem::take(&mut self.sudo);
+        std::mem::take(&mut self.cryptsetup);
         self.sudo = None;
         self.cryptsetup = None;
     }

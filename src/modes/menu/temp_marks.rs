@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::config::{ColorG, Gradient, MENU_STYLES};
-use crate::io::{color_to_style, Offseted};
+use crate::io::Offseted;
 use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::{colored_skip_take, impl_content, impl_selectable};
@@ -91,4 +91,4 @@ impl TempMarks {
 type Opb = Option<PathBuf>;
 
 impl_selectable!(TempMarks);
-impl_content!(Opb, TempMarks);
+impl_content!(TempMarks, Opb);

@@ -8,10 +8,8 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use ratatui::style::Style;
 
-use crate::common::PERMISSIONS_STR;
 use crate::config::{extension_color, FILE_STYLES};
-use crate::io::color_to_style;
-use crate::modes::{human_size, Icon, ToPath, Users, MAX_MODE};
+use crate::modes::{human_size, permission_mode_to_str, ToPath, Users};
 
 type Valid = bool;
 
@@ -97,14 +95,18 @@ impl FileKind<Valid> {
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size:       ",
-            Self::Socket            => "Size:       ",
-            Self::Directory         => "Elements:   ",
-            Self::NormalFile        => "Size:       ",
+            Self::Fifo              => "Size: ",
+            Self::Socket            => "Size: ",
+            Self::Directory         => "Elements:",
+            Self::NormalFile        => "Size: ",
             Self::CharDevice        => "Major,Minor:",
             Self::BlockDevice       => "Major,Minor:",
-            Self::SymbolicLink(_)   => "Size:       ",
+            Self::SymbolicLink(_)   => "Size: ",
         }
+    }
+
+    pub fn is_normal_file(&self) -> bool {
+        matches!(self, Self::NormalFile)
     }
 }
 
@@ -167,16 +169,10 @@ pub struct FileInfo {
     pub group: Arc<str>,
     /// System time of last modification
     pub system_time: Arc<str>,
-    /// Is this file currently selected ?
-    // is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
     pub extension: Arc<str>,
-    /// A formated filename where the "kind" of file
-    /// (directory, char device, block devive, fifo, socket, normal)
-    /// is prepend to the name, allowing a "sort by kind" method.
-    pub kind_format: Arc<str>,
 }
 
 impl FileInfo {
@@ -191,7 +187,6 @@ impl FileInfo {
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
-        let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
@@ -203,7 +198,6 @@ impl FileInfo {
             system_time,
             file_kind,
             extension,
-            kind_format,
         })
     }
 
@@ -218,47 +212,55 @@ impl FileInfo {
     pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
         let mut file_info = Self::new(path, users)?;
         file_info.filename = Arc::from(filename);
-        file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
         Ok(file_info)
     }
 
-    fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(symlink_metadata(&self.path)?)
+    /// Symlink metadata of the file.
+    /// Doesn't follow the symlinks.
+    /// Correspond to `lstat` function on Linux.
+    /// See [`std::fs::symlink_metadata`].
+    ///
+    /// # Errors
+    ///
+    /// Could return an error if the file doesn't exist or if the user can't stat it.
+    pub fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
+        symlink_metadata(&self.path)
+    }
+
+    /// Returns the Inode number.
+    ///
+    /// Returns 0 if the metadata can't be read.
+    pub fn ino(&self) -> u64 {
+        self.metadata()
+            .map(|metadata| metadata.ino())
+            .unwrap_or_default()
     }
 
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
-        Ok(extract_permissions_string(&self.metadata()?))
+        Ok(permission_mode_to_str(self.metadata()?.mode()))
     }
 
+    /// A formated filename where the "kind" of file
+    /// (directory, char device, block devive, fifo, socket, normal)
+    /// is prepend to the name, allowing a "sort by kind" method.
+    pub fn kind_format(&self) -> String {
+        format!(
+            "{c}{filename}",
+            c = self.file_kind.sortable_char(),
+            filename = self.filename
+        )
+    }
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     #[inline]
-    pub fn format_metadata(
-        &self,
-        owner_col_width: usize,
-        group_col_width: usize,
-    ) -> Result<String> {
-        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+    pub fn format_metadata(&self, owner_col_width: usize, group_col_width: usize) -> String {
+        let mut repr = self.format_base(owner_col_width, group_col_width);
         repr.push(' ');
         repr.push_str(&self.filename);
         self.expand_symlink(&mut repr);
-        Ok(repr)
-    }
-
-    #[inline]
-    pub fn format_metadata_icon(
-        &self,
-        owner_col_width: usize,
-        group_col_width: usize,
-    ) -> Result<String> {
-        let mut repr = self.format_base(owner_col_width, group_col_width)?;
-        repr.push(' ');
-        repr.push_str(self.icon());
-        repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
-        Ok(repr)
+        repr
     }
 
     fn expand_symlink(&self, repr: &mut String) {
@@ -272,39 +274,53 @@ impl FileInfo {
         }
     }
 
-    fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+    pub fn format_no_group(&self, owner_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        let group = format!("{group:.group_col_width$}", group = self.group,);
-        let repr = format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
+        let permissions = self
+            .permissions()
+            .unwrap_or_else(|_| Arc::from("?????????"));
+        format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
-            permissions = self.permissions()?,
             file_size = self.size_column,
             system_time = self.system_time,
-        );
-        Ok(repr)
+        )
     }
 
+    pub fn format_no_permissions(&self, owner_col_width: usize) -> String {
+        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
+        format!(
+            "{file_size} {owner:<owner_col_width$} {system_time}",
+            file_size = self.size_column,
+            system_time = self.system_time,
+        )
+    }
+
+    pub fn format_no_owner(&self) -> String {
+        format!("{file_size}", file_size = self.size_column)
+    }
+
+    pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> String {
+        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
+        let group = format!("{group:.group_col_width$}", group = self.group,);
+        let permissions = self
+            .permissions()
+            .unwrap_or_else(|_| Arc::from("?????????"));
+        format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
+            dir_symbol = self.dir_symbol(),
+            file_size = self.size_column,
+            system_time = self.system_time,
+        )
+    }
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
-    pub fn format_no_filename(&self) -> Result<String> {
+    pub fn format_no_filename(&self) -> String {
         self.format_base(6, 6)
     }
 
     pub fn dir_symbol(&self) -> char {
         self.file_kind.dir_symbol()
-    }
-
-    pub fn format_simple(&self) -> Result<String> {
-        Ok(format!(" {name}", name = self.filename))
-    }
-
-    pub fn format_simple_icon(&self) -> Result<String> {
-        Ok(format!(
-            "{icon} {name}",
-            icon = self.icon(),
-            name = self.filename
-        ))
     }
 
     /// True iff the file is hidden (aka starts with a '.').
@@ -350,7 +366,7 @@ impl FileInfo {
     #[inline]
     pub fn style(&self) -> Style {
         if matches!(self.file_kind, FileKind::NormalFile) {
-            return color_to_style(extension_color(&self.extension));
+            return extension_color(&self.extension).into();
         }
         let styles = FILE_STYLES.get().expect("Colors should be set");
         match self.file_kind {
@@ -391,20 +407,6 @@ pub fn extract_datetime(time: std::time::SystemTime) -> Result<Arc<str>> {
     Ok(Arc::from(
         format!("{}", datetime.format("%Y/%m/%d %T")).as_str(),
     ))
-}
-
-/// Reads the permission and converts them into a string.
-fn extract_permissions_string(metadata: &Metadata) -> Arc<str> {
-    let mode = (metadata.mode() & MAX_MODE) as usize;
-    let s_o = convert_octal_mode(mode >> 6);
-    let s_g = convert_octal_mode((mode >> 3) & 7);
-    let s_a = convert_octal_mode(mode & 7);
-    Arc::from(format!("{s_o}{s_g}{s_a}").as_str())
-}
-
-/// Convert an integer like `Oo7` into its string representation like `"rwx"`
-pub fn convert_octal_mode(mode: usize) -> &'static str {
-    PERMISSIONS_STR[mode]
 }
 
 /// Reads the owner name and returns it as a string.
@@ -466,10 +468,6 @@ pub fn extract_extension(path: &path::Path) -> &str {
     path.extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
-}
-
-fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> Arc<str> {
-    Arc::from(format!("{c}{filename}", c = file_kind.sortable_char()).as_str())
 }
 
 /// true iff the path is a valid symlink (pointing to an existing file).

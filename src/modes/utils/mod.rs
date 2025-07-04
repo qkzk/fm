@@ -13,7 +13,7 @@ pub use content_window::ContentWindow;
 pub use leave_menu::LeaveMenu;
 pub use line_display::LineDisplay;
 pub use menu_holder::MenuHolder;
-pub use mount_help::{MountCommands, MountParameters, MountRepr};
+pub use mount_help::{MountCommands, MountParameters};
 pub use second_line::SecondLine;
 pub use selectable_content::{Content, IndexToIndex, Selectable, ToPath};
 pub use shell_parser::{shell_command_parser, SAME_WINDOW_TOKEN};

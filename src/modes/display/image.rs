@@ -74,6 +74,7 @@ impl std::fmt::Display for Kind {
     }
 }
 
+/// True iff the path points to a video file. Recognized from its extenion.
 pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
     let Some(ext) = path.as_ref().extension() else {
         return false;
@@ -84,21 +85,19 @@ pub fn path_is_video<P: AsRef<Path>>(path: P) -> bool {
     )
 }
 
-/// Holds an instance of [`ueberzug::Ueberzug`] and a few information about the display.
+/// Holds the informations about the displayed image.
 /// it's used to display the image itself, calling `draw` with parameters for its position and dimension.
-pub struct Ueber {
+pub struct DisplayedImage {
     since: Instant,
     pub kind: Kind,
     pub identifier: String,
-    images: Vec<PathBuf>,
+    pub images: Vec<PathBuf>,
     length: usize,
     pub index: usize,
-    ueberzug: ueberzug::Ueberzug,
 }
 
-impl Ueber {
+impl DisplayedImage {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
-        let ueberzug = ueberzug::Ueberzug::new();
         let index = 0;
         let length = images.len();
         let since = Instant::now();
@@ -109,7 +108,6 @@ impl Ueber {
             images,
             length,
             index,
-            ueberzug,
         }
     }
     /// Only affect pdf thumbnail. Will decrease the index if possible.
@@ -148,36 +146,20 @@ impl Ueber {
         }
     }
 
-    /// Draw the image with ueberzug in the current window.
-    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn draw(&self, x: u16, y: u16, width: u16, height: u16) {
-        log_info!(
-            "ueber draws {image} {index}",
-            image = self.images[self.index].display(),
-            index = self.index
-        );
-        self.ueberzug.draw(&ueberzug::UeConf {
-            identifier: &self.identifier,
-            path: &self.images[self.image_index()].to_string_lossy(),
-            x,
-            y,
-            width: Some(width),
-            height: Some(height),
-            scaler: Some(ueberzug::Scalers::FitContain),
-            ..Default::default()
-        });
+    /// Path of the currently selected image as a COW &str.
+    pub fn selected_path(&self) -> std::borrow::Cow<'_, str> {
+        self.images[self.image_index()].to_string_lossy()
     }
 }
 
-/// Build an [`Ueber`] instance for a given source.
+/// Build an [`DisplayedImage`] instance for a given source.
 /// All thumbnails are built here.
-pub struct UeberBuilder {
+pub struct DisplayedImageBuilder {
     kind: Kind,
     source: PathBuf,
 }
 
-impl UeberBuilder {
+impl DisplayedImageBuilder {
     pub fn video_thumbnails(hashed_path: &str) -> [String; 4] {
         [
             format!("{TMP_THUMBNAILS_DIR}/{hashed_path}_1.jpg"),
@@ -192,7 +174,7 @@ impl UeberBuilder {
         Self { source, kind }
     }
 
-    pub fn build(self) -> Result<Ueber> {
+    pub fn build(self) -> Result<DisplayedImage> {
         match &self.kind {
             Kind::Font => self.build_font(),
             Kind::Image => self.build_image(),
@@ -204,7 +186,7 @@ impl UeberBuilder {
         }
     }
 
-    fn build_office(self) -> Result<Ueber> {
+    fn build_office(self) -> Result<DisplayedImage> {
         let calc_str = path_to_string(&self.source);
         Self::convert_office_to_pdf(&calc_str)?;
         let pdf = Self::office_to_pdf_filename(
@@ -220,7 +202,7 @@ impl UeberBuilder {
         let images = Self::make_pdf_images_paths(Self::get_pdf_length(&pdf)?)?;
         std::fs::remove_file(&pdf)?;
 
-        Ok(Ueber::new(Kind::Pdf, identifier, images))
+        Ok(DisplayedImage::new(Kind::Pdf, identifier, images))
     }
 
     fn convert_office_to_pdf(calc_str: &str) -> Result<std::process::Output> {
@@ -262,16 +244,16 @@ impl UeberBuilder {
         }
     }
 
-    fn build_pdf(self) -> Result<Ueber> {
+    fn build_pdf(self) -> Result<DisplayedImage> {
         let length = Self::get_pdf_length(&self.source)?;
         let identifier = filename_from_path(&self.source)?.to_owned();
         Thumbnail::create(&self.kind, self.source.to_string_lossy().as_ref());
         let images = Self::make_pdf_images_paths(length)?;
         log_info!("build_pdf images: {images:?}");
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_video(self) -> Result<Ueber> {
+    fn build_video(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -284,15 +266,15 @@ impl UeberBuilder {
             .filter(|p| p.exists())
             .collect();
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_single_image(self, images: Vec<PathBuf>) -> Result<Ueber> {
+    fn build_single_image(self, images: Vec<PathBuf>) -> Result<DisplayedImage> {
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Ok(Ueber::new(self.kind, identifier, images))
+        Ok(DisplayedImage::new(self.kind, identifier, images))
     }
 
-    fn build_font(self) -> Result<Ueber> {
+    fn build_font(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -303,12 +285,12 @@ impl UeberBuilder {
         self.build_single_image(images)
     }
 
-    fn build_image(self) -> Result<Ueber> {
+    fn build_image(self) -> Result<DisplayedImage> {
         let images = vec![self.source.clone()];
         self.build_single_image(images)
     }
 
-    fn build_svg(self) -> Result<Ueber> {
+    fn build_svg(self) -> Result<DisplayedImage> {
         let path_str = self
             .source
             .to_str()
@@ -320,6 +302,7 @@ impl UeberBuilder {
     }
 }
 
+/// Empty struct with methods relative to thubmnail creation.
 pub struct Thumbnail;
 
 impl Thumbnail {
@@ -352,7 +335,7 @@ impl Thumbnail {
 
     pub fn create_video(path_str: &str) -> Result<()> {
         let rand = hash_path(path_str);
-        let images_paths = UeberBuilder::video_thumbnails(&rand);
+        let images_paths = DisplayedImageBuilder::video_thumbnails(&rand);
         if Path::new(&images_paths[0]).exists() && !is_older_than_a_week(&images_paths[0]) {
             return Ok(());
         }
@@ -367,7 +350,7 @@ impl Thumbnail {
             "-an",
             "-sn",
             "-vf",
-            "fps=1/100,scale=320:-1",
+            "fps=1/10,scale=320:-1",
             "-threads",
             "2",
             "-frames:v",

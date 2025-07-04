@@ -75,6 +75,17 @@ impl Input {
         }
     }
 
+    /// Move the cursor to the given index, limited to the length of the input.
+    ///
+    /// Used when the user click on the input string.
+    pub fn cursor_move(&mut self, index: usize) {
+        if index <= self.len() {
+            self.cursor_index = index
+        } else {
+            self.cursor_end()
+        }
+    }
+
     /// Backspace, delete the char under the cursor and move left
     pub fn delete_char_left(&mut self) {
         if self.cursor_index > 0 && !self.chars.is_empty() {
@@ -98,6 +109,17 @@ impl Input {
         self.cursor_index = 0;
     }
 
+    /// Deletes left symbols until a separator is reached or the start of the line
+    pub fn delete_left(&mut self) {
+        while self.cursor_index > 0 {
+            self.chars.remove(self.cursor_index.saturating_sub(1));
+            self.cursor_index -= 1;
+            if self.is_empty() || is_separator(&self.chars[self.cursor_index.saturating_sub(1)]) {
+                break;
+            }
+        }
+    }
+
     /// Replace the content with the new content.
     /// Put the cursor at the end.
     ///
@@ -115,4 +137,28 @@ impl Input {
             .collect();
         self.cursor_end();
     }
+}
+
+fn is_separator(word: &str) -> bool {
+    matches!(
+        word,
+        " " | "/"
+            | "\\"
+            | "."
+            | ","
+            | ";"
+            | "!"
+            | "?"
+            | "%"
+            | "_"
+            | "-"
+            | "+"
+            | "*"
+            | "("
+            | ")"
+            | "{"
+            | "}"
+            | "["
+            | "]"
+    )
 }

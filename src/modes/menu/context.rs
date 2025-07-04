@@ -1,9 +1,15 @@
+use std::fmt::Formatter;
+use std::fs::Metadata;
+use std::time::SystemTime;
+
+use strum::{EnumIter, IntoEnumIterator};
+
 use crate::event::ActionMap;
 use crate::io::Opener;
-use crate::modes::{extract_datetime, ExtensionKind, FileInfo, FileKind};
-use crate::{impl_content, impl_selectable};
+use crate::modes::{extract_datetime, ExtensionKind, FileInfo};
+use crate::{impl_content, impl_draw_menu_with_char, impl_selectable};
 
-const CONTEXT: [(&str, ActionMap); 10] = [
+const CONTEXT_ACTIONS: [(&str, ActionMap); 10] = [
     ("Open", ActionMap::OpenFile),
     ("Open with", ActionMap::Exec),
     ("Open in Neovim", ActionMap::NvimFilepicker),
@@ -27,8 +33,8 @@ pub struct ContextMenu {
 
 impl ContextMenu {
     pub fn setup(&mut self) {
-        self.content = CONTEXT.iter().map(|(s, _)| *s).collect();
-        self.actions = CONTEXT.iter().map(|(_, a)| a).collect();
+        self.content = CONTEXT_ACTIONS.iter().map(|(s, _)| *s).collect();
+        self.actions = CONTEXT_ACTIONS.iter().map(|(_, a)| a).collect();
     }
 
     pub fn matcher(&self) -> &ActionMap {
@@ -43,7 +49,8 @@ impl ContextMenu {
 type StaticStr = &'static str;
 
 impl_selectable!(ContextMenu);
-impl_content!(StaticStr, ContextMenu);
+impl_content!(ContextMenu, StaticStr);
+impl_draw_menu_with_char!(ContextMenu, StaticStr);
 
 /// Used to generate more informations about a file in the context menu.
 pub struct MoreInfos<'a> {
@@ -56,78 +63,103 @@ impl<'a> MoreInfos<'a> {
         Self { file_info, opener }
     }
 
-    /// Informations about the file as a vector of string.
-    pub fn to_lines(&self) -> Vec<String> {
-        let mut lines = vec![];
-
-        self.owner_group(&mut lines);
-        self.perms(&mut lines);
-        self.size(&mut lines);
-        self.times(&mut lines);
-        self.opener(&mut lines);
-        self.kind(&mut lines);
-
-        lines
+    /// Informations about the file as an array of strings.
+    pub fn to_lines(&self) -> [String; 7] {
+        let mut times = self.system_times();
+        [
+            self.owner_group(),
+            self.perms(),
+            self.size_inode(),
+            std::mem::take(&mut times[0]),
+            std::mem::take(&mut times[1]),
+            std::mem::take(&mut times[2]),
+            self.kind_opener(),
+        ]
     }
 
-    fn owner_group(&self, lines: &mut Vec<String>) {
-        lines.push(format!(
+    fn owner_group(&self) -> String {
+        format!(
             "Owner/Group: {owner} / {group}",
             owner = self.file_info.owner,
             group = self.file_info.group
-        ));
+        )
     }
 
-    fn perms(&self, lines: &mut Vec<String>) {
+    fn perms(&self) -> String {
         if let Ok(perms) = self.file_info.permissions() {
-            lines.push(format!(
+            format!(
                 "Permissions: {dir_symbol}{perms}",
                 dir_symbol = self.file_info.dir_symbol()
-            ));
+            )
+        } else {
+            "".to_owned()
         }
     }
 
-    fn size(&self, lines: &mut Vec<String>) {
-        lines.push(format!(
-            "{size_kind} {size}",
+    fn size_inode(&self) -> String {
+        format!(
+            "{size_kind} {size} / Inode: {inode}",
             size_kind = self.file_info.file_kind.size_description(),
-            size = self.file_info.size_column.trimed()
-        ));
+            size = self.file_info.size_column.trimed(),
+            inode = self.file_info.ino()
+        )
     }
 
-    fn times(&self, lines: &mut Vec<String>) {
-        if let Ok(metadata) = std::fs::metadata(&self.file_info.path) {
-            if let Ok(created) = metadata.created() {
-                if let Ok(dt) = extract_datetime(created) {
-                    lines.push(format!("Created:     {dt}"))
-                }
-            }
-            if let Ok(accessed) = metadata.accessed() {
-                if let Ok(dt) = extract_datetime(accessed) {
-                    lines.push(format!("Accessed:    {dt}"))
-                }
-            }
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(dt) = extract_datetime(modified) {
-                    lines.push(format!("Modified:    {dt}"))
-                }
-            }
-        }
-    }
-
-    fn opener(&self, lines: &mut Vec<String>) {
-        if let Some(opener) = self.opener.kind(&self.file_info.path) {
-            lines.push(format!("Opener:      {opener}"));
-        };
-    }
-
-    fn kind(&self, lines: &mut Vec<String>) {
-        if matches!(self.file_info.file_kind, FileKind::NormalFile) {
+    fn kind_opener(&self) -> String {
+        if self.file_info.file_kind.is_normal_file() {
             let ext_kind = ExtensionKind::matcher(&self.file_info.extension.to_lowercase());
-            lines.push(format!("Previewer:   {ext_kind}"));
+            if let Some(opener) = self.opener.kind(&self.file_info.path) {
+                format!("Opener: {opener}, Previewer: {ext_kind}")
+            } else {
+                format!("Previewer:  {ext_kind}")
+            }
         } else {
             let kind = self.file_info.file_kind.long_description();
-            lines.push(format!("Kind:        {kind}"));
+            format!("Kind:        {kind}")
+        }
+    }
+
+    fn system_times(&self) -> Vec<String> {
+        let Ok(metadata) = &self.file_info.metadata() else {
+            return vec!["".to_owned(), "".to_owned(), "".to_owned()];
+        };
+        TimeKind::iter()
+            .map(|time_kind| time_kind.format_time(metadata))
+            .collect()
+    }
+}
+
+#[derive(EnumIter)]
+enum TimeKind {
+    Modified,
+    Created,
+    Accessed,
+}
+
+impl TimeKind {
+    fn read_time(&self, metadata: &Metadata) -> Result<SystemTime, std::io::Error> {
+        match self {
+            Self::Modified => metadata.modified(),
+            Self::Created => metadata.created(),
+            Self::Accessed => metadata.accessed(),
+        }
+    }
+
+    fn format_time(&self, metadata: &Metadata) -> String {
+        let Ok(dt) = self.read_time(metadata) else {
+            return "".to_owned();
+        };
+        let formated_time = extract_datetime(dt).unwrap_or_default();
+        format!("{self}{formated_time}")
+    }
+}
+
+impl std::fmt::Display for TimeKind {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            Self::Modified => write!(f, "Modified:    ",),
+            Self::Created => write!(f, "Created:     ",),
+            Self::Accessed => write!(f, "Assessed:    "),
         }
     }
 }

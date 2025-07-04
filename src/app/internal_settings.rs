@@ -10,7 +10,7 @@ use sysinfo::Disks;
 
 use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
 use crate::event::FmEvents;
-use crate::io::{execute_and_output, open_command_in_window, Args, Extension, External, Opener};
+use crate::io::{execute_and_output, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
 /// Internal settings of the status.
@@ -40,6 +40,7 @@ pub struct InternalSettings {
     pub height: u16,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
+    // TODO: make it private and refactor disk space without using collect
     pub disks: Disks,
     /// true if the application was launched inside a neovim terminal emulator
     pub inside_neovim: bool,
@@ -109,9 +110,13 @@ impl InternalSettings {
         self.force_clear
     }
 
-    pub fn mount_points(&mut self) -> Vec<&Path> {
+    pub fn disks(&mut self) -> &Disks {
         self.disks.refresh_list();
-        self.disks.iter().map(|d| d.mount_point()).collect()
+        &self.disks
+    }
+
+    pub fn mount_points(&mut self) -> Vec<&Path> {
+        self.disks().iter().map(|d| d.mount_point()).collect()
     }
 
     pub fn update_nvim_listen_address(&mut self) {
@@ -207,7 +212,7 @@ impl InternalSettings {
 
     pub fn open_in_window(&mut self, args: &[&str]) -> Result<()> {
         self.disable_display();
-        open_command_in_window(args)?;
+        External::open_command_in_window(args)?;
         self.enable_display();
         Ok(())
     }

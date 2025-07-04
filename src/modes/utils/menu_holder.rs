@@ -11,11 +11,31 @@ use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CliApplications, Completion, Compresser, Content, ContentWindow, ContextMenu,
-    CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu,
-    MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
-    Shortcut, TempMarks, Trash, TuiApplications, MAX_MODE,
+    Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu, Flagged, History,
+    Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate, PasswordHolder, Picker, Remote,
+    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
 };
+
+macro_rules! impl_navigate_from_char {
+    ($name:ident, $field:ident) => {
+        #[doc = concat!(
+         "Navigates to the index in the `",
+         stringify!($field),
+         "` field based on the given character."
+                                                                                                )]
+        pub fn $name(&mut self, c: char) -> bool {
+            let Some(index) = index_from_a(c) else {
+                return false;
+            };
+            if index < self.$field.len() {
+                self.$field.set_index(index);
+                self.window.scroll_to(index);
+                return true;
+            }
+            false
+        }
+    };
+}
 
 /// Holds almost every menu except for the history, which is tab specific.
 /// Only one instance is created and hold by status.
@@ -42,8 +62,6 @@ pub struct MenuHolder {
     pub compression: Compresser,
     /// Cotext menu
     pub context: ContextMenu,
-    /// Encrypted devices opener
-    pub encrypted_devices: CryptoDeviceOpener,
     /// The flagged files
     pub flagged: Flagged,
     /// The typed input by the user
@@ -60,8 +78,6 @@ pub struct MenuHolder {
     pub password_holder: PasswordHolder,
     /// basic picker
     pub picker: Picker,
-    /// MTP devices
-    pub removable_devices: RemovableDevices,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     /// TUI application
@@ -72,6 +88,8 @@ pub struct MenuHolder {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
+    /// mounts
+    pub mount: Mount,
 }
 
 impl MenuHolder {
@@ -83,7 +101,6 @@ impl MenuHolder {
             completion: Completion::default(),
             compression: Compresser::default(),
             context: ContextMenu::default(),
-            encrypted_devices: CryptoDeviceOpener::default(),
             flagged: Flagged::default(),
             history: History::default(),
             input: Input::default(),
@@ -92,13 +109,13 @@ impl MenuHolder {
             marks: Marks::default(),
             password_holder: PasswordHolder::default(),
             picker: Picker::default(),
-            removable_devices: RemovableDevices::default(),
             shortcut: Shortcut::empty(start_dir),
             sudo_command: None,
             temp_marks: TempMarks::default(),
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
+            mount: Mount::default(),
         })
     }
 
@@ -131,7 +148,7 @@ impl MenuHolder {
         let Ok(metadata) = flagged.metadata() else {
             return;
         };
-        let mode = metadata.mode() & MAX_MODE;
+        let mode = metadata.mode() & MAX_FILE_MODE;
         self.input.replace(&format!("{mode:o}"));
     }
 
@@ -161,33 +178,14 @@ impl MenuHolder {
         }
     }
 
-    pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
-        let device = self.encrypted_devices.selected()?;
-        if !device.is_mounted() {
-            return None;
-        }
-        let mount_point = device.mount_point()?;
-        Some(std::path::PathBuf::from(mount_point))
-    }
-
-    pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
-        let Some(device) = &self.removable_devices.selected() else {
-            return None;
-        };
-        if !device.is_mounted() {
-            return None;
-        }
-        Some(std::path::PathBuf::from(&device.path))
-    }
-
     /// Run sshfs with typed parameters to mount a remote directory in current directory.
     /// sshfs should be reachable in path.
     /// The user must type 3 arguments like this : `username hostname remote_path`.
     /// If the user doesn't provide 3 arguments,
     pub fn mount_remote(&mut self, current_path: &str) {
         let input = self.input.string();
-        if let Some(remote_builder) = Remote::from_input(input) {
-            remote_builder.mount(current_path);
+        if let Some(remote_builder) = Remote::from_input(input, current_path) {
+            remote_builder.mount();
         }
         self.input.reset();
     }
@@ -216,6 +214,7 @@ impl MenuHolder {
         Ok(())
     }
 
+    /// Reset the password holder, drop the sudo privileges (sudo -k) and clear the sudo command.
     pub fn clear_sudo_attributes(&mut self) -> Result<()> {
         self.password_holder.reset();
         drop_sudo_privileges()?;
@@ -238,30 +237,6 @@ impl MenuHolder {
         right_path: &std::path::Path,
     ) {
         self.shortcut.refresh(mount_points, left_path, right_path)
-    }
-
-    pub fn shortcut_from_char(&mut self, c: char) -> bool {
-        let Some(index) = index_from_a(c) else {
-            return false;
-        };
-        if index < self.shortcut.len() {
-            self.shortcut.set_index(index);
-            self.window.scroll_to(index);
-            return true;
-        }
-        false
-    }
-
-    pub fn context_from_char(&mut self, c: char) -> bool {
-        let Some(index) = index_from_a(c) else {
-            return false;
-        };
-        if index < self.context.len() {
-            self.context.set_index(index);
-            self.window.scroll_to(index);
-            return true;
-        }
-        false
     }
 
     pub fn completion_reset(&mut self) {
@@ -339,12 +314,11 @@ impl MenuHolder {
         match navigate {
             Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::Compress => func(&mut self.compression),
+            Navigate::Mount => func(&mut self.mount),
             Navigate::Context => func(&mut self.context),
-            Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
             Navigate::Marks(_) => func(&mut self.marks),
             Navigate::TempMarks(_) => func(&mut self.temp_marks),
-            Navigate::RemovableDevices => func(&mut self.removable_devices),
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
@@ -361,12 +335,11 @@ impl MenuHolder {
         match navigate {
             Navigate::CliApplication => func(&self.cli_applications),
             Navigate::Compress => func(&self.compression),
+            Navigate::Mount => func(&self.mount),
             Navigate::Context => func(&self.context),
-            Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
             Navigate::Marks(_) => func(&self.marks),
             Navigate::TempMarks(_) => func(&self.temp_marks),
-            Navigate::RemovableDevices => func(&self.removable_devices),
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
@@ -390,8 +363,7 @@ impl MenuHolder {
             Navigate::Marks(_) => self.marks.draw_menu(f, rect, &self.window),
             Navigate::TuiApplication => self.tui_applications.draw_menu(f, rect, &self.window),
             Navigate::CliApplication => self.cli_applications.draw_menu(f, rect, &self.window),
-            Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(f, rect, &self.window),
-            Navigate::RemovableDevices => self.removable_devices.draw_menu(f, rect, &self.window),
+            Navigate::Mount => self.mount.draw_menu(f, rect, &self.window),
             _ => unreachable!("{navigate} requires more information to be displayed."),
         }
     }
@@ -424,4 +396,10 @@ impl MenuHolder {
         self.input_complete(tab)?;
         Ok(())
     }
+
+    impl_navigate_from_char!(shortcut_from_char, shortcut);
+    impl_navigate_from_char!(context_from_char, context);
+    impl_navigate_from_char!(tui_applications_from_char, tui_applications);
+    impl_navigate_from_char!(cli_applications_from_char, cli_applications);
+    impl_navigate_from_char!(compression_method_from_char, compression);
 }

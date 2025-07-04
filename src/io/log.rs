@@ -1,9 +1,13 @@
+use std::fs::{metadata, remove_file, File, OpenOptions};
+use std::io::{BufWriter, Write};
 use std::sync::RwLock;
 
 use anyhow::Result;
-use log4rs;
+use chrono::Local;
+use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use parking_lot::Mutex;
 
-use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, NORMAL_LOG_PATH};
 
 /// Holds the last action which is displayed to the user
 static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
@@ -11,49 +15,82 @@ static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
 /// Holds the last line of the log
 static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
-/// Set the logs.
-/// First we read the `-l` `--log` command line argument which default to false.
-///
-/// If it's false, nothing is done and we return.
-/// No logger is set, nothing is logged.
-///
-/// If it's true :
-/// The configuration is read from a config file defined in `LOG_CONFIG_PATH`
-/// It's a YAML file which defines 2 logs:
-/// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
-/// - a special one used with `log::info!(target: "special", ...)` to be displayed in the application
-pub fn set_loggers() -> Result<()> {
-    log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
-    // clear_useless_env_home()?;
+/// Used to trigger a reset of log files.
+/// Once their size is bigger than `MAX_LOG_SIZE`, the log file is cleared.
+const MAX_LOG_SIZE: u64 = 50_000;
 
-    log::info!("fm is starting with logs enabled");
-    Ok(())
+/// Setup of 2 loggers
+/// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
+/// - an action one used with `log::info!(target: "action", ...)` to be displayed in the application
+pub struct FMLogger {
+    normal_log: Mutex<BufWriter<std::fs::File>>,
+    action_log: Mutex<BufWriter<std::fs::File>>,
 }
 
-/// Delete useless $ENV{HOME} folder created by log4rs.
-/// This folder is created when a log file is big enough to proc a rolling
-/// Since the pattern can't be resolved, it's not created in the config folder but where the app is started...
-/// See [github issue](https://github.com/estk/log4rs/issues/314)
-/// The function log its results and delete nothing.
-// fn clear_useless_env_home() -> Result<()> {
-//     let p = std::path::Path::new(&ENV_HOME);
-//     let cwd = std::env::current_dir();
-//     log::info!(
-//         "looking from {ENV_HOME} - {p}  CWD {cwd}",
-//         p = p.display(),
-//         cwd = cwd?.display()
-//     );
-//     if p.exists() && std::fs::metadata(ENV_HOME)?.is_dir()
-//     // && std::path::Path::new(ENV_HOME).read_dir()?.next().is_none()
-//     {
-//         let z = std::path::Path::new(ENV_HOME).read_dir()?.next();
-//         log::info!("z {z:?}");
-//
-//         // std::fs::remove_dir_all(ENV_HOME)?;
-//         log::info!("Removed {ENV_HOME} empty directory from CWD");
-//     }
-//     Ok(())
-// }
+impl Default for FMLogger {
+    fn default() -> Self {
+        let normal_file = open_or_rotate(tilde(NORMAL_LOG_PATH).as_ref(), MAX_LOG_SIZE);
+        let action_file = open_or_rotate(tilde(ACTION_LOG_PATH).as_ref(), MAX_LOG_SIZE);
+        let normal_log = Mutex::new(BufWriter::new(normal_file));
+        let action_log = Mutex::new(BufWriter::new(action_file));
+        Self {
+            normal_log,
+            action_log,
+        }
+    }
+}
+
+impl FMLogger {
+    pub fn init(self) -> Result<(), SetLoggerError> {
+        log::set_boxed_logger(Box::new(self))?;
+        log::set_max_level(LevelFilter::Info);
+        log::info!("fm is starting with logs enabled");
+        Ok(())
+    }
+
+    fn write(&self, writer: &Mutex<BufWriter<File>>, record: &Record) {
+        let mut writer = writer.lock();
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+        let _ = writeln!(writer, "{timestamp} - {msg}", msg = record.args());
+        let _ = writer.flush();
+    }
+}
+
+impl log::Log for FMLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+        if record.target() == "action" {
+            self.write(&self.action_log, record)
+        } else {
+            self.write(&self.normal_log, record)
+        }
+    }
+
+    fn flush(&self) {
+        let _ = self.normal_log.lock().flush();
+        let _ = self.action_log.lock().flush();
+    }
+}
+
+fn open_or_rotate(path: &str, max_size: u64) -> File {
+    if let Ok(meta) = metadata(path) {
+        if meta.len() > max_size {
+            let _ = remove_file(path);
+        }
+    }
+
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("cannot open log file")
+}
 
 /// Returns the last line of the log file.
 pub fn read_log() -> Result<Vec<String>> {
@@ -84,17 +121,17 @@ where
     *last_log_line = log.to_string();
 }
 
-/// Write a line to both the global variable `LAST_LOG_LINE` and the special log
+/// Write a line to both the global variable `LAST_LOG_LINE` and the action log
 /// which can be displayed with Alt+l
 pub fn write_log_line<S>(log_line: S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    log::info!(target: "special", "{log_line}");
+    log::info!(target: "action", "{log_line}");
     write_last_log_line(log_line);
 }
 
-/// Writes the message to the global variable `LAST_LOG_LINE` and a the special log.
+/// Writes the message to the global variable `LAST_LOG_LINE` and a the action log.
 /// It can be displayed with the default bind ALt+l and at the last line of the display.
 /// Every action which change the filetree, execute an external command or which returns an
 /// error should be logged this way.
@@ -147,9 +184,19 @@ where
 /// It accepts the same formatted messages as `format`.
 #[macro_export]
 macro_rules! log_info {
-    ($($arg:tt)+) => (
-    $crate::io::write_log_info_once(
-      format!($($arg)+)
-    )
-  );
+    ($($arg:tt)+) => {{
+        fn __log_info_dummy() {}
+        let function = {
+            let full = std::any::type_name_of_val(&__log_info_dummy);
+            full.trim_end_matches("::__log_info_dummy")
+        };
+
+        $crate::io::write_log_info_once(format!(
+            "{file}:{line}:{column} [{function}] - {content}",
+            file=file!(),
+            line=line!(),
+            column=column!(),
+            content=format_args!($($arg)+)
+        ))
+    }};
 }

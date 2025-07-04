@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::convert::Into;
 use std::fmt::{Display, Write as _};
 use std::fs::symlink_metadata;
-use std::io::{BufRead, BufReader, Cursor, Read};
+use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
@@ -12,20 +12,20 @@ use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
 use syntect::{
     easy::HighlightLines,
-    highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
+    highlighting::{FontStyle, Style as SyntectStyle},
     parsing::{SyntaxReference, SyntaxSet},
 };
 
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT,
-    SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
+    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::MONOKAI_THEME;
+use crate::config::get_syntect_theme;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
-    Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
+    DisplayedImageBuilder, FileKind, FilterKind, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -96,14 +96,12 @@ impl ExtensionKind {
             Self::Audio     => is_in_path(MEDIAINFO),
             Self::Office    => is_in_path(LIBREOFFICE),
             Self::Torrent   => is_in_path(TRANSMISSION_SHOW),
-            Self::Image     => is_in_path(UEBERZUG),
             Self::Sevenz    => is_in_path(SEVENZ),
-            Self::Svg       => is_in_path(UEBERZUG) && is_in_path(RSVG_CONVERT),
-            Self::Video     => is_in_path(UEBERZUG) && is_in_path(FFMPEG),
-            Self::Font      => is_in_path(UEBERZUG) && is_in_path(FONTIMAGE),
+            Self::Svg       => is_in_path(RSVG_CONVERT),
+            Self::Video     => is_in_path(FFMPEG),
+            Self::Font      => is_in_path(FONTIMAGE),
             Self::Pdf       => {
-                               is_in_path(UEBERZUG)
-                            && is_in_path(PDFINFO)
+                               is_in_path(PDFINFO)
                             && is_in_path(PDFTOPPM)
             }
 
@@ -111,7 +109,7 @@ impl ExtensionKind {
         }
     }
 
-    fn is_ueber_kind(&self) -> bool {
+    fn is_image_kind(&self) -> bool {
         matches!(
             &self,
             ExtensionKind::Font
@@ -154,7 +152,7 @@ pub enum Preview {
     Syntaxed(HLContent),
     Text(Text),
     Binary(BinaryContent),
-    Ueberzug(Ueber),
+    Image(DisplayedImage),
     Tree(Tree),
     #[default]
     Empty,
@@ -169,7 +167,7 @@ impl Preview {
             Self::Syntaxed(preview) => preview.len(),
             Self::Text(preview) => preview.len(),
             Self::Binary(preview) => preview.len(),
-            Self::Ueberzug(preview) => preview.len(),
+            Self::Image(preview) => preview.len(),
             Self::Tree(tree) => tree.displayable().lines().len(),
         }
     }
@@ -180,7 +178,7 @@ impl Preview {
             Self::Syntaxed(_) => "an highlighted text",
             Self::Text(text) => text.kind.for_first_line(),
             Self::Binary(_) => "a binary file",
-            Self::Ueberzug(uber) => uber.kind.for_first_line(),
+            Self::Image(image) => image.kind.for_first_line(),
             Self::Tree(_) => "a tree",
         }
     }
@@ -201,7 +199,7 @@ impl Preview {
             Self::Syntaxed(preview) => preview.filepath().to_owned(),
             Self::Text(preview) => preview.title.to_owned(),
             Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
-            Self::Ueberzug(preview) => preview.identifier.to_owned(),
+            Self::Image(preview) => preview.identifier.to_owned(),
             Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
         }
     }
@@ -289,7 +287,7 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(&self.path, kind),
+            _ if kind.is_image_kind() && kind.has_programs() => Self::image(&self.path, kind),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -297,12 +295,12 @@ impl PreviewBuilder {
         }
     }
 
-    fn ueber(path: &Path, kind: ExtensionKind) -> Result<Preview> {
-        let preview = UeberBuilder::new(path, kind.into()).build()?;
+    fn image(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+        let preview = DisplayedImageBuilder::new(path, kind.into()).build()?;
         if preview.is_empty() {
             Ok(Preview::Empty)
         } else {
-            Ok(Preview::Ueberzug(preview))
+            Ok(Preview::Image(preview))
         }
     }
 
@@ -354,10 +352,26 @@ impl PreviewBuilder {
     }
 
     fn text_or_binary(&self) -> Result<Preview> {
-        if self.is_binary()? {
+        if let Some(elf) = self.read_elf() {
+            Ok(Preview::Text(Text::from_readelf(&self.path, elf)?))
+        } else if self.is_binary()? {
             Ok(Preview::Binary(BinaryContent::new(&self.path)?))
         } else {
             Ok(Preview::Text(Text::from_file(&self.path)?))
+        }
+    }
+
+    fn read_elf(&self) -> Option<String> {
+        let Ok(output) = execute_and_capture_output_without_check(
+            READELF,
+            &["-WCa", self.path.to_string_lossy().as_ref()],
+        ) else {
+            return None;
+        };
+        if output.is_empty() {
+            None
+        } else {
+            Some(output)
         }
     }
 
@@ -408,6 +422,7 @@ pub enum TextKind {
     Archive,
     Blockdevice,
     CommandStdout,
+    Elf,
     Epub,
     FifoChardevice,
     Help,
@@ -427,6 +442,7 @@ impl TextKind {
             Self::Archive => "an archive",
             Self::Blockdevice => "a Blockdevice file",
             Self::CommandStdout => "a command stdout",
+            Self::Elf => "an elf file",
             Self::Epub => "an epub",
             Self::FifoChardevice => "a Fifo or Chardevice file",
             Self::Help => "Help",
@@ -502,6 +518,15 @@ impl Text {
             kind: TextKind::TEXTFILE,
             length: content.len(),
             content,
+        })
+    }
+
+    fn from_readelf(path: &Path, elf: String) -> Result<Self> {
+        Ok(Self {
+            title: filename_from_path(path).context("")?.to_owned(),
+            kind: TextKind::Elf,
+            length: elf.len(),
+            content: elf.lines().map(|line| line.to_owned()).collect(),
         })
     }
 
@@ -688,23 +713,14 @@ impl HLContent {
         &self.path
     }
 
-    fn get_or_init_monokai() -> &'static Theme {
-        MONOKAI_THEME.get_or_init(|| {
-            let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-                "../../../assets/themes/Monokai_Extended.tmTheme"
-            )));
-            ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
-        })
-    }
-
     fn parse_raw_content(
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut highlighted_content = vec![];
-        let monokai = Self::get_or_init_monokai();
-        let mut highlighter = HighlightLines::new(syntax_ref, monokai);
+        let syntect_theme = get_syntect_theme().context("Syntect set should be set")?;
+        let mut highlighter = HighlightLines::new(syntax_ref, syntect_theme);
 
         for line in raw_content.iter() {
             let mut v_line = vec![];
@@ -721,7 +737,7 @@ impl HLContent {
 }
 
 /// Holds a string to be displayed with given .
-/// We have to read the  from Syntect and parse it into tuikit attr
+/// We have to read the  from Syntect and parse it into ratatui attr
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {

@@ -406,7 +406,7 @@ impl OpendalContainer {
 }
 
 impl_selectable!(OpendalContainer);
-impl_content!(Entry, OpendalContainer);
+impl_content!(OpendalContainer, Entry);
 
 impl CowStr for Entry {
     fn cow_str(&self) -> Cow<str> {

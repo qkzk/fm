@@ -8,7 +8,8 @@ use serde_yml::Mapping;
 use crate::app::Status;
 use crate::common::CLI_PATH;
 use crate::common::{is_in_path, tilde};
-use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
+use crate::impl_draw_menu_with_char;
+use crate::io::execute_with_ansi_colors;
 use crate::modes::shell_command_parser;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -160,9 +161,6 @@ impl TerminalApplications<CliCommand, (String, String)> for CliApplications {
     }
 }
 
-impl_selectable!(CliApplications);
-impl_content!(CliCommand, CliApplications);
-
 impl CowStr for CliCommand {
     fn cow_str(&self) -> Cow<str> {
         let desc_size = 20_usize.saturating_sub(self.desc.len());
@@ -176,4 +174,6 @@ impl CowStr for CliCommand {
     }
 }
 
-impl DrawMenu<CliCommand> for CliApplications {}
+impl_selectable!(CliApplications);
+impl_content!(CliApplications, CliCommand);
+impl_draw_menu_with_char!(CliApplications, CliCommand);

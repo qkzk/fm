@@ -1391,7 +1391,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] doc
   - [ ] ???
 
-## Current dev
 
 ### Version 0.1.32
 
@@ -1567,11 +1566,179 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
 - [x] FIX: flagged files which doesn't exists anymore (deleted/moved somewhere else) may crash flagged menu.
 
+## Current dev
+
+### Version 0.1.33 
+
+#### Summary 
+
+- Mount menu. All your mount points and non mounted devices in one menu (Alt+u). Select with arrows, enter to navigate to, mount with m, unmount with u.
+- Reponsive display of metadata. In small windows, some metadatas (group, modified times, user etc.) are hidden. Better experience in very small windows.
+- Press Shift+V to enter visual selection (directory & tree display modes). Flag files by moving up or down.
+- More consistant keybinds : Alt (used to open menus) : Alt+c opens the compression menu, Shift+c opens the config file.
+- iterm2 Inline Image Protocol. Compatible terminal emulators (WezTerm etc.) can use their own image displayer. 
+  You can display images without having ueberzug installed.
+- Copy text file content to clipbloard with Ctrl+a. Only works for "text" files guessed from their extension. 
+- Removed "terminal" & "terminal flags" from configuration.  Doesn't break config file. It's just not used anymore. Shell programs are opened in the same window and doesn't require new terminal.
+- removed "clips" for videos animations. It was too slow :( I'll try again someday
+- VISUAL flagging like in ranger. Press V (shift + v) and flag while you move.
+- swaped default keybinds between 'Compression' and 'Config file'. Compression is a menu and most of them are opened with Alt
+- Use char keybinds in tuimenu & cli menus for quick actions
+- Preview compiled executables with readelf
+- Theming. Use custom themes for syntax highlighting.
+  Themes should be stored in `~/.config/fm/syntect_themes/` and can either be .tmTheme (textmate-themes) or .themedump (compressed).
+  All textmate themes should be compatible. You can find more themes here : https://github.com/filmgirl/textmate-themes 
+  If anything goes wrong while loading your theme, it defaults to monokai which is hardcoded. It should never fail.
+- Display inode number after size in context menu, opened with (Alt + t) or (Right Click)
+- Move the cursor with a click. In menus with text input, you can click a character and move the cursor there.
+- Delete a "word" to the left in input modes with Alt + Backspace.
+
+**Bugfixes :**
+
+- Rename: renamed file stays selected. Also, you can't overwrite an existing file anymore.
+- Permissions: special bits (setuid s/S, setgid s/S, sticky t/T) wasn't displayed or parsed properly.
+  - They're all displayed properly.
+  - User can set complex permissions from octal (like 2755), full display (rwxrwsrw-) or a subset of chmod. 
+    It's still possible to do !chmod whatever %s to change the permissions
+- Files with size between 9.5units and 10.0units weren't properly aligned.
+- click in menus was offset by 2
+- shell would open in other tab path
+- open config file did nothing
+- Updated syntect to `5.2.0` since older versions required a crate which didn't compile anymore.
+- Could crash if a processus was terminated between file listing and file display
+- Numbered files weren't sorted "naturally". Use Natural Order.
+- Focus could be lost after resizing
+
+#### Changelog
+
+
+
+- [x] Remove terminal from configuration. Move "open in window" to opener and share common command function
+- [x] visual flagging like ranger V
+- [x] allow letter binds in every navigate + selection menu like tui & cli applications
+- [x] FIX: open config (Alt + c) does nothing
+- [x] swap keybinds: Alt + c open compression menu and Shift + c opens the configuration file.
+- [x] Remote mount QOL
+  - [x] Remote mount allows to mount somewhere else `username host:port remote_mount_point dest` 
+  - [x] Remote mount shows the command that will be generated
+  - [x] expand local path with tilde
+- [x] mount menu
+    - [x] mount menu
+    - [x] display 
+    - [x] actions for normal block devices (non encrypted disks)
+      - [x] show all mount points
+      - [x] mount / unmount with sudo 
+      - [x] mount / unmount without sudo which opens pkexec
+      - [x] encrypted drives
+    - [x] regroup all mount things `Mount` menu
+      - [x] enum with different kinds: BlockDevice, Remote
+      - [x] enum variant: `Encrypted` moved most methods to it
+      - [x] encrypted drives, it should be doable but annoying 
+      - [x] remote. Doesn't require mount, since we can't guess what the user want to do
+        - [x] enum variant
+        - [x] remote actions: unmount
+        - [x] iso are already found
+      - [x] eject removable devices
+      - [x] include GIO (=MTP) devices
+        - [ ] test with a working phone...
+      - [x] refactor the whole file
+        - [x] deduplicate sudo commands. 2 methods are totally similar and should be merged
+        - [x] Mountable::Remote(...) should use a struct instead of 2 strings. Can't even remember what they meant...
+        - [x] Mount struct should have a builder struct with associated methods
+        - [x] failed sudo commands should display the reason in "log line" : wrong passord ? command failed ? etc.
+        - [x] status.dispatch_password should match against (dest, action) for simpler code
+      - [x] remove RemovableDevices
+    - [x] FIX: unmounting an encrypted drive doesn't reset password
+    - [x] NFS & network drives
+    - [x] use ratatui `Table` to display mount menu and improve alignment.
+    - [x] use numeric keybinds to goto quickly
+
+- [x] FIX: open 2 tabs, move to right, navigate in right, go left tab, shell opens in right tab path
+- [x] FIX: click on menu is off by 2
+- [x] FIX: substract with overflow footer
+- [x] use readelf for ELF file
+- [x] IMP: copy file content to clipbloard
+- [x] FIX: single tab, Alt+p (preview) should open the preview instead of a second tab
+- [x] FIX: sort shouldn't be reset when directory view is reset
+- [x] FIX: sort, <CR> should reset but change focus
+- [x] FIX: sorting should always display the selected file 
+- [x] FIX: after rename selection is lost
+- [x] FIX: rename shouldn't overwrite existing file
+- [x] Integrate Ueberzug-rs in src. Wasn't maintened anymore.
+- [x] share a common ueberzug instance for all image drawing 
+  - [x] simplified ueberzug commands build
+  - [x] where to attach it ? Display itself. 
+  - [x] how to call it ? as deep as possible, from Ueber inside preview
+  - [x] problem: where to store the last modified image ? it should be stored in ueberzug itself... Doing so delegates the clearing to ueberzug itself. 
+  - [x] FIX: preview, quit preview, doesn't erease.
+  - [x] display should draw the ueberzug image itself
+- [x] refactor disk_space without using internal_settings.disks.collect as often
+- [x] FIX: ssh sessions or whatever which can't create windows should try to ...
+  - [x] don't create anything image related if user hasn't x11
+- [x] support other way of displaying image, sharing API : 
+    Support for inline image protocol & ueberzug display of images. Detection is made at start.
+
+   downscaling large images with fast libs instead of letting ueberzug/terminal do the hard work isn't fast.
+   I should let ueberzug & wezterm do the hard work.
+
+  - [x] ueberzug. Simplify, holds into an enum variant
+  - [x] support [Inline Images protocol](https://iterm2.com/documentation-images.html)
+    - [x] detect the terminal, default to "unable" if not comptabile nor ueberzug is available
+      - wezterm : $WEZTERM_EXECUTABLE
+      - warp : $WARP_HONOR_PS1  
+      - tabby : TABBY_CONFIG_DIRECTORY
+      - vs code : VSCODE_INJECTION
+    - [x] build the string
+    - [x] display the string
+    - [x] clear (for each line of rect, write empty string)
+    - [ ] BUG: wrong sizes for vertical images left pane has wrong size
+  - [x] debugging / testing : scrolling through large directories isn't fast.
+- [x] FIX: special flags in permissions aren't read or write correctly.
+  ref : [wikipedia permissions](https://en.wikipedia.org/wiki/File-system_permissions#Symbolic_notation) && [chmodcommand](https://chmodcommand.com/chmod-7755/)
+  - [x] read (with or without special flags)
+  - [x] write (2755, rwsrw-rw-, a+x etc. are accepted)
+- [x] FIX: wrong alignment for files with size between 9.5 units and 10.0 units.
+- [x] Video thumbnails were slow. No more "clip", only a static image.
+- [x] updated syntect version since "onig" crate couldn't compile anymore.
+- [x] theming. Use custom themes for syntax highlighting. 
+  - [x] default to monokai
+  - [x] parsing the config file,
+  - [x] document the config file 
+  - [x] load .tmTheme & .themedump 
+- [x] Display inode number after size in context menu
+- [x] FIX: if a processus is terminated between listing (Directory) and display, the display crashes. Removed all unecessary unwrap.
+  Display empty lines for those processes.
+- [x] FIX: inacessible files should be displayed normally, replace unknown by ???
+- [x] FIX: numeric filenames aren't sorted properly. Use [Natural Order](https://github.com/lifthrasiir/rust-natord)
+- [x] FEAT: responsive display of metadata
+  - [x] responsive: group, permissions, date, owner, whole metadata
+  - [x] format picker in display with separate logic
+  - [x] common formaters for directory & tree
+  - [x] avoid useless cost: displayed tree lines requires a second creation of fileinfo...
+- [x] FEAT: click on input moves the cursor
+- [x] FEAT: delete a word and to the left with alt+backspace. Stops at any "separator" (non alphanumeric ascii char)
+- [x] reduce bloat without changing API
+  - [x] nvim-rs : use `nvim --server adress --remote filepath` May require nvim remote or nvr.
+  - [x] log4rs : use a custom logger
+- [x] better logs: `date - file:line:col [function name] - content`
+- [x] FIX: display could crash from substraction with overflow if width is very low
+- [x] FIX: Sync left tab to right tab wasn't doing anything
+- [x] FIX: 2 panes, focus right, resize to lower, right pane is closed but still has focus.
+- [x] Removed useless function color_to_style
+
 ## TODO
 
 ### Other ideas
 
-- [ ] terminal configuration is now useless. Should be removed.
+- [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
+- [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
+- [ ] BUG: Camera folder crash. Can't reproduce
+- [ ] BUG: opening a video and focus is sticked to second pane : can't reproduce
+- [ ] reduce bloat without changing API
+- [ ] stability aka 1.0
+- [ ] code clean
+- [ ] store 4 windows in display to modify instead of recreating
+- [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
@@ -1581,19 +1748,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: resize change dual / preview
   - [ ] large main window. Set dual. Resize to smaller window. Single. Resize to large, Still single. It should be dual again.
 - [ ] menu reset is a mess, menu set is a mess, status refresh is a mess
-- [ ] visual like ranger V: it should be easier to flag a lot of files... "Flag mode" navigate, every file selected is flagged.
-- [ ] store 4 windows in display to modify instead of recreating
 - [ ] eza / ranger colors for normal files
-- [ ] use readelf for ELF file
-  - [ ] if file is in path ~~or is executable [what about scripts ?]~~, try readelf
 - [ ] Walkdir::new in tree building instead of exploring by hand
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
-- [ ] Remote mount QOL
-  - [ ] Remote mount should allow to mount somewhere else
-    `username host:port remote_mount_point dest` ?
-  - [ ] Remote mount should remember mount points and allow to umount them
-  - [ ] Remote mount should show the command that will be generated
 - [ ] simplify status.confirm action & must leave
 - [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
@@ -1603,7 +1761,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
-- [ ] open a shell while hiding fm, restore after leaving
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control

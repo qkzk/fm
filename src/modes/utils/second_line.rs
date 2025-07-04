@@ -27,12 +27,11 @@ impl SecondLine for Navigate {
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",
             Self::Marks(mark_action) => mark_action.second_line(),
             Self::TempMarks(mark_action) => mark_action.second_line(),
+            Self::Mount => "Symbols: M: mounted, U: not mounted, C: encrypted, R: removable, P: mtp device, L: loop device (iso)",
             Self::Context => "Pick an action",
-            Self::EncryptedDrive => "m: mount   --   u: unmount   --   g: go to mount point",
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
             Self::Cloud => "Remote navigation",
-            Self::RemovableDevices => "",
             Self::Picker => "Pick an item",
             Self::Flagged => "Pick a file",
         }
@@ -43,9 +42,7 @@ impl SecondLine for MarkAction {
     fn second_line(&self) -> &'static str {
         match self {
             Self::Jump => "Select a mark to go to or type its symbol. <Backspace> erases the mark",
-            Self::New => {
-                "Select a mark or type its char to update it. <Backspace> erases mark"
-            }
+            Self::New => "Select a mark or type its char to update it. <Backspace> erases mark",
         }
     }
 }

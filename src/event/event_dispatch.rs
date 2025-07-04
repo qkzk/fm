@@ -52,7 +52,7 @@ impl EventDispatcher {
                 kind: _,
                 state: _,
             } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
-                self.menu_key_matcher(status, c)?
+                self.menu_char_key_matcher(status, c)?
             }
             key => self.file_key_matcher(status, key)?,
         };
@@ -153,7 +153,7 @@ impl EventDispatcher {
         Ok(true)
     }
 
-    fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
+    fn menu_char_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.menu_mode {
             Menu::InputSimple(InputSimple::Sort) => status.sort_by_char(c),
@@ -172,13 +172,11 @@ impl EventDispatcher {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
 
-            Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
-            Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
-            Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
-
-            Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
-            Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
-            Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
+            Navigate::Mount if c == 'm' => status.mount_normal_device(),
+            Navigate::Mount if c == 'g' => status.go_to_normal_drive(),
+            Navigate::Mount if c == 'u' => status.umount_normal_device(),
+            Navigate::Mount if c == 'e' => status.eject_removable_device(),
+            Navigate::Mount if c.is_ascii_digit() => status.go_to_mount_per_index(c),
 
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
@@ -191,8 +189,16 @@ impl EventDispatcher {
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
-
+            Navigate::Compress if status.menu.compression_method_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
             Navigate::Context if status.menu.context_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
+            Navigate::CliApplication if status.menu.cli_applications_from_char(c) => {
+                LeaveMenu::leave_menu(status, &self.binds)
+            }
+            Navigate::TuiApplication if status.menu.tui_applications_from_char(c) => {
                 LeaveMenu::leave_menu(status, &self.binds)
             }
 

@@ -1,17 +1,20 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
-use std::fs::{metadata, File};
+use std::env;
+use std::fs::{metadata, read_to_string, File};
 use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::Disk;
+use sysinfo::Disks;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
+use crate::io::Extension;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
 
@@ -20,12 +23,12 @@ use crate::{log_info, log_line};
 ///
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
-pub fn disk_used_by_path<'a>(disks: &'a [&'a Disk], path: &Path) -> Option<&'a Disk> {
-    let mut disks: Vec<&Disk> = disks.to_vec();
-    disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
-    disks.reverse();
+pub fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
+    let mut disks: Vec<&'a Disk> = disks.list().iter().collect();
+    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().as_os_str().len());
     disks
-        .into_iter()
+        .iter()
+        .copied()
         .find(|&disk| path.starts_with(disk.mount_point()))
 }
 
@@ -40,7 +43,7 @@ fn disk_space_used(disk: Option<&Disk>) -> String {
 /// We can't be sure what's the disk of a given path, so we have to look
 /// if the mount point is a parent of given path.
 /// This solution is ugly but... for a lack of a better one...
-pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
+pub fn disk_space(disks: &Disks, path: &Path) -> String {
     if path.as_os_str().is_empty() {
         return "".to_owned();
     }
@@ -122,6 +125,7 @@ pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
 }
 
+/// Returns the clipboard content if it's set
 pub fn get_clipboard() -> Option<String> {
     let Ok(mut ctx) = ClipboardContext::new() else {
         return None;
@@ -129,6 +133,7 @@ pub fn get_clipboard() -> Option<String> {
     ctx.get_contents().ok()
 }
 
+/// Sets the clipboard content.
 pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
     let Ok(mut ctx) = ClipboardContext::new() else {
@@ -139,6 +144,24 @@ pub fn set_clipboard(content: String) {
     };
     // For some reason, it's not writen if you don't read it back...
     let _ = ctx.get_contents();
+}
+
+/// Copy the filename to the clipboard. Only the filename.
+pub fn content_to_clipboard(path: &std::path::Path) {
+    let Some(extension) = path.extension() else {
+        return;
+    };
+    if !matches!(
+        Extension::matcher(&extension.to_string_lossy()),
+        Extension::Text
+    ) {
+        return;
+    }
+    let Ok(content) = read_to_string(path) else {
+        return;
+    };
+    set_clipboard(content);
+    log_line!("Copied {path} content to clipboard", path = path.display());
 }
 
 /// Copy the filename to the clipboard. Only the filename.
@@ -177,15 +200,11 @@ pub fn is_sudo_command(executable: &str) -> bool {
 
 /// Open the path in neovim.
 pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
-    let command = &format!(
-        "<esc>:e {path}<cr><esc>:set number<cr><esc>:close<cr>",
-        path = path.display()
-    );
     log_info!(
-        "open_in_current_neovim {nvim_server} {path} {command}",
+        "open_in_current_neovim {nvim_server} {path}",
         path = path.display()
     );
-    match nvim(nvim_server, command) {
+    match nvim(nvim_server, &path.display().to_string()) {
         Ok(()) => log_line!(
             "Opened {path} in neovim at {nvim_server}",
             path = path.display()
@@ -228,6 +247,7 @@ pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
     Ok(path.read_dir()?.next().is_none())
 }
 
+/// Converts a [`std::path::Path`] to `String`.
 pub fn path_to_string<P>(path: &P) -> String
 where
     P: AsRef<std::path::Path>,
@@ -272,14 +292,20 @@ where
     Q: AsRef<std::path::Path>,
 {
     let Some(old_parent) = old_path.as_ref().parent() else {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "no parent for {old_path}",
             old_path = old_path.as_ref().display()
         ));
     };
     let new_path = old_parent.join(new_name);
+    if new_path.exists() {
+        return Err(anyhow!(
+            "File already exists {new_path}",
+            new_path = new_path.display()
+        ));
+    }
     let Some(new_parent) = new_path.parent() else {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "no parent for {new_path}",
             new_path = new_path.display()
         ));
@@ -387,4 +413,9 @@ pub fn tilde(input_str: &str) -> Cow<str> {
         // input doesn't start with tilde
         input_str.into()
     }
+}
+
+/// Sets the current working directory environment
+pub fn set_current_dir<P: AsRef<Path>>(path: P) -> Result<()> {
+    Ok(env::set_current_dir(path.as_ref())?)
 }

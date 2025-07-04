@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::common::{
-    has_last_modification_happened_less_than, path_to_string, row_to_window_index,
+    has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_current_dir,
 };
 use crate::config::START_FOLDER;
 use crate::io::Args;
@@ -19,6 +19,11 @@ use crate::modes::{
     TreeBuilder, Users,
 };
 
+/// Settings of a tab.
+/// Do we display hidden files ?
+/// What kind of filter is used ?
+/// What kind of sort is used ?
+/// Should the last image be cleared ?
 pub struct TabSettings {
     /// read from command line
     pub show_hidden: bool,
@@ -26,6 +31,8 @@ pub struct TabSettings {
     pub filter: FilterKind,
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
+    /// should the last displayed image be erased ?
+    pub should_clear_image: bool,
 }
 
 impl TabSettings {
@@ -33,10 +40,12 @@ impl TabSettings {
         let filter = FilterKind::All;
         let show_hidden = args.all;
         let sort_kind = SortKind::default();
+        let should_clear_image = false;
         Self {
             show_hidden,
             filter,
             sort_kind,
+            should_clear_image,
         }
     }
 
@@ -95,7 +104,10 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    /// Saved path before entering "CD" mode.
+    /// Used if the cd is canceled
     pub origin_path: Option<std::path::PathBuf>,
+    pub visual: bool,
 }
 
 impl Tab {
@@ -129,6 +141,7 @@ impl Tab {
         let index = directory.select_file(path);
         let tree = Tree::default();
         let origin_path = None;
+        let visual = false;
 
         window.scroll_to(index);
         Ok(Self {
@@ -144,6 +157,7 @@ impl Tab {
             tree,
             settings,
             origin_path,
+            visual,
         })
     }
 
@@ -213,6 +227,9 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) {
+        if matches!(self.preview, Preview::Image(_)) {
+            self.settings.should_clear_image = true;
+        }
         self.preview = PreviewBuilder::empty();
         if self.display_mode.is_tree() {
             self.remake_same_tree()
@@ -258,6 +275,7 @@ impl Tab {
 
     /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.reset_visual();
         self.search.reset_paths();
         self.reset_preview();
         self.display_mode = new_display_mode
@@ -334,7 +352,15 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
-        if self.display_mode.is_tree() {
+        log_info!(
+            "tab.reset_preview. prev = {prev}",
+            prev = self.preview.kind_display()
+        );
+        if matches!(self.preview, Preview::Image(_)) {
+            log_info!("Clear the image");
+            self.settings.should_clear_image = true;
+        }
+        if self.display_mode.is_preview() {
             self.preview = PreviewBuilder::empty();
         }
     }
@@ -343,7 +369,7 @@ impl Tab {
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self.clone_selected_path()?;
         self.refresh_view()?;
-        self.reselect(selected_path);
+        self.select_by_path(selected_path);
         Ok(())
     }
 
@@ -355,9 +381,16 @@ impl Tab {
             .clone())
     }
 
-    fn reselect(&mut self, selected_path: Arc<path::Path>) {
+    /// Select the given file from its path.
+    /// Action depends of the display mode.
+    /// For directory or tree, it selects the file and scroll to it.
+    /// when the file doesn't exists,
+    /// - in directory mode, the first file is selected;
+    /// - in tree mode, the root is selected.
+    ///
+    /// For preview or fuzzy, it does nothing
+    pub fn select_by_path(&mut self, selected_path: Arc<path::Path>) {
         match self.display_mode {
-            Display::Preview => (),
             Display::Directory => {
                 let index = self.directory.select_file(&selected_path);
                 self.scroll_to(index)
@@ -367,7 +400,7 @@ impl Tab {
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
             }
-            Display::Fuzzy => (),
+            Display::Preview | Display::Fuzzy => (),
         }
     }
 
@@ -485,7 +518,7 @@ impl Tab {
             return Ok(());
         }
         self.search.reset_paths();
-        match std::env::set_current_dir(path) {
+        match set_current_dir(path) {
             Ok(()) => (),
             Err(error) => {
                 log_info!("can't reach {path}. Error {error}", path = path.display());
@@ -748,7 +781,7 @@ impl Tab {
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
         match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.up_one_row(),
+            Preview::Image(ref mut image) => image.up_one_row(),
             Preview::Binary(_) => self.window.preview_page_up(self.preview_binary_scroll()),
             _ => self.window.preview_page_up(self.preview_scroll()),
         }
@@ -758,7 +791,7 @@ impl Tab {
     pub fn preview_page_down(&mut self) {
         let len = self.preview.len();
         match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.down_one_row(),
+            Preview::Image(ref mut image) => image.down_one_row(),
             Preview::Binary(_) => self
                 .window
                 .preview_page_down(self.preview_binary_scroll(), len),
@@ -826,5 +859,17 @@ impl Tab {
 
     pub fn save_origin_path(&mut self) {
         self.origin_path = Some(self.current_path().to_owned());
+    }
+
+    pub fn toggle_visual(&mut self) {
+        if matches!(self.display_mode, Display::Directory | Display::Tree) {
+            self.visual = !self.visual;
+        } else {
+            self.reset_visual();
+        }
+    }
+
+    pub fn reset_visual(&mut self) {
+        self.visual = false
     }
 }

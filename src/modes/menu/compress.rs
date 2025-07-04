@@ -9,8 +9,8 @@ use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
 use crate::common::{is_in_path, SEVENZ};
-use crate::io::{execute_without_output, CowStr, DrawMenu};
-use crate::{impl_content, impl_selectable, log_info, log_line};
+use crate::io::execute_without_output;
+use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info, log_line};
 
 /// Different kind of compression methods
 #[derive(Debug)]
@@ -181,7 +181,7 @@ impl Compresser {
 }
 
 impl_selectable!(Compresser);
-impl_content!(CompressionMethod, Compresser);
+impl_content!(Compresser, CompressionMethod);
 
 impl CowStr for CompressionMethod {
     fn cow_str(&self) -> Cow<str> {
@@ -189,4 +189,4 @@ impl CowStr for CompressionMethod {
     }
 }
 
-impl DrawMenu<CompressionMethod> for Compresser {}
+impl_draw_menu_with_char!(Compresser, CompressionMethod);

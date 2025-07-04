@@ -51,7 +51,7 @@ mod inner {
             let width = text.utf_width_u16();
             let (left, right) = match align {
                 Align::Left => (col, col + width),
-                Align::Right => (col - width - 3, col - 3),
+                Align::Right => (col.saturating_sub(width + 3), col.saturating_sub(3)),
             };
             Self {
                 text,
@@ -373,8 +373,9 @@ mod inner {
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))
                 .collect();
-            let rest = total_width - padded_strings.iter().map(|s| s.utf_width()).sum::<usize>();
-            padded_strings[raw_strings.len() - 1].push_str(&" ".repeat(rest));
+            let rest = total_width
+                .saturating_sub(padded_strings.iter().map(|s| s.utf_width()).sum::<usize>());
+            padded_strings[raw_strings.len().saturating_sub(1)].push_str(&" ".repeat(rest));
             padded_strings
         }
 
@@ -392,7 +393,11 @@ mod inner {
         }
 
         fn string_used_space(tab: &Tab) -> String {
-            format!(" {} ", tab.directory.used_space())
+            if tab.visual {
+                "VISUAL".to_owned()
+            } else {
+                format!(" {} ", tab.directory.used_space())
+            }
         }
 
         fn string_disk_space(disk_space: &str) -> String {
@@ -491,7 +496,7 @@ mod inner {
         fn strings_right(tab: &Tab) -> Vec<(String, Align)> {
             let index = match &tab.preview {
                 Preview::Empty => 0,
-                Preview::Ueberzug(image) => image.index + 1,
+                Preview::Image(image) => image.index + 1,
                 _ => tab.window.bottom,
             };
             vec![(

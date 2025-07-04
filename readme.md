@@ -32,7 +32,7 @@ Options:
 
 ## Platform
 
-Linux is the only supported platform. It may be usable on MacOS but I can't be sure.
+X11-Linux is the only supported platform. It may be usable on MacOS and Wayland but I can't be sure since I can't test them.
 
 ## Video
 
@@ -78,7 +78,7 @@ Display settings (use two panes, display metadata, use second pane as preview) a
 
 ### Moving
 
-Many ways to jump somewhere :
+Many ways to jump somewhere:
 
 - Alt+g: type the full address (with completion enabled),
 - Ctrl+g: a predefined shortcut (default root folders, home and mount points, gitroot, config folder),
@@ -113,6 +113,24 @@ Many ways to jump somewhere :
 - Find files with / (with completion: Tab, enter to search),
 - flag files matching a regex with w
 
+### Preview
+
+You can preview a file directly (Shift-p) or by toggling preview mode in the right tab (Alt-p). While in this mode, navigating will update the display.
+
+A lot of different file kinds can be previewed directly withing fm:
+
+- images, pdf, videos, office document and fonts are displayed as an image using Inline Image Protocol from iterm2 or ueberzug,
+- structured text (code) is highlighted,
+- simple text and epub are displayed without formating,
+- executable with read_elf,
+- binary files are displayed with something looking like hexdump (endianness may be wrong),
+- metadata of audio files,
+- file content of archives is listed. It supports many formats (zip, xz, gz, 7z, iso, torrent etc.)
+
+Most of this previewing is done externaly through shell commands. They require the appropriate software to be installed.
+
+Note: previewing a LARGE directory of videos may be really slow.
+
 ### Fuzzy finders
 
 - Ctrl-f : search in filenames and move there,
@@ -125,7 +143,7 @@ We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written 
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
 
-As long as Neovim is runnging, it should always work, even outside of neovim.
+As long as Neovim is running, it should always work, even outside of neovim.
 
 The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
 environment variable set by neovim itself.
@@ -235,7 +253,8 @@ Only developpers of fm should be concerned.
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
 - Set the selected image as wallpaper with W.
 - Enter "command mode" with ':'. Type the name of a command and it will be executed.
-- Mount a remote filesystem using ssfhs with Alt-r.
+- Change permissions (chmod) with Alt+m or '+'. A nice menu will help you.
+- Mount a remote filesystem using sshfs with Alt-r.
 - Mount a MTP device with Alt-R.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
@@ -402,15 +421,16 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
 - [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
-- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
+- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. You can display images within WezTerm directly with the help of iterm2's Inline Image Protocol
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
 - [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
-- [libreoffice](https://www.libreoffice.org) preview open & MS-office documents
+- [libreoffice](https://www.libreoffice.org) preview OpenOffice & MS-office documents
 - [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
 - [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
+- [sshfs](https://github.com/libfuse/sshfs) to mount remote filesystem over SFTP.
 
 ## Contribution
 

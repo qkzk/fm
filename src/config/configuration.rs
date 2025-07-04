@@ -4,11 +4,8 @@ use anyhow::Result;
 use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
-use crate::common::{
-    is_in_path, tilde, CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION, DEFAULT_TERMINAL_FLAG,
-};
+use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
 use crate::config::{Bindings, ColorG};
-use crate::io::color_to_style;
 
 /// Holds every configurable aspect of the application.
 /// All styles are hardcoded then updated from optional values
@@ -16,10 +13,6 @@ use crate::io::color_to_style;
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// The name of the terminal application. It should be installed properly.
-    pub terminal: String,
-    /// terminal flag to run a command with the terminal emulator
-    pub terminal_flag: String,
     /// Configurable keybindings.
     pub binds: Bindings,
 }
@@ -28,55 +21,17 @@ impl Default for Config {
     /// Returns a default config with hardcoded values.
     fn default() -> Self {
         Self {
-            terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
-            terminal_flag: DEFAULT_TERMINAL_FLAG.to_owned(),
         }
     }
 }
 
 impl Config {
-    /// Updates the config from  a configuration content.
+    /// Updates the config from a yaml value read in the configuration file.
     fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
-        self.update_terminal(&yaml["terminal"]);
-        self.update_terminal_flag(&yaml["terminal_emulator_flags"]);
         Ok(())
-    }
-
-    /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
-    /// we look for the configured one,
-    /// else nothing is done.
-    fn update_terminal(&mut self, yaml: &Value) {
-        let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
-        if !terminal_currently_used.is_empty() && is_in_path(&terminal_currently_used) {
-            self.terminal = terminal_currently_used
-        } else if let Some(configured_terminal) = yaml.as_str() {
-            self.terminal = configured_terminal.to_owned()
-        }
-    }
-
-    fn update_terminal_flag(&mut self, terminal_flag: &Value) {
-        let terminal = self.terminal();
-        if let Some(terminal_flag) = read_yaml_string(terminal_flag, terminal) {
-            self.terminal_flag = terminal_flag.as_str().to_owned();
-            crate::log_info!(
-                "updated terminal_flag for {terminal} using {tf}",
-                terminal = self.terminal,
-                tf = self.terminal_flag
-            );
-        } else {
-            crate::log_info!(
-                "Couldn't find {terminal} in config file. Using default",
-                terminal = self.terminal
-            )
-        }
-    }
-
-    /// The terminal name
-    pub fn terminal(&self) -> &str {
-        &self.terminal
     }
 }
 
@@ -137,7 +92,7 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
 macro_rules! update_style {
     ($self_style:expr, $yaml:ident, $key:expr) => {
         if let Some(color) = read_yaml_string($yaml, $key) {
-            $self_style = color_to_style(crate::config::str_to_ratatui(color));
+            $self_style = crate::config::str_to_ratatui(color).into();
         }
     };
 }
@@ -169,13 +124,13 @@ pub struct FileStyle {
 impl FileStyle {
     fn new() -> Self {
         Self {
-            directory: color_to_style(Color::Red),
-            block: color_to_style(Color::Yellow),
-            char: color_to_style(Color::Green),
-            fifo: color_to_style(Color::Blue),
-            socket: color_to_style(Color::Cyan),
-            symlink: color_to_style(Color::Magenta),
-            broken: color_to_style(Color::White),
+            directory: Color::Red.into(),
+            block: Color::Yellow.into(),
+            char: Color::Green.into(),
+            fifo: Color::Blue.into(),
+            socket: Color::Cyan.into(),
+            symlink: Color::Magenta.into(),
+            broken: Color::White.into(),
         }
     }
 
@@ -228,14 +183,14 @@ pub struct MenuStyle {
 impl Default for MenuStyle {
     fn default() -> Self {
         Self {
-            first: color_to_style(Color::Rgb(45, 250, 209)),
-            second: color_to_style(Color::Rgb(230, 189, 87)),
-            selected_border: color_to_style(Color::Rgb(45, 250, 209)),
-            inert_border: color_to_style(Color::Rgb(248, 248, 248)),
-            palette_1: color_to_style(Color::Rgb(45, 250, 209)),
-            palette_2: color_to_style(Color::Rgb(230, 189, 87)),
-            palette_3: color_to_style(Color::Rgb(230, 167, 255)),
-            palette_4: color_to_style(Color::Rgb(59, 204, 255)),
+            first: Color::Rgb(45, 250, 209).into(),
+            second: Color::Rgb(230, 189, 87).into(),
+            selected_border: Color::Rgb(45, 250, 209).into(),
+            inert_border: Color::Rgb(248, 248, 248).into(),
+            palette_1: Color::Rgb(45, 250, 209).into(),
+            palette_2: Color::Rgb(230, 189, 87).into(),
+            palette_3: Color::Rgb(230, 167, 255).into(),
+            palette_4: Color::Rgb(59, 204, 255).into(),
         }
     }
 }
@@ -271,5 +226,39 @@ impl MenuStyle {
     #[inline]
     pub const fn palette_size(&self) -> usize {
         self.palette().len()
+    }
+}
+
+/// Name of the syntect theme used.
+#[derive(Debug)]
+pub struct SyntectTheme {
+    pub name: String,
+}
+
+impl Default for SyntectTheme {
+    fn default() -> Self {
+        Self {
+            name: SYNTECT_DEFAULT_THEME.to_owned(),
+        }
+    }
+}
+
+impl SyntectTheme {
+    pub fn from_config(path: &str) -> Result<Self> {
+        let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+            crate::log_info!("Couldn't read config file at {path}");
+            return Ok(Self::default());
+        };
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return Ok(Self::default());
+        };
+        let Some(name) = yaml["syntect_theme"].as_str() else {
+            return Ok(Self::default());
+        };
+        crate::log_info!("Config: found syntect theme: {name}");
+
+        Ok(Self {
+            name: name.to_string(),
+        })
     }
 }

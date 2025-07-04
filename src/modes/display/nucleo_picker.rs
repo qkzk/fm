@@ -19,7 +19,7 @@ use walkdir::WalkDir;
 use crate::modes::{extract_extension, ContentWindow, Icon, Input};
 use crate::{
     config::{with_icon, with_icon_metadata},
-    io::inject,
+    io::inject_command,
     modes::FileKind,
 };
 
@@ -376,11 +376,12 @@ impl FuzzyFinder<String> {
     pub fn find_line(&self, tokio_greper: TokioCommand) {
         let injector = self.injector();
         spawn(move || {
-            inject(tokio_greper, injector);
+            inject_command(tokio_greper, injector);
         });
     }
 }
 
+/// Parse a line output from the fuzzy finder.
 pub fn parse_line_output(item: &str) -> Result<PathBuf> {
     Ok(canonicalize(PathBuf::from(
         item.split_once(':').unwrap_or(("", "")).0.to_owned(),
@@ -415,6 +416,7 @@ fn format_display(display: &Utf32String) -> String {
         .collect::<String>()
 }
 
+/// Build a [`ratatui::text::Line`] for a given fuzzy output line.
 pub fn highlighted_text<'a>(
     text: &'a str,
     highlighted: &[usize],

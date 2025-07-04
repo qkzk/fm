@@ -9,14 +9,14 @@ use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
-use sysinfo::{Disk, Disks};
+use sysinfo::Disks;
 
 use crate::app::{
     ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
 };
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, path_to_string, row_to_window_index,
+    is_sudo_command, path_to_string, row_to_window_index, set_current_dir,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::FmEvents;
@@ -26,10 +26,10 @@ use crate::io::{
     Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, parse_line_output, regex_flagger, shell_command_parser, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder,
-    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    copy_move, parse_line_output, regex_flagger, shell_command_parser, Content, ContentWindow,
+    CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction,
+    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
     PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
@@ -93,8 +93,25 @@ impl Focus {
         *self as usize
     }
 
+    /// Is the window a left menu ?
     pub fn is_left_menu(&self) -> bool {
         matches!(self, Self::LeftMenu)
+    }
+}
+
+/// What direction is used to sync tabs ? Left to right or right to left ?
+pub enum Direction {
+    RightToLeft,
+    LeftToRight,
+}
+
+impl Direction {
+    /// Returns the indexes of source and destination when tabs are synced
+    const fn source_dest(self) -> (usize, usize) {
+        match self {
+            Self::RightToLeft => (1, 0),
+            Self::LeftToRight => (0, 1),
+        }
     }
 }
 
@@ -112,7 +129,6 @@ pub struct Status {
     pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
-
     /// Fuzzy finder of files by name
     pub fuzzy: Option<FuzzyFinder<String>>,
     /// Navigable menu
@@ -205,12 +221,14 @@ impl Status {
         self.internal_settings.must_quit
     }
 
+    /// Give the focus to the selected tab.
     pub fn focus_follow_index(&mut self) {
         if (self.index == 0 && !self.focus.is_left()) || (self.index == 1 && self.focus.is_left()) {
             self.focus = self.focus.switch();
         }
     }
 
+    /// Give to focus to the left / right file / menu depending of which mode is selected.
     pub fn set_focus_from_mode(&mut self) {
         if self.index == 0 {
             if self.tabs[0].menu_mode.is_nothing() {
@@ -266,6 +284,8 @@ impl Status {
         }
     }
 
+    /// Set focus from a mouse coordinates.
+    /// When a mouse event occurs, focus is given to the window where it happened.
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
         let window = self.window_from_row(row, self.term_size().1);
@@ -309,7 +329,7 @@ impl Status {
                 self.update_second_pane_for_preview()
             }
             Window::Footer => self.footer_action(col, binds),
-            Window::Menu => self.menu_action(row),
+            Window::Menu => self.menu_action(row, col),
         }
     }
 
@@ -340,23 +360,26 @@ impl Status {
     }
 
     /// Sync right tab from left tab path or vice versa.
-    pub fn sync_tabs(&mut self, right_to_left: bool) -> Result<()> {
-        let from = right_to_left as usize;
-        let to = 1 - from;
-        self.tabs[to].cd(&self.tabs[from].current_file()?.path)
+    pub fn sync_tabs(&mut self, direction: Direction) -> Result<()> {
+        let (source, dest) = direction.source_dest();
+        self.tabs[dest].cd(&self.tabs[source].current_file()?.path)
     }
 
+    /// Height of the second window (menu).
+    /// Watchout : it's always ~height / 2 - 2, even if menu is closed.
     pub fn second_window_height(&self) -> Result<usize> {
         let (_, height) = self.term_size();
         Ok((height / 2).saturating_sub(2) as usize)
     }
 
     /// Execute a click on a menu item. Action depends on which menu was opened.
-    fn menu_action(&mut self, row: u16) -> Result<()> {
+    fn menu_action(&mut self, row: u16, col: u16) -> Result<()> {
         let second_window_height = self.second_window_height()?;
-        let offset = row as usize - second_window_height;
-        if offset >= 4 {
-            let index = offset - 4 + self.menu.window.top;
+        let row_offset = (row as usize).saturating_sub(second_window_height);
+        const OFFSET: usize =
+            ContentWindow::WINDOW_PADDING + ContentWindow::WINDOW_MARGIN_TOP_U16 as usize;
+        if row_offset >= OFFSET {
+            let index = row_offset - OFFSET + self.menu.window.top;
             match self.current_tab().menu_mode {
                 Menu::Navigate(navigate) => match navigate {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
@@ -366,7 +389,12 @@ impl Status {
                 _ => (),
             }
             self.menu.window.scroll_to(index);
+        } else if row_offset == 3 && self.current_tab().menu_mode.is_input() {
+            let index =
+                col.saturating_sub(self.current_tab().menu_mode.cursor_offset() + 1) as usize;
+            self.menu.input.cursor_move(index);
         }
+
         Ok(())
     }
 
@@ -395,14 +423,12 @@ impl Status {
         );
     }
 
-    /// Returns an array of Disks
-    pub fn disks(&self) -> Vec<&Disk> {
-        self.internal_settings.disks.into_iter().collect()
-    }
-
     /// Returns the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
-        disk_space(&self.disks(), self.current_tab().current_path())
+        disk_space(
+            &self.internal_settings.disks,
+            self.current_tab().current_path(),
+        )
     }
 
     /// Returns the sice of the terminal (width, height)
@@ -414,6 +440,7 @@ impl Status {
         self.term_size().0
     }
 
+    /// Clears the right preview
     pub fn clear_preview_right(&mut self) {
         if self.session.dual() && self.session.preview() && !self.tabs[1].preview.is_empty() {
             self.tabs[1].preview = PreviewBuilder::empty()
@@ -452,6 +479,7 @@ impl Status {
         } else {
             self.current_tab_mut().refresh_params();
         }
+        self.current_tab_mut().reset_visual();
         Ok(())
     }
 
@@ -465,14 +493,6 @@ impl Status {
     pub fn leave_preview(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.current_tab_mut().refresh_and_reselect_file()
-    }
-
-    // TODO useful ?
-    pub fn reset_menu_mode_no_refresh(&mut self) -> Result<()> {
-        self.menu.reset();
-        self.set_menu_mode_no_refresh(self.index, Menu::Nothing)?;
-        self.set_height_of_unfocused_menu()?;
-        Ok(())
     }
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
@@ -503,6 +523,7 @@ impl Status {
         self.force_clear();
         self.refresh_users()?;
         self.refresh_tabs()?;
+        self.refresh_shortcuts();
         Ok(())
     }
 
@@ -540,18 +561,25 @@ impl Status {
         let couldnt_dual_but_want = self.couldnt_dual_but_want();
         self.internal_settings.update_size(width, height);
         if couldnt_dual_but_want {
-            self.set_dual_pane_if_wide_enough(width)?;
+            self.set_dual_pane_if_wide_enough()?;
+        }
+        if !self.wide_enough_for_dual() {
+            self.select_left();
         }
         self.resize_all_windows(height)?;
         self.refresh_status()
     }
 
+    fn wide_enough_for_dual(&self) -> bool {
+        self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+    }
+
     fn couldnt_dual_but_want(&self) -> bool {
-        self.internal_settings.width < MIN_WIDTH_FOR_DUAL_PANE && self.session.dual()
+        !self.wide_enough_for_dual() && self.session.dual()
     }
 
     fn use_dual(&self) -> bool {
-        self.session.dual() && self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+        self.wide_enough_for_dual() && self.session.dual()
     }
 
     fn left_window_width(&self) -> u16 {
@@ -638,6 +666,7 @@ impl Status {
         self.thumbnail_manager = Some(ThumbnailManager::default());
     }
 
+    /// Clear the thumbnail queue
     pub fn thumbnail_queue_clear(&self) {
         if let Some(thumbnail_manager) = &self.thumbnail_manager {
             thumbnail_manager.clear()
@@ -733,12 +762,25 @@ impl Status {
         }
     }
 
+    /// Does any tab set its flag for image to be cleared on next display ?
+    pub fn should_tabs_images_be_cleared(&self) -> bool {
+        self.tabs[0].settings.should_clear_image || self.tabs[1].settings.should_clear_image
+    }
+
+    /// Reset the tab flags to false. Called when their image have be cleared.
+    pub fn set_tabs_images_cleared(&mut self) {
+        self.tabs[0].settings.should_clear_image = false;
+        self.tabs[1].settings.should_clear_image = false;
+    }
+
     /// Set an edit mode for the tab at `index`. Refresh the view.
     pub fn set_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         self.set_menu_mode_no_refresh(index, menu_mode)?;
+        self.current_tab_mut().reset_visual();
         self.refresh_status()
     }
 
+    /// Set the menu and without querying a refresh.
     pub fn set_menu_mode_no_refresh(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
@@ -754,6 +796,7 @@ impl Status {
         Ok(())
     }
 
+    /// Set the height of the menu and scroll to the selected item.
     pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
         let height = self.internal_settings.term_size().1;
         let prim_window_height = if menu_mode.is_nothing() {
@@ -771,12 +814,12 @@ impl Status {
     }
 
     /// Set dual pane if the term is big enough
-    pub fn set_dual_pane_if_wide_enough(&mut self, width: u16) -> Result<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
+    pub fn set_dual_pane_if_wide_enough(&mut self) -> Result<()> {
+        if self.wide_enough_for_dual() {
+            self.session.set_dual(true);
+        } else {
             self.select_left();
             self.session.set_dual(false);
-        } else {
-            self.session.set_dual(true);
         }
         Ok(())
     }
@@ -878,6 +921,7 @@ impl Status {
         }
     }
 
+    /// Jumps to the selected flagged file.
     pub fn jump_flagged(&mut self) -> Result<()> {
         let Some(path) = self.menu.flagged.selected() else {
             return Ok(());
@@ -911,11 +955,11 @@ impl Status {
         if sources.len() != 1 {
             return false;
         }
-        let disks = &self.disks();
-        let Some(s) = disk_used_by_path(disks, &sources[0]) else {
+        // let disks = &self.disks();
+        let Some(s) = disk_used_by_path(&self.internal_settings.disks, &sources[0]) else {
             return false;
         };
-        let Some(d) = disk_used_by_path(disks, dest) else {
+        let Some(d) = disk_used_by_path(&self.internal_settings.disks, dest) else {
             return false;
         };
         s.mount_point() == d.mount_point()
@@ -973,11 +1017,13 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
+    /// Copy the next file in copy queue
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
         self.internal_settings
             .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
     }
 
+    /// Init the fuzzy finder
     pub fn fuzzy_init(&mut self, kind: FuzzyKind) {
         self.fuzzy = Some(FuzzyFinder::new(kind).set_height(self.current_tab().window.height));
     }
@@ -986,6 +1032,7 @@ impl Status {
         self.fuzzy = None;
     }
 
+    /// Sets the fuzzy finder to find files
     pub fn fuzzy_find_files(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -995,6 +1042,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sets the fuzzy finder to match against help lines
     pub fn fuzzy_help(&mut self, help: String) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1003,6 +1051,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sets the fuzzy finder to match against text file content
     pub fn fuzzy_find_lines(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1023,6 +1072,10 @@ impl Status {
         }
     }
 
+    /// Action when a fuzzy item is selected.
+    /// It depends of the kind of fuzzy:
+    /// files / line: go to this file,
+    /// help: execute the selected action.
     pub fn fuzzy_select(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1049,12 +1102,14 @@ impl Status {
         Ok(())
     }
 
+    /// Exits the fuzzy finder and drops its instance
     pub fn fuzzy_leave(&mut self) -> Result<()> {
         self.fuzzy_drop();
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.refresh_view()
     }
 
+    /// Deletes a char to the left in fuzzy finder.
     pub fn fuzzy_backspace(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1064,6 +1119,7 @@ impl Status {
         Ok(())
     }
 
+    /// Delete all chars to the right in fuzzy finder.
     pub fn fuzzy_delete(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1073,6 +1129,7 @@ impl Status {
         Ok(())
     }
 
+    /// Move cursor to the left in fuzzy finder
     pub fn fuzzy_left(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1081,6 +1138,7 @@ impl Status {
         Ok(())
     }
 
+    /// Move cursor to the right in fuzzy finder
     pub fn fuzzy_right(&mut self) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1089,14 +1147,17 @@ impl Status {
         Ok(())
     }
 
+    /// Move selection to the start (top)
     pub fn fuzzy_start(&mut self) -> Result<()> {
         self.fuzzy_navigate(FuzzyDirection::Start)
     }
 
+    /// Move selection to the end (bottom)
     pub fn fuzzy_end(&mut self) -> Result<()> {
         self.fuzzy_navigate(FuzzyDirection::End)
     }
 
+    /// Navigate to a [`FuzzyDirection`].
     pub fn fuzzy_navigate(&mut self, direction: FuzzyDirection) -> Result<()> {
         let Some(fuzzy) = &mut self.fuzzy else {
             bail!("Fuzzy should be set");
@@ -1108,6 +1169,7 @@ impl Status {
         Ok(())
     }
 
+    /// Issue a tick to the fuzzy finder
     pub fn fuzzy_tick(&mut self) {
         match &mut self.fuzzy {
             Some(fuzzy) => {
@@ -1117,6 +1179,7 @@ impl Status {
         }
     }
 
+    /// Resize the fuzzy finder according to given height
     pub fn fuzzy_resize(&mut self, height: usize) {
         match &mut self.fuzzy {
             Some(fuzzy) => fuzzy.resize(height),
@@ -1192,6 +1255,7 @@ impl Status {
         self.menu.input_complete(&mut self.tabs[self.index])
     }
 
+    /// Move to the input path if possible.
     pub fn complete_cd_move(&mut self) -> Result<()> {
         if let Menu::InputCompleted(InputCompleted::Cd) = self.current_tab().menu_mode {
             let input = self.menu.input.string();
@@ -1235,6 +1299,7 @@ impl Status {
         self.open_single_file(&path)
     }
 
+    /// Opens the selected file (single)
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
@@ -1262,7 +1327,7 @@ impl Status {
     /// Ask a sudo password first if needed. It should always be the case.
     fn mount_iso_drive(&mut self) -> Result<()> {
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::ISO)?;
+            self.ask_password(Some(MountAction::MOUNT), PasswordUsage::ISO)?;
         } else {
             self.ensure_iso_device_is_some()?;
             let Some(ref mut iso_device) = self.menu.iso_device else {
@@ -1270,9 +1335,12 @@ impl Status {
             };
             if iso_device.mount(&current_username()?, &mut self.menu.password_holder)? {
                 log_info!("iso mounter mounted {iso_device:?}");
-                log_line!("iso : {}", iso_device.as_string()?);
-                let path = iso_device.mountpoints.clone().context("no mount point")?;
-                self.current_tab_mut().cd(&path)?;
+                log_line!("iso : {iso_device}");
+                let path = iso_device
+                    .mountpoints
+                    .clone()
+                    .expect("mountpoint should be set");
+                self.current_tab_mut().cd(Path::new(&path))?;
             };
             self.menu.iso_device = None;
         };
@@ -1285,7 +1353,7 @@ impl Status {
     pub fn umount_iso_drive(&mut self) -> Result<()> {
         if let Some(ref mut iso_device) = self.menu.iso_device {
             if !self.menu.password_holder.has_sudo() {
-                self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::ISO)?;
+                self.ask_password(Some(MountAction::UMOUNT), PasswordUsage::ISO)?;
             } else {
                 iso_device.umount(&current_username()?, &mut self.menu.password_holder)?;
             };
@@ -1294,41 +1362,89 @@ impl Status {
         Ok(())
     }
 
-    /// Mount the selected encrypted device. Will ask first for sudo password and
-    /// passphrase.
-    /// Those passwords are always dropped immediatly after the commands are run.
+    /// Mount an encrypted device.
+    /// If sudo password isn't set, asks for it and returns,
+    /// Else if device keypass isn't set, asks for it and returns,
+    /// Else, mount the device.
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.menu.encrypted_devices.selected() else {
-            return Ok(());
-        };
-        if device.is_mounted() {
-            return Ok(());
-        }
         if !self.menu.password_holder.has_sudo() {
             self.ask_password(
-                Some(BlockDeviceAction::MOUNT),
+                Some(MountAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else if !self.menu.password_holder.has_cryptsetup() {
             self.ask_password(
-                Some(BlockDeviceAction::MOUNT),
+                Some(MountAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            if let Ok(true) = self
-                .menu
-                .encrypted_devices
-                .mount_selected(&mut self.menu.password_holder)
-            {
-                self.go_to_encrypted_drive()?;
+            let Some(Mountable::Encrypted(device)) = &self.menu.mount.selected() else {
+                return Ok(());
+            };
+            if let Ok(true) = device.mount(&current_username()?, &mut self.menu.password_holder) {
+                self.go_to_encrypted_drive(device.uuid.clone())?;
             }
             Ok(())
         }
     }
 
-    /// Move to the selected crypted device mount point.
-    pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(path) = self.menu.find_encrypted_drive_mount_point() else {
+    /// Unmount the selected device.
+    /// Will ask first for a sudo password which is immediatly forgotten.
+    pub fn umount_encrypted_drive(&mut self) -> Result<()> {
+        if !self.menu.password_holder.has_sudo() {
+            self.ask_password(
+                Some(MountAction::UMOUNT),
+                PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
+            )
+        } else {
+            let Some(Mountable::Encrypted(device)) = &self.menu.mount.selected() else {
+                log_info!("Cannot find Encrypted device");
+                return Ok(());
+            };
+            let success =
+                device.umount_close_crypto(&current_username()?, &mut self.menu.password_holder)?;
+            log_info!("umount_encrypted_drive: {success}");
+            Ok(())
+        }
+    }
+    /// Mount the selected encrypted device. Will ask first for sudo password and
+    /// passphrase.
+    /// Those passwords are always dropped immediatly after the commands are run.
+    pub fn mount_normal_device(&mut self) -> Result<()> {
+        let Some(device) = self.menu.mount.selected() else {
+            return Ok(());
+        };
+        if device.is_mounted() {
+            return Ok(());
+        }
+        if device.is_crypto() {
+            return self.mount_encrypted_drive();
+        }
+        let Ok(success) = self.menu.mount.mount_selected_no_password() else {
+            return Ok(());
+        };
+        if success {
+            self.menu.mount.update(self.internal_settings.disks())?;
+            self.go_to_normal_drive()?;
+            return Ok(());
+        }
+        if !self.menu.password_holder.has_sudo() {
+            self.ask_password(Some(MountAction::MOUNT), PasswordUsage::DEVICE)
+        } else {
+            if let Ok(true) = self
+                .menu
+                .mount
+                .mount_selected(&mut self.menu.password_holder)
+            {
+                self.go_to_normal_drive()?;
+            }
+            Ok(())
+        }
+    }
+
+    /// Move to the selected device mount point.
+    pub fn go_to_normal_drive(&mut self) -> Result<()> {
+        let Some(path) = self.menu.mount.selected_mount_point() else {
             return Ok(());
         };
         let tab = self.current_tab_mut();
@@ -1336,68 +1452,64 @@ impl Status {
         tab.refresh_view()
     }
 
+    /// Move to the mount point based on its onscreen index
+    pub fn go_to_mount_per_index(&mut self, c: char) -> Result<()> {
+        let Some(index) = c.to_digit(10) else {
+            return Ok(());
+        };
+        self.menu.mount.set_index(index.saturating_sub(1) as _);
+        self.go_to_normal_drive()
+    }
+
+    fn go_to_encrypted_drive(&mut self, uuid: Option<String>) -> Result<()> {
+        self.menu.mount.update(&self.internal_settings.disks)?;
+        let Some(mountpoint) = self.menu.mount.find_encrypted_by_uuid(uuid) else {
+            return Ok(());
+        };
+        log_info!("mountpoint {mountpoint}");
+        let tab = self.current_tab_mut();
+        tab.cd(Path::new(&mountpoint))?;
+        tab.refresh_view()
+    }
+
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
-    pub fn umount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.menu.encrypted_devices.selected() else {
+    pub fn umount_normal_device(&mut self) -> Result<()> {
+        let Some(device) = self.menu.mount.selected() else {
             return Ok(());
         };
         if !device.is_mounted() {
             return Ok(());
         }
+        if device.is_crypto() {
+            return self.umount_encrypted_drive();
+        }
+        let Ok(success) = self.menu.mount.umount_selected_no_password() else {
+            return Ok(());
+        };
+        if success {
+            self.menu.mount.update(self.internal_settings.disks())?;
+            return Ok(());
+        }
         if !self.menu.password_holder.has_sudo() {
-            self.ask_password(
-                Some(BlockDeviceAction::UMOUNT),
-                PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
-            )
+            self.ask_password(Some(MountAction::UMOUNT), PasswordUsage::DEVICE)
         } else {
             self.menu
-                .encrypted_devices
+                .mount
                 .umount_selected(&mut self.menu.password_holder)
         }
     }
 
-    pub fn umount_removable(&mut self) -> Result<()> {
-        if self.menu.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.menu.removable_devices.content[self.menu.removable_devices.index];
-        if !device.is_mounted() {
+    /// Ejects a removable device (usb key, mtp etc.).
+    pub fn eject_removable_device(&mut self) -> Result<()> {
+        if self.menu.mount.is_empty() {
             return Ok(());
         }
-        if !self.menu.password_holder.has_sudo() && device.is_usb() {
-            self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::USB)
-        } else {
-            device.umount_simple(&mut self.menu.password_holder)?;
-            Ok(())
+        let success = self.menu.mount.eject_removable_device()?;
+        if success {
+            self.menu.mount.update(self.internal_settings.disks())?;
         }
-    }
-
-    pub fn mount_removable(&mut self) -> Result<()> {
-        if self.menu.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.menu.removable_devices.content[self.menu.removable_devices.index];
-        if device.is_mounted() {
-            return Ok(());
-        }
-        if !self.menu.password_holder.has_sudo() && device.is_usb() {
-            self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::USB)
-        } else {
-            if device.mount_simple(&mut self.menu.password_holder)? {
-                self.go_to_removable()?;
-            }
-            Ok(())
-        }
-    }
-
-    /// Move to the selected removable device.
-    pub fn go_to_removable(&mut self) -> Result<()> {
-        let Some(path) = self.menu.find_removable_mount_point() else {
-            return Ok(());
-        };
-        self.current_tab_mut().cd(&path)?;
-        self.current_tab_mut().refresh_view()
+        Ok(())
     }
 
     /// Reads and parse a shell command. Some arguments may be expanded.
@@ -1415,6 +1527,7 @@ impl Status {
         }
     }
 
+    /// Parse a shell command and expand tokens like %s, %t etc.
     pub fn parse_shell_command(
         &mut self,
         shell_command: String,
@@ -1473,7 +1586,7 @@ impl Status {
     /// Ask for a password of some kind (sudo or device passphrase).
     fn ask_password(
         &mut self,
-        encrypted_action: Option<BlockDeviceAction>,
+        encrypted_action: Option<MountAction>,
         password_dest: PasswordUsage,
     ) -> Result<()> {
         log_info!("ask_password");
@@ -1487,7 +1600,7 @@ impl Status {
     /// execute the command requiring a password.
     pub fn execute_password_command(
         &mut self,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         dest: PasswordUsage,
     ) -> Result<()> {
         let password = self.menu.input.string();
@@ -1587,6 +1700,7 @@ impl Status {
         Ok(())
     }
 
+    /// Execute a bulk create / rename
     pub fn bulk_execute(&mut self) -> Result<()> {
         self.menu.bulk.get_new_names()?;
         self.set_menu_mode(
@@ -1629,39 +1743,35 @@ impl Status {
             return self.menu.clear_sudo_attributes();
         };
         let directory_of_selected = self.current_tab().directory_of_selected()?;
-        let (success, stdout, _) =
-            execute_sudo_command_with_password(&args, password, directory_of_selected)?;
+        let (success, stdout, stderr) =
+            execute_sudo_command_with_password(&args, &password, directory_of_selected)?;
         log_info!("sudo command execution. success: {success}");
         self.menu.clear_sudo_attributes()?;
+        if !success {
+            log_line!("sudo command failed: {stderr}");
+        }
         self.preview_command_output(stdout, sudo_command.to_owned());
         Ok(())
     }
 
     /// Dispatch the known password depending of which component set
     /// the `PasswordUsage`.
+    #[rustfmt::skip]
     pub fn dispatch_password(
         &mut self,
-        action: Option<BlockDeviceAction>,
+        action: Option<MountAction>,
         dest: PasswordUsage,
         sudo_command: Option<String>,
     ) -> Result<()> {
-        match dest {
-            PasswordUsage::USB => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_removable(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_removable(),
-                None => Ok(()),
-            },
-            PasswordUsage::ISO => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_iso_drive(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_iso_drive(),
-                None => Ok(()),
-            },
-            PasswordUsage::CRYPTSETUP(_) => match action {
-                Some(BlockDeviceAction::MOUNT) => self.mount_encrypted_drive(),
-                Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
-                None => Ok(()),
-            },
-            PasswordUsage::SUDOCOMMAND => self.run_sudo_command(sudo_command),
+        match (dest, action) {
+            (PasswordUsage::ISO,            Some(MountAction::MOUNT))  => self.mount_iso_drive(),
+            (PasswordUsage::ISO,            Some(MountAction::UMOUNT)) => self.umount_iso_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(MountAction::MOUNT))  => self.mount_encrypted_drive(),
+            (PasswordUsage::CRYPTSETUP(_),  Some(MountAction::UMOUNT)) => self.umount_encrypted_drive(),
+            (PasswordUsage::DEVICE,         Some(MountAction::MOUNT))  => self.mount_normal_device(),
+            (PasswordUsage::DEVICE,         Some(MountAction::UMOUNT)) => self.umount_normal_device(),
+            (PasswordUsage::SUDOCOMMAND,    _)                         => self.run_sudo_command(sudo_command),
+            (_,                             _)                         => Ok(()),
         }
     }
 
@@ -1779,10 +1889,6 @@ impl Status {
         Ok(())
     }
 
-    pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Flagged))
-    }
-
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
@@ -1790,7 +1896,7 @@ impl Status {
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(&mut self) -> Result<()> {
         let here = &self.current_tab().directory.path;
-        std::env::set_current_dir(here)?;
+        set_current_dir(here)?;
         let files_with_relative_paths = self.flagged_or_selected_relative_to(here);
         if files_with_relative_paths.is_empty() {
             return Ok(());
@@ -1806,6 +1912,7 @@ impl Status {
         Ok(())
     }
 
+    /// Sort all file in a tab with a sort key which is selected according to which char was pressed.
     pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
@@ -1999,6 +2106,15 @@ impl Status {
         self.menu.cloud.move_to_parent()?;
         self.cloud_set_content_window_len()?;
         Ok(())
+    }
+
+    pub fn toggle_flag_visual(&mut self) {
+        if self.current_tab().visual {
+            let Ok(file) = self.current_tab().current_file() else {
+                return;
+            };
+            self.menu.flagged.toggle(&file.path)
+        }
     }
 }
 

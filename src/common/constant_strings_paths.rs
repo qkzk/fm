@@ -12,8 +12,10 @@ pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
 pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
 /// Inputhistory
 pub const INPUT_HISTORY_PATH: &str = "~/.config/fm/log/input_history.log";
-/// Filepath of the LOG configuration file
-pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
+/// Syntect theme paths
+pub const SYNTECT_THEMES_PATH: &str = "~/.config/fm/syntect_themes/";
+/// Path to the normal log file
+pub const NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
 /// Path to the action log file
 pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
 /// Path to the trash folder files
@@ -28,12 +30,10 @@ pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 pub const TMP_FOLDER_PATH: &str = "/tmp";
 /// Video thumbnails
 pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
+/// Default syntect theme, theme is hardcoded into binary
+pub const SYNTECT_DEFAULT_THEME: &str = "monokai";
 /// setsid. Installed in most distros
 pub const SETSID: &str = "setsid";
-/// Default terminal application used when openening a program in shell or starting a new shell
-pub const DEFAULT_TERMINAL_APPLICATION: &str = "st";
-/// Default terminal flag to run a command when ran
-pub const DEFAULT_TERMINAL_FLAG: &str = "-e";
 /// Opener used to play audio files. Does it require a terminal ?
 pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?
@@ -52,7 +52,13 @@ pub const OPENER_VECT: (&str, bool) = ("inkscape", false);
 pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
 /// Array of text representation of a file permissions.
 /// The index of each string gives a correct representation.
-pub const PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+pub const NORMAL_PERMISSIONS_STR: [&str; 8] =
+    ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+pub const SETUID_PERMISSIONS_STR: [&str; 8] =
+    ["--S", "--s", "-wS", "-ws", "r-S", "r-s", "rwS", "rws"];
+pub const SETGID_PERMISSIONS_STR: [&str; 8] = SETUID_PERMISSIONS_STR;
+pub const STICKY_PERMISSIONS_STR: [&str; 8] =
+    ["--T", "--t", "-w-", "-wt", "r-T", "r-t", "rwT", "rwt"];
 /// Description of the application.
 pub const HELP_FIRST_SENTENCE: &str = " fm: a dired / ranger like file manager. ";
 /// Description of the content below, aka the help itself.
@@ -81,10 +87,15 @@ pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
+/// Ripgrep & its parameters
 pub const RG_EXECUTABLE: &str = "rg --line-number --color=never .";
+/// Grep and its parameters
 pub const GREP_EXECUTABLE: &str = "grep -rI --line-number .";
+/// sshfs executable
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
+/// Notify app executable
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
+/// Eject (of removable device) executable
 pub const EJECT_EXECUTABLE: &str = "eject";
 /// Encrypted devices bind description
 pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
@@ -100,12 +111,15 @@ pub const SORT_LINES: [&str; 9] = [
     "",
     "r:  reverse current sort",
 ];
-pub const REMOTE_LINES: [&str; 4] = [
+/// Remote menu presentation
+pub const REMOTE_LINES: [&str; 5] = [
     "Mount a directory with sshfs",
-    "Type the arguments as below, separated by a space. The port is optional",
+    "Type the arguments as below, separated by a space.",
+    "Port and local path are optional",
     "",
-    "username hostname remote_path port",
+    "username hostname:port remote_path local_path",
 ];
+/// Presentation of new dir. creation in cloud
 pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
@@ -129,6 +143,7 @@ pub const PASSWORD_LINES_SUDO: [&str; 2] = [
     "Type your sudo password.",
     "It will be forgotten immediatly after use.",
 ];
+/// Presentation of the passkey input
 pub const PASSWORD_LINES_DEVICE: [&str; 2] = [
     "Type the device passkey.",
     "It will be forgotten immediatly after use.",
@@ -180,6 +195,7 @@ pub const RENAME_LINES: [&str; 3] = [
     "",
     "Nothing is done if the file already exists",
 ];
+/// Trash presentation
 pub const TRASH_CONFIRM_LINE: &str =
     "Up, Down: navigation - Enter: restore the selected file - x: delete permanently - ";
 /// Mediainfo (used to preview media files) executable
@@ -210,6 +226,8 @@ pub const UMOUNT: &str = "umount";
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives
 pub const CRYPTSETUP: &str = "cryptsetup";
+/// udisksctl is used to mount drives
+pub const UDISKSCTL: &str = "udisksctl";
 /// gio is used to mount removable devices
 pub const GIO: &str = "gio";
 /// used to get information about fifo files
@@ -234,5 +252,7 @@ pub const ZOXIDE: &str = "zoxide";
 pub const PDFTOPPM: &str = "pdftoppm";
 /// pdinfo
 pub const PDFINFO: &str = "pdfinfo";
+/// readelf
+pub const READELF: &str = "readelf";
 /// default nerdfont icon used for directories.
 pub const DIR_ICON: &str = " ";

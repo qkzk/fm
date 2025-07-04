@@ -9,7 +9,8 @@ use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
 use crate::log_info;
 
-/// inspired by tuikit 0.5 : <https://github.com/lotabout/tuikit/blob/master/src/key.rs#L72-L271>
+/// Used to parse keynames from config file into [`crossterm::event::KeyEvent`].
+/// Inspired by tuikit 0.5 : <https://github.com/lotabout/skim-rs/blob/master/src/key.rs#L72-L271>
 #[rustfmt::skip]
 pub fn from_keyname(keyname: &str) -> Option<KeyEvent> {
     match keyname.to_lowercase().as_ref() {
@@ -260,7 +261,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char(':'),    KeyModifiers::NONE), ActionMap::Action),
             (KeyEvent::new(KeyCode::Char('6'),    KeyModifiers::NONE), ActionMap::History),
 
-            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::Compress),
+            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::OpenConfig),
             (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::SHIFT), ActionMap::ToggleDisplayFull),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::SHIFT), ActionMap::End),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::SHIFT), ActionMap::DisplayFlagged),
@@ -272,6 +273,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('m'),    KeyModifiers::SHIFT), ActionMap::MarksNew),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::SHIFT), ActionMap::Sort),
             (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::SHIFT), ActionMap::Preview),
+            (KeyEvent::new(KeyCode::Char('v'),    KeyModifiers::SHIFT), ActionMap::ToggleVisual),
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::SHIFT), ActionMap::TrashMoveFile),
             (KeyEvent::new(KeyCode::Char('Z'),    KeyModifiers::SHIFT), ActionMap::TreeUnFoldAll),
 
@@ -302,9 +304,9 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('+'),    KeyModifiers::NONE), ActionMap::Chmod),
 
             (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::ALT), ActionMap::Bulk),
-            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::OpenConfig),
+            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT), ActionMap::Compress),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::ALT), ActionMap::ToggleDualPane),
-            (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::ALT), ActionMap::EncryptedDrive),
+            (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::ALT), ActionMap::Mount),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::ALT), ActionMap::Filter),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::ALT), ActionMap::Cd),
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::ALT), ActionMap::Help),
@@ -316,13 +318,16 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::ALT), ActionMap::RemoteMount),
             (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::ALT), ActionMap::TuiMenu),
             (KeyEvent::new(KeyCode::Char('t'),    KeyModifiers::ALT), ActionMap::Context),
+            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::ALT), ActionMap::Mount),
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::ALT), ActionMap::TrashEmpty),
             (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
 
-            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
-            (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::RemovableDevices),
+            (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
 
+            (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
+
+            (KeyEvent::new(KeyCode::Char('a'),    KeyModifiers::CONTROL), ActionMap::CopyContent),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::CONTROL), ActionMap::CopyFilename),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::CONTROL), ActionMap::PageDown),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::CONTROL), ActionMap::FuzzyFind),

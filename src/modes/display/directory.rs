@@ -111,7 +111,7 @@ impl Directory {
     /// Select the first file if any.
     pub fn reset_files(&mut self, settings: &TabSettings, users: &Users) -> Result<()> {
         self.content = Self::files(&self.path, settings.show_hidden, &settings.filter, users)?;
-        self.sort(&SortKind::default());
+        self.sort(&settings.sort_kind);
         self.index = 0;
         Ok(())
     }
@@ -198,7 +198,7 @@ impl Directory {
 
 impl_index_to_index!(FileInfo, Directory);
 impl_selectable!(Directory);
-impl_content!(FileInfo, Directory);
+impl_content!(Directory, FileInfo);
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
     files
@@ -236,7 +236,7 @@ pub fn files_collection(
 
 const SIZES: [&str; 9] = ["B", "k", "M", "G", "T", "P", "E", "Z", "Y"];
 
-/// Convert a file size from bytes to human readable string.
+/// Formats a file size from bytes to human readable string.
 #[inline]
 pub fn human_size(bytes: u64) -> String {
     let mut factor = 0;
@@ -247,9 +247,13 @@ pub fn human_size(bytes: u64) -> String {
         factor += 1;
     }
 
-    if size < 10.0 && factor > 0 {
-        format!("{:.1}{}", size, SIZES[factor])
+    if size < 9.5 && factor > 0 {
+        format!("{size:.1}{unit}", unit = SIZES[factor])
     } else {
-        format!("{:>3}{}", size.round() as i64, SIZES[factor])
+        format!(
+            "{size:>3}{unit}",
+            size = size.round() as u64,
+            unit = SIZES[factor]
+        )
     }
 }
