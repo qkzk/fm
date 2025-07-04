@@ -1730,13 +1730,18 @@ Tried to fix cargo doc but failed... :(
 
 ## Current dev
 
-### Summary
+### Version 0.1.35
 
-### Changelog 
+#### Summary
+
+Updated some dependencies to avoid yanked version of crates. Documentation should work again...
+
+#### Changelog 
 
 - [x] rewrote cloud config for oauth2 5.0 & new google cloud policy
-- [ ] fix cargo doc error from: reqwest & zip & rust-lzma have incompatible versions for lzma
-- [ ] replace lzma
+- [x] fix cargo doc error from: reqwest & zip & rust-lzma have incompatible versions for lzma
+- [x] removed lzma 
+- [x] fixe future-utils yanked version
 
 Once that's done, it's all. No not implement anything else
 
