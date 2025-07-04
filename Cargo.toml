@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.1.33"
+version = "0.1.34"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
@@ -66,4 +66,4 @@ url = "2.5.2"
 url-escape = "0.1.1"
 vte = "0.13.0"
 walkdir = "2.5.0"
-zip = "2.2.0"
+zip = "=2.2.0"
