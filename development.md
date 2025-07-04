@@ -1566,8 +1566,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: fuzzy navigation. Fixed a bug where navigating to last element then move crashed. Implemented home & end
 - [x] FIX: flagged files which doesn't exists anymore (deleted/moved somewhere else) may crash flagged menu.
 
-## Current dev
-
 ### Version 0.1.33 
 
 #### Summary 
@@ -1725,6 +1723,27 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Sync left tab to right tab wasn't doing anything
 - [x] FIX: 2 panes, focus right, resize to lower, right pane is closed but still has focus.
 - [x] Removed useless function color_to_style
+
+### Version 0.1.34 
+
+Tried to fix cargo doc but failed... :(
+
+## Current dev
+
+### Version 0.1.35
+
+#### Summary
+
+Updated some dependencies to avoid yanked version of crates. Documentation should work again...
+
+#### Changelog 
+
+- [x] rewrote cloud config for oauth2 5.0 & new google cloud policy
+- [x] fix cargo doc error from: reqwest & zip & rust-lzma have incompatible versions for lzma
+- [x] removed lzma 
+- [x] fixe future-utils yanked version
+
+Once that's done, it's all. No not implement anything else
 
 ## TODO
 
