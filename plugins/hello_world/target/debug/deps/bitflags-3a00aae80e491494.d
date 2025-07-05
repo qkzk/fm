@@ -1,0 +1,11 @@
+/home/quentin/gclem/dev/rust/fm/plugins/hello_world/target/debug/deps/libbitflags-3a00aae80e491494.rmeta: /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/lib.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/iter.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/parser.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/traits.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/public.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/internal.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/external.rs
+
+/home/quentin/gclem/dev/rust/fm/plugins/hello_world/target/debug/deps/bitflags-3a00aae80e491494.d: /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/lib.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/iter.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/parser.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/traits.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/public.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/internal.rs /home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/external.rs
+
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/lib.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/iter.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/parser.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/traits.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/public.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/internal.rs:
+/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.9.1/src/external.rs:
