@@ -28,6 +28,7 @@ impl EventAction {
     /// It's useful to be able to reset the cursor before leaving the application.
     /// If a menu is opened, closes it.
     pub fn quit(status: &mut Status) -> Result<()> {
+        status.run_plugin();
         if status.focus.is_file() {
             status.internal_settings.quit();
         } else {
@@ -1444,11 +1445,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
-        status.run_custom_command(input_string)
-    }
-
     /// Enter the remote mount mode where the user can provide an username, an adress and
     /// a mount point to mount a remote device through SSHFS.
     pub fn remote_mount(status: &mut Status) -> Result<()> {
@@ -1587,6 +1583,15 @@ impl EventAction {
             status.menu.mount.update(status.internal_settings.disks())?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
         }
+        Ok(())
+    }
+
+    /// Execute a custom event on the selected file
+    pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
+        status.run_custom_command(input_string)
+    }
+
+    pub fn plugin(status: &mut Status, plugin_name: &str, method_name: &str) -> Result<()> {
         Ok(())
     }
 }

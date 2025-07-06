@@ -158,12 +158,14 @@ impl FM {
         let term = Self::init_term();
         let event_reader = EventReader::new(fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let status = Arc::new(Mutex::new(Status::new(
+        let mut status = Status::new(
             term.size().unwrap(),
             Opener::default(),
             &config.binds,
             fm_sender.clone(),
-        )?));
+        )?;
+        status.load_plugins();
+        let status = Arc::new(Mutex::new(status));
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
 

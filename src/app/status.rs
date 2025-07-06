@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -7,7 +8,9 @@ use std::sync::{
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
+use libloading::{Library, Symbol};
 use opendal::EntryMode;
+use plugin_api::{PluginEntryFn, PluginInfo};
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
@@ -147,6 +150,8 @@ pub struct Status {
     pub previewer: Previewer,
     /// Preview manager
     pub thumbnail_manager: Option<ThumbnailManager>,
+    /// Plugins
+    pub plugins: HashMap<String, PluginData>,
 }
 
 impl Status {
@@ -186,6 +191,7 @@ impl Status {
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
         let thumbnail_manager = None;
+        let plugins = HashMap::new();
         Ok(Self {
             tabs,
             index,
@@ -198,6 +204,7 @@ impl Status {
             preview_receiver,
             previewer,
             thumbnail_manager,
+            plugins,
         })
     }
 
@@ -2114,6 +2121,52 @@ impl Status {
                 return;
             };
             self.menu.flagged.toggle(&file.path)
+        }
+    }
+
+    pub fn load_plugins(&mut self) {
+        self.plugins.insert(
+            "hello_world".to_owned(),
+            PluginData::new("plugins/hello_world/target/release/libHello_World.so".to_owned()),
+        );
+    }
+
+    pub fn run_plugin(&mut self) {
+        let Some(plugin) = self.plugins.get_mut("hello_world") else {
+            return;
+        };
+        let ret = unsafe {
+            let Ok(echo) = plugin.lib.get::<Symbol<Echo>>(b"echo") else {
+                return;
+            };
+            (echo)(2)
+        };
+        log_info!("plugin echo {ret}");
+    }
+}
+
+type Echo = unsafe extern "C" fn(u8) -> u8;
+
+#[derive(Debug)]
+pub struct PluginData {
+    name: String,
+    lib: Library,
+    info: PluginInfo,
+}
+
+impl PluginData {
+    pub fn new(path: String) -> Self {
+        let lib = unsafe { Library::new(&path).expect("Couldn't load lib") };
+        let entry: Symbol<PluginEntryFn> = unsafe {
+            lib.get(b"plugin_entry")
+                .expect("Couldn't execute plugin entry")
+        };
+        let info = unsafe { &mut *entry() }.to_owned();
+
+        Self {
+            name: path,
+            lib,
+            info,
         }
     }
 }

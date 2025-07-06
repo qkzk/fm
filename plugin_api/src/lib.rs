@@ -2,10 +2,8 @@ use crossterm::event::KeyEvent;
 use ratatui::prelude::*;
 
 #[repr(C)]
+#[derive(Debug, Clone)]
 pub struct PluginInfo {
-    pub name: *const u8,
-    pub name_len: usize,
-
     // Fonctions externes : draw et event
     pub draw: extern "C" fn(&mut dyn DrawContext, &mut Frame<'_>, Rect),
     pub on_event: extern "C" fn(&mut dyn DrawContext, KeyEvent) -> bool,
