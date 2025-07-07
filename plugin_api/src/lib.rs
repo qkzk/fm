@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crossterm::event::KeyEvent;
 use ratatui::prelude::*;
 
@@ -5,13 +7,16 @@ use ratatui::prelude::*;
 #[derive(Debug, Clone)]
 pub struct PluginInfo {
     // Fonctions externes : draw et event
-    pub draw: extern "C" fn(&mut dyn DrawContext, &mut Frame<'_>, Rect),
-    pub on_event: extern "C" fn(&mut dyn DrawContext, KeyEvent) -> bool,
+    pub state: HashMap<String, String>,
+    pub draw: extern "C" fn(state: &HashMap<String, String>, &mut Frame<'_>, &Rect),
+    pub on_event:
+       
+       
+       
+        extern "C" fn(state: &mut HashMap<String, String>, KeyEvent) -> bool,
+    pub update: extern "C" fn(state: &mut HashMap<String, String>, String, String),
 }
 
-/// Trait que l'application implémente pour passer du contexte au plugin
-/// Exemple : accès au système de logs ou de message
-pub trait DrawContext {}
 
 /// Signature de la fonction d'entrée
 pub type PluginEntryFn = unsafe extern "C" fn() -> *mut PluginInfo;

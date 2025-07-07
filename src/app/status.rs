@@ -2125,6 +2125,7 @@ impl Status {
     }
 
     pub fn load_plugins(&mut self) {
+        // TODO! read from config, store elsewhere
         self.plugins.insert(
             "hello_world".to_owned(),
             PluginData::new("plugins/hello_world/target/release/libHello_World.so".to_owned()),
@@ -2135,23 +2136,27 @@ impl Status {
         let Some(plugin) = self.plugins.get_mut("hello_world") else {
             return;
         };
-        let ret = unsafe {
+        unsafe {
+            let mut state = plugin.info.state.clone();
+            (plugin.info.update)(&mut state, "bla".to_owned(), "top".to_owned());
             let Ok(echo) = plugin.lib.get::<Symbol<Echo>>(b"echo") else {
                 return;
             };
-            (echo)(2)
+
+            let ret = (echo)(2);
+            log_info!("plugin echo {ret} - state {state:?}");
         };
-        log_info!("plugin echo {ret}");
     }
 }
 
+type Update = unsafe extern "C" fn(&mut HashMap<String, String>, String, String);
 type Echo = unsafe extern "C" fn(u8) -> u8;
 
 #[derive(Debug)]
 pub struct PluginData {
-    name: String,
-    lib: Library,
-    info: PluginInfo,
+    pub name: String,
+    pub lib: Library,
+    pub info: PluginInfo,
 }
 
 impl PluginData {

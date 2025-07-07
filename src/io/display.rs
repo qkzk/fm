@@ -1276,8 +1276,21 @@ impl<'a> Menu<'a> {
     }
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
-        self.flagged_files(f, rect);
-        self.flagged_selected(f, rect);
+        // TODO test elsewhere
+        self.test_plugin(f, rect);
+
+        // self.flagged_files(f, rect);
+        // self.flagged_selected(f, rect);
+    }
+
+    fn test_plugin(&self, f: &mut Frame, rect: &Rect) {
+        let Some(plugin) = self.status.plugins.get("hello_world") else {
+            return;
+        };
+        unsafe {
+            let mut state = plugin.info.state.clone();
+            (plugin.info.draw)(&state, f, rect);
+        }
     }
 
     fn flagged_files(&self, f: &mut Frame, rect: &Rect) {

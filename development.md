@@ -1756,9 +1756,10 @@ Once that's done, it's all. No not implement anything else
 - [ ] plugin system 
   - [x] echo
   - [x] load a plugin from its name & lib.so address 
-  - [x] share common API for plugins 
-  - [ ] avoid this shared API. Remove plugin info ? Just implement plugin_entry
-  - [ ] plugin mutate status
+  - [x] execute methods
+  - [x] draw something  
+  - [ ] plugin state type. HashMap<String, String> isn't usable
+  - [ ] can't find a proper way to save a state inside plugin.
 
 
 ## TODO
