@@ -10,7 +10,7 @@ use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use libloading::{Library, Symbol};
 use opendal::EntryMode;
-use plugin_api::{PluginEntryFn, PluginInfo};
+use plugin_api::{Askable, PluginEntryFn, PluginInfo, PluginType};
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
@@ -2127,30 +2127,34 @@ impl Status {
     pub fn load_plugins(&mut self) {
         // TODO! read from config, store elsewhere
         self.plugins.insert(
-            "hello_world".to_owned(),
+            "flagged".to_owned(),
+            PluginData::new("plugins/flagged/target/release/libFlagged.so".to_owned()),
+        );
+        self.plugins.insert(
+            "hello world".to_owned(),
             PluginData::new("plugins/hello_world/target/release/libHello_World.so".to_owned()),
         );
     }
 
-    pub fn run_plugin(&mut self) {
-        let Some(plugin) = self.plugins.get_mut("hello_world") else {
+    pub fn run_plugin(&mut self, plugin_name: &str) {
+        let Some(plugin) = self.plugins.get(plugin_name) else {
             return;
         };
-        unsafe {
-            let mut state = plugin.info.state.clone();
-            (plugin.info.update)(&mut state, "bla".to_owned(), "top".to_owned());
-            let Ok(echo) = plugin.lib.get::<Symbol<Echo>>(b"echo") else {
-                return;
-            };
-
-            let ret = (echo)(2);
-            log_info!("plugin echo {ret} - state {state:?}");
-        };
+        let asked = (plugin.info.ask)();
+        let data = asked
+            .iter()
+            .map(|askable| match askable {
+                Askable::Flagged => PluginType::VecString(self.menu.flagged.as_strings()),
+                Askable::CurrentSelection => {
+                    PluginType::String(self.current_tab().current_file_string().unwrap_or_default())
+                }
+                _ => PluginType::Empty,
+            })
+            .collect();
+        log_info!("sending data {data:?} to {plugin_name}");
+        (plugin.info.send)(data);
     }
 }
-
-type Update = unsafe extern "C" fn(&mut HashMap<String, String>, String, String);
-type Echo = unsafe extern "C" fn(u8) -> u8;
 
 #[derive(Debug)]
 pub struct PluginData {

@@ -28,7 +28,6 @@ impl EventAction {
     /// It's useful to be able to reset the cursor before leaving the application.
     /// If a menu is opened, closes it.
     pub fn quit(status: &mut Status) -> Result<()> {
-        status.run_plugin();
         if status.focus.is_file() {
             status.internal_settings.quit();
         } else {
@@ -158,6 +157,7 @@ impl EventAction {
             status.leave_menu_mode()?;
         } else if matches!(menu_mode, Menu::Nothing) {
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
+            status.run_plugin("flagged");
         }
         Ok(())
     }
@@ -1374,6 +1374,8 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
+            // TODO! remove 
+            status.run_plugin("hello world");
             status.menu.trash.update()?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Trash))?;
         }

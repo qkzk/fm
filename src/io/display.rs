@@ -1186,12 +1186,13 @@ impl<'a> Menu<'a> {
     }
 
     fn trash(&self, f: &mut Frame, rect: &Rect) {
-        let trash = &self.status.menu.trash;
-        if trash.content().is_empty() {
-            self.trash_is_empty(f, rect)
-        } else {
-            self.trash_content(f, rect, trash)
-        };
+        self.test_plugin("hello world", f, rect);
+        // let trash = &self.status.menu.trash;
+        // if trash.content().is_empty() {
+        //     self.trash_is_empty(f, rect)
+        // } else {
+        //     self.trash_content(f, rect, trash)
+        // };
     }
 
     fn trash_content(&self, f: &mut Frame, rect: &Rect, trash: &Trash) {
@@ -1277,20 +1278,17 @@ impl<'a> Menu<'a> {
 
     fn flagged(&self, f: &mut Frame, rect: &Rect) {
         // TODO test elsewhere
-        self.test_plugin(f, rect);
+        self.test_plugin("flagged", f, rect);
 
         // self.flagged_files(f, rect);
         // self.flagged_selected(f, rect);
     }
 
-    fn test_plugin(&self, f: &mut Frame, rect: &Rect) {
-        let Some(plugin) = self.status.plugins.get("hello_world") else {
+    fn test_plugin(&self, plugin_name: &str, f: &mut Frame, rect: &Rect) {
+        let Some(plugin) = self.status.plugins.get(plugin_name) else {
             return;
         };
-        unsafe {
-            let mut state = plugin.info.state.clone();
-            (plugin.info.draw)(&state, f, rect);
-        }
+        (plugin.info.draw)(f, rect);
     }
 
     fn flagged_files(&self, f: &mut Frame, rect: &Rect) {

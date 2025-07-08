@@ -1757,10 +1757,9 @@ Once that's done, it's all. No not implement anything else
   - [x] echo
   - [x] load a plugin from its name & lib.so address 
   - [x] execute methods
-  - [x] draw something  
-  - [ ] plugin state type. HashMap<String, String> isn't usable
-  - [ ] can't find a proper way to save a state inside plugin.
-  - [ ] second plugin: menu navigate into folder, displayed one file at a time.
+  - [x] draw something
+  - [ ] save state as static mut. Ugly. Can't find a proper way to save a state inside plugin
+  - [ ] second plugin: flagged
     actions : up, down, first, last, select (navigate there), exit
 
     update routine:

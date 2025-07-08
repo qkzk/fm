@@ -1,0 +1,12 @@
+[package]
+name = "Flagged"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+plugin_api = { path = "../../plugin_api" }
+ratatui = "0.28.1"
+crossterm = "0.28.1"
