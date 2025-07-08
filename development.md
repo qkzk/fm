@@ -1760,6 +1760,18 @@ Once that's done, it's all. No not implement anything else
   - [x] draw something  
   - [ ] plugin state type. HashMap<String, String> isn't usable
   - [ ] can't find a proper way to save a state inside plugin.
+  - [ ] second plugin: menu navigate into folder, displayed one file at a time.
+    actions : up, down, first, last, select (navigate there), exit
+
+    update routine:
+    host.needed = plugin.ask()
+    state = plugin.calc(host.needed)
+    host.save_state(name, state)
+    (check multiple call if needed)
+
+  
+    render: 
+    display.host.get_state(name)
 
 
 ## TODO
