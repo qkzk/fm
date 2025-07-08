@@ -33,7 +33,6 @@ extern "C" fn send(data: Vec<PluginType>) {
     });
     unsafe {
         FLAGGED_PATHS = Some(paths);
-        FLAGGED_PATHS.as_mut().unwrap();
     }
 }
 

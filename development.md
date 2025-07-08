@@ -1761,6 +1761,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] save state as static mut. Ugly. Can't find a proper way to save a state inside plugin
   - [ ] second plugin: flagged
     actions : up, down, first, last, select (navigate there), exit
+  - [ ] drop the plugin
 
     update routine:
     host.needed = plugin.ask()
