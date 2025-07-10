@@ -10,7 +10,10 @@ use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use libloading::{Library, Symbol};
 use opendal::EntryMode;
-use plugin_api::{Askable, DisplayMode, PluginEntryFn, PluginInfo, PluginType, Updatable};
+use plugin_api::{
+    Askable, DisplayMode, FMContext, PluginEntryFn, PluginInfo, PluginType, StatusContext,
+    TabContext, Updatable,
+};
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
@@ -99,6 +102,17 @@ impl Focus {
     /// Is the window a left menu ?
     pub fn is_left_menu(&self) -> bool {
         matches!(self, Self::LeftMenu)
+    }
+}
+
+impl From<Focus> for plugin_api::Focus {
+    fn from(value: Focus) -> Self {
+        match value {
+            Focus::LeftFile => Self::LeftFile,
+            Focus::RightFile => Self::RightFile,
+            Focus::LeftMenu => Self::LeftMenu,
+            Focus::RightMenu => Self::RightMenu,
+        }
     }
 }
 
@@ -2153,7 +2167,8 @@ impl Status {
             .collect();
         log_info!("sending data {data:?} to {plugin_name}");
         (plugin.info.send)(data);
-        let updatables = (plugin.info.host_state_update)();
+        let context = self.plugin_context();
+        let updatables = (plugin.info.host_state_update)(context);
         for updatable in &updatables {
             // TODO
             match updatable {
@@ -2168,6 +2183,28 @@ impl Status {
                 Updatable::MenuMode(_menumode) => todo!(),
                 _ => (),
             }
+        }
+    }
+
+    fn plugin_context(&self) -> FMContext {
+        FMContext {
+            status: StatusContext {
+                focus: self.focus.into(),
+                dual: self.session.dual(),
+                metadata: self.session.metadata(),
+                preview: self.session.preview(),
+                is_disabled: self.internal_settings.is_disabled(),
+            },
+            left_tab: TabContext {
+                display_mode: self.tabs[0].display_mode.into(),
+                show_hidden: self.tabs[0].settings.show_hidden,
+                sort_kind: self.tabs[0].settings.sort_kind.into(),
+            },
+            right_tab: TabContext {
+                display_mode: self.tabs[1].display_mode.into(),
+                show_hidden: self.tabs[1].settings.show_hidden,
+                sort_kind: self.tabs[1].settings.sort_kind.into(),
+            },
         }
     }
 }

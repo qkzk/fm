@@ -422,7 +422,7 @@ pub trait Leave {
 /// What kind of content is displayed in the main window of this tab.
 /// Directory (all files of a directory), Tree (all files and children up to a certain depth),
 /// preview of a content (file, command output...) or fuzzy finder of file.
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone, Copy)]
 pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
@@ -450,5 +450,16 @@ impl Display {
 
     pub fn is_fuzzy(&self) -> bool {
         self.is(Self::Fuzzy)
+    }
+}
+
+impl From<Display> for plugin_api::DisplayMode {
+    fn from(display: Display) -> Self {
+        match display {
+            Display::Directory => Self::Directory,
+            Display::Preview => Self::Preview,
+            Display::Tree => Self::Tree,
+            Display::Fuzzy => Self::Fuzzy,
+        }
     }
 }

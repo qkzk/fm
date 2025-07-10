@@ -146,6 +146,36 @@ impl SortKind {
     }
 }
 
+impl From<SortKind> for plugin_api::SortKind {
+    fn from(value: SortKind) -> plugin_api::SortKind {
+        plugin_api::SortKind {
+            sort_by: value.sort_by.into(),
+            order: value.order.into(),
+        }
+    }
+}
+
+impl From<SortBy> for plugin_api::SortBy {
+    fn from(value: SortBy) -> plugin_api::SortBy {
+        match &value {
+            SortBy::Kind => plugin_api::SortBy::Kind,
+            SortBy::File => plugin_api::SortBy::File,
+            SortBy::Date => plugin_api::SortBy::Date,
+            SortBy::Size => plugin_api::SortBy::Size,
+            SortBy::Exte => plugin_api::SortBy::Exte,
+        }
+    }
+}
+
+impl From<Order> for plugin_api::Order {
+    fn from(value: Order) -> plugin_api::Order {
+        match &value {
+            Order::Ascending => plugin_api::Order::Ascending,
+            Order::Descending => plugin_api::Order::Descending,
+        }
+    }
+}
+
 impl std::fmt::Display for SortKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let sort_order = match &self.order {

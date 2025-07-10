@@ -17,7 +17,7 @@ pub struct PluginInfo {
     pub send: extern "C" fn(Vec<PluginType>),
     /// Asks the plugin what host state should be updated.
     /// It should be called by the host after sending its data.
-    pub host_state_update: extern "C" fn() -> Vec<Updatable>,
+    pub host_state_update: extern "C" fn(FMContext) -> Vec<Updatable>,
     /// Quit the plugin, used to drop unused information and release memory.
     pub quit: extern "C" fn(),
 }
@@ -71,7 +71,7 @@ pub enum Updatable {
 }
 
 #[repr(C)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Copy)]
 pub enum DisplayMode {
     #[default]
     Directory,
@@ -81,4 +81,4 @@ pub enum DisplayMode {
 }
 
 mod context;
-use context::Context;
+pub use context::{FMContext, Focus, Order, SortBy, SortKind, StatusContext, TabContext};

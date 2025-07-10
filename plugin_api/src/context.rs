@@ -1,59 +1,60 @@
+/// Context of the application itself.
+/// Used to send `Copy` attributes to the plugin.
 #[repr(C)]
 #[derive(Clone, Debug, Default, Copy)]
-pub struct Context {
-    width: u16,  // ?
-    height: u16, // ?
-    left_display_mode: DisplayMode,
-    right_display_mode: DisplayMode,
-    focus: Focus,
-    dual: bool,
-    metadata: bool,
-    preview: bool,
-    is_disabled: bool,
-    left_show_hidden: bool,
-    right_show_hidden: bool,
-    left_sort_kind: SortKind,
-    right_sort_kind: SortKind,
-    // left_filter_kind
-    // right_filter_kind
-    // // tab ?
-    // /// Last searched string
-    // pub search: Search,
-    // // pub searched: Search,
-    // /// Visited directories
-    // pub history: History,
-    // /// Users & groups
-    // pub users: Users,
-    // /// Saved path before entering "CD" mode.
-    // /// Used if the cd is canceled
-    // pub origin_path: Option<std::path::PathBuf>,
-    // pub visual: bool,
+pub struct FMContext {
+    /// Fm global context
+    pub status: StatusContext,
+    /// left tab context
+    pub left_tab: TabContext,
+    /// right tab context
+    pub right_tab: TabContext,
+}
+
+/// Global context of the fm application.
+/// It is `Copy`.
+#[repr(C)]
+#[derive(Clone, Debug, Default, Copy)]
+pub struct StatusContext {
+    /// Which window is focused (left or right, menu or file) ?
+    pub focus: Focus,
+    /// Does the user wants dual mode ?
+    pub dual: bool,
+    /// Does the user wants metadata ?
+    pub metadata: bool,
+    /// Is the right tab used to previewing ?
+    pub preview: bool,
+    /// Is the terminal currently disabled ?
+    pub is_disabled: bool,
+}
+
+/// Context of the left or right tab
+/// It is 'Copy'.
+#[repr(C)]
+#[derive(Clone, Debug, Default, Copy)]
+pub struct TabContext {
+    /// Display mode of the file window
+    pub display_mode: super::DisplayMode,
+    /// Are hidden files displayed ?
+    pub show_hidden: bool,
+    /// What kind of sort is used ?
+    pub sort_kind: SortKind,
 }
 
 #[repr(C)]
 #[derive(Clone, Debug, Default, Copy)]
 pub enum Focus {
     #[default]
-    FileLeft,
-    MenuLeft,
-    FileRight,
-    MenuRight,
-}
-
-#[repr(C)]
-#[derive(Clone, Debug, Default, Copy)]
-pub enum DisplayMode {
-    #[default]
-    Directory,
-    Tree,
-    Preview,
-    Fuzzy,
+    LeftFile,
+    LeftMenu,
+    RightFile,
+    RightMenu,
 }
 
 /// Different kind of sort
 #[repr(C)]
 #[derive(Debug, Clone, Default, Copy)]
-enum SortBy {
+pub enum SortBy {
     #[default]
     /// Directory first
     Kind,
@@ -70,7 +71,7 @@ enum SortBy {
 /// Ascending or descending sort
 #[repr(C)]
 #[derive(Debug, Clone, Default, Copy)]
-enum Order {
+pub enum Order {
     #[default]
     /// Ascending order
     Ascending,
@@ -83,7 +84,24 @@ enum Order {
 /// Describe a way of sorting
 pub struct SortKind {
     /// The key used to sort the files
-    sort_by: SortBy,
+    pub sort_by: SortBy,
     /// Ascending or descending order
-    order: Order,
+    pub order: Order,
 }
+
+// non copy informations :
+
+// left_filter_kind
+// right_filter_kind
+// // tab ?
+// /// Last searched string
+// pub search: Search,
+// // pub searched: Search,
+// /// Visited directories
+// pub history: History,
+// /// Users & groups
+// pub users: Users,
+// /// Saved path before entering "CD" mode.
+// /// Used if the cd is canceled
+// pub origin_path: Option<std::path::PathBuf>,
+// pub visual: bool,

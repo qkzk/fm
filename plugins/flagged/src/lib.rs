@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::prelude::*;
 
-use plugin_api::{Askable, PluginInfo, PluginType, Updatable};
+use plugin_api::{Askable, FMContext, PluginInfo, PluginType, Updatable};
 
 static mut PLUGIN_INFO: Option<PluginInfo> = None;
 
@@ -56,7 +56,7 @@ fn draw_files(paths: Vec<String>, frame: &mut Frame, area: &Rect) {
     })
 }
 
-extern "C" fn host_state_update() -> Vec<Updatable> {
+extern "C" fn host_state_update(ctx: FMContext) -> Vec<Updatable> {
     vec![Updatable::Flagged(vec![])]
 }
 

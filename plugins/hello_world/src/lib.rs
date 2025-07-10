@@ -3,7 +3,7 @@ use std::ptr::addr_of;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 
-use plugin_api::{Askable, PluginInfo, PluginType, Updatable};
+use plugin_api::{Askable, FMContext, PluginInfo, PluginType, Updatable};
 
 static mut PLUGIN_INFO: Option<PluginInfo> = None;
 static mut SELECTED: Option<String> = None;
@@ -57,7 +57,7 @@ extern "C" fn on_event(key: KeyEvent) -> bool {
 }
 
 // TODO do something useful...
-extern "C" fn host_state_update() -> Vec<Updatable> {
+extern "C" fn host_state_update(ctx: FMContext) -> Vec<Updatable> {
     vec![Updatable::Jump("/home/quentin/b".to_owned())]
 }
 

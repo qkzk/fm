@@ -1767,10 +1767,16 @@ Once that's done, it's all. No not implement anything else
   - [ ] push / sub model ? or share a context with every exchange
 
   - [ ] run plugin :
+      2 kinds of data can be shared :
+
+      - copy trait -> put everything into context.
+      - non copy trait -> plugin must ask to get.
+
       host.needed = plugin.ask()
       state = plugin.calc(host.needed)
       host.save_state(name, state)
-      host.update_state = plugin.host_state()
+      host.context = host.build_context()
+      host.update_state = plugin.host_state(host.context)
       host.update_state.for_each(|update| {
         match udpate {
         ...
@@ -1786,6 +1792,7 @@ Once that's done, it's all. No not implement anything else
 
 - [x] FIX: crash without config files. Save default config while building, include them in code.
 - [ ] BUG: preview can stop and display "preview as empty"
+- [ ] BUG: status.index should be replaced by a bool instead of usize.
 
 ## TODO
 
