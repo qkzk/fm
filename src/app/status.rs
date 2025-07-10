@@ -10,7 +10,7 @@ use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use libloading::{Library, Symbol};
 use opendal::EntryMode;
-use plugin_api::{Askable, PluginEntryFn, PluginInfo, PluginType};
+use plugin_api::{Askable, DisplayMode, PluginEntryFn, PluginInfo, PluginType, Updatable};
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
@@ -2153,6 +2153,22 @@ impl Status {
             .collect();
         log_info!("sending data {data:?} to {plugin_name}");
         (plugin.info.send)(data);
+        let updatables = (plugin.info.host_state_update)();
+        for updatable in &updatables {
+            // TODO
+            match updatable {
+                Updatable::Nothing => (),
+                Updatable::Jump(target) => {
+                    self.current_tab_mut().cd(Path::new(target)).expect("bla")
+                }
+                Updatable::Flagged(flagged) => {
+                    self.menu.flagged.replace_by_string(flagged.join("\n"))
+                }
+                Updatable::DisplayMode(_displaymode) => todo!(),
+                Updatable::MenuMode(_menumode) => todo!(),
+                _ => (),
+            }
+        }
     }
 }
 

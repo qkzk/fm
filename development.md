@@ -1758,26 +1758,40 @@ Once that's done, it's all. No not implement anything else
   - [x] load a plugin from its name & lib.so address 
   - [x] execute methods
   - [x] draw something
+  - [ ] read plugin names & path from config file,
+  - [ ] keybinds -> actions -> run_plugin
   - [ ] save state as static mut. Ugly. Can't find a proper way to save a state inside plugin
   - [ ] second plugin: flagged
     actions : up, down, first, last, select (navigate there), exit
   - [ ] drop the plugin
+  - [ ] push / sub model ? or share a context with every exchange
 
-    update routine:
-    host.needed = plugin.ask()
-    state = plugin.calc(host.needed)
-    host.save_state(name, state)
-    (check multiple call if needed)
+  - [ ] run plugin :
+      host.needed = plugin.ask()
+      state = plugin.calc(host.needed)
+      host.save_state(name, state)
+      host.update_state = plugin.host_state()
+      host.update_state.for_each(|update| {
+        match udpate {
+        ...
+        }
+      }
+      (check multiple call if needed)
 
+
+    - [ ] Result type for plugin. Ok(whatever), Err(C string)
   
     render: 
     display.host.get_state(name)
 
+- [ ] BUG: sudo fm doesn't work, can't run as root. Should launch without a config file
+- [ ] BUG: preview can stop and display "preview as empty"
 
 ## TODO
 
 ### Other ideas
 
+- [ ] IMP: cd mode selection should update zoxide
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
 - [ ] BUG: Camera folder crash. Can't reproduce

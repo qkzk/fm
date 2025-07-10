@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::prelude::*;
 
-use plugin_api::{Askable, PluginInfo, PluginType};
+use plugin_api::{Askable, PluginInfo, PluginType, Updatable};
 
 static mut PLUGIN_INFO: Option<PluginInfo> = None;
 
@@ -14,6 +14,7 @@ pub unsafe extern "C" fn plugin_entry() -> *mut PluginInfo {
         on_event,
         ask,
         send,
+        host_state_update,
         quit,
     };
     PLUGIN_INFO = Some(plugin);
@@ -53,6 +54,10 @@ fn draw_files(paths: Vec<String>, frame: &mut Frame, area: &Rect) {
         let line = Line::raw(path).yellow();
         line.render(sub_area, frame.buffer_mut());
     })
+}
+
+extern "C" fn host_state_update() -> Vec<Updatable> {
+    vec![Updatable::Flagged(vec![])]
 }
 
 extern "C" fn quit() {

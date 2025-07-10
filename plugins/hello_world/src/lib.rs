@@ -1,7 +1,9 @@
+use std::ptr::addr_of;
+
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 
-use plugin_api::{Askable, PluginInfo, PluginType};
+use plugin_api::{Askable, PluginInfo, PluginType, Updatable};
 
 static mut PLUGIN_INFO: Option<PluginInfo> = None;
 static mut SELECTED: Option<String> = None;
@@ -13,6 +15,7 @@ pub unsafe extern "C" fn plugin_entry() -> *mut PluginInfo {
         on_event,
         ask,
         send,
+        host_state_update,
         quit,
     };
     PLUGIN_INFO = Some(plugin);
@@ -51,6 +54,11 @@ extern "C" fn send(mut data: Vec<PluginType>) {
 
 extern "C" fn on_event(key: KeyEvent) -> bool {
     matches!(key.code, KeyCode::Char('p'))
+}
+
+// TODO do something useful...
+extern "C" fn host_state_update() -> Vec<Updatable> {
+    vec![Updatable::Jump("/home/quentin/b".to_owned())]
 }
 
 extern "C" fn quit() {
