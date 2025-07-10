@@ -5,5 +5,4 @@
 *nohup*
 *token*
 *keyb.txt*
-/plugins/*/target
-/*/target
+**/target

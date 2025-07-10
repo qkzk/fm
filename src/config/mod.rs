@@ -10,6 +10,7 @@
 mod cloud_config;
 mod colors;
 mod configuration;
+mod default_config;
 mod gradient;
 mod keybindings;
 mod oncelock_static;
@@ -19,6 +20,7 @@ pub use colors::{extension_color, str_to_ratatui, ColorG, NormalFileColorer, MAX
 pub use configuration::{
     load_config, read_normal_file_colorer, Config, FileStyle, MenuStyle, SyntectTheme,
 };
+pub use default_config::*;
 pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
