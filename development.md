@@ -1784,7 +1784,7 @@ Once that's done, it's all. No not implement anything else
     render: 
     display.host.get_state(name)
 
-- [ ] BUG: sudo fm doesn't work, can't run as root. Should launch without a config file
+- [x] FIX: crash without config files. Save default config while building, include them in code.
 - [ ] BUG: preview can stop and display "preview as empty"
 
 ## TODO
