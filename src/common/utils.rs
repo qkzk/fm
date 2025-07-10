@@ -54,10 +54,13 @@ pub fn disk_space(disks: &Disks, path: &Path) -> String {
 /// Must be called last since we erase temporary with similar name
 /// before leaving.
 pub fn save_final_path(final_path: &str) {
-    let mut file = File::create("/tmp/fm_output.txt").expect("Failed to create file");
-    writeln!(file, "{final_path}").expect("Failed to write to file");
     log_info!("print on quit {final_path}");
-    println!("{final_path}")
+    println!("{final_path}");
+    let Ok(mut file) = File::create("/tmp/fm_output.txt") else {
+        log_info!("Couldn't save {final_path} to /tmp/fm_output.txt");
+        return;
+    };
+    writeln!(file, "{final_path}").expect("Failed to write to file");
 }
 
 /// Returns the buffered lines from a text file.

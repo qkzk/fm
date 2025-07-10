@@ -5,7 +5,8 @@ use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
 use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
-use crate::config::{Bindings, ColorG};
+use crate::config::{make_default_config_files, Bindings, ColorG};
+use crate::log_info;
 
 /// Holds every configurable aspect of the application.
 /// All styles are hardcoded then updated from optional values
@@ -35,6 +36,16 @@ impl Config {
     }
 }
 
+fn ensure_config_files_exists(path: &str) -> std::io::Result<()> {
+    let expanded_path = tilde(path);
+    let expanded_config_path = path::Path::new(expanded_path.as_ref());
+    if !expanded_config_path.exists() {
+        make_default_config_files()?;
+        log_info!("Created default config files.");
+    }
+    Ok(())
+}
+
 /// Returns a config with values from :
 ///
 /// 1. hardcoded values
@@ -43,8 +54,9 @@ impl Config {
 ///
 /// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
+    ensure_config_files_exists(path)?;
     let mut config = Config::default();
-    let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+    let Ok(file) = File::open(&*tilde(path)) else {
         crate::log_info!("Couldn't read config file at {path}");
         return Ok(config);
     };
