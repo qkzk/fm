@@ -1749,6 +1749,7 @@ Once that's done, it's all. No not implement anything else
 ### Version 0.2.1 : plugins
 
 - .ape files are previewed as a music files with mediainfo
+- files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
 
 
 #### Summary
@@ -1803,6 +1804,7 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: extensions ending with ~ or _ like .png~ should be previewed normally.
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
+- [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 
 
 ## TODO
