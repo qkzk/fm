@@ -62,7 +62,7 @@ impl ExtensionKind {
             => Self::Sevenz,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
             => Self::Image,
-            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac"
+            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac" | "ape"
             => Self::Audio,
             "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
             => Self::Video,

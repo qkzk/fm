@@ -1748,8 +1748,15 @@ Once that's done, it's all. No not implement anything else
 
 ### Version 0.2.1 : plugins
 
+- .ape files are previewed as a music files with mediainfo
+
 
 #### Summary
+
+##### Bugfixes
+
+- fm couldn't start without a config file. If no config file is found for the current user, we'll copy the default ones in ~/.config/fm.
+- Previewing a text file containing ANSI control sequence would alter the terminal display. Instead of displaying the content directly, we clean it first, removing ANSI control chars with a regex.
 
 #### Changelog
 
@@ -1792,6 +1799,7 @@ Once that's done, it's all. No not implement anything else
 
 - [x] FIX: crash without config files. Save default config while building, include them in code.
 - [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
+- [x] IMP: preview .ape files as music files with mediain
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] BUG: extensions ending with ~ like .png~ should be treated as .png files.
