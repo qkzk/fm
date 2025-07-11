@@ -10,6 +10,7 @@ use std::slice::Iter;
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
+use regex::Regex;
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle},
@@ -402,13 +403,16 @@ impl PreviewBuilder {
     }
 }
 
-/// Read a number of lines from a text file. Returns a vector of strings.
+/// Reads a number of lines from a text file, _removing all ANSI control characters_.
+/// Returns a vector of strings.
 fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
+    let re = Regex::new(r"[[:cntrl:]]").unwrap();
     let reader = std::io::BufReader::new(std::fs::File::open(path)?);
     Ok(reader
         .lines()
         .take(size_limit)
-        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+        .map(|line| line.unwrap_or_default())
+        .map(|s| re.replace_all(&s, "").to_string())
         .collect())
 }
 

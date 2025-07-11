@@ -1791,8 +1791,11 @@ Once that's done, it's all. No not implement anything else
     display.host.get_state(name)
 
 - [x] FIX: crash without config files. Save default config while building, include them in code.
+- [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
+- [ ] BUG: extensions ending with ~ like .png~ should be treated as .png files.
+
 
 ## TODO
 
