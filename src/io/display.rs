@@ -760,7 +760,9 @@ impl<'a> PreviewDisplay<'a> {
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
             Preview::Image(image) => self.image(image, rect, image_adapter),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
-            Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
+            Preview::Text(ansi_text)
+                if matches!(ansi_text.kind, TextKind::CommandStdout | TextKind::Plugin) =>
+            {
                 self.ansi_text(f, ansi_text, length, rect, window)
             }
             Preview::Text(text) => self.normal_text(f, text, length, rect, window),

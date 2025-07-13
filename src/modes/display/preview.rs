@@ -404,8 +404,8 @@ impl PreviewBuilder {
         Preview::Text(Text::command_stdout(output, command))
     }
 
-    pub fn raw_text(text: String) -> Preview {
-        Preview::Text(Text::raw(text))
+    pub fn plugin_text(text: String, name: &str) -> Preview {
+        Preview::Text(Text::plugin(text, name))
     }
 }
 
@@ -439,6 +439,7 @@ pub enum TextKind {
     Iso,
     Log,
     Mediacontent,
+    Plugin,
     Sevenz,
     Socket,
     Torrent,
@@ -458,6 +459,7 @@ impl TextKind {
             Self::Help => "Help",
             Self::Iso => "Iso",
             Self::Log => "Log",
+            Self::Plugin => "a text",
             Self::Mediacontent => "a media content",
             Self::Sevenz => "a 7z archive",
             Self::Socket => "a Socket file",
@@ -496,11 +498,11 @@ impl Text {
         }
     }
 
-    fn raw(text: String) -> Self {
+    fn plugin(text: String, name: &str) -> Self {
         let content: Vec<String> = text.lines().map(|line| line.to_owned()).collect();
         Self {
-            title: "Raw".to_string(),
-            kind: TextKind::CommandStdout,
+            title: name.to_string(),
+            kind: TextKind::Plugin,
             length: content.len(),
             content,
         }
