@@ -1,6 +1,7 @@
 use std::os::unix::fs::MetadataExt;
 
 use anyhow::Result;
+use plugin_api::PluginContent;
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
@@ -90,6 +91,8 @@ pub struct MenuHolder {
     pub history: History,
     /// mounts
     pub mount: Mount,
+    /// navigate plugin data
+    pub plugin: Option<PluginContent>,
 }
 
 impl MenuHolder {
@@ -116,6 +119,7 @@ impl MenuHolder {
             tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
             mount: Mount::default(),
+            plugin: None,
         })
     }
 
@@ -325,6 +329,7 @@ impl MenuHolder {
             Navigate::Cloud => func(&mut self.cloud),
             Navigate::Picker => func(&mut self.picker),
             Navigate::Flagged => func(&mut self.flagged),
+            Navigate::Plugin => func(&mut self.plugin),
         }
     }
 
@@ -346,6 +351,7 @@ impl MenuHolder {
             Navigate::Cloud => func(&self.cloud),
             Navigate::Picker => func(&self.picker),
             Navigate::Flagged => func(&self.flagged),
+            Navigate::Plugin => func(&self.plugin),
         }
     }
 
@@ -402,4 +408,58 @@ impl MenuHolder {
     impl_navigate_from_char!(tui_applications_from_char, tui_applications);
     impl_navigate_from_char!(cli_applications_from_char, cli_applications);
     impl_navigate_from_char!(compression_method_from_char, compression);
+}
+
+impl Selectable for Option<PluginContent> {
+    /// True iff the content is empty
+    fn is_empty(&self) -> bool {
+        if let Some(plugin) = &self {
+            plugin.content.is_empty()
+        } else {
+            true
+        }
+    }
+    /// Number of element in content
+    fn len(&self) -> usize {
+        if let Some(plugin) = &self {
+            plugin.len()
+        } else {
+            0
+        }
+    }
+    /// Select next element in content
+    fn next(&mut self) {
+        if let Some(plugin) = self {
+            plugin.next()
+        }
+    }
+    /// Select previous element in content
+    fn prev(&mut self) {
+        if let Some(plugin) = self {
+            plugin.prev()
+        }
+    }
+    /// Current index of selected element.
+    /// 0 if the content is empty (I know, could be an option)
+    fn index(&self) -> usize {
+        if let Some(plugin) = &self {
+            plugin.index()
+        } else {
+            0
+        }
+    }
+    /// set the index to the value if possible
+    fn set_index(&mut self, index: usize) {
+        if let Some(plugin) = self {
+            plugin.set_index(index)
+        }
+    }
+    /// true if the selected element is the last of content
+    fn selected_is_last(&self) -> bool {
+        if let Some(plugin) = &self {
+            plugin.selected_is_last()
+        } else {
+            false
+        }
+    }
 }

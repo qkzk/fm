@@ -4,7 +4,10 @@ use std::thread;
 
 use anyhow::Result;
 
-use crate::modes::{Preview, PreviewBuilder};
+use crate::{
+    log_info,
+    modes::{Preview, PreviewBuilder},
+};
 
 enum PreviewRequest {
     Request((PathBuf, usize)),
@@ -21,7 +24,7 @@ enum PreviewRequest {
 ///
 /// ATM only the previews for the second pane are built here. It's useless if the user display previews in the current tab since navigation isn't possible.
 pub struct Previewer {
-    tx: mpsc::Sender<PreviewRequest>,
+    tx_request: mpsc::Sender<PreviewRequest>,
 }
 
 impl Previewer {
@@ -33,12 +36,20 @@ impl Previewer {
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
     pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
-        let (tx, rx) = mpsc::channel::<PreviewRequest>();
+        let (tx_request, rx_request) = mpsc::channel::<PreviewRequest>();
         thread::spawn(move || {
-            while let Some(request) = rx.iter().next() {
+            while let Some(request) = rx_request.iter().next() {
                 match request {
                     PreviewRequest::Request((path, index)) => {
+                        log_info!(
+                            "Previewer: request for {path} tab {index}",
+                            path = path.display()
+                        );
                         if let Ok(preview) = PreviewBuilder::new(&path).build() {
+                            log_info!(
+                                "Previewer: built preview for {path} tab {index}",
+                                path = path.display()
+                            );
                             tx_preview.send((path, preview, index)).unwrap();
                         };
                     }
@@ -46,13 +57,13 @@ impl Previewer {
                 }
             }
         });
-        Self { tx }
+        Self { tx_request }
     }
 
     /// Sends a "quit" message to the previewer loop. It will break the loop, exiting the previewer.
     pub fn quit(&self) {
         crate::log_info!("stopping previewer loop");
-        match self.tx.send(PreviewRequest::Quit) {
+        match self.tx_request.send(PreviewRequest::Quit) {
             Ok(()) => (),
             Err(e) => crate::log_info!("Previewer::quit error {e:?}"),
         };
@@ -62,7 +73,8 @@ impl Previewer {
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
     pub fn build(&self, path: PathBuf, index: usize) -> Result<()> {
-        self.tx.send(PreviewRequest::Request((path, index)))?;
+        self.tx_request
+            .send(PreviewRequest::Request((path, index)))?;
         Ok(())
     }
 }

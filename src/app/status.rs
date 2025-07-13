@@ -11,7 +11,7 @@ use crossterm::event::{Event, KeyEvent};
 use libloading::{Library, Symbol};
 use opendal::EntryMode;
 use plugin_api::{
-    Askable, DisplayMode, FMContext, PluginEntryFn, PluginInfo, PluginType, StatusContext,
+    Askable, FMContext, MenuKind, PluginEntryFn, PluginInfo, PluginKind, PluginType, StatusContext,
     TabContext, Updatable,
 };
 use ratatui::layout::Size;
@@ -720,6 +720,10 @@ impl Status {
         self.tabs[index]
             .window
             .reset(self.tabs[index].preview.len());
+        log_info!(
+            "status: attach_preview {path} - {index}",
+            path = path.display()
+        );
         Ok(())
     }
 
@@ -2142,11 +2146,17 @@ impl Status {
         // TODO! read from config, store elsewhere
         self.plugins.insert(
             "flagged".to_owned(),
-            PluginData::new("plugins/flagged/target/release/libFlagged.so".to_owned()),
+            PluginData::new(
+                "flagged".to_owned(),
+                "plugins/flagged/target/release/libFlagged.so".to_owned(),
+            ),
         );
         self.plugins.insert(
             "hello world".to_owned(),
-            PluginData::new("plugins/hello_world/target/release/libHello_World.so".to_owned()),
+            PluginData::new(
+                "hello world".to_owned(),
+                "plugins/hello_world/target/release/libHello_World.so".to_owned(),
+            ),
         );
     }
 
@@ -2154,6 +2164,7 @@ impl Status {
         let Some(plugin) = self.plugins.get(plugin_name) else {
             return;
         };
+        let plugin_kind = plugin.info.kind;
         let asked = (plugin.info.ask)();
         let data = asked
             .iter()
@@ -2168,14 +2179,24 @@ impl Status {
         log_info!("sending data {data:?} to {plugin_name}");
         (plugin.info.send)(data);
         let context = self.plugin_context();
-        let updatables = (plugin.info.host_state_update)(context);
+        let mut plugin_content = (plugin.info.host_state_update)(context);
+        let updatables = std::mem::take(&mut plugin_content.updatables);
+        match plugin_kind {
+            PluginKind::Menu(menu_kind) => match menu_kind {
+                MenuKind::Navigate => self.menu.plugin = Some(plugin_content),
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
+
         for updatable in &updatables {
             // TODO
             match updatable {
                 Updatable::Nothing => (),
-                Updatable::Jump(target) => {
-                    self.current_tab_mut().cd(Path::new(target)).expect("bla")
-                }
+                Updatable::Jump(target) => self
+                    .current_tab_mut()
+                    .cd_to_file(Path::new(target))
+                    .expect("bla"),
                 Updatable::Flagged(flagged) => {
                     self.menu.flagged.replace_by_string(flagged.join("\n"))
                 }
@@ -2212,12 +2233,13 @@ impl Status {
 #[derive(Debug)]
 pub struct PluginData {
     pub name: String,
+    pub lib_path: String,
     pub lib: Library,
     pub info: PluginInfo,
 }
 
 impl PluginData {
-    pub fn new(path: String) -> Self {
+    pub fn new(name: String, path: String) -> Self {
         let lib = unsafe { Library::new(&path).expect("Couldn't load lib") };
         let entry: Symbol<PluginEntryFn> = unsafe {
             lib.get(b"plugin_entry")
@@ -2226,7 +2248,8 @@ impl PluginData {
         let info = unsafe { &mut *entry() }.to_owned();
 
         Self {
-            name: path,
+            name,
+            lib_path: path,
             lib,
             info,
         }

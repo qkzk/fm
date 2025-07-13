@@ -238,6 +238,8 @@ pub enum Navigate {
     Picker,
     /// Flagged files
     Flagged,
+    /// Plugin variant
+    Plugin,
 }
 
 impl fmt::Display for Navigate {
@@ -258,6 +260,7 @@ impl fmt::Display for Navigate {
             Self::Cloud => write!(f, "Cloud"),
             Self::Picker => write!(f, "Picker"),
             Self::Flagged => write!(f, "Flagged"),
+            Self::Plugin => write!(f, "Plugin"),
         }
     }
 }

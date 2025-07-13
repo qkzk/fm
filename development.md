@@ -1762,6 +1762,14 @@ Once that's done, it's all. No not implement anything else
 #### Changelog
 
 - [ ] plugin system 
+  menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
+
+  previewer plugins :
+  - plugin.name() -> String,
+  - plugin.extensions() -> String ("jpg png gif")
+  - plugin.preview(path) -> Vec<String>
+  
+
   - [x] echo
   - [x] load a plugin from its name & lib.so address 
   - [x] execute methods
@@ -1790,7 +1798,17 @@ Once that's done, it's all. No not implement anything else
         ...
         }
       }
-      (check multiple call if needed)
+
+      Limit plugins to menu & previewers. 
+      Allow menus to have a plugin variants
+      Impl default things for:
+      - navigation
+      - leave menu
+      - custom binds
+      
+    - draw menu or whatever method
+    - macros to generate a lot of code
+    - status.run_plugin refactor
 
 
     - [ ] Result type for plugin. Ok(whatever), Err(C string)
