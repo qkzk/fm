@@ -741,7 +741,6 @@ dependencies = [
  "parking_lot",
  "pathdiff",
  "pgs-files",
- "plugin_api",
  "ratatui",
  "regex",
  "serde",
@@ -1750,14 +1749,6 @@ dependencies = [
  "quick-xml 0.29.0",
  "serde",
  "time",
-]
-
-[[package]]
-name = "plugin_api"
-version = "0.1.0"
-dependencies = [
- "crossterm",
- "ratatui",
 ]
 
 [[package]]

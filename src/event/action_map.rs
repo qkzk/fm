@@ -108,13 +108,6 @@ pub enum ActionMap {
     TreeUnFoldAll,
     ToggleVisual,
     Custom(String),
-    Plugin(PluginPair),
-}
-
-#[derive(Clone, Default, Debug)]
-pub struct PluginPair {
-    plugin_name: String,
-    method_name: String,
 }
 
 impl ActionMap {
@@ -218,10 +211,6 @@ impl ActionMap {
             Self::ToggleVisual => EventAction::visual(status),
 
             Self::Custom(string) => EventAction::custom(status, string),
-            Self::Plugin(PluginPair {
-                plugin_name,
-                method_name,
-            }) => EventAction::plugin(status, plugin_name, method_name),
 
             Self::Nothing => Ok(()),
         }
@@ -302,7 +291,6 @@ impl ActionMap {
             Self::PageDown => "10 lines down",
             Self::PageUp => "10 lines up",
             Self::Preview => "preview this file",
-            Self::Plugin(_) => "method of plugin",
             Self::PreviousThing => "select previous 'thing'",
             Self::Quit => "quit",
             Self::RefreshIfNeeded => "refresh the terminal if we have to",

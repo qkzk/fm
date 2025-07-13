@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -8,12 +7,7 @@ use std::sync::{
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
-use libloading::{Library, Symbol};
 use opendal::EntryMode;
-use plugin_api::{
-    Askable, FMContext, MenuKind, PluginEntryFn, PluginInfo, PluginKind, PluginType, StatusContext,
-    TabContext, Updatable,
-};
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
@@ -105,17 +99,6 @@ impl Focus {
     }
 }
 
-impl From<Focus> for plugin_api::Focus {
-    fn from(value: Focus) -> Self {
-        match value {
-            Focus::LeftFile => Self::LeftFile,
-            Focus::RightFile => Self::RightFile,
-            Focus::LeftMenu => Self::LeftMenu,
-            Focus::RightMenu => Self::RightMenu,
-        }
-    }
-}
-
 /// What direction is used to sync tabs ? Left to right or right to left ?
 pub enum Direction {
     RightToLeft,
@@ -164,8 +147,6 @@ pub struct Status {
     pub previewer: Previewer,
     /// Preview manager
     pub thumbnail_manager: Option<ThumbnailManager>,
-    /// Plugins
-    pub plugins: HashMap<String, PluginData>,
 }
 
 impl Status {
@@ -205,7 +186,6 @@ impl Status {
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
         let thumbnail_manager = None;
-        let plugins = HashMap::new();
         Ok(Self {
             tabs,
             index,
@@ -218,7 +198,6 @@ impl Status {
             preview_receiver,
             previewer,
             thumbnail_manager,
-            plugins,
         })
     }
 
@@ -2139,119 +2118,6 @@ impl Status {
                 return;
             };
             self.menu.flagged.toggle(&file.path)
-        }
-    }
-
-    pub fn load_plugins(&mut self) {
-        // TODO! read from config, store elsewhere
-        self.plugins.insert(
-            "flagged".to_owned(),
-            PluginData::new(
-                "flagged".to_owned(),
-                "plugins/flagged/target/release/libFlagged.so".to_owned(),
-            ),
-        );
-        self.plugins.insert(
-            "hello world".to_owned(),
-            PluginData::new(
-                "hello world".to_owned(),
-                "plugins/hello_world/target/release/libHello_World.so".to_owned(),
-            ),
-        );
-    }
-
-    pub fn run_plugin(&mut self, plugin_name: &str) {
-        let Some(plugin) = self.plugins.get(plugin_name) else {
-            return;
-        };
-        let plugin_kind = plugin.info.kind;
-        let asked = (plugin.info.ask)();
-        let data = asked
-            .iter()
-            .map(|askable| match askable {
-                Askable::Flagged => PluginType::VecString(self.menu.flagged.as_strings()),
-                Askable::CurrentSelection => {
-                    PluginType::String(self.current_tab().current_file_string().unwrap_or_default())
-                }
-                _ => PluginType::Empty,
-            })
-            .collect();
-        log_info!("sending data {data:?} to {plugin_name}");
-        (plugin.info.send)(data);
-        let context = self.plugin_context();
-        let mut plugin_content = (plugin.info.host_state_update)(context);
-        let updatables = std::mem::take(&mut plugin_content.updatables);
-        match plugin_kind {
-            PluginKind::Menu(menu_kind) => match menu_kind {
-                MenuKind::Navigate => self.menu.plugin = Some(plugin_content),
-                _ => todo!(),
-            },
-            _ => todo!(),
-        }
-
-        for updatable in &updatables {
-            // TODO
-            match updatable {
-                Updatable::Nothing => (),
-                Updatable::Jump(target) => self
-                    .current_tab_mut()
-                    .cd_to_file(Path::new(target))
-                    .expect("bla"),
-                Updatable::Flagged(flagged) => {
-                    self.menu.flagged.replace_by_string(flagged.join("\n"))
-                }
-                Updatable::DisplayMode(_displaymode) => todo!(),
-                Updatable::MenuMode(_menumode) => todo!(),
-                _ => (),
-            }
-        }
-    }
-
-    fn plugin_context(&self) -> FMContext {
-        FMContext {
-            status: StatusContext {
-                focus: self.focus.into(),
-                dual: self.session.dual(),
-                metadata: self.session.metadata(),
-                preview: self.session.preview(),
-                is_disabled: self.internal_settings.is_disabled(),
-            },
-            left_tab: TabContext {
-                display_mode: self.tabs[0].display_mode.into(),
-                show_hidden: self.tabs[0].settings.show_hidden,
-                sort_kind: self.tabs[0].settings.sort_kind.into(),
-            },
-            right_tab: TabContext {
-                display_mode: self.tabs[1].display_mode.into(),
-                show_hidden: self.tabs[1].settings.show_hidden,
-                sort_kind: self.tabs[1].settings.sort_kind.into(),
-            },
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct PluginData {
-    pub name: String,
-    pub lib_path: String,
-    pub lib: Library,
-    pub info: PluginInfo,
-}
-
-impl PluginData {
-    pub fn new(name: String, path: String) -> Self {
-        let lib = unsafe { Library::new(&path).expect("Couldn't load lib") };
-        let entry: Symbol<PluginEntryFn> = unsafe {
-            lib.get(b"plugin_entry")
-                .expect("Couldn't execute plugin entry")
-        };
-        let info = unsafe { &mut *entry() }.to_owned();
-
-        Self {
-            name,
-            lib_path: path,
-            lib,
-            info,
         }
     }
 }

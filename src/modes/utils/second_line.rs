@@ -34,7 +34,6 @@ impl SecondLine for Navigate {
             Self::Cloud => "Remote navigation",
             Self::Picker => "Pick an item",
             Self::Flagged => "Pick a file",
-            Self::Plugin => "Plugin action",
         }
     }
 }

@@ -157,7 +157,6 @@ impl EventAction {
             status.leave_menu_mode()?;
         } else if matches!(menu_mode, Menu::Nothing) {
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Flagged))?;
-            status.run_plugin("flagged");
         }
         Ok(())
     }
@@ -1374,8 +1373,6 @@ impl EventAction {
         ) {
             status.reset_menu_mode()?;
         } else {
-            // TODO! remove 
-            status.run_plugin("hello world");
             status.menu.trash.update()?;
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Trash))?;
         }
@@ -1591,9 +1588,5 @@ impl EventAction {
     /// Execute a custom event on the selected file
     pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
         status.run_custom_command(input_string)
-    }
-
-    pub fn plugin(status: &mut Status, plugin_name: &str, method_name: &str) -> Result<()> {
-        Ok(())
     }
 }

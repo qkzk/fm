@@ -72,5 +72,3 @@ url-escape = "0.1.1"
 vte = "0.13.0"
 walkdir = "2.5.0"
 zip = "=4.2.0"
-
-plugin_api = { path = "./plugin_api" }

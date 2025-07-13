@@ -65,7 +65,6 @@ impl LeaveMenu {
                 return Ok(());
             }
             Menu::Navigate(Navigate::Flagged) => LeaveMenu::flagged(status),
-            Menu::Navigate(Navigate::Plugin) => LeaveMenu::plugin(status),
             Menu::InputCompleted(InputCompleted::Exec) => {
                 LeaveMenu::exec(status)?;
                 return Ok(());
@@ -422,10 +421,5 @@ impl LeaveMenu {
 
     fn flagged(status: &mut Status) -> Result<()> {
         status.jump_flagged()
-    }
-
-    fn plugin(status: &mut Status) -> Result<()> {
-        todo!();
-        Ok(())
     }
 }

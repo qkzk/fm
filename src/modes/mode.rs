@@ -238,8 +238,6 @@ pub enum Navigate {
     Picker,
     /// Flagged files
     Flagged,
-    /// Plugin variant
-    Plugin,
 }
 
 impl fmt::Display for Navigate {
@@ -260,7 +258,6 @@ impl fmt::Display for Navigate {
             Self::Cloud => write!(f, "Cloud"),
             Self::Picker => write!(f, "Picker"),
             Self::Flagged => write!(f, "Flagged"),
-            Self::Plugin => write!(f, "Plugin"),
         }
     }
 }
@@ -453,16 +450,5 @@ impl Display {
 
     pub fn is_fuzzy(&self) -> bool {
         self.is(Self::Fuzzy)
-    }
-}
-
-impl From<Display> for plugin_api::DisplayMode {
-    fn from(display: Display) -> Self {
-        match display {
-            Display::Directory => Self::Directory,
-            Display::Preview => Self::Preview,
-            Display::Tree => Self::Tree,
-            Display::Fuzzy => Self::Fuzzy,
-        }
     }
 }
