@@ -403,6 +403,10 @@ impl PreviewBuilder {
         crate::log_info!("cli_info. command {command} - output\n{output}");
         Preview::Text(Text::command_stdout(output, command))
     }
+
+    pub fn raw_text(text: String) -> Preview {
+        Preview::Text(Text::raw(text))
+    }
 }
 
 /// Reads a number of lines from a text file, _removing all ANSI control characters_.
@@ -487,6 +491,16 @@ impl Text {
         Self {
             title: "Help".to_string(),
             kind: TextKind::Help,
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn raw(text: String) -> Self {
+        let content: Vec<String> = text.lines().map(|line| line.to_owned()).collect();
+        Self {
+            title: "Raw".to_string(),
+            kind: TextKind::CommandStdout,
             length: content.len(),
             content,
         }
