@@ -42,7 +42,7 @@ impl Previewer {
             while let Some(request) = rx_request.iter().next() {
                 match request {
                     PreviewRequest::Request((path, index)) => {
-                        if let Some(preview) = previewer_plugins::check_matchs(&path, &plugins) {
+                        if let Some(preview) = previewer_plugins::try_build(&path, &plugins) {
                             tx_preview.send((path, preview, index)).unwrap();
                         } else if let Ok(preview) = PreviewBuilder::new(&path).build() {
                             tx_preview.send((path, preview, index)).unwrap();
@@ -85,6 +85,9 @@ mod previewer_plugins {
     use libloading::{Library, Symbol};
 
     use crate::modes::{Preview, PreviewBuilder};
+
+    // TODO: don't use hashmap since plugins are tested with `map.iter()` and it uses arbitrary order.
+    // we must ensure the plugins are tested with the order the user provided
 
     /// Build an hashmap of name and preview builder from an hashmap of name and path.
     pub fn build_plugins(plugins: HashMap<String, String>) -> HashMap<String, PreviewerPlugin> {
@@ -139,12 +142,12 @@ mod previewer_plugins {
     }
 
     /// Preview the file if any loaded plugin is able to.
-    pub fn check_matchs(
+    pub fn try_build(
         path: &std::path::Path,
         plugins: &HashMap<String, PreviewerPlugin>,
     ) -> Option<Preview> {
-        let path_ext = path.extension()?.to_string_lossy().to_string();
-        let candidate = CString::new(path_ext).ok()?.into_raw();
+        let s_path = path.to_string_lossy().to_string();
+        let candidate = CString::new(s_path).ok()?.into_raw();
         for plugin in plugins.values() {
             if unsafe { (plugin.is_match)(candidate) } {
                 let c_path = CString::new(path.display().to_string()).ok()?.into_raw();
