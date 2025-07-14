@@ -93,15 +93,15 @@ mod previewer_plugins {
     }
 
     fn load_plugin(path: String) -> PreviewerPlugin {
-        let lib = unsafe { get_lib(path) };
-        let name = unsafe { get_name(&lib) };
-        let extensions = unsafe { get_extensions(&lib) };
-        let previewer = unsafe { get_previewer(&lib).into_raw() };
+        let _lib = unsafe { get_lib(path) };
+        let name = unsafe { get_name(&_lib) };
+        let is_match = unsafe { *get_matcher(&_lib).into_raw() };
+        let previewer = unsafe { *get_previewer(&_lib).into_raw() };
         PreviewerPlugin {
-            _lib: lib,
+            _lib,
             name,
-            extensions,
-            previewer: *previewer,
+            is_match,
+            previewer,
         }
     }
 
@@ -124,19 +124,8 @@ mod previewer_plugins {
         }
     }
 
-    unsafe fn get_extensions(lib: &Library) -> String {
-        let extensions_fn: Symbol<extern "C" fn() -> *mut c_char> =
-            unsafe { lib.get(b"extensions").expect("Couldn't find extensions") };
-        let c_extensions = (extensions_fn)();
-        if !c_extensions.is_null() {
-            unsafe {
-                CString::from_raw(c_extensions)
-                    .into_string()
-                    .expect("Couldn't read extensions")
-            }
-        } else {
-            "".to_owned()
-        }
+    unsafe fn get_matcher(lib: &Library) -> Symbol<unsafe extern "C" fn(*mut c_char) -> bool> {
+        lib.get(b"is_match").expect("Couldn't find previewer")
     }
 
     unsafe fn get_previewer(
@@ -150,16 +139,16 @@ mod previewer_plugins {
         plugins: &HashMap<String, PreviewerPlugin>,
     ) -> Option<Preview> {
         let path_ext = path.extension()?.to_string_lossy().to_string();
+        let candidate = CString::new(path_ext)
+            .expect("CString::new failed")
+            .into_raw();
         for plugin in plugins.values() {
-            let extensions = &plugin.extensions;
-            for ext in extensions.split_whitespace() {
-                if ext == path_ext {
-                    let c_path = CString::new(path.display().to_string())
-                        .expect("Couldn't create new string")
-                        .into_raw();
-                    let output = unsafe { plugin.get_output(c_path) };
-                    return Some(PreviewBuilder::plugin_text(output, &plugin.name));
-                }
+            if unsafe { (plugin.is_match)(candidate) } {
+                let c_path = CString::new(path.display().to_string())
+                    .expect("Couldn't create new string")
+                    .into_raw();
+                let output = unsafe { plugin.get_output(c_path) };
+                return Some(PreviewBuilder::plugin_text(output, &plugin.name));
             }
         }
 
@@ -170,7 +159,7 @@ mod previewer_plugins {
     pub struct PreviewerPlugin {
         _lib: Library,
         name: String,
-        extensions: String,
+        is_match: unsafe extern "C" fn(*mut c_char) -> bool,
         previewer: unsafe extern "C" fn(*mut c_char) -> *mut c_char,
     }
 

@@ -14,18 +14,27 @@ pub extern "C" fn name() -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn extensions() -> *mut c_char {
-    CString::new(EXTENSIONS)
-        .expect("CString::new failed")
-        .into_raw()
+pub unsafe extern "C" fn is_match(candidate: *mut c_char) -> bool {
+    if !candidate.is_null() {
+        let candidate = unsafe { CString::from_raw(candidate) }
+            .into_string()
+            .expect("Couldn't read extension");
+        for ext in EXTENSIONS.split_whitespace() {
+            if ext == candidate {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn preview(path: *mut c_char) -> *mut c_char {
     let output = unsafe {
         if !path.is_null() {
-            let c_path = CString::from_raw(path);
-            let r_path = c_path.into_string().expect("Into string failed");
+            let r_path = CString::from_raw(path)
+                .into_string()
+                .expect("Into string failed");
             run_bat(r_path)
         } else {
             "path is empty".to_owned()
