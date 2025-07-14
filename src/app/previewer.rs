@@ -4,10 +4,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 
-use crate::{
-    log_info,
-    modes::{Preview, PreviewBuilder},
-};
+use crate::modes::{Preview, PreviewBuilder};
 
 enum PreviewRequest {
     Request((PathBuf, usize)),
@@ -77,92 +74,84 @@ impl Previewer {
     }
 }
 
-/// TODO: move elesewere
+/// TODO: move elesewhere
 mod previewer_plugins {
     use std::{
         collections::HashMap,
         ffi::{c_char, CString},
     };
 
+    use anyhow::{bail, Result};
     use libloading::{Library, Symbol};
 
     use crate::modes::{Preview, PreviewBuilder};
 
     /// Build an hashmap of name and preview builder from an hashmap of name and path.
     pub fn build_plugins(plugins: HashMap<String, String>) -> HashMap<String, PreviewerPlugin> {
-        let mut pplugins = HashMap::new();
+        let mut loaded_plugins = HashMap::new();
         for (name, path) in plugins.into_iter() {
-            pplugins.insert(name, load_plugin(path));
+            let Some(loaded_plugin) = load_plugin(path) else {
+                continue;
+            };
+            loaded_plugins.insert(name, loaded_plugin);
         }
-        pplugins
+        loaded_plugins
     }
 
-    fn load_plugin(path: String) -> PreviewerPlugin {
-        let _lib = unsafe { get_lib(path) };
-        let name = unsafe { get_name(&_lib) };
-        let is_match = unsafe { *get_matcher(&_lib).into_raw() };
-        let previewer = unsafe { *get_previewer(&_lib).into_raw() };
-        PreviewerPlugin {
+    fn load_plugin(path: String) -> Option<PreviewerPlugin> {
+        let _lib = unsafe { get_lib(path) }.ok()?;
+        let name = unsafe { get_name(&_lib) }.ok()?;
+        let is_match = unsafe { *(get_matcher(&_lib).ok()?) };
+        let previewer = unsafe { *(get_previewer(&_lib)).ok()? };
+        Some(PreviewerPlugin {
             _lib,
             name,
             is_match,
             previewer,
-        }
+        })
     }
 
-    // TODO: should return result
-    unsafe fn get_lib(path: String) -> Library {
-        Library::new(&path).expect("Couldn't load lib")
+    unsafe fn get_lib(path: String) -> Result<Library, libloading::Error> {
+        Library::new(&path)
     }
 
-    // TODO: should return Result
-    unsafe fn get_name(lib: &Library) -> String {
-        let name_fn: Symbol<extern "C" fn() -> *mut c_char> =
-            unsafe { lib.get(b"name").expect("Couldn't find name") };
+    unsafe fn get_name(lib: &Library) -> Result<String> {
+        let name_fn: Symbol<extern "C" fn() -> *mut c_char> = unsafe { lib.get(b"name")? };
         let c_name = (name_fn)();
         if !c_name.is_null() {
             unsafe {
-                CString::from_raw(c_name)
-                    .into_string()
-                    .expect("Couldn't read name")
+                return Ok(CString::from_raw(c_name).into_string()?);
             }
-        } else {
-            "".to_owned()
         }
+        bail!("name string is null");
     }
 
-    // TODO: should return Result
-    unsafe fn get_matcher(lib: &Library) -> Symbol<unsafe extern "C" fn(*mut c_char) -> bool> {
-        lib.get(b"is_match").expect("Couldn't find previewer")
+    unsafe fn get_matcher(
+        lib: &Library,
+    ) -> Result<Symbol<unsafe extern "C" fn(*mut c_char) -> bool>, libloading::Error> {
+        lib.get(b"is_match")
     }
 
-    // TODO: should return Result
     unsafe fn get_previewer(
         lib: &Library,
-    ) -> Symbol<unsafe extern "C" fn(*mut c_char) -> *mut c_char> {
-        lib.get(b"preview").expect("Couldn't find previewer")
+    ) -> Result<Symbol<unsafe extern "C" fn(*mut c_char) -> *mut c_char>, libloading::Error> {
+        lib.get(b"preview")
     }
 
-    // TODO: should return Result
     /// Preview the file if any loaded plugin is able to.
     pub fn check_matchs(
         path: &std::path::Path,
         plugins: &HashMap<String, PreviewerPlugin>,
     ) -> Option<Preview> {
         let path_ext = path.extension()?.to_string_lossy().to_string();
-        let candidate = CString::new(path_ext)
-            .expect("CString::new failed")
-            .into_raw();
+        let candidate = CString::new(path_ext).ok()?.into_raw();
         for plugin in plugins.values() {
             if unsafe { (plugin.is_match)(candidate) } {
-                let c_path = CString::new(path.display().to_string())
-                    .expect("Couldn't create new string")
-                    .into_raw();
-                let output = unsafe { plugin.get_output(c_path) };
+                let c_path = CString::new(path.display().to_string()).ok()?.into_raw();
+                let output = unsafe { plugin.get_output(c_path) }.ok()?;
                 return Some(PreviewBuilder::plugin_text(output, &plugin.name));
             }
         }
-
         None
     }
 
@@ -175,12 +164,9 @@ mod previewer_plugins {
     }
 
     impl PreviewerPlugin {
-        // TODO: Should return Error
-        unsafe fn get_output(&self, c_path: *mut c_char) -> String {
+        unsafe fn get_output(&self, c_path: *mut c_char) -> Result<String> {
             let output = (self.previewer)(c_path);
-            CString::from_raw(output)
-                .into_string()
-                .expect("Couldn't convert preview output")
+            Ok(CString::from_raw(output).into_string()?)
         }
     }
 }
