@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 
@@ -35,8 +35,11 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
-        let plugins = previewer_plugins::load_previewer_plugins();
+    pub fn new(
+        plugins: HashMap<String, String>,
+        tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>,
+    ) -> Self {
+        let plugins = previewer_plugins::build_plugins(plugins);
         let (tx_request, rx_request) = mpsc::channel::<PreviewRequest>();
         thread::spawn(move || {
             while let Some(request) = rx_request.iter().next() {
@@ -85,11 +88,13 @@ mod previewer_plugins {
 
     use crate::modes::{Preview, PreviewBuilder};
 
-    pub fn load_previewer_plugins() -> HashMap<String, PreviewerPlugin> {
-        let mut plugins = HashMap::new();
-        // TODO: get from config file
-        plugins.insert("bat previewer".to_string(), load_plugin("/home/quentin/gclem/dev/rust/fm/plugins/bat_previewer/target/release/libbat_previewer.so".to_string()));
-        plugins
+    /// Build an hashmap of name and preview builder from an hashmap of name and path.
+    pub fn build_plugins(plugins: HashMap<String, String>) -> HashMap<String, PreviewerPlugin> {
+        let mut pplugins = HashMap::new();
+        for (name, path) in plugins.into_iter() {
+            pplugins.insert(name, load_plugin(path));
+        }
+        pplugins
     }
 
     fn load_plugin(path: String) -> PreviewerPlugin {
@@ -105,10 +110,12 @@ mod previewer_plugins {
         }
     }
 
+    // TODO: should return result
     unsafe fn get_lib(path: String) -> Library {
         Library::new(&path).expect("Couldn't load lib")
     }
 
+    // TODO: should return Result
     unsafe fn get_name(lib: &Library) -> String {
         let name_fn: Symbol<extern "C" fn() -> *mut c_char> =
             unsafe { lib.get(b"name").expect("Couldn't find name") };
@@ -124,16 +131,20 @@ mod previewer_plugins {
         }
     }
 
+    // TODO: should return Result
     unsafe fn get_matcher(lib: &Library) -> Symbol<unsafe extern "C" fn(*mut c_char) -> bool> {
         lib.get(b"is_match").expect("Couldn't find previewer")
     }
 
+    // TODO: should return Result
     unsafe fn get_previewer(
         lib: &Library,
     ) -> Symbol<unsafe extern "C" fn(*mut c_char) -> *mut c_char> {
         lib.get(b"preview").expect("Couldn't find previewer")
     }
 
+    // TODO: should return Result
+    /// Preview the file if any loaded plugin is able to.
     pub fn check_matchs(
         path: &std::path::Path,
         plugins: &HashMap<String, PreviewerPlugin>,
@@ -164,6 +175,7 @@ mod previewer_plugins {
     }
 
     impl PreviewerPlugin {
+        // TODO: Should return Error
         unsafe fn get_output(&self, c_path: *mut c_char) -> String {
             let output = (self.previewer)(c_path);
             CString::from_raw(output)

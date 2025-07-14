@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -157,6 +158,7 @@ impl Status {
         size: Size,
         opener: Opener,
         binds: &Bindings,
+        plugins: HashMap<String, String>,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
         let fuzzy = None;
@@ -184,7 +186,7 @@ impl Status {
             Tab::new(&args, height, users_right)?,
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
-        let previewer = Previewer::new(previewer_sender);
+        let previewer = Previewer::new(plugins, previewer_sender);
         let thumbnail_manager = None;
         Ok(Self {
             tabs,

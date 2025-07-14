@@ -164,3 +164,7 @@ custom:
   'shift-u': "/usr/bin/google-chrome-stable %s"
   # drag & drop the selected file to a GUI application
   'shift-d': "/usr/bin/dragon-drop %s"  
+
+plugins:
+  previewer:
+    'bat previewer': "/home/quentin/gclem/dev/rust/fm/plugins/bat_previewer/target/release/libbat_previewer.so"

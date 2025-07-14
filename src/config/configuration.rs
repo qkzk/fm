@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{fs::File, path};
 
 use anyhow::Result;
@@ -12,19 +13,11 @@ use crate::log_info;
 /// All styles are hardcoded then updated from optional values
 /// of the config file.
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
-}
-
-impl Default for Config {
-    /// Returns a default config with hardcoded values.
-    fn default() -> Self {
-        Self {
-            binds: Bindings::default(),
-        }
-    }
+    pub plugins: HashMap<String, String>,
 }
 
 impl Config {
@@ -32,7 +25,25 @@ impl Config {
     fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
+        self.update_plugins(&yaml["plugins"]["previewer"]);
         Ok(())
+    }
+
+    fn update_plugins(&mut self, yaml: &Value) {
+        let Some(mappings) = yaml.as_mapping() else {
+            return;
+        };
+        for (plugin_name, plugin_path) in mappings.iter() {
+            let Some(plugin_name) = plugin_name.as_str() else {
+                continue;
+            };
+            let Some(plugin_path) = plugin_path.as_str() else {
+                continue;
+            };
+            self.plugins
+                .insert(plugin_name.to_owned(), plugin_path.to_owned());
+        }
+        log_info!("found plugins: {plugins:#?}", plugins = self.plugins);
     }
 }
 
