@@ -1758,6 +1758,7 @@ Once that's done, it's all. No not implement anything else
 
 - fm couldn't start without a config file. If no config file is found for the current user, we'll copy the default ones in ~/.config/fm.
 - Previewing a text file containing ANSI control sequence would alter the terminal display. Instead of displaying the content directly, we clean it first, removing ANSI control chars with a regex.
+- Opening a file whose path contains spaces wouldn't work.
 
 #### Changelog
 
