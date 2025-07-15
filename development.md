@@ -1787,7 +1787,10 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
-- [ ] IMP: fm-config : allow to reset config, cloud config, see keybinds, **install a plugin**
+- [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
+  - [ ] fm --plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
+  - [ ] fm --plugin remove name : remove the file from .local and config inform 
+  - [ ] fm --plugin download https://github.com/user/previewer_whatever : clone in /tmp, compile, copy, add to config
 
 
 ## TODO
