@@ -1750,6 +1750,7 @@ Once that's done, it's all. No not implement anything else
 
 - .ape files are previewed as a music files with mediainfo
 - files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
+- update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 
 
 #### Summary
@@ -1782,11 +1783,11 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: preview .ape files as music files with mediain
 - [x] IMP: extensions ending with ~ or _ like .png~ should be previewed normally.
 - [x] FIX: opening a path with space in neovim is buggy
+- [x] IMP: cd mode selection should update zoxide
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] IMP: fm-config : allow to reset config, cloud config, see keybinds, **install a plugin**
-- [ ] IMP: cd mode selection should update zoxide
 
 
 ## TODO
