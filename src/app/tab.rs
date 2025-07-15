@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_current_dir,
+    update_zoxide,
 };
 use crate::config::START_FOLDER;
 use crate::io::Args;
@@ -534,6 +535,7 @@ impl Tab {
         } else {
             self.window.reset(self.directory.content.len());
         }
+        update_zoxide(path)?;
         Ok(())
     }
 

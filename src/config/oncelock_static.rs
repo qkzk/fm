@@ -25,6 +25,10 @@ use crate::config::{
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
+/// Store true if logging is enabled else false.
+/// Set by the application itself and read before updating zoxide database.
+pub static IS_LOGGING: OnceLock<bool> = OnceLock::new();
+
 /// Colors read from the config file.
 /// We define a colors for every kind of file except normal files.
 /// Colors for normal files are calculated from their extension and

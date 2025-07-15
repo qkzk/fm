@@ -14,9 +14,13 @@ use sysinfo::Disks;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
+use crate::config::IS_LOGGING;
+use crate::io::execute_without_output;
 use crate::io::Extension;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
+
+use super::ZOXIDE;
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
@@ -421,4 +425,21 @@ pub fn tilde(input_str: &str) -> Cow<str> {
 /// Sets the current working directory environment
 pub fn set_current_dir<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(env::set_current_dir(path.as_ref())?)
+}
+
+/// Update zoxide database.
+///
+/// Nothing is done if logging isn't enabled.
+///
+/// # Errors
+///
+/// May fail if zoxide command failed.
+pub fn update_zoxide<P: AsRef<Path>>(path: P) -> Result<()> {
+    let Some(is_logging) = IS_LOGGING.get() else {
+        return Ok(());
+    };
+    if *is_logging && is_in_path(ZOXIDE) {
+        execute_without_output(ZOXIDE, &["add", path.as_ref().to_string_lossy().as_ref()])?;
+    }
+    Ok(())
 }

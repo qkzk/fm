@@ -25,5 +25,6 @@ pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
     get_syntect_theme, set_configurable_static, set_icon_icon_with_metadata, with_icon,
-    with_icon_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES, MATCHER, MENU_STYLES, START_FOLDER,
+    with_icon_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES, IS_LOGGING, MATCHER, MENU_STYLES,
+    START_FOLDER,
 };

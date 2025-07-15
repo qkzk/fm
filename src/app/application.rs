@@ -21,7 +21,7 @@ use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
-use crate::config::{cloud_config, load_config, set_configurable_static, Config};
+use crate::config::{cloud_config, load_config, set_configurable_static, Config, IS_LOGGING};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
@@ -103,6 +103,7 @@ impl FM {
     /// as a String.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
+        IS_LOGGING.get_or_init(|| args.log);
         if args.log {
             FMLogger::default().init()?;
         }
