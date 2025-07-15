@@ -8,7 +8,7 @@ use std::sync::{mpsc, Arc};
 use std::backtrace;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Command, Parser};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
@@ -23,7 +23,7 @@ use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config, IS_LOGGING};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{Args, FMLogger, Opener};
+use crate::io::{add_plugin, list_plugins, Args, FMLogger, Opener, PluginCommand, PluginSubCommand};
 use crate::log_info;
 
 /// Holds everything about the application itself.
@@ -103,26 +103,40 @@ impl FM {
     /// as a String.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
-        IS_LOGGING.get_or_init(|| args.log);
-        if args.log {
+        IS_LOGGING.get_or_init(|| args.run_args.log);
+        if args.run_args.log {
             FMLogger::default().init()?;
         }
+        if let Some(plugin) = args.plugin {
+            Self::exit_manage_plugins(&plugin);
+        }
+        log_info!("args {args:#?}");
         let Ok(config) = load_config(CONFIG_PATH) else {
             Self::exit_wrong_config()
         };
-        if args.keybinds {
+        if args.run_args.keybinds {
             Self::exit_with_binds(&config);
         }
-        if args.cloudconfig {
+        if args.run_args.cloudconfig {
             Self::exit_with_cloud_config()?;
         }
-        if args.clear_cache {
+        if args.run_args.clear_cache {
             Self::exit_with_clear_cache()?;
         }
-        Ok((config, args.path))
+        Ok((config, args.run_args.path))
     }
 
-    fn exit_with_binds(config: &Config) {
+    fn exit_manage_plugins(plugin: &PluginCommand) -> ! {
+        let PluginCommand::Plugin { action } = plugin;
+        match action {
+            PluginSubCommand::Add { path } => add_plugin(path),
+            PluginSubCommand::Remove { name } => (),
+            PluginSubCommand::Download { url } => (),
+            PluginSubCommand::List => list_plugins(),
+        }
+        exit(0);
+    }
+    fn exit_with_binds(config: &Config) -> ! {
         println!("{binds}", binds = config.binds.to_str());
         exit(0);
     }

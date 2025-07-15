@@ -22,9 +22,10 @@ mod input_history;
 mod log;
 mod opendal;
 mod opener;
+mod plugin_management;
 mod ueberzug;
 
-pub use args::Args;
+pub use args::{Args, PluginCommand, PluginSubCommand};
 pub use commands::*;
 pub use display::{Display, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;
@@ -35,4 +36,5 @@ pub use input_history::*;
 pub use log::{read_last_log_line, read_log, write_log_info_once, write_log_line, FMLogger};
 pub use opendal::*;
 pub use opener::*;
+pub use plugin_management::*;
 pub use ueberzug::*;
