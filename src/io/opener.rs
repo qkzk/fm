@@ -267,7 +267,7 @@ impl External {
     }
 
     fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
-        let arg = format!("{program} {path}", program = self.program(),);
+        let arg = format!("{program} \"{path}\"", program = self.program(),);
         Self::open_command_in_window(&[&arg])
     }
 
@@ -277,7 +277,7 @@ impl External {
             .filter_map(|p| p.to_str())
             .collect::<Vec<_>>()
             .join(" ");
-        Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
+        Self::open_command_in_window(&[&format!("{program} \"{arg}\"", program = self.program())])
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {

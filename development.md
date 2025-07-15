@@ -1820,6 +1820,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
 - [x] IMP: preview .ape files as music files with mediain
 - [x] IMP: extensions ending with ~ or _ like .png~ should be previewed normally.
+- [x] FIX: opening a path with space in neovim is buggy
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
