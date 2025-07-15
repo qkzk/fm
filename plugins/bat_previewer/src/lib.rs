@@ -88,11 +88,10 @@ fn run_bat(r_path: String) -> Result<String, io::Error> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()?;
-    if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+    let content = if output.status.success() {
+        output.stdout
     } else {
-        String::from_utf8(output.stderr)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
-    }
+        output.stderr
+    };
+    String::from_utf8(content).map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
 }
