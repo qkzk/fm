@@ -1762,60 +1762,20 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog
 
+- [x] previewer plugins
+    previewer plugins 
+
+    API :
+    - plugin.name() -> String,
+    - plugin.is_match(path: *mut c_char) -> bool ("jpg png gif")
+    - plugin.preview(path: *mut c_char) -> *mut c_char
+
+    spec in fm.config 
+      - name & path_to_lib.so
+- [x] example plugin: bat previewer 
+- [ ] get lib from path or url ?
 - [ ] plugin system 
   menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
-
-  previewer plugins :
-  - plugin.name() -> String,
-  - plugin.extensions() -> String ("jpg png gif")
-  - plugin.preview(path) -> Vec<String>
-  
-
-  - [x] echo
-  - [x] load a plugin from its name & lib.so address 
-  - [x] execute methods
-  - [x] draw something
-  - [ ] read plugin names & path from config file,
-  - [ ] keybinds -> actions -> run_plugin
-  - [ ] save state as static mut. Ugly. Can't find a proper way to save a state inside plugin
-  - [ ] second plugin: flagged
-    actions : up, down, first, last, select (navigate there), exit
-  - [ ] drop the plugin
-  - [ ] push / sub model ? or share a context with every exchange
-
-  - [ ] run plugin :
-      2 kinds of data can be shared :
-
-      - copy trait -> put everything into context.
-      - non copy trait -> plugin must ask to get.
-
-      host.needed = plugin.ask()
-      state = plugin.calc(host.needed)
-      host.save_state(name, state)
-      host.context = host.build_context()
-      host.update_state = plugin.host_state(host.context)
-      host.update_state.for_each(|update| {
-        match udpate {
-        ...
-        }
-      }
-
-      Limit plugins to menu & previewers. 
-      Allow menus to have a plugin variants
-      Impl default things for:
-      - navigation
-      - leave menu
-      - custom binds
-      
-    - draw menu or whatever method
-    - macros to generate a lot of code
-    - status.run_plugin refactor
-
-
-    - [ ] Result type for plugin. Ok(whatever), Err(C string)
-  
-    render: 
-    display.host.get_state(name)
 
 - [x] FIX: crash without config files. Save default config while building, include them in code.
 - [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
@@ -1825,13 +1785,14 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
+- [ ] IMP: fm-config : allow to reset config, cloud config, see keybinds, **install a plugin**
+- [ ] IMP: cd mode selection should update zoxide
 
 
 ## TODO
 
 ### Other ideas
 
-- [ ] IMP: cd mode selection should update zoxide
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
 - [ ] BUG: Camera folder crash. Can't reproduce

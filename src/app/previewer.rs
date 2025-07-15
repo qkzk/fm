@@ -101,6 +101,7 @@ mod previewer_plugins {
         loaded_plugins
     }
 
+    // TODO: make it a result allowing errors in log
     fn load_plugin(path: String) -> Option<PreviewerPlugin> {
         let _lib = unsafe { get_lib(path) }.ok()?;
         let name = unsafe { get_name(&_lib) }.ok()?;
