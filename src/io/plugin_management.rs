@@ -74,13 +74,32 @@ fn get_plugin_name(source: &Path) -> String {
     plugin_name
 }
 
-// TODO: write the code..
-pub fn remove_plugin(name: &str) {
-    // find the plugin in config file -> get its path.
-    // delete the path
-    // edit the config file content.
-    // write the config file
-    todo!();
+/// Remove a plugin by its name.
+/// Plugin lib.so file will be deleted and erased from config file
+/// find the plugin in config file -> get its path.
+/// delete the path
+/// edit the config file content.
+/// write the config file
+pub fn remove_plugin(removed_name: &str) {
+    remove_libso_file(removed_name);
+    remove_lib_from_config(&config_path(), removed_name);
+}
+
+fn remove_libso_file(removed_name: &str) {
+    let mut found_in_config = false;
+    for (installed_name, path, exist) in list_plugins_pairs().iter() {
+        if installed_name == removed_name && *exist {
+            found_in_config = true;
+            match std::fs::remove_file(path) {
+                Ok(()) => println!("Removed {path}"),
+                Err(e) => eprintln!("Couldn't remove {path}: {e:?}"),
+            };
+        }
+    }
+    if !found_in_config {
+        eprintln!("Didn't find {removed_name} in config file. Run `fm plugin list` to see installed plugins.");
+        exit(1);
+    }
 }
 
 // TODO: write the code
@@ -95,33 +114,41 @@ pub fn download_plugin(url: &str) {
     //  path = download(url)
     // }
     // call add_plugin(path)
-    todo!();
+    eprintln!("Not made yet. Download & compile the plugin yourself and use `fm plugin add path/to/lib.so`");
+    exit(1);
 }
 
 /// List all installed plugins.
 ///
 /// Warn the user and exit if any error occurs.
 pub fn list_plugins() {
+    println!("Installed plugins:");
+    for (name, path, exist) in list_plugins_pairs().iter() {
+        let exists = if *exist { "ok" } else { "??" };
+        println!("[{exists}]: {name}: {path}");
+    }
+}
+
+fn list_plugins_pairs() -> Vec<(String, String, bool)> {
     let config_file = File::open(config_path()).expect("Couldn't open config file");
     let value: serde_yml::Value =
         serde_yml::from_reader(&config_file).expect("Couldn't read config file as yaml");
 
     let plugins = &value["plugins"]["previewer"];
-    println!("Installed plugins:");
+    let mut installed = vec![];
     if let Some(serde_yml::Mapping { ref map }) = plugins.as_mapping() {
         for (name, path) in map.iter() {
             let Some(name) = name.as_str() else {
-                eprintln!("Couldn't parse name as string");
-                return;
+                continue;
             };
             let Some(path) = path.as_str() else {
-                eprintln!("Couldn't parse path as string");
-                return;
+                continue;
             };
-            let exists = if Path::new(path).exists() { "ok" } else { "??" };
-            println!("[{exists}]: {name}: {path}");
+            let exists = Path::new(path).exists();
+            installed.push((name.to_owned(), path.to_owned(), exists));
         }
     }
+    installed
 }
 
 fn config_path() -> String {
@@ -150,12 +177,11 @@ fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
 }
 
 fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
-    let config_content = std::fs::read_to_string(&config_path).expect("Couldn't read config file");
+    let config_content = std::fs::read_to_string(config_path).expect("Couldn't read config file");
     let mut lines: Vec<_> = config_content.lines().map(|l| l.to_string()).collect();
     let mut dest_index = None;
     for (index, line) in lines.iter().enumerate() {
         if line.starts_with("plugins:") && lines[index + 1].starts_with("  previewer:") {
-            println!("found {index} {line}");
             dest_index = Some(index + 2);
             break;
         }
@@ -172,5 +198,25 @@ fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
     if let Err(e) = std::fs::write(config_path, new_content) {
         eprintln!("Error installing {plugin_name}. Couldn't write to config file: {e:?}");
         exit(1);
+    }
+}
+
+fn remove_lib_from_config(config_path: &str, plugin_name: &str) {
+    let config_content = std::fs::read_to_string(config_path).expect("Couldn't read config file");
+    let mut lines: Vec<_> = config_content.lines().map(|l| l.to_string()).collect();
+    for index in 0..lines.len() {
+        let line = &lines[index];
+        if line.starts_with(&format!("    '{plugin_name}': ",)) {
+            lines.remove(index);
+            break;
+        }
+    }
+    let new_content = lines.join("\n");
+    match std::fs::write(config_path, new_content) {
+        Ok(()) => println!("Removed {plugin_name} from config file"),
+        Err(e) => {
+            eprintln!("Error removing {plugin_name}. Couldn't write to config file: {e:?}");
+            exit(1);
+        }
     }
 }
