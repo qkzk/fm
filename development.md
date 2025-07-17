@@ -1784,13 +1784,21 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: extensions ending with ~ or _ like .png~ should be previewed normally.
 - [x] FIX: opening a path with space in neovim is buggy
 - [x] IMP: cd mode selection should update zoxide
+- [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
+  - [ ] separate CLI binary: fmconfig
+    - [ ] hello world 
+    - [ ] move all clap "early exit" here: keybinds, plugins, cloud 
+    - [ ] make separate subcommands:
+      - [ ] reset: reset the config,
+      - [ ] plugin <subcommand>: ...
+      - [ ] cloud config/list
+      - [ ] keybinds reset/list 
+  - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
+  - [x] fm plugin remove name : remove the file from .local and config inform 
+  - [x] fm plugin list: will display all plugins
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
-- [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
-  - [ ] fm --plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
-  - [ ] fm --plugin remove name : remove the file from .local and config inform 
-  - [ ] fm --plugin download https://github.com/user/previewer_whatever : clone in /tmp, compile, copy, add to config
 
 
 ## TODO

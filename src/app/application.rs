@@ -8,7 +8,7 @@ use std::sync::{mpsc, Arc};
 use std::backtrace;
 
 use anyhow::Result;
-use clap::{Command, Parser};
+use clap::Parser;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
@@ -23,7 +23,7 @@ use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use crate::config::{cloud_config, load_config, set_configurable_static, Config, IS_LOGGING};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{add_plugin, list_plugins, remove_plugin, download_plugin, Args, FMLogger, Opener, PluginCommand, PluginSubCommand};
+use crate::io::{add_plugin, list_plugins, remove_plugin, Args, FMLogger, Opener, PluginCommand, PluginSubCommand};
 use crate::log_info;
 
 /// Holds everything about the application itself.
@@ -131,7 +131,6 @@ impl FM {
         match action {
             PluginSubCommand::Add { path } => add_plugin(path),
             PluginSubCommand::Remove { name } => remove_plugin(name),
-            PluginSubCommand::Download { url } => (),
             PluginSubCommand::List => list_plugins(),
         }
         exit(0);

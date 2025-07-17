@@ -21,6 +21,10 @@ lto = true # instructs the linker to optimize at the link stage.
 name = "fm"
 path = "src/main.rs"
 
+[[bin]]
+name = "fmconfig"
+path = "src/fmconfig.rs"
+
 [lib]
 name = "fm"
 path = "src/lib.rs"

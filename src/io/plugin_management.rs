@@ -102,22 +102,6 @@ fn remove_libso_file(removed_name: &str) {
     }
 }
 
-// TODO: write the code
-pub fn download_plugin(url: &str) {
-    // is it a github repo or a .so file ?
-    // if repo {
-    //      clone url
-    //      compile
-    //      get path to .so
-    // }
-    // else {
-    //  path = download(url)
-    // }
-    // call add_plugin(path)
-    eprintln!("Not made yet. Download & compile the plugin yourself and use `fm plugin add path/to/lib.so`");
-    exit(1);
-}
-
 /// List all installed plugins.
 ///
 /// Warn the user and exit if any error occurs.

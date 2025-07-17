@@ -61,8 +61,6 @@ pub enum PluginSubCommand {
     Add { path: String },
     /// Remove a plugin by name
     Remove { name: String },
-    /// Download a plugin from a URL
-    Download { url: String },
     /// List all installed plugins
     List,
 }
