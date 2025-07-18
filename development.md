@@ -1760,6 +1760,7 @@ Once that's done, it's all. No not implement anything else
 - fm couldn't start without a config file. If no config file is found for the current user, we'll copy the default ones in ~/.config/fm.
 - Previewing a text file containing ANSI control sequence would alter the terminal display. Instead of displaying the content directly, we clean it first, removing ANSI control chars with a regex.
 - Opening a file whose path contains spaces wouldn't work.
+- Moving multiple files won't show a progress bar if all source files share the same mount point as the destination.
 
 #### Changelog
 
@@ -1796,6 +1797,7 @@ Once that's done, it's all. No not implement anything else
   - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
+- [x] FIX: moving files from same part shouldn't require a copy and should be instant
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.

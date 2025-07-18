@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -954,38 +954,46 @@ impl Status {
         }
     }
 
+    /// True iff it's a _move_ (not a copy) where all sources share the same mountpoint as destination.
     fn is_simple_move(&self, cut_or_copy: &CopyMove, sources: &[PathBuf], dest: &Path) -> bool {
         if matches!(cut_or_copy, CopyMove::Copy) {
             return false;
         }
-        if sources.len() != 1 {
+        let mut disks = HashSet::new();
+        for source in sources {
+            let Some(s) = disk_used_by_path(&self.internal_settings.disks, source) else {
+                return false;
+            };
+            disks.insert(s.mount_point());
+        }
+        if disks.len() > 1 {
             return false;
         }
-        // let disks = &self.disks();
-        let Some(s) = disk_used_by_path(&self.internal_settings.disks, &sources[0]) else {
+        let Some(s) = disks.iter().next() else {
             return false;
         };
         let Some(d) = disk_used_by_path(&self.internal_settings.disks, dest) else {
             return false;
         };
-        s.mount_point() == d.mount_point()
+        *s == d.mount_point()
     }
 
     fn simple_move(&mut self, sources: &[PathBuf], dest: &Path) -> Result<()> {
-        let source = &sources[0];
-        let filename = filename_from_path(source)?;
-        let dest = dest.to_path_buf().join(filename);
-        match std::fs::rename(source, &dest) {
-            Ok(()) => {
-                log_line!(
-                    "Moved {source} to {dest}",
-                    source = source.display(),
-                    dest = dest.display()
-                )
-            }
-            Err(e) => {
-                log_info!("Error: {e:?}");
-                log_line!("Error: {e:?}")
+        for source in sources {
+            let filename = filename_from_path(source)?;
+            let dest = dest.to_path_buf().join(filename);
+            match std::fs::rename(source, &dest) {
+                Ok(()) => {
+                    log_line!(
+                        "Moved {source} to {dest}",
+                        source = source.display(),
+                        dest = dest.display()
+                    )
+                }
+                Err(e) => {
+                    log_info!("Error: {e:?}");
+                    log_line!("Error: {e:?}")
+                }
             }
         }
         self.clear_flags_and_reset_view()
