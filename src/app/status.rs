@@ -944,14 +944,33 @@ impl Status {
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
-        let sources = self.menu.flagged.content.clone();
+        let mut sources = self.menu.flagged.content.clone();
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
+        if matches!(cut_or_copy, CopyMove::Move) {
+            sources = Self::remove_subdir_of_dest(sources, dest);
+            if sources.is_empty() {
+                return Ok(());
+            }
+        }
 
         if self.is_simple_move(&cut_or_copy, &sources, dest) {
             self.simple_move(&sources, dest)
         } else {
             self.complex_move(cut_or_copy, sources, dest)
         }
+    }
+
+    /// Prevent the user from moving to a subdirectory of itself.
+    /// Only used before _moving_, for copying it doesn't matter.
+    fn remove_subdir_of_dest(mut sources: Vec<PathBuf>, dest: &Path) -> Vec<PathBuf> {
+        for index in (0..sources.len()).rev() {
+            if sources[index].starts_with(dest) {
+                log_info!("Cannot move to a subdirectory of itself");
+                log_line!("Cannot move to a subdirectory of itself");
+                sources.remove(index);
+            }
+        }
+        sources
     }
 
     /// True iff it's a _move_ (not a copy) where all sources share the same mountpoint as destination.
@@ -966,7 +985,7 @@ impl Status {
             };
             disks.insert(s.mount_point());
         }
-        if disks.len() > 1 {
+        if disks.len() != 1 {
             return false;
         }
         let Some(s) = disks.iter().next() else {

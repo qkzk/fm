@@ -1761,6 +1761,7 @@ Once that's done, it's all. No not implement anything else
 - Previewing a text file containing ANSI control sequence would alter the terminal display. Instead of displaying the content directly, we clean it first, removing ANSI control chars with a regex.
 - Opening a file whose path contains spaces wouldn't work.
 - Moving multiple files won't show a progress bar if all source files share the same mount point as the destination.
+- Prevent the use from moving to a subdirectory which is impossible. Display a message.
 
 #### Changelog
 
@@ -1798,6 +1799,7 @@ Once that's done, it's all. No not implement anything else
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
 - [x] FIX: moving files from same part shouldn't require a copy and should be instant
+- [x] IMP: should we prevent moving to a subdirectory ? `mv: cannot move to a subdirectory of itself`
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
@@ -1807,6 +1809,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] IMP: why cloning PathBuf when Arc<Path> would do the trick ? Useful if path is mutated... ?
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
 - [ ] BUG: Camera folder crash. Can't reproduce
