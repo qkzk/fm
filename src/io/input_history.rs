@@ -30,7 +30,7 @@ impl InputHistory {
             file_path,
             filtered: vec![],
             index: None,
-            log_are_enabled: Args::parse().run_args.log,
+            log_are_enabled: Args::parse().log,
         })
     }
 

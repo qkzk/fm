@@ -1,4 +1,3 @@
-use std::fs::{read_dir, remove_file};
 use std::io::stdout;
 use std::panic;
 use std::process::exit;
@@ -20,10 +19,10 @@ use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
-use crate::config::{cloud_config, load_config, set_configurable_static, Config, IS_LOGGING};
+use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH};
+use crate::config::{load_config, set_configurable_static, Config, IS_LOGGING};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
-use crate::io::{add_plugin, list_plugins, remove_plugin, Args, FMLogger, Opener, PluginCommand, PluginSubCommand};
+use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
@@ -103,63 +102,20 @@ impl FM {
     /// as a String.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
-        IS_LOGGING.get_or_init(|| args.run_args.log);
-        if args.run_args.log {
+        IS_LOGGING.get_or_init(|| args.log);
+        if args.log {
             FMLogger::default().init()?;
-        }
-        if let Some(plugin) = args.plugin {
-            Self::exit_manage_plugins(&plugin);
         }
         log_info!("args {args:#?}");
         let Ok(config) = load_config(CONFIG_PATH) else {
             Self::exit_wrong_config()
         };
-        if args.run_args.keybinds {
-            Self::exit_with_binds(&config);
-        }
-        if args.run_args.cloudconfig {
-            Self::exit_with_cloud_config()?;
-        }
-        if args.run_args.clear_cache {
-            Self::exit_with_clear_cache()?;
-        }
-        Ok((config, args.run_args.path))
-    }
-
-    fn exit_manage_plugins(plugin: &PluginCommand) -> ! {
-        let PluginCommand::Plugin { action } = plugin;
-        match action {
-            PluginSubCommand::Add { path } => add_plugin(path),
-            PluginSubCommand::Remove { name } => remove_plugin(name),
-            PluginSubCommand::List => list_plugins(),
-        }
-        exit(0);
-    }
-    fn exit_with_binds(config: &Config) -> ! {
-        println!("{binds}", binds = config.binds.to_str());
-        exit(0);
-    }
-
-    fn exit_with_cloud_config() -> Result<()> {
-        cloud_config()?;
-        exit(0);
-    }
-
-    fn exit_with_clear_cache() -> Result<()> {
-        read_dir(TMP_THUMBNAILS_DIR)?
-            .filter_map(|entry| entry.ok())
-            .for_each(|e| {
-                if let Err(e) = remove_file(e.path()) {
-                    println!("Couldn't remove {TMP_THUMBNAILS_DIR}: error {e}");
-                }
-            });
-        println!("Cleared {TMP_THUMBNAILS_DIR}");
-        exit(0);
+        Ok((config, args.path))
     }
 
     /// Exit the application and log a message.
     /// Used when the config can't be read.
-    fn exit_wrong_config() -> ! {
+    pub fn exit_wrong_config() -> ! {
         eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
         log_info!("Couldn't read the config file {CONFIG_PATH}");
         exit(1)

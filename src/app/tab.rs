@@ -39,7 +39,7 @@ pub struct TabSettings {
 impl TabSettings {
     fn new(args: &Args) -> Self {
         let filter = FilterKind::All;
-        let show_hidden = args.run_args.all;
+        let show_hidden = args.all;
         let sort_kind = SortKind::default();
         let should_clear_image = false;
         Self {

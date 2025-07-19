@@ -60,8 +60,8 @@ impl InternalSettings {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
-        let nvim_server = args.run_args.server.clone();
-        let inside_neovim = args.run_args.neovim;
+        let nvim_server = args.server.clone();
+        let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let in_mem_progress = None;
         let width = size.width;

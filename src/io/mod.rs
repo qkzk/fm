@@ -25,7 +25,7 @@ mod opener;
 mod plugin_management;
 mod ueberzug;
 
-pub use args::{Args, PluginCommand, PluginSubCommand};
+pub use args::Args;
 pub use commands::*;
 pub use display::{Display, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;

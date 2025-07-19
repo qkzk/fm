@@ -1790,8 +1790,8 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: should we prevent moving to a subdirectory ? `mv: cannot move to a subdirectory of itself`
 - [ ] separate CLI binary: fmconfig
   - [x] hello world 
+  - [x] move all clap "early exit" here: keybinds, plugins, cloud 
   - [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
-  - [ ] move all clap "early exit" here: keybinds, plugins, cloud 
   - [ ] make separate subcommands:
     - [ ] reset: reset the config,
     - [ ] plugin <subcommand>: ...
