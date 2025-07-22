@@ -6,7 +6,7 @@ use clap::{Args as ClapArgs, Parser, Subcommand};
 
 use fm::app::FM;
 use fm::common::{CONFIG_PATH, TMP_THUMBNAILS_DIR};
-use fm::config::{cloud_config, load_config, Config};
+use fm::config::{cloud_config, load_config, make_default_config_files, Config};
 use fm::io::{add_plugin, list_plugins, remove_plugin};
 
 #[derive(Parser, Debug, Clone)]
@@ -33,6 +33,10 @@ pub struct RunArgs {
     /// Clear the video thumbnail cache
     #[arg(long, default_value_t = false)]
     pub clear_cache: bool,
+
+    /// Reset the config file
+    #[arg(long, default_value_t = false)]
+    pub reset_config: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -52,6 +56,11 @@ pub enum PluginSubCommand {
     Remove { name: String },
     /// List all installed plugins
     List,
+}
+
+fn exit_reset_config() -> Result<()> {
+    make_default_config_files()?;
+    exit(0);
 }
 
 fn exit_with_cloud_config() -> Result<()> {
@@ -89,6 +98,9 @@ fn exit_manage_plugins(plugin: &PluginCommand) -> ! {
 fn main() -> Result<()> {
     println!("Welcome to Fm configuration application.");
     let args = Args::parse();
+    if args.run_args.reset_config {
+        exit_reset_config()?;
+    }
     if args.run_args.cloudconfig {
         exit_with_cloud_config()?;
     }

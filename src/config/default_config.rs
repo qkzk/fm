@@ -11,7 +11,7 @@ use crate::{
 /// It may fail if the user has no write access to $HOME which shouldn't happen in a normal environment.
 pub fn make_default_config_files() -> std::io::Result<()> {
     create_config_folder()?;
-    copy_config_files()?;
+    copy_default_config_files()?;
     create_trash_folders()?;
     Ok(())
 }
@@ -26,7 +26,7 @@ fn create_config_folder() -> std::io::Result<()> {
 /// The default config files are zipped and included in the code. I couldn't find a better idea...
 /// It uses ~120 bytes.
 /// Once copied, the zip file in unzipped and removed.
-fn copy_config_files() -> std::io::Result<()> {
+fn copy_default_config_files() -> std::io::Result<()> {
     // TODO automatise the zipping
     let mut dest = std::path::PathBuf::from(tilde(CONFIG_FOLDER).as_ref());
     dest.push("fm_config.zip");

@@ -1793,10 +1793,10 @@ Once that's done, it's all. No not implement anything else
   - [x] move all clap "early exit" here: keybinds, plugins, cloud 
   - [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
   - [ ] make separate subcommands:
-    - [ ] reset: reset the config,
-    - [ ] plugin <subcommand>: ...
-    - [ ] cloud config/list
-    - [ ] keybinds reset/list 
+    - [x] reset: reset the config,
+    - [x] plugin <subcommand>: ...
+    - [x] cloud config/list
+    - [x] keybinds list 
   - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
