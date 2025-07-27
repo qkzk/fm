@@ -1,4 +1,7 @@
+use std::string::FromUtf8Error;
+
 use anyhow::{bail, Result};
+use shell_quote::Sh;
 
 use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
@@ -62,13 +65,19 @@ enum FmExpansion {
     Invalid,
 }
 
-trait Encapsulate<S> {
-    fn safe_shell(&self) -> S;
+trait Quote<S> {
+    fn quote(&self) -> Result<S, FromUtf8Error>;
 }
 
-impl Encapsulate<String> for String {
-    fn safe_shell(&self) -> String {
-        format!("\"{self}\"")
+impl Quote<String> for String {
+    fn quote(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(Sh::quote_vec(self))
+    }
+}
+
+impl Quote<String> for &str {
+    fn quote(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(Sh::quote_vec(*self))
     }
 }
 
@@ -100,14 +109,11 @@ impl FmExpansion {
     }
 
     fn selected(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status
-            .current_tab()
-            .current_file_string()?
-            .safe_shell()])
+        Ok(vec![status.current_tab().current_file_string()?.quote()?])
     }
 
     fn path(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status.current_tab().directory_str().safe_shell()])
+        Ok(vec![status.current_tab().directory_str().quote()?])
     }
 
     fn filename(status: &Status) -> Result<Vec<String>> {
@@ -115,8 +121,8 @@ impl FmExpansion {
             .current_tab()
             .current_file()?
             .filename
-            .to_string()
-            .safe_shell()])
+            .as_ref()
+            .quote()?])
     }
 
     fn extension(status: &Status) -> Result<Vec<String>> {
@@ -124,8 +130,8 @@ impl FmExpansion {
             .current_tab()
             .current_file()?
             .extension
-            .to_string()
-            .safe_shell()])
+            .as_ref()
+            .quote()?])
     }
 
     fn flagged(status: &Status) -> Result<Vec<String>> {
@@ -135,7 +141,7 @@ impl FmExpansion {
             .content
             .iter()
             .map(path_to_string)
-            .map(|s| s.safe_shell())
+            .filter_map(|s| s.quote().ok())
             .collect())
     }
 

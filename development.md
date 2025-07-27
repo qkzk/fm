@@ -1803,8 +1803,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
-- [ ] BUG: spaces in path aren't supported in shell commands. I think encapsulating is enough.
-    what to do with path which contains `'"'` ?
+- [ ] BUG: spaces in path aren't supported in shell commands. Use shell quote to avoid all kinds of problems. Is there other places where it matters ?
 
 
 ## TODO
