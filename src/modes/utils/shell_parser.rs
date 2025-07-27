@@ -62,6 +62,16 @@ enum FmExpansion {
     Invalid,
 }
 
+trait Encapsulate<S> {
+    fn safe_shell(&self) -> S;
+}
+
+impl Encapsulate<String> for String {
+    fn safe_shell(&self) -> String {
+        format!("\"{self}\"")
+    }
+}
+
 impl FmExpansion {
     fn from(c: char) -> Self {
         match c {
@@ -90,11 +100,14 @@ impl FmExpansion {
     }
 
     fn selected(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status.current_tab().current_file_string()?])
+        Ok(vec![status
+            .current_tab()
+            .current_file_string()?
+            .safe_shell()])
     }
 
     fn path(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status.current_tab().directory_str()])
+        Ok(vec![status.current_tab().directory_str().safe_shell()])
     }
 
     fn filename(status: &Status) -> Result<Vec<String>> {
@@ -102,7 +115,8 @@ impl FmExpansion {
             .current_tab()
             .current_file()?
             .filename
-            .to_string()])
+            .to_string()
+            .safe_shell()])
     }
 
     fn extension(status: &Status) -> Result<Vec<String>> {
@@ -110,7 +124,8 @@ impl FmExpansion {
             .current_tab()
             .current_file()?
             .extension
-            .to_string()])
+            .to_string()
+            .safe_shell()])
     }
 
     fn flagged(status: &Status) -> Result<Vec<String>> {
@@ -120,6 +135,7 @@ impl FmExpansion {
             .content
             .iter()
             .map(path_to_string)
+            .map(|s| s.safe_shell())
             .collect())
     }
 
