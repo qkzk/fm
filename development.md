@@ -1803,7 +1803,19 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
-- [ ] BUG: spaces in path aren't supported in shell commands. Use shell quote to avoid all kinds of problems. Is there other places where it matters ?
+- [ ] BUG: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
+- [ ] BUG: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
+  - [x] quoted string inspired by yazi 
+  - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Use serde_json
+    https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
+    
+    https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
+    
+    https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_271
+
+    https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
+
+
 
 
 ## TODO

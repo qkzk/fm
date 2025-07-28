@@ -1182,7 +1182,7 @@ fn umount_remote_no_password(mountpoint: &str) -> Result<bool> {
     Ok(success)
 }
 
-/// True iff `lsblk` and `cryptsetup` are in path.
+/// True iff `lsblk` and `udisksctl` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_udisksctl_installed() -> bool {
     is_in_path(LSBLK) && is_in_path(UDISKSCTL)

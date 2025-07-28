@@ -41,7 +41,7 @@ use ratatui::layout::Rect;
 
 use crate::common::UEBERZUG;
 use crate::io::ImageDisplayer;
-use crate::modes::DisplayedImage;
+use crate::modes::{DisplayedImage, Quote};
 
 /// Check if user has X11 display capabilities.
 /// Call it before trying to spawn ueberzug.
@@ -91,7 +91,8 @@ impl Default for Ueberzug {
 impl ImageDisplayer for Ueberzug {
     /// Draws the Image using ueberzug
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
-        let path = image.selected_path();
+        let path = image.selected_path().quote()?;
+
         if self.is_the_same_image(&path) {
             Ok(())
         } else {
@@ -273,13 +274,16 @@ impl<'a> UeConf<'a> {
         }
     }
 
+    // TODO: replace it with some serde which should handle the path correctly.
     fn to_json(&self) -> String {
         if self.identifier.is_empty() {
+            // TODO: should be an error
             panic!("Incomplete Information : Itentifier Not Found");
         }
         match self.action {
             Actions::Add => {
                 if self.path.is_empty() {
+                    // TODO: should be an error
                     panic!("Incomplete Information : Path empty");
                 }
                 let mut jsn = String::from(r#"{"action":"add","#);
@@ -306,6 +310,7 @@ impl<'a> UeConf<'a> {
     }
 
     fn build_json(image: &DisplayedImage, rect: Rect) -> String {
+        // TODO: this is may be the problem
         let path = &image.selected_path();
         let x = rect.x;
         let y = rect.y.saturating_sub(1);

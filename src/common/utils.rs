@@ -13,14 +13,12 @@ use sysinfo::Disk;
 use sysinfo::Disks;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::common::CONFIG_FOLDER;
+use crate::common::{CONFIG_FOLDER, ZOXIDE};
 use crate::config::IS_LOGGING;
 use crate::io::execute_without_output;
 use crate::io::Extension;
 use crate::modes::{human_size, nvim, ContentWindow, Users};
 use crate::{log_info, log_line};
-
-use super::ZOXIDE;
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
@@ -211,7 +209,7 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
         "open_in_current_neovim {nvim_server} {path}",
         path = path.display()
     );
-    match nvim(nvim_server, &path.display().to_string()) {
+    match nvim(nvim_server, path) {
         Ok(()) => log_line!(
             "Opened {path} in neovim at {nvim_server}",
             path = path.display()

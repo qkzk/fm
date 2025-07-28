@@ -435,8 +435,7 @@ impl EventAction {
         status.open_flagged_files()
     }
 
-    /// Enter the execute mode. Most commands must be executed to allow for
-    /// a confirmation.
+    /// Enter the execute mode.
     pub fn exec(status: &mut Status) -> Result<()> {
         if matches!(
             status.current_tab().menu_mode,

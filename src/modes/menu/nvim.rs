@@ -3,8 +3,13 @@ use std::process::{Command, Stdio};
 use anyhow::Result;
 
 /// Use `nvim --server $server_address --remote $filepath` to open the file in the neovim session.
-pub fn nvim(server_address: &str, filepath: &str) -> Result<()> {
-    let args = ["--server", server_address, "--remote", filepath];
+pub fn nvim(server_address: &str, filepath: &std::path::Path) -> Result<()> {
+    let args = [
+        "--server",
+        server_address,
+        "--remote",
+        &filepath.to_string_lossy(),
+    ];
     let output = Command::new("nvim")
         .args(args)
         .stdin(Stdio::null())

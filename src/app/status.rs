@@ -29,9 +29,10 @@ use crate::io::{
 use crate::modes::{
     copy_move, parse_line_output, regex_flagger, shell_command_parser, Content, ContentWindow,
     CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction,
-    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, JoinQuote, Menu, MenuHolder,
+    MountAction, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1552,9 +1553,10 @@ impl Status {
         self.parse_shell_command(shell_command, None, true)
     }
 
+    // TODO: move to shell something, it doesn't belong here
     fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
         if let Some(files) = &files {
-            shell_command + " " + &files.join(" ")
+            shell_command + " " + &files.join_quote(" ")
         } else {
             shell_command
         }

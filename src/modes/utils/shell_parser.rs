@@ -1,10 +1,8 @@
-use std::string::FromUtf8Error;
-
 use anyhow::{bail, Result};
-use shell_quote::Sh;
 
 use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
+use crate::modes::Quote;
 use crate::{log_info, log_line};
 
 /// Token used while parsing a command to execute it using the current window.
@@ -63,22 +61,6 @@ enum FmExpansion {
     Term,
     Clipboard,
     Invalid,
-}
-
-trait Quote<S> {
-    fn quote(&self) -> Result<S, FromUtf8Error>;
-}
-
-impl Quote<String> for String {
-    fn quote(&self) -> Result<String, FromUtf8Error> {
-        String::from_utf8(Sh::quote_vec(self))
-    }
-}
-
-impl Quote<String> for &str {
-    fn quote(&self) -> Result<String, FromUtf8Error> {
-        String::from_utf8(Sh::quote_vec(*self))
-    }
 }
 
 impl FmExpansion {

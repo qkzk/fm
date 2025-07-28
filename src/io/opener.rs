@@ -18,13 +18,11 @@ use crate::common::{
     is_in_path, tilde, OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH,
     OPENER_READABLE, OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
-use crate::io::execute;
+use crate::io::{execute, execute_in_shell};
 use crate::log_info;
 use crate::modes::{
-    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension,
+    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension, Quote,
 };
-
-use super::execute_in_shell;
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -267,17 +265,24 @@ impl External {
     }
 
     fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
-        let arg = format!("{program} \"{path}\"", program = self.program(),);
+        let arg = format!(
+            "{program} {path}",
+            program = self.program(),
+            path = path.quote()?
+        );
         Self::open_command_in_window(&[&arg])
     }
 
     fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
+        // TODO: use join_quote instead of building it here. Keep the OsString as long as possible.
+        // TODO: the whole function is ugly and should be done another way.
         let arg = paths
             .iter()
             .filter_map(|p| p.to_str())
+            .filter_map(|s| s.quote().ok())
             .collect::<Vec<_>>()
             .join(" ");
-        Self::open_command_in_window(&[&format!("{program} \"{arg}\"", program = self.program())])
+        Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
