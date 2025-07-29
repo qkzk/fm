@@ -1755,6 +1755,9 @@ Once that's done, it's all. No not implement anything else
 
 #### Summary
 
+- Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text.
+- CLI configuration helper: `fm_config`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove a plugin etc.
+
 ##### Bugfixes
 
 - fm couldn't start without a config file. If no config file is found for the current user, we'll copy the default ones in ~/.config/fm.
@@ -1776,9 +1779,6 @@ Once that's done, it's all. No not implement anything else
     spec in fm.config 
       - name & path_to_lib.so
 - [x] example plugin: bat previewer 
-- [ ] get lib from path or url ?
-- [ ] plugin system 
-  menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
 
 - [x] FIX: crash without config files. Save default config while building, include them in code.
 - [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
@@ -1788,11 +1788,11 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: cd mode selection should update zoxide
 - [x] FIX: moving files from same part shouldn't require a copy and should be instant
 - [x] IMP: should we prevent moving to a subdirectory ? `mv: cannot move to a subdirectory of itself`
-- [ ] separate CLI binary: fmconfig
+- [x] separate CLI binary: fmconfig
   - [x] hello world 
   - [x] move all clap "early exit" here: keybinds, plugins, cloud 
-  - [ ] IMP: allow to reset config, cloud config, see keybinds, **install a plugin**
-  - [ ] make separate subcommands:
+  - [x] IMP: allow to reset config, cloud config, see keybinds, install a plugin
+  - [x] make separate subcommands:
     - [x] reset: reset the config,
     - [x] plugin <subcommand>: ...
     - [x] cloud config/list
@@ -1804,17 +1804,13 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] BUG: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
-- [ ] BUG: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
-  - [x] quoted string inspired by yazi 
-  - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Use serde_json
+- [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
-    
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
-    
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_271
-
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
 
+- [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping.
 
 
 
@@ -1822,6 +1818,8 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] plugin system 
+  menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
 - [ ] IMP: why cloning PathBuf when Arc<Path> would do the trick ? Useful if path is mutated... ?
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
