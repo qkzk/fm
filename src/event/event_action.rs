@@ -1588,4 +1588,21 @@ impl EventAction {
     pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
         status.run_custom_command(input_string)
     }
+
+    pub fn parse_rpc(status: &mut Status, msg: String) -> Result<()> {
+        // TODO: does it needs something smart ?
+        let mut split = msg.split_whitespace();
+        match split.next() {
+            Some("GO") => {
+                log_info!("parse_rpc found GO");
+                if let Some(dest) = split.next() {
+                    log_info!("parse_rpc GO to {dest}");
+                    status.current_tab_mut().cd_to_file(dest)?
+                }
+            }
+            Some(&_) => (),
+            None => (),
+        };
+        Ok(())
+    }
 }

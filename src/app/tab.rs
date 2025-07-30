@@ -489,11 +489,17 @@ impl Tab {
         };
     }
 
-    pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
-        crate::log_info!("cd_to_file: {path}", path = path.display());
-        let parent = match path.parent() {
+    pub fn cd_to_file<P>(&mut self, path: P) -> Result<()>
+    where
+        P: AsRef<path::Path>,
+    {
+        crate::log_info!("cd_to_file: #{path}#", path = path.as_ref().display());
+        if !path.as_ref().exists() {
+            return Ok(());
+        }
+        let parent = match path.as_ref().parent() {
             Some(parent) => parent,
-            None => std::path::Path::new("/"),
+            None => path::Path::new("/"),
         };
         self.cd(parent)?;
         self.go_to_file(path);

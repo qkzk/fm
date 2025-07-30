@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crate::event::FmEvents;
+use crate::event::{create_stream, read_from_stream, FmEvents};
 use crate::log_info;
 
 /// Allows refresh if the current path has been modified externally.
@@ -31,9 +31,27 @@ impl Refresher {
     pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut counter: u16 = 0;
+        let (socket_path, socket_listener) = create_stream().expect("Error creating stream");
+        socket_listener
+            .set_nonblocking(true)
+            .expect("Couldn't set socket to non blocking");
         let handle = thread::spawn(move || loop {
+            if let Ok((mut stream, path)) = socket_listener.accept() {
+                crate::log_info!("Accepted socket connection from {path:?}");
+                if let Some(msg) = read_from_stream(&mut stream) {
+                    let event = FmEvents::Rpc(msg);
+                    // TODO: too much send there should be only one in the whole closure.
+                    if fm_sender.send(event).is_err() {
+                        std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
+                        log_info!("Deleted socket {socket_path}");
+                        break;
+                    }
+                }
+            }
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
+                    std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
+                    log_info!("Deleted socket {socket_path}");
                     log_info!("terminating refresher");
                     return;
                 }
@@ -48,6 +66,8 @@ impl Refresher {
                 FmEvents::UpdateTick
             };
             if fm_sender.send(event).is_err() {
+                std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
+                log_info!("Deleted socket {socket_path}");
                 break;
             }
         });

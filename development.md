@@ -1803,7 +1803,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
-- [ ] BUG: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
@@ -1811,6 +1810,45 @@ Once that's done, it's all. No not implement anything else
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
 
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping.
+- [ ] Neovim integration 
+  - [ ] open fm with current file selected whatever the terminal used 
+  - [ ] renaming in fm renames the buffer 
+  - [ ] deleting in fm deletes the buffer 
+  - [ ] open a file in fm opens a new buffer with the file
+  - [ ] BUG: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
+    The problems comes from incompatibiliy between floatterm & normal terminal.
+    In floatterm, we have to exit _the floatterm_, then open the new buffer,
+    In normal terminal, we have to exit _the terminal:_ then open the new buffer.
+    Current code works fine in normal terminals, not in float term
+    A solution would be to allow the edition of the command itself from config file.
+    Another would be to create a neovim plugin...
+
+  solution: 
+
+  - plugin + RPC/server
+    requires a lot of work 
+    fm becomes a server: needs to know its address & communicate it
+    actions -> send to neovim (rpc -> fm)
+    neovim -> fm (fm_rpc)
+
+    - [x] define events to read 
+    - [x] define events to send 
+    - [ ] use PID in name instead of randomstring
+    - [x] open socket : https://doc.rust-lang.org/std/os/unix/net/struct.UnixStream.html
+    - [ ] expose socket address from a command
+    - [x] listen to socket 
+    - [ ] write to socket from external 
+
+      ```bash 
+      socat - UNIX-CONNECT:${ls /tmp/fm*.sock}
+      ```
+      then `GO /some/path/to/file`, enter, ctrl+c
+    - [x] move it to refresher, send an event if needed and let dispatch capture it
+    - [x] remove the socket file before leaving
+    - [ ] incorporate in rest of program
+    - [ ] documentation
+  - internal:
+    compatibiliy between :terminal & floatterm
 
 
 
