@@ -130,7 +130,7 @@ mod inner {
         /// Action for each associated file.
         fn action(&self, col: u16, is_right: bool) -> &ActionMap {
             let offset = self.offset(is_right);
-            let col = col - offset;
+            let col = col.saturating_sub(offset);
             for clickable in self.left().iter().chain(self.right().iter()) {
                 if clickable.left <= col && col < clickable.right {
                     return &clickable.action;
