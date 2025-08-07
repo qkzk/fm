@@ -17,12 +17,13 @@ use syntect::{
     parsing::{SyntaxReference, SyntaxSet},
 };
 
+use crate::app::previewer_plugins;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
     ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
     RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::get_syntect_theme;
+use crate::config::{get_previewer_plugins, get_syntect_theme};
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
@@ -234,6 +235,21 @@ impl PreviewBuilder {
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
     pub fn build(self) -> Result<Preview> {
+        if let Some(preview) = self.plugin_preview() {
+            return Ok(preview);
+        }
+        self.internal_preview()
+    }
+
+    fn plugin_preview(&self) -> Option<Preview> {
+        if let Some(plugins) = get_previewer_plugins() {
+            previewer_plugins::try_build(&self.path, plugins)
+        } else {
+            None
+        }
+    }
+
+    fn internal_preview(&self) -> Result<Preview> {
         clear_tmp_files();
         let file_kind = FileKind::new(&symlink_metadata(&self.path)?, &self.path);
         match file_kind {

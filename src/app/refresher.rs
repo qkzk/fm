@@ -39,7 +39,7 @@ impl Refresher {
             if let Ok((mut stream, path)) = socket_listener.accept() {
                 crate::log_info!("Accepted socket connection from {path:?}");
                 if let Some(msg) = read_from_stream(&mut stream) {
-                    let event = FmEvents::Rpc(msg);
+                    let event = FmEvents::Ipc(msg);
                     // TODO: too much send there should be only one in the whole closure.
                     if fm_sender.send(event).is_err() {
                         std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");

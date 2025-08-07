@@ -1748,15 +1748,22 @@ Once that's done, it's all. No not implement anything else
 
 ### Version 0.2.1 : plugins
 
-- .ape files are previewed as a music files with mediainfo
-- files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
-- update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 
 
 #### Summary
 
-- Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text.
+- Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text. Some plugins (only one atm) are available at [https://github.com/qkzk/fm_plugins].
 - CLI configuration helper: `fm_config`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove a plugin etc.
+- Neovim file picker. File picking in Neovim never was reliable. It never worked if you open fm yourself in a toggleterm instance. Use the associated plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim) to do the work. It uses 2 sockets to send and receive commands.
+- Execute commands from outside. Related to the previous point. If you don't use neovim, you can still take control of fm through sockets. Specify an output socket in command line arguments and send commands.
+  - `GO <path>` will select the path,
+  - `KEY <key>` will execute this key like if you pressed it yourself,
+  - `Action <action>` will execute this action.
+
+  Both `<key>` & `<action>` should be formated like in the config file.
+- .ape files are previewed as a music files with mediainfo
+- files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
+- update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 
 ##### Bugfixes
 
@@ -1779,7 +1786,7 @@ Once that's done, it's all. No not implement anything else
     spec in fm.config 
       - name & path_to_lib.so
 - [x] example plugin: bat previewer 
-
+- [x] FIX: displaying preview directly skip the whole plugin.
 - [x] FIX: crash without config files. Save default config while building, include them in code.
 - [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
 - [x] IMP: preview .ape files as music files with mediain
@@ -1802,7 +1809,6 @@ Once that's done, it's all. No not implement anything else
   - [x] fm plugin list: will display all plugins
 - [ ] BUG: preview can stop and display "preview as empty"
 - [ ] BUG: status.index should be replaced by a bool instead of usize.
-- [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
@@ -1810,12 +1816,12 @@ Once that's done, it's all. No not implement anything else
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
 
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping.
-- [ ] Neovim integration 
-  - [ ] open fm with current file selected whatever the terminal used 
-  - [ ] renaming in fm renames the buffer 
-  - [ ] deleting in fm deletes the buffer 
-  - [ ] open a file in fm opens a new buffer with the file
-  - [ ] BUG: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
+- [x] Neovim integration 
+  - [x] open fm with current file selected whatever the terminal used 
+  - [x] renaming in fm renames the buffer 
+  - [x] deleting in fm deletes the buffer 
+  - [x] open a file in fm opens a new buffer with the file
+  - [x] FIX: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
     The problems comes from incompatibiliy between floatterm & normal terminal.
     In floatterm, we have to exit _the floatterm_, then open the new buffer,
     In normal terminal, we have to exit _the terminal:_ then open the new buffer.
@@ -1833,11 +1839,10 @@ Once that's done, it's all. No not implement anything else
 
     - [x] define events to read 
     - [x] define events to send 
-    - [ ] use PID in name instead of randomstring
+    - [x] use PID in name instead of randomstring
     - [x] open socket : https://doc.rust-lang.org/std/os/unix/net/struct.UnixStream.html
-    - [ ] expose socket address from a command
     - [x] listen to socket 
-    - [ ] write to socket from external 
+    - [x] write to socket from external 
 
       ```bash 
       socat - UNIX-CONNECT:${ls /tmp/fm*.sock}
@@ -1845,10 +1850,36 @@ Once that's done, it's all. No not implement anything else
       then `GO /some/path/to/file`, enter, ctrl+c
     - [x] move it to refresher, send an event if needed and let dispatch capture it
     - [x] remove the socket file before leaving
-    - [ ] incorporate in rest of program
-    - [ ] documentation
-  - internal:
-    compatibiliy between :terminal & floatterm
+    - [x] write to socket from fm
+    - [x] GO <path>
+    - [x] ACTION <ActionMap>
+    - [x] KEY <Key>
+    - [x] documentation
+      - [x] public functions
+      - [x] here
+      - [x] readme
+      - [x] changelog
+    - [x] neovim companion plugin [fm-picker.nvim](https://github/qkzk/fm-picker.nvim)
+      - [x] nvim -> fm open, pick 
+      - [x] fm -> nvim pick 
+      - [x] fm -> nvim delete
+      - [x] make it a plugin
+      - [x] configure the plugin
+    - [x] ensure socket files are removed
+      /run/user/1000 is deleted by systemd at logout
+      /run/user/1000/nvim.fm.whatever
+      /run/user/1000/fm.nvim.whatever
+    - [x] more binds to reset mode since Esc is captured by neovim : Alt-Tab & Ins
+    - [ ] send msg to nvim to toggle fm window ??? Is quiting enough ?
+    - [ ] test a lot: picking, deleting, renaming, closing the window, trash etc.
+
+- **NO MORE FEATURES** it's enough for v0.2.1
+  - [ ] read every commit 
+  - [ ] remove non working 
+  - [ ] test everything again 
+  - [ ] script for testing using new socket ?
+  - [ ] documentation 
+  - [ ] closing & publishing 
 
 
 
@@ -1856,8 +1887,10 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] plugin system 
   menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
+  IPC may be the solution for menus.
 - [ ] IMP: why cloning PathBuf when Arc<Path> would do the trick ? Useful if path is mutated... ?
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...

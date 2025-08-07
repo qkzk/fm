@@ -19,8 +19,10 @@ use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH};
-use crate::config::{load_config, set_configurable_static, Config, IS_LOGGING};
+use crate::common::{clear_input_socket_files, clear_tmp_files, save_final_path, CONFIG_PATH};
+use crate::config::{
+    load_config, set_configurable_static,  Config, IS_LOGGING,
+};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
@@ -38,7 +40,7 @@ pub struct FM {
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It also has a [`std::mpsc::Sender`] to send a quit message and reset the cursor.
     refresher: Refresher,
-    /// Used to handle every display on the screen, except from skim (fuzzy finds).
+    /// Used to handle every display on the screen.
     /// It runs a single thread with an mpsc receiver to handle quit events.
     /// Drawing is done 30 times per second.
     displayer: Displayer,
@@ -60,9 +62,10 @@ impl FM {
     /// May fail if the [`ratatui::DefaultTerminal`] can't be started or crashes
     pub fn start() -> Result<Self> {
         Self::set_panic_hook();
-        let (config, start_folder) = Self::early_exit()?;
+        let (mut config, start_folder) = Self::early_exit()?;
         log_info!("start folder: {start_folder}");
-        set_configurable_static(&start_folder)?;
+        let plugins = std::mem::take(&mut config.plugins);
+        set_configurable_static(&start_folder, plugins)?;
         Self::build(config)
     }
 
@@ -122,18 +125,16 @@ impl FM {
     }
 
     /// Internal builder. Builds an Fm instance from the config.
-    fn build(mut config: Config) -> Result<Self> {
+    fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
         let fm_sender = Arc::new(fm_sender);
         let term = Self::init_term();
         let event_reader = EventReader::new(fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let plugins = std::mem::take(&mut config.plugins);
         let status = Arc::new(Mutex::new(Status::new(
             term.size().unwrap(),
             Opener::default(),
             &config.binds,
-            plugins,
             fm_sender.clone(),
         )?));
         let refresher = Refresher::new(fm_sender);
@@ -217,6 +218,7 @@ impl FM {
         drop(status);
 
         drop(self.status);
+        clear_input_socket_files()?;
         Self::disable_mouse_capture()?;
         save_final_path(&final_path);
         Ok(())

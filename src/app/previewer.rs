@@ -1,6 +1,6 @@
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
-use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 
@@ -32,19 +32,13 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    pub fn new(
-        plugins: HashMap<String, String>,
-        tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>,
-    ) -> Self {
-        let plugins = previewer_plugins::build_plugins(plugins);
+    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
         let (tx_request, rx_request) = mpsc::channel::<PreviewRequest>();
         thread::spawn(move || {
             while let Some(request) = rx_request.iter().next() {
                 match request {
                     PreviewRequest::Request((path, index)) => {
-                        if let Some(preview) = previewer_plugins::try_build(&path, &plugins) {
-                            tx_preview.send((path, preview, index)).unwrap();
-                        } else if let Ok(preview) = PreviewBuilder::new(&path).build() {
+                        if let Ok(preview) = PreviewBuilder::new(&path).build() {
                             tx_preview.send((path, preview, index)).unwrap();
                         };
                     }
@@ -75,7 +69,7 @@ impl Previewer {
 }
 
 /// TODO: move elesewhere
-mod previewer_plugins {
+pub mod previewer_plugins {
     use std::{
         collections::HashMap,
         ffi::{c_char, CString},

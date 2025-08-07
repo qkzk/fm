@@ -175,6 +175,6 @@ plugins:
   # previewer plugins able the preview some extensions.
   # give them a name (what ever you want) and the path to "libplugin_something.so".
   # Under normal circonstances, the file should be in `crate_your_plugin/target/release/libcrate_your_plugin.so`
-  # If you only avec sources and nothing in target, try `cargo build --release` from the crate directory.
+  # If you only have sources and nothing in target, try `cargo build --release` from the crate directory.
   previewer:
-    'bat previewer': "/home/quentin/gclem/dev/rust/fm/plugins/bat_previewer/target/release/libbat_previewer.so"
+    'bat previewer': "path/to/the/lib/libbat_previewer.so"

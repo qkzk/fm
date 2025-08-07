@@ -66,6 +66,8 @@ pub fn from_keyname(keyname: &str) -> Option<KeyEvent> {
         "ctrl-left"                         => Some(KeyEvent::new(KeyCode::Left,      KeyModifiers::CONTROL)),
         "ctrl-right"                        => Some(KeyEvent::new(KeyCode::Right,     KeyModifiers::CONTROL)),
 
+        "ctrl-tab"                          => Some(KeyEvent::new(KeyCode::Tab,       KeyModifiers::CONTROL)),
+
         "ctrl-alt-space"                    => Some(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::CONTROL | KeyModifiers::ALT)),
         "ctrl-alt-a"                        => Some(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL | KeyModifiers::ALT)),
         "ctrl-alt-b"                        => Some(KeyEvent::new(KeyCode::Char('b'), KeyModifiers::CONTROL | KeyModifiers::ALT)),
@@ -234,6 +236,7 @@ impl Bindings {
     pub fn new() -> Self {
         let binds = HashMap::from([
             (KeyEvent::new(KeyCode::Esc,          KeyModifiers::NONE), ActionMap::ResetMode),
+            (KeyEvent::new(KeyCode::Insert,       KeyModifiers::NONE), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Up,           KeyModifiers::NONE), ActionMap::MoveUp),
             (KeyEvent::new(KeyCode::Down,         KeyModifiers::NONE), ActionMap::MoveDown),
             (KeyEvent::new(KeyCode::Left,         KeyModifiers::NONE), ActionMap::MoveLeft),
@@ -323,6 +326,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
 
+            (KeyEvent::new(KeyCode::Tab,          KeyModifiers::ALT),  ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),

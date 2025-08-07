@@ -1,19 +1,21 @@
 use std::os::unix::fs::MetadataExt;
 
 use anyhow::Result;
+use clap::Parser;
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
 use crate::app::Tab;
 use crate::common::{index_from_a, INPUT_HISTORY_PATH};
 use crate::config::Bindings;
-use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
+use crate::io::{Args, DrawMenu};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu, Flagged, History,
-    Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate, PasswordHolder, Picker, Remote,
-    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
+    nvim_inform_ipc, Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu,
+    Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate,
+    NvimIPCAction, PasswordHolder, Picker, Remote, Selectable, Shortcut, TempMarks, Trash,
+    TuiApplications, MAX_FILE_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -200,13 +202,24 @@ impl MenuHolder {
         self.trash.delete_permanently()
     }
 
+    /// Delete all the flagged files & directory recursively.
+    /// If an output socket was provided at launch, it will inform the IPC server about those deletions.
+    /// Clear the flagged files.
+    ///
+    /// # Errors
+    ///
+    /// May fail if any deletion is impossible (permissions, file already deleted etc.)
     pub fn delete_flagged_files(&mut self) -> Result<()> {
         let nb = self.flagged.len();
+        let output_socket = Args::parse().output_socket;
         for pathbuf in self.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
             } else {
                 std::fs::remove_file(pathbuf)?;
+            }
+            if let Some(output_socket) = &output_socket {
+                nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(pathbuf))?;
             }
         }
         self.flagged.clear();

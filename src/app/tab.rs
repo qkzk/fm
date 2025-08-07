@@ -860,7 +860,7 @@ impl Tab {
 
     pub fn cd_origin_path(&mut self) -> Result<()> {
         if let Some(op) = &self.origin_path {
-            self.cd_to_file(&op.to_owned())?;
+            self.cd_to_file(op.clone())?;
         }
         Ok(())
     }

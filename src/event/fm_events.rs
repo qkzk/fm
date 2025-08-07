@@ -1,6 +1,6 @@
 use crossterm::event::Event;
 
-use crate::event::{ActionMap, RpcEvent};
+use crate::event::ActionMap;
 
 /// Internal and terminal events.
 /// Most of events are sent from the terminal emulator.
@@ -17,8 +17,8 @@ pub enum FmEvents {
     Term(Event),
     /// Action sent directly to be dispatched and executed
     Action(ActionMap),
-    /// RPC event received from external program
-    Rpc(String),
+    /// IPC event received from external process
+    Ipc(String),
     /// Empty events. Used to:
     /// - to check if a new preview should be attached
     /// - to send a "tick" to the fuzzy matcher if it's set

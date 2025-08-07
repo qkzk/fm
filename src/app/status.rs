@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -17,10 +18,10 @@ use crate::app::{
 };
 use crate::common::{
     current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, path_to_string, row_to_window_index, set_current_dir,
+    is_sudo_command, path_to_string, row_to_window_index, set_current_dir, tilde,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
-use crate::event::FmEvents;
+use crate::event::{ActionMap, FmEvents};
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
     execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
@@ -159,7 +160,6 @@ impl Status {
         size: Size,
         opener: Opener,
         binds: &Bindings,
-        plugins: HashMap<String, String>,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
         let fuzzy = None;
@@ -187,7 +187,7 @@ impl Status {
             Tab::new(&args, height, users_right)?,
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
-        let previewer = Previewer::new(plugins, previewer_sender);
+        let previewer = Previewer::new(previewer_sender);
         let thumbnail_manager = None;
         Ok(Self {
             tabs,
@@ -2150,6 +2150,48 @@ impl Status {
             };
             self.menu.flagged.toggle(&file.path)
         }
+    }
+
+    /// Parse and execute the received IPC message.
+    /// IPC message can currently be of 3 forms:
+    /// GO <path> -> cd to this path and select the file.
+    /// KEY <key> -> act as if the key was pressed. <key> should be formated like in the config file.
+    /// ACTION <action> -> execute the action. Similar to :<action><Enter>. <action> should be formated like in the config file.
+    /// Other messages are ignored.
+    /// Failed messages (path don't exists, wrongly formated key or action) are ignored silently.
+    pub fn parse_ipc(&mut self, msg: String) -> Result<()> {
+        let mut split = msg.split_whitespace();
+        match split.next() {
+            Some("GO") => {
+                log_info!("Received IPC command GO");
+                if let Some(dest) = split.next() {
+                    log_info!("Received IPC command GO to {dest}");
+                    let dest = tilde(dest);
+                    self.current_tab_mut().cd_to_file(dest.as_ref())?
+                }
+            }
+            Some("KEY") => {
+                log_info!("Received IPC command KEY");
+                if let Some(keyname) = split.next() {
+                    if let Some(key) = from_keyname(keyname) {
+                        self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
+                        log_info!("Sent key event: {key:?}");
+                    }
+                }
+            }
+            Some("ACTION") => {
+                log_info!("Received IPC command ACTION");
+                if let Some(action_str) = split.next() {
+                    if let Ok(action) = ActionMap::from_str(action_str) {
+                        log_info!("Sent action event: {action:?}");
+                        self.fm_sender.send(FmEvents::Action(action))?;
+                    }
+                }
+            }
+            Some(_unknown) => log_info!("Received unknown IPC command: {msg}"),
+            None => (),
+        };
+        Ok(())
     }
 }
 

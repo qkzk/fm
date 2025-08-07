@@ -23,4 +23,12 @@ pub struct Args {
     /// Started inside neovim terminal emulator
     #[arg(long, default_value_t = false)]
     pub neovim: bool,
+
+    /// UNIX Socket file used to send messages to FM
+    #[arg(long)]
+    pub input_socket: Option<String>,
+
+    /// UNIX Socket file used by fm to send messages
+    #[arg(long)]
+    pub output_socket: Option<String>,
 }

@@ -40,7 +40,7 @@ impl EventDispatcher {
             FmEvents::FileCopied => EventAction::file_copied(status),
             FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
-            FmEvents::Rpc(msg) => EventAction::parse_rpc(status, msg),
+            FmEvents::Ipc(msg) => EventAction::parse_rpc(status, msg),
             _ => Ok(()),
         }
     }

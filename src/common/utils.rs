@@ -15,9 +15,10 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::{CONFIG_FOLDER, ZOXIDE};
 use crate::config::IS_LOGGING;
+use crate::event::build_input_socket_filepath;
 use crate::io::execute_without_output;
 use crate::io::Extension;
-use crate::modes::{human_size, nvim, ContentWindow, Users};
+use crate::modes::{human_size, nvim_open, ContentWindow, Users};
 use crate::{log_info, log_line};
 
 /// Returns the disk owning a path.
@@ -209,11 +210,8 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
         "open_in_current_neovim {nvim_server} {path}",
         path = path.display()
     );
-    match nvim(nvim_server, path) {
-        Ok(()) => log_line!(
-            "Opened {path} in neovim at {nvim_server}",
-            path = path.display()
-        ),
+    match nvim_open(nvim_server, path) {
+        Ok(()) => log_line!("Opened {path} in neovim", path = path.display()),
         Err(error) => log_line!(
             "Couldn't open {path} in neovim. Error {error:?}",
             path = path.display()
@@ -242,6 +240,14 @@ pub fn clear_tmp_files() {
         .filter_map(|e| e.ok())
         .filter(|e| e.file_name().to_string_lossy().starts_with("fm_thumbnail"))
         .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
+}
+
+pub fn clear_input_socket_files() -> Result<()> {
+    let input_socket_filepath = build_input_socket_filepath();
+    if std::path::Path::new(&input_socket_filepath).exists() {
+        std::fs::remove_file(&input_socket_filepath)?;
+    }
+    Ok(())
 }
 
 /// True if the directory is empty,

@@ -24,7 +24,7 @@ pub use default_config::*;
 pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
-    get_syntect_theme, set_configurable_static, set_icon_icon_with_metadata, with_icon,
-    with_icon_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES, IS_LOGGING, MATCHER, MENU_STYLES,
-    START_FOLDER,
+    get_previewer_plugins, get_syntect_theme, set_configurable_static, set_icon_icon_with_metadata,
+    set_previewer_plugins, with_icon, with_icon_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES,
+    IS_LOGGING, MATCHER, MENU_STYLES, START_FOLDER,
 };

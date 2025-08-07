@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::File,
     ops::DerefMut,
     path::{Path, PathBuf},
@@ -16,10 +17,14 @@ use syntect::{
     highlighting::{Theme, ThemeSet},
 };
 
-use crate::common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH};
+use crate::app::previewer_plugins::{build_plugins, PreviewerPlugin};
 use crate::config::{
     read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, SyntectTheme,
     MAX_GRADIENT_NORMAL,
+};
+use crate::{
+    common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH},
+    log_info,
 };
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
@@ -52,6 +57,19 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
+static PLUGINS: OnceLock<HashMap<String, PreviewerPlugin>> = OnceLock::new();
+
+/// Attach a map of name -> path to the `PLUGINS` static variable.
+pub fn set_previewer_plugins(plugins: HashMap<String, String>) -> Result<()> {
+    let _ = PLUGINS.set(build_plugins(plugins));
+    Ok(())
+}
+
+/// `PLUGINS` static map. Returns a map of name -> path.
+pub fn get_previewer_plugins() -> Option<&'static HashMap<String, PreviewerPlugin>> {
+    PLUGINS.get()
+}
+
 /// Reads the syntect_theme configuration value and tries to load if from configuration files.
 ///
 /// If it doesn't work, it will load the default set from binary file itself: monokai.
@@ -63,7 +81,7 @@ pub fn set_syntect_theme() -> Result<()> {
     Ok(())
 }
 
-#[derive(EnumIter)]
+#[derive(EnumIter, Debug)]
 enum SyntectThemeKind {
     TmTheme,
     Dump,
@@ -94,6 +112,7 @@ fn set_syntect_theme_from_config(syntect_theme: &str) -> bool {
         if load_syntect(&syntect_theme_path, syntect_theme, &kind) {
             return true;
         }
+        log_info!("Couldn't load {syntect_theme} {kind:?}");
     }
     false
 }
@@ -109,7 +128,9 @@ fn load_syntect(syntect_theme_path: &Path, syntect_theme: &str, kind: &SyntectTh
         crate::log_info!("Syntect couldn't load {fp}", fp = full_path.display());
         return false;
     };
+    let name = theme.name.clone();
     if SYNTECT_THEME.set(theme).is_ok() {
+        log_info!("SYNTECT_THEME set to {name:?}");
         true
     } else {
         crate::log_info!("SYNTECT_THEME was already set!");
@@ -221,13 +242,14 @@ pub fn set_icon_icon_with_metadata() -> Result<()> {
 /// Set all the values which could be configured from config file or arguments staticly.
 /// It allows us to read those values globally without having to pass them through to every function.
 /// All values use a [`std::sync::OnceLock`] internally.
-pub fn set_configurable_static(start_folder: &str) -> Result<()> {
+pub fn set_configurable_static(start_folder: &str, plugins: HashMap<String, String>) -> Result<()> {
     set_start_folder(start_folder)?;
     set_menu_styles()?;
     set_file_styles()?;
     set_normal_file_colorer()?;
     set_icon_icon_with_metadata()?;
-    set_syntect_theme()
+    set_syntect_theme()?;
+    set_previewer_plugins(plugins)
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)

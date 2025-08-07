@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 use indicatif::InMemoryTerm;
 
 use crate::app::{Direction, Focus, Status, Tab};
@@ -10,13 +11,14 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, External};
+use crate::io::{read_log, Args, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_udisksctl_installed, ContentWindow, Direction as FuzzyDirection,
-    Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
-    NeedConfirmation, PreviewBuilder, Search, Selectable,
+    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, ContentWindow,
+    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
+    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, PreviewBuilder, Search,
+    Selectable,
 };
 
 /// Links events from ratatui to custom actions.
@@ -749,7 +751,6 @@ impl EventAction {
     /// otherwise, flagged files are picked.
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
-    /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
@@ -758,16 +759,15 @@ impl EventAction {
         if status.internal_settings.nvim_server.is_empty() {
             return Ok(());
         };
-        let nvim_server = status.internal_settings.nvim_server.clone();
+        let nvim_server = &status.internal_settings.nvim_server;
         if status.menu.flagged.is_empty() {
             let Ok(fileinfo) = status.current_tab().current_file() else {
                 return Ok(());
             };
-            open_in_current_neovim(&fileinfo.path, &nvim_server);
+            open_in_current_neovim(&fileinfo.path, nvim_server);
         } else {
-            let flagged = status.menu.flagged.content.clone();
-            for file_path in flagged.iter() {
-                open_in_current_neovim(file_path, &nvim_server)
+            for file_path in status.menu.flagged.content.iter() {
+                open_in_current_neovim(file_path, nvim_server)
             }
         }
 
@@ -1054,6 +1054,7 @@ impl EventAction {
     }
 
     /// When files are focused, try to delete the flagged files (or selected if no file is flagged)
+    /// Inform through the output socket if any was provided in console line arguments.
     /// When edit window is focused, delete all chars to the right in mode allowing edition.
     pub fn delete(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
@@ -1321,8 +1322,10 @@ impl EventAction {
     }
 
     /// Move flagged files to the trash directory.
-    /// If no file is flagged, flag the selected file.
-    /// More information in the trash crate itself.
+    /// If no file is flagged, flag the selected file and move it to trash.
+    /// Inform the listener through the output_socket if any was provided in console line arguments.
+    /// More information in the trash mod itself.
+    /// We can't trash file which aren't mounted in the same partition.
     /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
     /// it is moved there.
     /// Else, nothing is done.
@@ -1335,8 +1338,13 @@ impl EventAction {
         }
 
         status.menu.trash.update()?;
+        let output_socket = Args::parse().output_socket;
         for flagged in status.menu.flagged.content.iter() {
-            let _ = status.menu.trash.trash(flagged);
+            if status.menu.trash.trash(flagged).is_ok() {
+                if let Some(output_socket) = &output_socket {
+                    nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(flagged))?;
+                }
+            }
         }
         status.menu.flagged.clear();
         status.current_tab_mut().refresh_view()?;
@@ -1589,20 +1597,8 @@ impl EventAction {
         status.run_custom_command(input_string)
     }
 
-    pub fn parse_rpc(status: &mut Status, msg: String) -> Result<()> {
-        // TODO: does it needs something smart ?
-        let mut split = msg.split_whitespace();
-        match split.next() {
-            Some("GO") => {
-                log_info!("parse_rpc found GO");
-                if let Some(dest) = split.next() {
-                    log_info!("parse_rpc GO to {dest}");
-                    status.current_tab_mut().cd_to_file(dest)?
-                }
-            }
-            Some(&_) => (),
-            None => (),
-        };
-        Ok(())
+    /// Parse and execute the received IPC message.
+    pub fn parse_rpc(status: &mut Status, ipc_msg: String) -> Result<()> {
+        status.parse_ipc(ipc_msg)
     }
 }
