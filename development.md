@@ -1764,6 +1764,7 @@ Once that's done, it's all. No not implement anything else
 - .ape files are previewed as a music files with mediainfo
 - files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
 - update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
+- Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
 
 ##### Bugfixes
 
@@ -1876,9 +1877,9 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: search, down, enter. Selection shouldn't move 
   completion should work like blink in nvim:
     1st is nothing, down next & move, down next & move... cycle back
-- [ ] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
+- [x] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
   - [x] use menu window & existant methods for need confirmation which use "flagged files".
-  - [ ] other modes: len, index, next, prev, pgup, pgdown, click (event action)
+  - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 
 - **NO MORE FEATURES** it's enough for v0.2.1
@@ -1895,6 +1896,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] Merge "need confirmation" into navigate ?
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] plugin system 
   menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
