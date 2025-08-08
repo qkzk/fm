@@ -864,6 +864,9 @@ impl EventAction {
                 {
                     status.menu.prev(Navigate::Flagged)
                 }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    status.menu.prev(Navigate::Trash)
+                }
                 _ => (),
             };
         }
@@ -944,6 +947,9 @@ impl EventAction {
                     if need_confirmation.use_flagged_files() =>
                 {
                     status.menu.next(Navigate::Flagged)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    status.menu.next(Navigate::Trash)
                 }
                 _ => (),
             };
@@ -1178,6 +1184,11 @@ impl EventAction {
                         status.menu.prev(Navigate::Flagged)
                     }
                 }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    for _ in 0..10 {
+                        status.menu.trash.prev()
+                    }
+                }
                 _ => (),
             };
         }
@@ -1220,6 +1231,11 @@ impl EventAction {
                 {
                     for _ in 0..10 {
                         status.menu.next(Navigate::Flagged)
+                    }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    for _ in 0..10 {
+                        status.menu.trash.next()
                     }
                 }
                 _ => (),

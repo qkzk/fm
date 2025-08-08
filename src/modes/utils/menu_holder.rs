@@ -14,8 +14,8 @@ use crate::log_line;
 use crate::modes::{
     nvim_inform_ipc, Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu,
     Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate,
-    NvimIPCAction, PasswordHolder, Picker, Remote, Selectable, Shortcut, TempMarks, Trash,
-    TuiApplications, MAX_FILE_MODE,
+    NeedConfirmation, NvimIPCAction, PasswordHolder, Picker, Remote, Selectable, Shortcut,
+    TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -264,7 +264,10 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Menu::InputCompleted(_) => self.completion.len(),
-            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => self.flagged.len(),
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => {
+                self.flagged.len()
+            }
+            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.len(),
             _ => 0,
         }
     }
@@ -273,7 +276,10 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Menu::InputCompleted(_) => self.completion.index,
-            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => self.flagged.index,
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => {
+                self.flagged.index()
+            }
+            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.index(),
             _ => 0,
         }
     }

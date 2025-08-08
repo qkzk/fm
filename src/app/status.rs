@@ -394,6 +394,9 @@ impl Status {
                 {
                     self.menu.flagged.set_index(index)
                 }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    self.menu.trash.set_index(index)
+                }
                 _ => (),
             }
             self.menu.window.scroll_to(index);

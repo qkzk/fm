@@ -1385,17 +1385,21 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
-        let content: Vec<_> = self
-            .status
+        self.status
             .menu
             .trash
-            .content()
-            .iter()
-            .map(|trashinfo| trashinfo.to_string())
-            .collect();
-        let mut p_rect = rect.offseted(4, 4);
-        p_rect.height = p_rect.height.saturating_sub(1);
-        Self::render_content(&content, f, &p_rect, 0, 0);
+            .draw_menu(f, rect, &self.status.menu.window);
+        // let content: Vec<_> = self
+        //     .status
+        //     .menu
+        //     .trash
+        //     .content()
+        //     .iter()
+        //     .map(|trashinfo| trashinfo.to_string())
+        //     .collect();
+        // let mut p_rect = rect.offseted(4, 4);
+        // p_rect.height = p_rect.height.saturating_sub(1);
+        // Self::render_content(&content, f, &p_rect, 0, 0);
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
