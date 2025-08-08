@@ -389,6 +389,11 @@ impl Status {
                     navigate => self.menu.set_index(index, navigate),
                 },
                 Menu::InputCompleted(_) => self.menu.completion.set_index(index),
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    self.menu.flagged.set_index(index)
+                }
                 _ => (),
             }
             self.menu.window.scroll_to(index);

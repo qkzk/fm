@@ -1311,6 +1311,7 @@ impl<'a> Menu<'a> {
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn confirm(&self, confirmed_mode: NeedConfirmation, f: &mut Frame, rect: &Rect) {
+        log_info!("confirm {confirmed_mode} !");
         let dest = path_to_string(
             &self
                 .tab
@@ -1334,21 +1335,11 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
-        let text_content: Vec<_> = self
-            .status
+        log_info!("confirm_default {win:?}", win = self.status.menu.window);
+        self.status
             .menu
             .flagged
-            .content()
-            .iter()
-            .map(|p| p.to_string_lossy().to_string())
-            .collect();
-        Self::render_content(
-            &text_content,
-            f,
-            rect,
-            4,
-            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
-        );
+            .draw_menu(f, rect, &self.status.menu.window);
     }
 
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {

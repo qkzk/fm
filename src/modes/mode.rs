@@ -55,6 +55,10 @@ impl NeedConfirmation {
             Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
     }
+
+    pub fn use_flagged_files(&self) -> bool {
+        matches!(self, Self::Copy | Self::Move | Self::Delete)
+    }
 }
 
 impl CursorOffset for NeedConfirmation {

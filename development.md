@@ -1870,8 +1870,16 @@ Once that's done, it's all. No not implement anything else
       /run/user/1000/nvim.fm.whatever
       /run/user/1000/fm.nvim.whatever
     - [x] more binds to reset mode since Esc is captured by neovim : Alt-Tab & Ins
-    - [ ] send msg to nvim to toggle fm window ??? Is quiting enough ?
+    - [x] send msg to nvim to toggle fm window ??? Is quiting enough ? Yes
     - [ ] test a lot: picking, deleting, renaming, closing the window, trash etc.
+
+- [ ] BUG: search, down, enter. Selection shouldn't move 
+  completion should work like blink in nvim:
+    1st is nothing, down next & move, down next & move... cycle back
+- [ ] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
+  - [x] use menu window & existant methods for need confirmation which use "flagged files".
+  - [ ] other modes: len, index, next, prev, pgup, pgdown, click (event action)
+- [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

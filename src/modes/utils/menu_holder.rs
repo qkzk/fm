@@ -264,6 +264,7 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Menu::InputCompleted(_) => self.completion.len(),
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => self.flagged.len(),
             _ => 0,
         }
     }
@@ -272,6 +273,7 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Menu::InputCompleted(_) => self.completion.index,
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => self.flagged.index,
             _ => 0,
         }
     }

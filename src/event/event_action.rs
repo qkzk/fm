@@ -859,6 +859,11 @@ impl EventAction {
                 Menu::InputCompleted(input_completed) => {
                     status.menu.completion_prev(input_completed)
                 }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    status.menu.prev(Navigate::Flagged)
+                }
                 _ => (),
             };
         }
@@ -934,6 +939,11 @@ impl EventAction {
                 Menu::Navigate(navigate) => status.menu.next(navigate),
                 Menu::InputCompleted(input_completed) => {
                     status.menu.completion_next(input_completed)
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    status.menu.next(Navigate::Flagged)
                 }
                 _ => (),
             };
@@ -1161,6 +1171,13 @@ impl EventAction {
                         status.menu.completion_prev(input_completed)
                     }
                 }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    for _ in 0..10 {
+                        status.menu.prev(Navigate::Flagged)
+                    }
+                }
                 _ => (),
             };
         }
@@ -1196,6 +1213,13 @@ impl EventAction {
                 Menu::InputCompleted(input_completed) => {
                     for _ in 0..10 {
                         status.menu.completion_next(input_completed)
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    for _ in 0..10 {
+                        status.menu.next(Navigate::Flagged)
                     }
                 }
                 _ => (),
