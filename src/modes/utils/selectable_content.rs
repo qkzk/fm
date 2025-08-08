@@ -3,7 +3,8 @@ use std::slice::Iter;
 
 use ratatui::style::Style;
 
-// TODO pick a more telling name. `Selectable` doesn't say what it does.
+// TODO: pick a more telling name. `Selectable` doesn't say what it does.
+
 /// Allow selection of a element and basic navigation.
 /// Its implementation is mostly made by the macro [`crate::impl_selectable`]
 /// which allows to manipulate all sort of content in a common manner.
@@ -64,8 +65,7 @@ pub trait IndexToIndex<T> {
 }
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
-/// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
-/// `selected` returns an optional reference to the value.
+/// It implements: `is_empty`, `len`, `next`, `prev`, `set_index` and `selected_is_last`.
 #[macro_export]
 macro_rules! impl_selectable {
     ($struct:ident) => {
@@ -73,8 +73,7 @@ macro_rules! impl_selectable {
 
         /// Implement a selectable content for this struct.
         /// This trait allows to navigate through a vector of element `content_type`.
-        /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
-        /// `selected` returns an optional reference to the value.
+        /// It implements: `is_empty`, `len`, `next`, `prev`, `set_index` and `selected_is_last`.
         impl Selectable for $struct {
             /// True if the content is empty.
             fn is_empty(&self) -> bool {
@@ -153,7 +152,7 @@ macro_rules! impl_index_to_index {
 
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
-/// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
+/// It implements: `selected`, `content`, `push`, `style`.
 /// `selected` returns an optional reference to the value.
 #[macro_export]
 macro_rules! impl_content {
@@ -162,7 +161,7 @@ macro_rules! impl_content {
 
         /// Implement a selectable content for this struct.
         /// This trait allows to navigate through a vector of element `content_type`.
-        /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
+        /// It implements: `selected`, `content`, `push`, `style`.
         /// `selected` returns an optional reference to the value.
         impl Content<$content_type> for $struct {
             /// Returns a reference to the selected content.

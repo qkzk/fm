@@ -867,6 +867,10 @@ impl EventAction {
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
                     status.menu.prev(Navigate::Trash)
                 }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    status.menu.bulk.prev();
+                    status.menu.window.scroll_to(status.menu.bulk.index())
+                }
                 _ => (),
             };
         }
@@ -950,6 +954,10 @@ impl EventAction {
                 }
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
                     status.menu.next(Navigate::Trash)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    status.menu.bulk.next();
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -1186,8 +1194,14 @@ impl EventAction {
                 }
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
                     for _ in 0..10 {
-                        status.menu.trash.prev()
+                        status.menu.prev(Navigate::Trash)
                     }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    for _ in 0..10 {
+                        status.menu.bulk.prev()
+                    }
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -1235,8 +1249,14 @@ impl EventAction {
                 }
                 Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
                     for _ in 0..10 {
-                        status.menu.trash.next()
+                        status.menu.next(Navigate::Trash)
                     }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    for _ in 0..10 {
+                        status.menu.bulk.next()
+                    }
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };

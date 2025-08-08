@@ -268,6 +268,7 @@ impl MenuHolder {
                 self.flagged.len()
             }
             Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.len(),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => self.bulk.len(),
             _ => 0,
         }
     }
@@ -280,6 +281,7 @@ impl MenuHolder {
                 self.flagged.index()
             }
             Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.index(),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => self.bulk.index(),
             _ => 0,
         }
     }

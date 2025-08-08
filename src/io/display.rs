@@ -20,7 +20,6 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu, ImageAdapter};
 use crate::log_info;
 use crate::modes::{
@@ -33,6 +32,10 @@ use crate::modes::{
 use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
     modes::Users,
+};
+use crate::{
+    colored_skip_take,
+    config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES},
 };
 use crate::{common::path_to_string, modes::Icon};
 
@@ -1344,13 +1347,25 @@ impl<'a> Menu<'a> {
 
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
-        Self::render_content(
-            &content,
-            f,
-            rect,
-            4,
-            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
-        );
+
+        let mut p_rect = rect.offseted(4, 3);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        // let content = self.content();
+        let window = &self.status.menu.window;
+        use std::cmp::min;
+        let lines: Vec<_> = colored_skip_take!(content, window)
+            .map(|(index, item, style)| {
+                Line::styled(item, self.status.menu.bulk.style(index, &style))
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        // Self::render_content(
+        //     &content,
+        //     f,
+        //     rect,
+        //     4,
+        //     2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
+        // );
     }
 
     fn confirm_delete_cloud(&self, f: &mut Frame, rect: &Rect) {
@@ -1389,17 +1404,6 @@ impl<'a> Menu<'a> {
             .menu
             .trash
             .draw_menu(f, rect, &self.status.menu.window);
-        // let content: Vec<_> = self
-        //     .status
-        //     .menu
-        //     .trash
-        //     .content()
-        //     .iter()
-        //     .map(|trashinfo| trashinfo.to_string())
-        //     .collect();
-        // let mut p_rect = rect.offseted(4, 4);
-        // p_rect.height = p_rect.height.saturating_sub(1);
-        // Self::render_content(&content, f, &p_rect, 0, 0);
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
