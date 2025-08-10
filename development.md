@@ -1773,6 +1773,7 @@ Once that's done, it's all. No not implement anything else
 - Opening a file whose path contains spaces wouldn't work.
 - Moving multiple files won't show a progress bar if all source files share the same mount point as the destination.
 - Prevent the use from moving to a subdirectory which is impossible. Display a message.
+- Completion is updated when something is deleted (backspace, delete). In search mode, the selected file is also updated.
 
 #### Changelog
 
