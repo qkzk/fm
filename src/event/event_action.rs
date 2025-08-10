@@ -857,7 +857,10 @@ impl EventAction {
                 Menu::Navigate(Navigate::History) => tab.history.prev(),
                 Menu::Navigate(navigate) => status.menu.prev(navigate),
                 Menu::InputCompleted(input_completed) => {
-                    status.menu.completion_prev(input_completed)
+                    status.menu.completion_prev(input_completed);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
                 }
                 Menu::NeedConfirmation(need_confirmation)
                     if need_confirmation.use_flagged_files() =>
@@ -945,7 +948,10 @@ impl EventAction {
                 Menu::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
                 Menu::Navigate(navigate) => status.menu.next(navigate),
                 Menu::InputCompleted(input_completed) => {
-                    status.menu.completion_next(input_completed)
+                    status.menu.completion_next(input_completed);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
                 }
                 Menu::NeedConfirmation(need_confirmation)
                     if need_confirmation.use_flagged_files() =>
@@ -1184,6 +1190,9 @@ impl EventAction {
                     for _ in 0..10 {
                         status.menu.completion_prev(input_completed)
                     }
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
                 }
                 Menu::NeedConfirmation(need_confirmation)
                     if need_confirmation.use_flagged_files() =>
@@ -1238,6 +1247,9 @@ impl EventAction {
                 Menu::InputCompleted(input_completed) => {
                     for _ in 0..10 {
                         status.menu.completion_next(input_completed)
+                    }
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
                     }
                 }
                 Menu::NeedConfirmation(need_confirmation)

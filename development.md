@@ -1874,9 +1874,8 @@ Once that's done, it's all. No not implement anything else
     - [x] send msg to nvim to toggle fm window ??? Is quiting enough ? Yes
     - [ ] test a lot: picking, deleting, renaming, closing the window, trash etc.
 
-- [ ] BUG: search, down, enter. Selection shouldn't move 
-  completion should work like blink in nvim:
-    1st is nothing, down next & move, down next & move... cycle back
+- [x] FIX: search, down, enter. Selection should follow up/down/pgup/pgdown,click
+- [ ] BUG: deleting chars doesn't update completion
 - [x] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
   - [x] use menu window & existant methods for need confirmation which use "flagged files".
   - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
@@ -1896,6 +1895,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] plugin system 

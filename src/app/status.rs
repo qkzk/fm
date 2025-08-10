@@ -388,7 +388,12 @@ impl Status {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
                     navigate => self.menu.set_index(index, navigate),
                 },
-                Menu::InputCompleted(_) => self.menu.completion.set_index(index),
+                Menu::InputCompleted(input_completed) => {
+                    self.menu.completion.set_index(index);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        self.follow_search()?;
+                    }
+                }
                 Menu::NeedConfirmation(need_confirmation)
                     if need_confirmation.use_flagged_files() =>
                 {
@@ -1292,6 +1297,25 @@ impl Status {
         if let Ok(search) = Search::new(&self.menu.input.string()) {
             self.current_tab_mut().search = search;
         };
+        Ok(())
+    }
+
+    /// Select the currently proposed item in search mode.
+    /// This is usefull to allow the user to select an item when moving with up or down.
+    pub fn follow_search(&mut self) -> Result<()> {
+        let Some(proposition) = self.menu.completion.selected() else {
+            return Ok(());
+        };
+        let current_path = match self.current_tab().display_mode {
+            Display::Directory => self.current_tab().current_path(),
+            Display::Tree => self.current_tab().tree.root_path(),
+            _ => {
+                return Ok(());
+            }
+        };
+        let mut full_path = current_path.to_path_buf();
+        full_path.push(proposition);
+        self.current_tab_mut().select_by_path(Arc::from(full_path));
         Ok(())
     }
 
