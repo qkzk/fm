@@ -1075,8 +1075,15 @@ impl EventAction {
             Menu::Navigate(Navigate::TempMarks(_)) => {
                 status.menu.temp_marks.erase_current_mark();
             }
-            Menu::InputSimple(_) | Menu::InputCompleted(_) => {
+            Menu::InputSimple(_) => {
                 status.menu.input.delete_char_left();
+            }
+            Menu::InputCompleted(input_completed) => {
+                status.menu.input.delete_char_left();
+                status.complete(input_completed)?;
+                if matches!(input_completed, InputCompleted::Search) {
+                    status.follow_search()?;
+                }
             }
             _ => (),
         }
@@ -1091,8 +1098,16 @@ impl EventAction {
             Self::delete_file(status)
         } else {
             match status.current_tab_mut().menu_mode {
-                Menu::InputSimple(_) | Menu::InputCompleted(_) => {
+                Menu::InputSimple(_) => {
                     status.menu.input.delete_chars_right();
+                    Ok(())
+                }
+                Menu::InputCompleted(input_completed) => {
+                    status.menu.input.delete_chars_right();
+                    status.complete(input_completed)?;
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
                     Ok(())
                 }
                 _ => Ok(()),

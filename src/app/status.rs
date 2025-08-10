@@ -1267,7 +1267,7 @@ impl Status {
         self.complete(input_completed)
     }
 
-    fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
+    pub fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
         match input_completed {
             InputCompleted::Search => self.complete_search(),
             _ => self.complete_non_search(),
