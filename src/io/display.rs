@@ -531,7 +531,7 @@ impl<'a> DirectoryDisplay<'a> {
             style.fg = MENU_STYLES
                 .get()
                 .expect("Menu style should be set")
-                .second
+                .palette_4
                 .fg;
         }
     }
@@ -709,7 +709,7 @@ impl<'a> TreeDisplay<'a> {
             style.fg = MENU_STYLES
                 .get()
                 .expect("Menu style should be set")
-                .second
+                .palette_4
                 .fg;
         }
     }

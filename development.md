@@ -1765,6 +1765,7 @@ Once that's done, it's all. No not implement anything else
 - files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
 - update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 - Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
+- Color search results (/) with second colors of menu. Search results should be more visible
 
 ##### Bugfixes
 
@@ -1881,6 +1882,7 @@ Once that's done, it's all. No not implement anything else
   - [x] use menu window & existant methods for need confirmation which use "flagged files".
   - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
+- [ ] color search results in display & tree
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
