@@ -505,6 +505,7 @@ impl<'a> DirectoryDisplay<'a> {
     ) -> Line<'b> {
         let mut style = file.style();
         self.reverse_selected(index, &mut style);
+        self.color_searched(file, &mut style);
         let mut content = formater(file, group_owner_sizes);
 
         content.push(' ');
@@ -522,6 +523,16 @@ impl<'a> DirectoryDisplay<'a> {
     fn reverse_selected(&self, index: usize, style: &mut Style) {
         if index == self.tab.directory.index {
             style.add_modifier |= Modifier::REVERSED;
+        }
+    }
+
+    fn color_searched(&self, file: &FileInfo, style: &mut Style) {
+        if self.tab.search.is_match(&file.filename) {
+            style.fg = MENU_STYLES
+                .get()
+                .expect("Menu style should be set")
+                .second
+                .fg;
         }
     }
 
@@ -676,9 +687,8 @@ impl<'a> TreeDisplay<'a> {
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, users)?;
         let mut style = fileinfo.style();
-        if line_builder.is_selected {
-            style.add_modifier |= Modifier::REVERSED;
-        }
+        Self::reverse_flagged(line_builder, &mut style);
+        Self::color_searched(status, &fileinfo, &mut style);
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
             Self::metadata(&fileinfo, formater, style),
@@ -686,6 +696,22 @@ impl<'a> TreeDisplay<'a> {
             Self::whitespaces(status, path, with_offset),
             Self::filename(line_builder, with_icon, style),
         ]))
+    }
+
+    fn reverse_flagged(line_builder: &TLine, style: &mut Style) {
+        if line_builder.is_selected {
+            style.add_modifier |= Modifier::REVERSED;
+        }
+    }
+
+    fn color_searched(status: &Status, file: &FileInfo, style: &mut Style) {
+        if status.current_tab().search.is_match(&file.filename) {
+            style.fg = MENU_STYLES
+                .get()
+                .expect("Menu style should be set")
+                .second
+                .fg;
+        }
     }
 
     fn span_flagged_symbol<'b>(
