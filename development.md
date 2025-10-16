@@ -1766,6 +1766,7 @@ Once that's done, it's all. No not implement anything else
 - update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 - Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
 - Color search results (/) with second colors of menu. Search results should be more visible
+- Middle click in fuzzy finder display mode moves to the selected element (same as enter)
 
 ##### Bugfixes
 
@@ -1885,6 +1886,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [x] color search results in display & tree
 - [x] FIX: right click shouldn't do anything in fuzzy finding
+- [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

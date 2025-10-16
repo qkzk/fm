@@ -383,6 +383,7 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
+            Display::Fuzzy => status.fuzzy_select(),
             _ => Ok(()),
         }
     }
