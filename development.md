@@ -1775,6 +1775,7 @@ Once that's done, it's all. No not implement anything else
 - Moving multiple files won't show a progress bar if all source files share the same mount point as the destination.
 - Prevent the use from moving to a subdirectory which is impossible. Display a message.
 - Completion is updated when something is deleted (backspace, delete). In search mode, the selected file is also updated.
+- Context menu (Alt+t or right click) should do nothing in fuzzy or preview mode
 
 #### Changelog
 
@@ -1882,7 +1883,8 @@ Once that's done, it's all. No not implement anything else
   - [x] use menu window & existant methods for need confirmation which use "flagged files".
   - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
-- [ ] color search results in display & tree
+- [x] color search results in display & tree
+- [x] FIX: right click shouldn't do anything in fuzzy finding
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

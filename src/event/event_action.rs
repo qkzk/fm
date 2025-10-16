@@ -1508,6 +1508,12 @@ impl EventAction {
     /// Enter the context menu mode where the user can choose a basic file action.
     pub fn context(status: &mut Status) -> Result<()> {
         if matches!(
+            status.current_tab().display_mode,
+            Display::Fuzzy | Display::Preview
+        ) {
+            return Ok(());
+        }
+        if matches!(
             status.current_tab().menu_mode,
             Menu::Navigate(Navigate::Context)
         ) {
