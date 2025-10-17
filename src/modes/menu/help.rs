@@ -11,7 +11,7 @@ const CUSTOM_HELP: &str = "
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory,
+%d: the full path of the current directory,
 %t: execute the command in the same window,
 %c: the current clipboard as a string.
 ";

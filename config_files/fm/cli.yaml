@@ -3,18 +3,18 @@
 # When the user picks a command, it will be run and its output displayed in Preview mode.
 #
 # Don't use space in the description, use `_` instead.
-# Don't use a sudo command as it's not possible to ask for a password (yet ?). 
+# Don't use a sudo command as it's not possible to ask for a password (yet ?).
 #
 # Some basic shell expansion are made :
 #     - %s: the full path of the currently selected file or folder,
 #     - %f: the list of the full paths of the flagged files.
 #     - %e: the extension of the file.
 #     - %n: the filename only.
-#     - %p: the full path of the current directory.
+#     - %d: the full path of the current directory.
 #
 # Example :
 #
-# 
+#
 # drag_and_drop:
 #     command: "dragon-drop %s"
 #
@@ -26,7 +26,7 @@ man_page:
   command: "man %s"
 space_used:
   command: "duf"
-full_system_info: 
+full_system_info:
   command: "inxi -S -I -D -i -J -M --color"
 simple_system_info:
   command: "neofetch"
@@ -34,5 +34,5 @@ list_usb:
   command: "lsusb"
 media_tags:
   command: "mediainfo %s"
-diff_2_files: 
+diff_2_files:
   command: "diff %f"
