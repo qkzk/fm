@@ -354,6 +354,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Right,        KeyModifiers::CONTROL), ActionMap::FocusGoRight),
             (KeyEvent::new(KeyCode::Left,         KeyModifiers::CONTROL), ActionMap::FocusGoLeft),
 
+            (KeyEvent::new(KeyCode::Char(' '),    KeyModifiers::CONTROL), ActionMap::ToggleFlagChildren),
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::CONTROL), ActionMap::FocusGoLeft),
             (KeyEvent::new(KeyCode::Char('j'),    KeyModifiers::CONTROL), ActionMap::FocusGoDown),
             (KeyEvent::new(KeyCode::Char('k'),    KeyModifiers::CONTROL), ActionMap::FocusGoUp),

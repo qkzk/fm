@@ -809,6 +809,7 @@ impl Tree {
         }
         self.remake_displayable();
     }
+
     fn children_of_selected(&self) -> Option<&Vec<Arc<Path>>> {
         self.nodes.get(&self.selected)?.children.as_ref()
     }

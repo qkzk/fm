@@ -134,6 +134,7 @@ Different modes for the bottom window
         more_actions = action_descriptions!(Action),
         flagged_actions = action_descriptions!(
             ToggleFlag,
+            ToggleFlagChildren,
             FlagAll,
             ClearFlags,
             ReverseFlags,

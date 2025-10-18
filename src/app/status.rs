@@ -12,6 +12,7 @@ use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use ratatui::layout::Size;
 use sysinfo::Disks;
+use walkdir::WalkDir;
 
 use crate::app::{
     ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
@@ -913,6 +914,30 @@ impl Status {
         }
     }
 
+    /// Flag all _file_ (everything but directories) which are children of a directory.
+    pub fn toggle_flag_for_children(&mut self) {
+        let Ok(file) = self.current_tab().current_file() else {
+            return;
+        };
+        match self.current_tab().display_mode {
+            Display::Directory => self.toggle_flag_for_selected(),
+            Display::Tree => {
+                if !file.path.is_dir() {
+                    self.menu.flagged.toggle(&file.path);
+                } else {
+                    for entry in WalkDir::new(&file.path).into_iter().filter_map(|e| e.ok()) {
+                        let p = entry.path();
+                        if !p.is_dir() {
+                            self.menu.flagged.toggle(p);
+                        }
+                    }
+                }
+                let _ = self.update_second_pane_for_preview();
+            }
+            Display::Preview => (),
+            Display::Fuzzy => (),
+        }
+    }
     /// Flag the selected file if any
     pub fn toggle_flag_for_selected(&mut self) {
         let Ok(file) = self.current_tab().current_file() else {

@@ -235,6 +235,14 @@ impl EventAction {
         Ok(())
     }
 
+    /// Flag all _file_ (everything but directories) which are children of a directory.
+    pub fn toggle_flag_children(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            status.toggle_flag_for_children();
+        }
+        Ok(())
+    }
+
     /// Enter the rename mode.
     /// Keep a track of the current mode to ensure we rename the correct file.
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
