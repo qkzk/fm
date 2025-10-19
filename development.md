@@ -1767,6 +1767,7 @@ Once that's done, it's all. No not implement anything else
 - Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
 - Color search results (/) with second colors of menu. Search results should be more visible
 - Middle click in fuzzy finder display mode moves to the selected element (same as enter)
+- In tree mode, use Ctrl+Space to toggle flag on the children of a directory
 
 ##### Bugfixes
 
@@ -1887,6 +1888,9 @@ Once that's done, it's all. No not implement anything else
 - [x] color search results in display & tree
 - [x] FIX: right click shouldn't do anything in fuzzy finding
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
+- [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
+- [ ] BUG: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
+- [ ] FEAT: allow files to be dropped by capturing paste and piping to dragon-drop
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
@@ -1902,6 +1906,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
 - [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
