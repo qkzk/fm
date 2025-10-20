@@ -1889,7 +1889,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: right click shouldn't do anything in fuzzy finding
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
 - [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
-- [ ] BUG: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
+- [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
 - [ ] FEAT: allow files to be dropped by capturing paste and piping to dragon-drop
 
 - **NO MORE FEATURES** it's enough for v0.2.1

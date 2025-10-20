@@ -475,6 +475,7 @@ impl ForHelp for KeyEvent {
             _ => "",
         };
         let scode = match *code {
+            KeyCode::Char(' ') => "<SPC>".to_string(),
             KeyCode::Char(c) => c.to_string(),
             KeyCode::F(u) => format!("f{u}"),
             KeyCode::Enter => "enter".to_string(),
