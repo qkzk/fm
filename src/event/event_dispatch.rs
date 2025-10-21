@@ -30,6 +30,7 @@ impl EventDispatcher {
     /// which needs to know those keybindings.
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
+            FmEvents::Term(Event::Paste(pasted)) => EventAction::paste(status, pasted),
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
             FmEvents::Term(Event::Resize(width, height)) => {

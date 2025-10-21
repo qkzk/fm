@@ -50,6 +50,12 @@ impl EventAction {
         status.tabs[1].refresh_if_needed()
     }
 
+    pub fn paste(status: &mut Status, pasted: String) -> Result<()> {
+        log_info!("pasted: ###'{pasted}'###");
+        // recognize some shits
+        Ok(())
+    }
+
     pub fn resize(status: &mut Status, width: u16, height: u16) -> Result<()> {
         status.resize(width, height)
     }

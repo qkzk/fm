@@ -8,21 +8,18 @@ use std::backtrace;
 
 use anyhow::Result;
 use clap::Parser;
-use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture},
     execute,
-    terminal::disable_raw_mode,
+    terminal::{disable_raw_mode, Clear, ClearType},
 };
 use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_input_socket_files, clear_tmp_files, save_final_path, CONFIG_PATH};
-use crate::config::{
-    load_config, set_configurable_static,  Config, IS_LOGGING,
-};
+use crate::config::{load_config, set_configurable_static, Config, IS_LOGGING};
 use crate::event::{EventDispatcher, EventReader, FmEvents};
 use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
@@ -79,7 +76,12 @@ impl FM {
         panic::set_hook(Box::new(|traceback| {
             clear_tmp_files();
             let _ = disable_raw_mode();
-            let _ = execute!(stdout(), cursor::Show, DisableMouseCapture);
+            let _ = execute!(
+                stdout(),
+                cursor::Show,
+                DisableMouseCapture,
+                DisableBracketedPaste
+            );
 
             if cfg!(debug_assertions) {
                 if let Some(payload) = traceback.payload().downcast_ref::<&str>() {
@@ -151,7 +153,7 @@ impl FM {
 
     fn init_term() -> DefaultTerminal {
         let term = init_term();
-        execute!(stdout(), EnableMouseCapture).unwrap();
+        execute!(stdout(), EnableMouseCapture, EnableBracketedPaste).unwrap();
         term
     }
 
@@ -186,7 +188,7 @@ impl FM {
 
     /// Disable the mouse capture before normal exit.
     fn disable_mouse_capture() -> Result<()> {
-        execute!(stdout(), DisableMouseCapture)?;
+        execute!(stdout(), DisableMouseCapture, DisableBracketedPaste)?;
         Ok(())
     }
 

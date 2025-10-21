@@ -1890,6 +1890,11 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
 - [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
 - [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
+- [ ] FEAT: allow files to be dropped by capturing paste and piping to dragon-drop. Does't seem to be detected by any terminal..
+    dragon-drop output: absolute filetree path
+    - [ ] detect absolute filetree path & urls
+    - [ ] copy absolute path in cwd if display::file::whatever & focus 
+    - [ ] what about urls ?
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
@@ -1905,7 +1910,6 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
-- [ ] FEAT: allow files to be dropped by capturing paste and piping to dragon-drop. Does't seem to be detected by any terminal..
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
 - [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
