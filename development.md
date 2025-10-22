@@ -1890,10 +1890,13 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
 - [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
 - [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
-- [ ] FEAT: allow files to be dropped by capturing paste and piping to dragon-drop. Does't seem to be detected by any terminal..
-    dragon-drop output: absolute filetree path
-    - [ ] detect absolute filetree path & urls
-    - [ ] copy absolute path in cwd if display::file::whatever & focus 
+- [ ] FEAT: allow files to be dropped by capturing paste.
+    dragon-drop & pcmanfm output: absolute filetree path
+    - [x] enable & disable brackedted paste
+    - [x] detect absolute filetree path  
+    - [x] absolute path 
+      - [x] copy or move in cwd if display::file::whatever & focus & same mount point, otherwize ?
+      - [ ] insert text in menus with input
     - [ ] what about urls ?
 
 - **NO MORE FEATURES** it's enough for v0.2.1

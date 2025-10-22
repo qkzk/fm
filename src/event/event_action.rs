@@ -52,7 +52,83 @@ impl EventAction {
 
     pub fn paste(status: &mut Status, pasted: String) -> Result<()> {
         log_info!("pasted: ###'{pasted}'###");
-        // recognize some shits
+        let pasted = pasted.trim();
+        // early return
+        if !status.focus.is_file()
+            || !matches!(
+                status.current_tab().display_mode,
+                Display::Directory | Display::Tree
+            )
+        {
+            return Ok(());
+        }
+        // recognize pathes
+        let pasted = path::Path::new(&pasted);
+        if !pasted.is_absolute() || !pasted.exists() {
+            log_info!(
+                "pasted {pasted} doesn't exist or isn't absolute.",
+                pasted = pasted.display()
+            );
+            return Ok(());
+        }
+        // build dest path
+        let mut dest = status.current_tab().current_path().to_path_buf();
+        let Some(filename) = pasted.file_name() else {
+            return Ok(());
+        };
+        dest.push(filename);
+        if dest.exists() {
+            log_info!(
+                "pasted {pasted} but {dest} already exists",
+                pasted = pasted.display(),
+                dest = dest.display()
+            );
+            return Ok(());
+        }
+        log_info!(
+            "pasted source {pasted} to {dest}",
+            pasted = pasted.display(),
+            dest = dest.display()
+        );
+
+        // move if possible else copy
+        match std::fs::rename(pasted, &dest) {
+            Ok(()) => {
+                log_info!(
+                    "Moved {pasted} to {dest}",
+                    pasted = pasted.display(),
+                    dest = dest.display()
+                );
+                return Ok(());
+            }
+            Err(error) => {
+                log_info!(
+                    "Couldn't move {pasted} to {dest}: {error:?}",
+                    pasted = pasted.display(),
+                    dest = dest.display()
+                );
+            }
+        }
+
+        // Couldn't move, copy
+        match std::fs::copy(pasted, &dest) {
+            Ok(_) => {
+                log_info!(
+                    "Copied {pasted} to {dest}",
+                    pasted = pasted.display(),
+                    dest = dest.display()
+                );
+                return Ok(());
+            }
+            Err(error) => {
+                log_info!(
+                    "Couldn't copy {pasted} to {dest}: {error:?}",
+                    pasted = pasted.display(),
+                    dest = dest.display()
+                );
+            }
+        };
+
         Ok(())
     }
 
