@@ -50,6 +50,7 @@ impl EventAction {
         status.tabs[1].refresh_if_needed()
     }
 
+    // TODO: refactor & split into simpler functions
     pub fn paste(status: &mut Status, pasted: String) -> Result<()> {
         log_info!("pasted: ###'{pasted}'###");
         let pasted = pasted.trim();
@@ -60,6 +61,18 @@ impl EventAction {
                 Display::Directory | Display::Tree
             )
         {
+            // fuzzy
+            if status.focus.is_file() && status.current_tab().display_mode.is_fuzzy() {
+                // insert into fuzzy input
+                let Some(fuzzy) = &mut status.fuzzy else {
+                    return Ok(());
+                };
+                fuzzy.input.insert_string(pasted);
+            } else if !status.focus.is_file() && status.current_tab().menu_mode.is_input() {
+                // insert into input
+                status.menu.input.insert_string(pasted);
+            }
+            // input
             return Ok(());
         }
         // recognize pathes

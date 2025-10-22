@@ -51,6 +51,16 @@ impl Input {
         self.cursor_index += 1;
     }
 
+    pub fn insert_string(&mut self, pasted: &str) {
+        UnicodeSegmentation::graphemes(pasted, true)
+            .collect::<Vec<&str>>()
+            .iter()
+            .map(|s| (*s).to_string())
+            .for_each(|s| {
+                self.chars.insert(self.cursor_index, s);
+                self.cursor_index += 1;
+            })
+    }
     /// Move the cursor to the start
     pub fn cursor_start(&mut self) {
         self.cursor_index = 0;
