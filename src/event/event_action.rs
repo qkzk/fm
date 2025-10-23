@@ -50,99 +50,20 @@ impl EventAction {
         status.tabs[1].refresh_if_needed()
     }
 
-    // TODO: refactor & split into simpler functions
+    /// Handle pasting. Paste a file or an input.
+    /// - Paste an absolute, existing path to current directory in Directory or Tree display mode.
+    ///     Does nothing if the file already exists in current directory.
+    /// - Paste a text in an input box.
+    /// - Does nothing otherwiser.
     pub fn paste(status: &mut Status, pasted: String) -> Result<()> {
         log_info!("pasted: ###'{pasted}'###");
         let pasted = pasted.trim();
-        // early return
-        if !status.focus.is_file()
-            || !matches!(
-                status.current_tab().display_mode,
-                Display::Directory | Display::Tree
-            )
-        {
-            // fuzzy
-            if status.focus.is_file() && status.current_tab().display_mode.is_fuzzy() {
-                // insert into fuzzy input
-                let Some(fuzzy) = &mut status.fuzzy else {
-                    return Ok(());
-                };
-                fuzzy.input.insert_string(pasted);
-            } else if !status.focus.is_file() && status.current_tab().menu_mode.is_input() {
-                // insert into input
-                status.menu.input.insert_string(pasted);
-            }
-            // input
-            return Ok(());
+        let display_mode = status.current_tab().display_mode;
+        if status.focus.is_file() && (display_mode.is_tree() || display_mode.is_directory()) {
+            status.paste_path(pasted)
+        } else {
+            status.paste_input(pasted)
         }
-        // recognize pathes
-        let pasted = path::Path::new(&pasted);
-        if !pasted.is_absolute() || !pasted.exists() {
-            log_info!(
-                "pasted {pasted} doesn't exist or isn't absolute.",
-                pasted = pasted.display()
-            );
-            return Ok(());
-        }
-        // build dest path
-        let mut dest = status.current_tab().current_path().to_path_buf();
-        let Some(filename) = pasted.file_name() else {
-            return Ok(());
-        };
-        dest.push(filename);
-        if dest.exists() {
-            log_info!(
-                "pasted {pasted} but {dest} already exists",
-                pasted = pasted.display(),
-                dest = dest.display()
-            );
-            return Ok(());
-        }
-        log_info!(
-            "pasted source {pasted} to {dest}",
-            pasted = pasted.display(),
-            dest = dest.display()
-        );
-
-        // move if possible else copy
-        match std::fs::rename(pasted, &dest) {
-            Ok(()) => {
-                log_info!(
-                    "Moved {pasted} to {dest}",
-                    pasted = pasted.display(),
-                    dest = dest.display()
-                );
-                return Ok(());
-            }
-            Err(error) => {
-                log_info!(
-                    "Couldn't move {pasted} to {dest}: {error:?}",
-                    pasted = pasted.display(),
-                    dest = dest.display()
-                );
-            }
-        }
-
-        // Couldn't move, copy
-        match std::fs::copy(pasted, &dest) {
-            Ok(_) => {
-                log_info!(
-                    "Copied {pasted} to {dest}",
-                    pasted = pasted.display(),
-                    dest = dest.display()
-                );
-                return Ok(());
-            }
-            Err(error) => {
-                log_info!(
-                    "Couldn't copy {pasted} to {dest}: {error:?}",
-                    pasted = pasted.display(),
-                    dest = dest.display()
-                );
-            }
-        };
-
-        Ok(())
     }
 
     pub fn resize(status: &mut Status, width: u16, height: u16) -> Result<()> {

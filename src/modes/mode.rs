@@ -455,4 +455,8 @@ impl Display {
     pub fn is_fuzzy(&self) -> bool {
         self.is(Self::Fuzzy)
     }
+
+    pub fn is_directory(&self) -> bool {
+        self.is(Self::Directory)
+    }
 }

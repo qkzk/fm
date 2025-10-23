@@ -18,8 +18,9 @@ use crate::app::{
     ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
 };
 use crate::common::{
-    current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, path_to_string, row_to_window_index, set_current_dir, tilde,
+    build_dest_path, current_username, disk_space, disk_used_by_path, filename_from_path,
+    is_in_path, is_sudo_command, move_or_copy, path_to_string, row_to_window_index,
+    set_current_dir, tilde,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::{ActionMap, FmEvents};
@@ -2210,6 +2211,45 @@ impl Status {
             };
             self.menu.flagged.toggle(&file.path)
         }
+    }
+
+    /// Paste a text into an input box.
+    pub fn paste_input(&mut self, pasted: &str) -> Result<()> {
+        if self.focus.is_file() && self.current_tab().display_mode.is_fuzzy() {
+            let Some(fuzzy) = &mut self.fuzzy else {
+                return Ok(());
+            };
+            fuzzy.input.insert_string(pasted);
+        } else if !self.focus.is_file() && self.current_tab().menu_mode.is_input() {
+            self.menu.input.insert_string(pasted);
+        }
+        Ok(())
+    }
+
+    /// Paste a path a move or copy file in current directory.
+    pub fn paste_path(&mut self, pasted: &str) -> Result<()> {
+        // recognize pathes
+        let pasted = Path::new(&pasted);
+        if !pasted.is_absolute() {
+            log_info!("pasted {pasted} isn't absolute.", pasted = pasted.display());
+            return Ok(());
+        }
+        if !pasted.exists() {
+            log_info!("pasted {pasted} doesn't exist.", pasted = pasted.display());
+            return Ok(());
+        }
+        // build dest path
+        let Some(dest) = build_dest_path(pasted, self.current_tab().current_path().to_path_buf())
+        else {
+            return Ok(());
+        };
+        if dest.exists() {
+            log_info!("pasted {dest} already exists", dest = dest.display());
+            return Ok(());
+        }
+
+        move_or_copy(pasted, &dest);
+        Ok(())
     }
 
     /// Parse and execute the received IPC message.

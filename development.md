@@ -1898,7 +1898,7 @@ Once that's done, it's all. No not implement anything else
       - [x] copy or move in cwd if display::file::whatever & focus & same mount point, otherwize ?
       - [ ] pasting into same dir does nothing
       - [x] insert text in menus with input
-      - [ ] refactor
+      - [x] refactor
     - [ ] what about urls ?
 
 - **NO MORE FEATURES** it's enough for v0.2.1

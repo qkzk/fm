@@ -447,3 +447,52 @@ pub fn update_zoxide<P: AsRef<Path>>(path: P) -> Result<()> {
     }
     Ok(())
 }
+
+/// Append source filename to dest.
+pub fn build_dest_path(source: &Path, mut dest: PathBuf) -> Option<PathBuf> {
+    let filename = source.file_name()?;
+    dest.push(filename);
+    Some(dest)
+}
+
+/// Move if possible else copy.
+/// If both source & dest share the same mount point, source will be copied to dest.
+/// Only the last element of source will be copied / move.
+/// It should never fail.
+pub fn move_or_copy(source: &Path, dest: &Path) {
+    match std::fs::rename(source, dest) {
+        Ok(()) => {
+            log_info!(
+                "Moved {source} to {dest}",
+                source = source.display(),
+                dest = dest.display()
+            );
+            return;
+        }
+        Err(error) => {
+            log_info!(
+                "Couldn't move {source} to {dest}: {error:?}",
+                source = source.display(),
+                dest = dest.display()
+            );
+        }
+    }
+
+    // Couldn't move, copy
+    match std::fs::copy(source, dest) {
+        Ok(_) => {
+            log_info!(
+                "Copied {source} to {dest}",
+                source = source.display(),
+                dest = dest.display()
+            )
+        }
+        Err(error) => {
+            log_info!(
+                "Couldn't copy {source} to {dest}: {error:?}",
+                source = source.display(),
+                dest = dest.display()
+            );
+        }
+    };
+}
