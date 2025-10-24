@@ -2243,6 +2243,10 @@ impl Status {
         else {
             return Ok(());
         };
+        if dest == pasted {
+            log_info!("pasted is same directory.");
+            return Ok(());
+        }
         if dest.exists() {
             log_info!("pasted {dest} already exists", dest = dest.display());
             return Ok(());

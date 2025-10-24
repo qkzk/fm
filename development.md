@@ -1896,7 +1896,7 @@ Once that's done, it's all. No not implement anything else
     - [x] detect absolute filetree path  
     - [x] absolute path 
       - [x] copy or move in cwd if display::file::whatever & focus & same mount point, otherwize ?
-      - [ ] pasting into same dir does nothing
+      - [x] pasting into same dir does nothing
       - [x] insert text in menus with input
       - [x] refactor
     - [ ] what about urls ?
