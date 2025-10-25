@@ -19,8 +19,7 @@ use crate::app::{
 };
 use crate::common::{
     build_dest_path, current_username, disk_space, disk_used_by_path, filename_from_path,
-    is_in_path, is_sudo_command, move_or_copy, path_to_string, row_to_window_index,
-    set_current_dir, tilde,
+    is_in_path, is_sudo_command, path_to_string, row_to_window_index, set_current_dir, tilde,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::{ActionMap, FmEvents};
@@ -987,8 +986,17 @@ impl Status {
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
-        let mut sources = self.menu.flagged.content.clone();
+        let sources = self.menu.flagged.content.clone();
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
+        self.cut_or_copy_files(cut_or_copy, sources, dest)
+    }
+
+    fn cut_or_copy_files(
+        &mut self,
+        cut_or_copy: CopyMove,
+        mut sources: Vec<PathBuf>,
+        dest: &Path,
+    ) -> Result<()> {
         if matches!(cut_or_copy, CopyMove::Move) {
             sources = Self::remove_subdir_of_dest(sources, dest);
             if sources.is_empty() {
@@ -1044,6 +1052,7 @@ impl Status {
         for source in sources {
             let filename = filename_from_path(source)?;
             let dest = dest.to_path_buf().join(filename);
+            log_info!("simple_move {source:?} -> {dest:?}");
             match std::fs::rename(source, &dest) {
                 Ok(()) => {
                     log_line!(
@@ -1065,7 +1074,7 @@ impl Status {
         &mut self,
         cut_or_copy: CopyMove,
         sources: Vec<PathBuf>,
-        dest: &PathBuf,
+        dest: &Path,
     ) -> Result<()> {
         let mut must_act_now = true;
         if matches!(cut_or_copy, CopyMove::Copy) {
@@ -1075,7 +1084,7 @@ impl Status {
             }
             self.internal_settings
                 .copy_file_queue
-                .push((sources.to_owned(), dest.clone()));
+                .push((sources.to_owned(), dest.to_path_buf()));
         }
 
         if must_act_now {
@@ -1097,6 +1106,67 @@ impl Status {
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
         self.internal_settings
             .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
+    }
+
+    /// Paste a text into an input box.
+    pub fn paste_input(&mut self, pasted: &str) -> Result<()> {
+        if self.focus.is_file() && self.current_tab().display_mode.is_fuzzy() {
+            let Some(fuzzy) = &mut self.fuzzy else {
+                return Ok(());
+            };
+            fuzzy.input.insert_string(pasted);
+        } else if !self.focus.is_file() && self.current_tab().menu_mode.is_input() {
+            self.menu.input.insert_string(pasted);
+        }
+        Ok(())
+    }
+
+    /// Paste a path a move or copy file in current directory.
+    pub fn paste_pathes(&mut self, pasted: &str) -> Result<()> {
+        for pasted in pasted.split_whitespace() {
+            self.paste_path(pasted)?;
+        }
+        Ok(())
+    }
+
+    fn paste_path(&mut self, pasted: &str) -> Result<()> {
+        // recognize pathes
+        let pasted = Path::new(&pasted);
+        if !pasted.is_absolute() {
+            log_info!("pasted {pasted} isn't absolute.", pasted = pasted.display());
+            return Ok(());
+        }
+        if !pasted.exists() {
+            log_info!("pasted {pasted} doesn't exist.", pasted = pasted.display());
+            return Ok(());
+        }
+        // build dest path
+        let dest = self.current_tab().current_path().to_path_buf();
+        let Some(dest_filename) = build_dest_path(pasted, &dest) else {
+            return Ok(());
+        };
+        if dest_filename == pasted {
+            log_info!("pasted is same directory.");
+            return Ok(());
+        }
+        if dest_filename.exists() {
+            log_info!(
+                "pasted {dest_filename} already exists",
+                dest_filename = dest_filename.display()
+            );
+            return Ok(());
+        }
+        let sources = vec![pasted.to_path_buf()];
+
+        log_info!("pasted copy {sources:?} to {dest:?}");
+        if self.is_simple_move(&CopyMove::Move, &sources, &dest) {
+            self.simple_move(&sources, &dest)
+        } else {
+            self.complex_move(CopyMove::Copy, sources, &dest)
+        }
+        //
+        // move_or_copy(pasted, &dest);
+        // Ok(())
     }
 
     /// Init the fuzzy finder
@@ -2211,49 +2281,6 @@ impl Status {
             };
             self.menu.flagged.toggle(&file.path)
         }
-    }
-
-    /// Paste a text into an input box.
-    pub fn paste_input(&mut self, pasted: &str) -> Result<()> {
-        if self.focus.is_file() && self.current_tab().display_mode.is_fuzzy() {
-            let Some(fuzzy) = &mut self.fuzzy else {
-                return Ok(());
-            };
-            fuzzy.input.insert_string(pasted);
-        } else if !self.focus.is_file() && self.current_tab().menu_mode.is_input() {
-            self.menu.input.insert_string(pasted);
-        }
-        Ok(())
-    }
-
-    /// Paste a path a move or copy file in current directory.
-    pub fn paste_path(&mut self, pasted: &str) -> Result<()> {
-        // recognize pathes
-        let pasted = Path::new(&pasted);
-        if !pasted.is_absolute() {
-            log_info!("pasted {pasted} isn't absolute.", pasted = pasted.display());
-            return Ok(());
-        }
-        if !pasted.exists() {
-            log_info!("pasted {pasted} doesn't exist.", pasted = pasted.display());
-            return Ok(());
-        }
-        // build dest path
-        let Some(dest) = build_dest_path(pasted, self.current_tab().current_path().to_path_buf())
-        else {
-            return Ok(());
-        };
-        if dest == pasted {
-            log_info!("pasted is same directory.");
-            return Ok(());
-        }
-        if dest.exists() {
-            log_info!("pasted {dest} already exists", dest = dest.display());
-            return Ok(());
-        }
-
-        move_or_copy(pasted, &dest);
-        Ok(())
     }
 
     /// Parse and execute the received IPC message.

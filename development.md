@@ -1768,6 +1768,7 @@ Once that's done, it's all. No not implement anything else
 - Color search results (/) with second colors of menu. Search results should be more visible
 - Middle click in fuzzy finder display mode moves to the selected element (same as enter)
 - In tree mode, use Ctrl+Space to toggle flag on the children of a directory
+- pasting a file from a GUI file manager or dragon-drop will move the file in current directory.
 
 ##### Bugfixes
 
@@ -1892,6 +1893,8 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
 - [ ] FEAT: allow files to be dropped by capturing paste.
     dragon-drop & pcmanfm output: absolute filetree path
+    what about urls ? Do nothing
+
     - [x] enable & disable brackedted paste
     - [x] detect absolute filetree path  
     - [x] absolute path 
@@ -1899,7 +1902,7 @@ Once that's done, it's all. No not implement anything else
       - [x] pasting into same dir does nothing
       - [x] insert text in menus with input
       - [x] refactor
-    - [ ] what about urls ?
+      - [ ] Unify with already existant copy/move
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

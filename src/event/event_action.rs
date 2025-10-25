@@ -60,7 +60,7 @@ impl EventAction {
         let pasted = pasted.trim();
         let display_mode = status.current_tab().display_mode;
         if status.focus.is_file() && (display_mode.is_tree() || display_mode.is_directory()) {
-            status.paste_path(pasted)
+            status.paste_pathes(pasted)
         } else {
             status.paste_input(pasted)
         }
