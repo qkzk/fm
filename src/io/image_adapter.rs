@@ -4,6 +4,7 @@ use anyhow::Result;
 use ratatui::layout::Rect;
 
 use crate::common::{is_in_path, UEBERZUG};
+use crate::config::{get_prefered_imager, Imagers, PreferedImager};
 use crate::io::{user_has_x11, InlineImage, Ueberzug};
 use crate::log_info;
 use crate::modes::DisplayedImage;
@@ -34,18 +35,39 @@ impl ImageAdapter {
     /// Else, we check for the executable ueberzug and the X11 capacity,
     /// Else we can't display the image.
     pub fn detect() -> Self {
-        for variable in COMPATIBLES {
-            if var(variable).is_ok() {
-                log_info!("detected Inline Image Protocol compatible terminal from {variable}");
-                return Self::InlineImage(InlineImage::default());
+        let Some(prefered_imager) = get_prefered_imager() else {
+            return Self::Unable;
+        };
+
+        // TODO: refactor & simplify
+        match prefered_imager.imager {
+            Imagers::Disabled => Self::Unable,
+            Imagers::Inline => {
+                for variable in COMPATIBLES {
+                    if var(variable).is_ok() {
+                        log_info!(
+                            "detected Inline Image Protocol compatible terminal from {variable}"
+                        );
+                        return Self::InlineImage(InlineImage::default());
+                    }
+                }
+                if is_in_path(UEBERZUG) && user_has_x11() {
+                    log_info!("detected ueberzug");
+                    Self::Ueberzug(Ueberzug::default())
+                } else {
+                    log_info!("unable to display image");
+                    Self::Unable
+                }
             }
-        }
-        if is_in_path(UEBERZUG) && user_has_x11() {
-            log_info!("detected ueberzug");
-            Self::Ueberzug(Ueberzug::default())
-        } else {
-            log_info!("unable to display image");
-            Self::Unable
+            Imagers::Ueberzug => {
+                if is_in_path(UEBERZUG) && user_has_x11() {
+                    log_info!("detected ueberzug");
+                    Self::Ueberzug(Ueberzug::default())
+                } else {
+                    log_info!("unable to display image");
+                    Self::Unable
+                }
+            }
         }
     }
 }

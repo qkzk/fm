@@ -1903,6 +1903,11 @@ Once that's done, it's all. No not implement anything else
       - [x] insert text in menus with input
       - [x] refactor
       - [ ] Unify with already existant copy/move
+- [ ] FEAT: Configure wether user wants to display images (imgs, pdf, videos)
+  - [x] config : let the user set what he wants. image: {ueberzug|inline|disabled}, defaults to disabled 
+  - [x] parse config, read it before init of display at src/app/displayer.rs
+  - [ ] refactor setting. Don't use oncelock for something read once.
+  - [ ] set fallback previewers for all supported types
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

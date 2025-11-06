@@ -285,3 +285,40 @@ impl SyntectTheme {
         })
     }
 }
+
+#[derive(Default, Debug)]
+pub enum Imagers {
+    #[default]
+    Disabled,
+    Ueberzug,
+    Inline,
+}
+
+/// Name of the syntect theme used.
+#[derive(Debug, Default)]
+pub struct PreferedImager {
+    pub imager: Imagers,
+}
+
+impl PreferedImager {
+    pub fn from_config(path: &str) -> Result<Self> {
+        let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+            crate::log_info!("Couldn't read config file at {path}");
+            return Ok(Self::default());
+        };
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return Ok(Self::default());
+        };
+        let Some(imager) = yaml["imager"].as_str() else {
+            return Ok(Self::default());
+        };
+        crate::log_info!("Config: found imager : {imager}");
+        let imager = match imager {
+            "Ueberzug" => Imagers::Ueberzug,
+            "Inline" => Imagers::Inline,
+            _ => Imagers::Disabled,
+        };
+
+        Ok(Self { imager })
+    }
+}

@@ -19,9 +19,10 @@ use syntect::{
 
 use crate::app::previewer_plugins::{build_plugins, PreviewerPlugin};
 use crate::config::{
-    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, SyntectTheme,
-    MAX_GRADIENT_NORMAL,
+    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, PreferedImager,
+    SyntectTheme, MAX_GRADIENT_NORMAL,
 };
+
 use crate::{
     common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH},
     log_info,
@@ -59,6 +60,12 @@ static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
 static PLUGINS: OnceLock<HashMap<String, PreviewerPlugin>> = OnceLock::new();
 
+static PREFERED_IMAGER: OnceLock<PreferedImager> = OnceLock::new();
+
+pub fn get_prefered_imager() -> Option<&'static PreferedImager> {
+    PREFERED_IMAGER.get()
+}
+
 /// Attach a map of name -> path to the `PLUGINS` static variable.
 pub fn set_previewer_plugins(plugins: HashMap<String, String>) -> Result<()> {
     let _ = PLUGINS.set(build_plugins(plugins));
@@ -78,6 +85,12 @@ pub fn set_syntect_theme() -> Result<()> {
     if !set_syntect_theme_from_config(&config_theme.name) {
         set_syntect_theme_from_source_code()
     }
+    Ok(())
+}
+
+pub fn set_prefered_imager() -> Result<()> {
+    let prefered_imager = PreferedImager::from_config(CONFIG_PATH)?;
+    let _ = PREFERED_IMAGER.set(prefered_imager);
     Ok(())
 }
 
@@ -249,6 +262,7 @@ pub fn set_configurable_static(start_folder: &str, plugins: HashMap<String, Stri
     set_normal_file_colorer()?;
     set_icon_icon_with_metadata()?;
     set_syntect_theme()?;
+    set_prefered_imager()?;
     set_previewer_plugins(plugins)
 }
 
