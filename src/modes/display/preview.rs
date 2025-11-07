@@ -20,15 +20,22 @@ use syntect::{
 use crate::app::previewer_plugins;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, PDFTOTEXT, READELF,
     RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::{get_previewer_plugins, get_syntect_theme};
+use crate::config::{get_prefered_imager, get_previewer_plugins, get_syntect_theme, Imagers};
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
     DisplayedImageBuilder, FileKind, FilterKind, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
+
+fn images_are_enabled() -> bool {
+    let Some(prefered_imager) = get_prefered_imager() else {
+        return false;
+    };
+    !matches!(prefered_imager.imager, Imagers::Disabled)
+}
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -127,22 +134,23 @@ impl ExtensionKind {
 impl std::fmt::Display for ExtensionKind {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Archive   => write!(f, "archive"),
-            Self::Image     => write!(f, "image"),
-            Self::Audio     => write!(f, "audio"),
-            Self::Video     => write!(f, "video"),
-            Self::Font      => write!(f, "font"),
-            Self::Sevenz    => write!(f, "7zip"),
-            Self::Svg       => write!(f, "svg"),
-            Self::Pdf       => write!(f, "pdf"),
-            Self::Iso       => write!(f, "iso"),
-            Self::Notebook  => write!(f, "notebook"),
-            Self::Office    => write!(f, "office"),
-            Self::Epub      => write!(f, "epub"),
-            Self::Torrent   => write!(f, "torrent"),
-            Self::Default   => write!(f, "default"),
-        }
+        let repr = match self {
+            Self::Archive   => "archive",
+            Self::Image     => "image",
+            Self::Audio     => "audio",
+            Self::Video     => "video",
+            Self::Font      => "font",
+            Self::Sevenz    => "7zip",
+            Self::Svg       => "svg",
+            Self::Pdf       => "pdf",
+            Self::Iso       => "iso",
+            Self::Notebook  => "notebook",
+            Self::Office    => "office",
+            Self::Epub      => "epub",
+            Self::Torrent   => "torrent",
+            Self::Default   => "default",
+        };
+        write!(f, "{}", repr)
     }
 }
 
@@ -306,7 +314,10 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            _ if kind.is_image_kind() && kind.has_programs() => Self::image(&self.path, kind),
+            _ if kind.is_image_kind() && kind.has_programs() && images_are_enabled() => {
+                Self::image(&self.path, kind)
+            }
+            _ if kind.is_image_kind() => Self::text_image(&self.path, kind),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -321,6 +332,21 @@ impl PreviewBuilder {
         } else {
             Ok(Preview::Image(preview))
         }
+    }
+
+    fn text_image(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+        let preview = match kind {
+            ExtensionKind::Image | ExtensionKind::Video if is_in_path(MEDIAINFO) => {
+                Preview::Text(Text::media_content(path)?)
+            }
+            ExtensionKind::Pdf if is_in_path(PDFTOTEXT) => Preview::Text(Text::pdf_text(path)?),
+            ExtensionKind::Office if is_in_path(LIBREOFFICE) => {
+                Preview::Text(Text::office_text(path)?)
+            }
+            ExtensionKind::Font | ExtensionKind::Svg => Preview::Binary(BinaryContent::new(path)?),
+            _ => Preview::Empty,
+        };
+        Ok(preview)
     }
 
     fn socket(&self) -> Result<Preview> {
@@ -455,6 +481,8 @@ pub enum TextKind {
     Iso,
     Log,
     Mediacontent,
+    Office,
+    Pdf,
     Plugin,
     Sevenz,
     Socket,
@@ -476,7 +504,9 @@ impl TextKind {
             Self::Iso => "Iso",
             Self::Log => "Log",
             Self::Plugin => "a text",
+            Self::Office => "a doc",
             Self::Mediacontent => "a media content",
+            Self::Pdf => "a pdf",
             Self::Sevenz => "a 7z archive",
             Self::Socket => "a Socket file",
             Self::Torrent => "a torrent",
@@ -586,6 +616,18 @@ impl Text {
             TextKind::Mediacontent,
             MEDIAINFO,
             &[path_to_string(&path).as_str()],
+        )
+    }
+
+    fn pdf_text(path: &Path) -> Result<Self> {
+        Self::from_command_output(TextKind::Pdf, PDFTOTEXT, &[path_to_string(&path).as_str()])
+    }
+
+    fn office_text(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::Office,
+            LIBREOFFICE,
+            &["--cat", path_to_string(&path).as_str()],
         )
     }
 

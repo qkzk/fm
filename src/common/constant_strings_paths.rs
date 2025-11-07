@@ -250,8 +250,10 @@ pub const TRANSMISSION_SHOW: &str = "transmission-show";
 pub const ZOXIDE: &str = "zoxide";
 /// pdftoppm
 pub const PDFTOPPM: &str = "pdftoppm";
-/// pdinfo
+/// pdfinfo
 pub const PDFINFO: &str = "pdfinfo";
+/// pdftotext
+pub const PDFTOTEXT: &str = "pdftotext";
 /// readelf
 pub const READELF: &str = "readelf";
 /// default nerdfont icon used for directories.

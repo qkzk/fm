@@ -4,7 +4,7 @@ use anyhow::Result;
 use ratatui::layout::Rect;
 
 use crate::common::{is_in_path, UEBERZUG};
-use crate::config::{get_prefered_imager, Imagers, PreferedImager};
+use crate::config::{get_prefered_imager, Imagers};
 use crate::io::{user_has_x11, InlineImage, Ueberzug};
 use crate::log_info;
 use crate::modes::DisplayedImage;
@@ -51,23 +51,19 @@ impl ImageAdapter {
                         return Self::InlineImage(InlineImage::default());
                     }
                 }
-                if is_in_path(UEBERZUG) && user_has_x11() {
-                    log_info!("detected ueberzug");
-                    Self::Ueberzug(Ueberzug::default())
-                } else {
-                    log_info!("unable to display image");
-                    Self::Unable
-                }
+                Self::try_ueberzug()
             }
-            Imagers::Ueberzug => {
-                if is_in_path(UEBERZUG) && user_has_x11() {
-                    log_info!("detected ueberzug");
-                    Self::Ueberzug(Ueberzug::default())
-                } else {
-                    log_info!("unable to display image");
-                    Self::Unable
-                }
-            }
+            Imagers::Ueberzug => Self::try_ueberzug(),
+        }
+    }
+
+    fn try_ueberzug() -> Self {
+        if is_in_path(UEBERZUG) && user_has_x11() {
+            log_info!("detected ueberzug");
+            Self::Ueberzug(Ueberzug::default())
+        } else {
+            log_info!("unable to display image");
+            Self::Unable
         }
     }
 }
