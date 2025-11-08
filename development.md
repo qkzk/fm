@@ -1769,6 +1769,7 @@ Once that's done, it's all. No not implement anything else
 - Middle click in fuzzy finder display mode moves to the selected element (same as enter)
 - In tree mode, use Ctrl+Space to toggle flag on the children of a directory
 - pasting a file from a GUI file manager or dragon-drop will move the file in current directory.
+- Disable images previewing from arguments or config files
 
 ##### Bugfixes
 
@@ -1907,6 +1908,7 @@ Once that's done, it's all. No not implement anything else
   - [x] config : let the user set what he wants. image: {ueberzug|inline|disabled}, defaults to disabled 
   - [x] parse config, read it before init of display at src/app/displayer.rs
   - [x] set fallback previewers for all supported types
+  - [x] arg
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

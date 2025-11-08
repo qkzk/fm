@@ -39,7 +39,6 @@ impl ImageAdapter {
             return Self::Unable;
         };
 
-        // TODO: refactor & simplify
         match prefered_imager.imager {
             Imagers::Disabled => Self::Unable,
             Imagers::Inline => {

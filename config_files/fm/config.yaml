@@ -18,6 +18,11 @@ icon_with_metadata: false
 # you can find more themes here : https://github.com/filmgirl/textmate-themes
 syntect_theme: monokai
 
+# Prefered imager.
+# Ueberzug : display images using Ueberzug (requires Ueberzug to be installed)
+# Inline : display images using iTerm2 images protocol (requires a compatible terminal emulator like Wezzterm)
+# Disabled (or anything else) : disable image previewing.
+imager: Ueberzug
 # configurable colors
 
 # Colors for "non normal" files. The list is below.

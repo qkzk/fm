@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::{fs::File, path};
 
 use anyhow::Result;
+use clap::Parser;
 use ratatui::style::{Color, Style};
 use serde_yml::{from_reader, Value};
 
 use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
 use crate::config::{make_default_config_files, Bindings, ColorG};
+use crate::io::Args;
 use crate::log_info;
 
 /// Holds every configurable aspect of the application.
@@ -302,6 +304,9 @@ pub struct PreferedImager {
 
 impl PreferedImager {
     pub fn from_config(path: &str) -> Result<Self> {
+        if Args::parse().disable_images {
+            return Ok(Self::default());
+        }
         let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
             crate::log_info!("Couldn't read config file at {path}");
             return Ok(Self::default());
