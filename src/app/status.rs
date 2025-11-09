@@ -2147,6 +2147,25 @@ impl Status {
         self.filter()
     }
 
+    pub fn open_picker(&mut self) -> Result<()> {
+        if self.menu.input_history.filtered_is_empty() {
+            return Ok(());
+        }
+        let menu = self.current_tab().menu_mode;
+        let content = self.menu.input_history.filtered_as_list();
+        let name = menu
+            .to_string()
+            .split(':')
+            .next()
+            .unwrap_or_default()
+            .to_string();
+        self.menu
+            .picker
+            .set(Some(PickerCaller::Menu(menu)), Some(name), content);
+
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Picker))
+    }
+
     /// Load the selected cloud configuration file from the config folder and open navigation the menu.
     pub fn cloud_load_config(&mut self) -> Result<()> {
         let Some(picked) = self.menu.picker.selected() else {

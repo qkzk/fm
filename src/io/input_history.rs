@@ -127,6 +127,17 @@ impl InputHistory {
                 | Menu::NeedConfirmation(_)
         )
     }
+
+    pub fn filtered_as_list(&self) -> Vec<String> {
+        self.filtered
+            .iter()
+            .map(|elt| elt.content.clone())
+            .collect()
+    }
+
+    pub fn filtered_is_empty(&self) -> bool {
+        self.filtered.is_empty()
+    }
 }
 
 /// Different kind of histories, depending of the menu_mode.

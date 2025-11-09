@@ -1270,10 +1270,10 @@ impl<'a> Menu<'a> {
         let selectable = &self.status.menu.picker;
         selectable.draw_menu(f, rect, &self.status.menu.window);
         if let Some(desc) = &selectable.desc {
-            let p_rect = rect.offseted(2, 1);
+            let p_rect = rect.offseted(10, 0);
             Span::styled(
                 desc,
-                MENU_STYLES.get().expect("Menu colors should be set").second,
+                MENU_STYLES.get().expect("Menu colors should be set").first,
             )
             .render(p_rect, f.buffer_mut());
         }

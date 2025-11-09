@@ -56,6 +56,12 @@ impl EventDispatcher {
             } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
                 self.menu_char_key_matcher(status, c)?
             }
+            KeyEvent {
+                code: KeyCode::Char('h'),
+                modifiers: KeyModifiers::ALT,
+                kind: _,
+                state: _,
+            } if !status.focus.is_file() => status.open_picker()?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())

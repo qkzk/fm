@@ -370,6 +370,7 @@ impl Menu {
         matches!(self, Self::Navigate(_))
     }
 
+    /// True iff the menu requires an input aka InputSimple or InputCompleted.
     pub fn is_input(&self) -> bool {
         matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
     }

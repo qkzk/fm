@@ -1,10 +1,12 @@
 use crate::io::DrawMenu;
+use crate::modes::Menu;
 use crate::{impl_content, impl_selectable};
 
 /// Which part of fm asked a picker ?
 /// Only cloud uses a picker atm.
 pub enum PickerCaller {
     Cloud,
+    Menu(Menu),
     Unknown,
 }
 

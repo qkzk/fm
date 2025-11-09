@@ -259,6 +259,67 @@ impl EventAction {
         Ok(())
     }
 
+    // TODO: rename, refactor. Associate an "enter" function to each mode ? use it everywhere possible
+    pub fn enter_menu(status: &mut Status, menu: Menu) -> Result<()> {
+        let picked = status
+            .menu
+            .picker
+            .content
+            .get(status.menu.picker.index)
+            .cloned();
+        match menu {
+            Menu::InputCompleted(InputCompleted::Cd) => Self::cd(status),
+            Menu::InputCompleted(InputCompleted::Search) => Self::search(status),
+            Menu::InputCompleted(InputCompleted::Exec) => Self::exec(status),
+            Menu::InputCompleted(InputCompleted::Action) => Self::action(status),
+            Menu::InputSimple(InputSimple::Rename) => Self::rename(status),
+            Menu::InputSimple(InputSimple::Chmod) => Self::chmod(status),
+            Menu::InputSimple(InputSimple::Newfile) => Self::new_file(status),
+            Menu::InputSimple(InputSimple::Newdir) => Self::new_dir(status),
+            Menu::InputSimple(InputSimple::RegexMatch) => Self::regex_match(status),
+            Menu::InputSimple(InputSimple::Sort) => Self::sort(status),
+            Menu::InputSimple(InputSimple::Filter) => Self::filter(status),
+            Menu::InputSimple(InputSimple::SetNvimAddr) => Self::set_nvim_server(status),
+            Menu::InputSimple(InputSimple::Password(_mount_action, _usage)) => Ok(()),
+            Menu::InputSimple(InputSimple::ShellCommand) => Self::shell_command(status),
+            Menu::InputSimple(InputSimple::Remote) => Self::remote_mount(status),
+            Menu::InputSimple(InputSimple::CloudNewdir) => status.cloud_enter_newdir_mode(),
+            Menu::Navigate(Navigate::History) => Self::history(status),
+            Menu::Navigate(Navigate::Shortcut) => Self::shortcut(status),
+            Menu::Navigate(Navigate::Trash) => Self::trash_open(status),
+            Menu::Navigate(Navigate::Marks(markaction)) => match markaction {
+                MarkAction::Jump => Self::marks_jump(status),
+                MarkAction::New => Self::marks_new(status),
+            },
+            Menu::Navigate(Navigate::TempMarks(markaction)) => match markaction {
+                MarkAction::Jump => Self::temp_marks_jump(status),
+                MarkAction::New => Self::temp_marks_new(status),
+            },
+            Menu::Navigate(Navigate::Mount) => Self::mount(status),
+            Menu::Navigate(Navigate::Picker) => Ok(()),
+            Menu::Navigate(Navigate::Compress) => Self::compress(status),
+            Menu::Navigate(Navigate::TuiApplication) => Self::tui_menu(status),
+            Menu::Navigate(Navigate::CliApplication) => Self::cli_menu(status),
+            Menu::Navigate(Navigate::Context) => Self::context(status),
+            Menu::Navigate(Navigate::Cloud) => Self::cloud_drive(status),
+            Menu::Navigate(Navigate::Flagged) => Self::display_flagged(status),
+            Menu::NeedConfirmation(NeedConfirmation::Copy) => Self::copy_paste(status),
+            Menu::NeedConfirmation(NeedConfirmation::Delete) => Self::delete_file(status),
+            Menu::NeedConfirmation(NeedConfirmation::DeleteCloud) => {
+                status.cloud_enter_delete_mode()
+            }
+            Menu::NeedConfirmation(NeedConfirmation::Move) => Self::cut_paste(status),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => Self::bulk(status),
+            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => Self::trash_empty(status),
+            Menu::Nothing => Ok(()),
+        }?;
+
+        if menu.is_input() && picked.is_some() {
+            status.menu.input.replace(&picked.context("bla")?)
+        }
+        Ok(())
+    }
+
     /// Enter the rename mode.
     /// Keep a track of the current mode to ensure we rename the correct file.
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,

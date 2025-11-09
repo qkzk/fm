@@ -1909,11 +1909,18 @@ Once that's done, it's all. No not implement anything else
   - [x] parse config, read it before init of display at src/app/displayer.rs
   - [x] set fallback previewers for all supported types
   - [x] arg
+- [ ] FEAT: history picker for previous input
+  - [x] common entry point for entering a menu
+  - [x] read picked & replace input
+  - [x] alt+h in a menu (never used ?) opens the picker
+  - [x] picker for each mode with a callback
+  - [ ] refactor the callback
+  - [ ] completion
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
   - [ ] remove non working 
-  - [ ] test everything again 
+  - [ ] test everything again" "
   - [ ] script for testing using new socket ?
   - [ ] documentation 
   - [ ] closing & publishing 
@@ -1924,6 +1931,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
 - [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
