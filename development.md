@@ -1917,7 +1917,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor the callback
   - [x] completion
   - [x] Esc should set back to menu not leave it
-  - [ ] use Picker(Menu) instead of recording a picker caller
+- [x] FIX: starting path isn't alway added to history
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

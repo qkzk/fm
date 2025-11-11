@@ -137,7 +137,7 @@ impl Tab {
         let menu_mode = Menu::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
-        let history = History::default();
+        let history = History::new(path);
         let search = Search::empty();
         let index = directory.select_file(path);
         let tree = Tree::default();
