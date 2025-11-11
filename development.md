@@ -1918,6 +1918,7 @@ Once that's done, it's all. No not implement anything else
   - [x] completion
   - [x] Esc should set back to menu not leave it
 - [x] FIX: starting path isn't alway added to history
+- [x] FEAT: bind alt+- to open history. '-' is used to go back.
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

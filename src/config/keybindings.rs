@@ -325,8 +325,9 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::ALT), ActionMap::TrashEmpty),
             (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
+            (KeyEvent::new(KeyCode::Char('-'),    KeyModifiers::ALT), ActionMap::History),
 
-            (KeyEvent::new(KeyCode::Tab,          KeyModifiers::ALT),  ActionMap::ResetMode),
+            (KeyEvent::new(KeyCode::Tab,          KeyModifiers::ALT), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
