@@ -17,8 +17,8 @@ use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, ContentWindow,
     Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, PreviewBuilder, Search,
-    Selectable,
+    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, PreviewBuilder, ReEnterMenu,
+    Search, Selectable,
 };
 
 /// Links events from ratatui to custom actions.
@@ -267,53 +267,7 @@ impl EventAction {
             .content
             .get(status.menu.picker.index)
             .cloned();
-        match menu {
-            Menu::InputCompleted(InputCompleted::Cd) => Self::cd(status),
-            Menu::InputCompleted(InputCompleted::Search) => Self::search(status),
-            Menu::InputCompleted(InputCompleted::Exec) => Self::exec(status),
-            Menu::InputCompleted(InputCompleted::Action) => Self::action(status),
-            Menu::InputSimple(InputSimple::Rename) => Self::rename(status),
-            Menu::InputSimple(InputSimple::Chmod) => Self::chmod(status),
-            Menu::InputSimple(InputSimple::Newfile) => Self::new_file(status),
-            Menu::InputSimple(InputSimple::Newdir) => Self::new_dir(status),
-            Menu::InputSimple(InputSimple::RegexMatch) => Self::regex_match(status),
-            Menu::InputSimple(InputSimple::Sort) => Self::sort(status),
-            Menu::InputSimple(InputSimple::Filter) => Self::filter(status),
-            Menu::InputSimple(InputSimple::SetNvimAddr) => Self::set_nvim_server(status),
-            Menu::InputSimple(InputSimple::Password(_mount_action, _usage)) => Ok(()),
-            Menu::InputSimple(InputSimple::ShellCommand) => Self::shell_command(status),
-            Menu::InputSimple(InputSimple::Remote) => Self::remote_mount(status),
-            Menu::InputSimple(InputSimple::CloudNewdir) => Self::cloud_enter_newdir_mode(status),
-            Menu::Navigate(Navigate::History) => Self::history(status),
-            Menu::Navigate(Navigate::Shortcut) => Self::shortcut(status),
-            Menu::Navigate(Navigate::Trash) => Self::trash_open(status),
-            Menu::Navigate(Navigate::Marks(markaction)) => match markaction {
-                MarkAction::Jump => Self::marks_jump(status),
-                MarkAction::New => Self::marks_new(status),
-            },
-            Menu::Navigate(Navigate::TempMarks(markaction)) => match markaction {
-                MarkAction::Jump => Self::temp_marks_jump(status),
-                MarkAction::New => Self::temp_marks_new(status),
-            },
-            Menu::Navigate(Navigate::Mount) => Self::mount(status),
-            Menu::Navigate(Navigate::Picker) => Ok(()),
-            Menu::Navigate(Navigate::Compress) => Self::compress(status),
-            Menu::Navigate(Navigate::TuiApplication) => Self::tui_menu(status),
-            Menu::Navigate(Navigate::CliApplication) => Self::cli_menu(status),
-            Menu::Navigate(Navigate::Context) => Self::context(status),
-            Menu::Navigate(Navigate::Cloud) => Self::cloud_drive(status),
-            Menu::Navigate(Navigate::Flagged) => Self::display_flagged(status),
-            Menu::NeedConfirmation(NeedConfirmation::Copy) => Self::copy_paste(status),
-            Menu::NeedConfirmation(NeedConfirmation::Delete) => Self::delete_file(status),
-            Menu::NeedConfirmation(NeedConfirmation::DeleteCloud) => {
-                Self::cloud_enter_delete_mode(status)
-            }
-            Menu::NeedConfirmation(NeedConfirmation::Move) => Self::cut_paste(status),
-            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => Self::bulk(status),
-            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => Self::trash_empty(status),
-            Menu::Nothing => Ok(()),
-        }?;
-
+        menu.reenter(status)?;
         if should_complete && menu.is_input() && picked.is_some() {
             status.menu.input.replace(&picked.context("bla")?);
             if let Menu::InputCompleted(input_completed) = menu {

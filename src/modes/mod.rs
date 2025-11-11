@@ -19,5 +19,6 @@ pub use fs::*;
 pub use menu::*;
 pub use mode::{
     CursorOffset, Display, InputSimple, Leave, MarkAction, Menu, Navigate, NeedConfirmation,
+    ReEnterMenu,
 };
 pub use utils::*;
