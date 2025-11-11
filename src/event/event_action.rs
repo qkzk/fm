@@ -260,7 +260,7 @@ impl EventAction {
     }
 
     // TODO: rename, refactor. Associate an "enter" function to each mode ? use it everywhere possible
-    pub fn enter_menu(status: &mut Status, menu: Menu) -> Result<()> {
+    pub fn reenter_menu(status: &mut Status, menu: Menu, should_complete: bool) -> Result<()> {
         let picked = status
             .menu
             .picker
@@ -283,7 +283,7 @@ impl EventAction {
             Menu::InputSimple(InputSimple::Password(_mount_action, _usage)) => Ok(()),
             Menu::InputSimple(InputSimple::ShellCommand) => Self::shell_command(status),
             Menu::InputSimple(InputSimple::Remote) => Self::remote_mount(status),
-            Menu::InputSimple(InputSimple::CloudNewdir) => status.cloud_enter_newdir_mode(),
+            Menu::InputSimple(InputSimple::CloudNewdir) => Self::cloud_enter_newdir_mode(status),
             Menu::Navigate(Navigate::History) => Self::history(status),
             Menu::Navigate(Navigate::Shortcut) => Self::shortcut(status),
             Menu::Navigate(Navigate::Trash) => Self::trash_open(status),
@@ -306,7 +306,7 @@ impl EventAction {
             Menu::NeedConfirmation(NeedConfirmation::Copy) => Self::copy_paste(status),
             Menu::NeedConfirmation(NeedConfirmation::Delete) => Self::delete_file(status),
             Menu::NeedConfirmation(NeedConfirmation::DeleteCloud) => {
-                status.cloud_enter_delete_mode()
+                Self::cloud_enter_delete_mode(status)
             }
             Menu::NeedConfirmation(NeedConfirmation::Move) => Self::cut_paste(status),
             Menu::NeedConfirmation(NeedConfirmation::BulkAction) => Self::bulk(status),
@@ -314,8 +314,11 @@ impl EventAction {
             Menu::Nothing => Ok(()),
         }?;
 
-        if menu.is_input() && picked.is_some() {
-            status.menu.input.replace(&picked.context("bla")?)
+        if should_complete && menu.is_input() && picked.is_some() {
+            status.menu.input.replace(&picked.context("bla")?);
+            if let Menu::InputCompleted(input_completed) = menu {
+                status.complete(input_completed)?;
+            }
         }
         Ok(())
     }
@@ -1646,6 +1649,13 @@ impl EventAction {
         status.cloud_open()
     }
 
+    pub fn cloud_enter_newdir_mode(status: &mut Status) -> Result<()> {
+        status.cloud_enter_newdir_mode()
+    }
+
+    pub fn cloud_enter_delete_mode(status: &mut Status) -> Result<()> {
+        status.cloud_enter_delete_mode()
+    }
     /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)

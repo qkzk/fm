@@ -374,6 +374,10 @@ impl Menu {
     pub fn is_input(&self) -> bool {
         matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
     }
+
+    pub fn is_complete(&self) -> bool {
+        matches!(self, Self::InputCompleted(_))
+    }
 }
 
 impl CursorOffset for Menu {

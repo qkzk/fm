@@ -60,7 +60,11 @@ impl InputHistory {
             .iter()
             .filter(|elem| elem.kind == kind)
             .map(|elem| elem.to_owned())
-            .collect()
+            .collect();
+        crate::log_info!(
+            "input history filtered for {menu_mode} has {len} elts",
+            len = self.filtered.len()
+        );
     }
 
     pub fn prev(&mut self) {

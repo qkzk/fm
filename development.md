@@ -1915,7 +1915,8 @@ Once that's done, it's all. No not implement anything else
   - [x] alt+h in a menu (never used ?) opens the picker
   - [x] picker for each mode with a callback
   - [ ] refactor the callback
-  - [ ] completion
+  - [x] completion
+  - [x] Esc should set back to menu not leave it
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 

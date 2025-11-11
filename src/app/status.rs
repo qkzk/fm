@@ -22,7 +22,7 @@ use crate::common::{
     is_in_path, is_sudo_command, path_to_string, row_to_window_index, set_current_dir, tilde,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
-use crate::event::{ActionMap, FmEvents};
+use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
     execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
@@ -517,7 +517,18 @@ impl Status {
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
+    /// If the menu is a picker for input history, it will reenter the caller menu.
+    /// Example: Menu CD -> History of CDs <Esc> -> Menu CD
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
+        if matches!(
+            self.current_tab().menu_mode,
+            Menu::Navigate(Navigate::Picker)
+        ) {
+            if let Some(PickerCaller::Menu(menu)) = self.menu.picker.caller {
+                EventAction::reenter_menu(self, menu, false)?;
+                return Ok(false);
+            }
+        }
         self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
         self.set_menu_mode(self.index, Menu::Nothing)?;

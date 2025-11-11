@@ -211,9 +211,9 @@ impl EventDispatcher {
             }
 
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
-            Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
+            Navigate::Cloud if c == 'd' => EventAction::cloud_enter_newdir_mode(status),
             Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
-            Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
+            Navigate::Cloud if c == 'x' => EventAction::cloud_enter_delete_mode(status),
             Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
 
             Navigate::Flagged if c == 'u' => {
