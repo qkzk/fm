@@ -1919,6 +1919,7 @@ Once that's done, it's all. No not implement anything else
   - [x] Esc should set back to menu not leave it
 - [x] FIX: starting path isn't alway added to history
 - [x] FEAT: bind alt+- to open history. '-' is used to go back.
+- [x] FIX: Ctrl+s (aka grep) doesn't update the preview
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
@@ -1934,6 +1935,10 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
+  Only show first 3 non directory children then replace the display by "xx unlisted"
+- [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
+- [ ] FEAT: configurable tree depth
 - [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
 - [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back

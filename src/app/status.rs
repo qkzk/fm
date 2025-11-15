@@ -766,7 +766,11 @@ impl Status {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
         if left_tab.display_mode.is_fuzzy() {
-            FileInfo::new(Path::new(&self.fuzzy_current_selection()?), users).ok()
+            FileInfo::new(
+                Path::new(&parse_line_output(&self.fuzzy_current_selection()?).ok()?),
+                users,
+            )
+            .ok()
         } else if self.focus.is_left_menu() {
             self.fileinfo_from_navigate(left_tab, users)
         } else {

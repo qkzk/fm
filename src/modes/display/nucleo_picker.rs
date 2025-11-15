@@ -155,7 +155,7 @@ where
     /// True iff a preview should be built for this fuzzy finder.
     /// It only makes sense to preview files not lines nor actions.
     pub fn should_preview(&self) -> bool {
-        matches!(self.kind, FuzzyKind::File)
+        matches!(self.kind, FuzzyKind::File | FuzzyKind::Line)
     }
 
     /// Get an [`Injector`] from the internal [`Nucleo`] instance.
@@ -384,7 +384,7 @@ impl FuzzyFinder<String> {
 /// Parse a line output from the fuzzy finder.
 pub fn parse_line_output(item: &str) -> Result<PathBuf> {
     Ok(canonicalize(PathBuf::from(
-        item.split_once(':').unwrap_or(("", "")).0.to_owned(),
+        item.split(':').next().unwrap_or_default(),
     ))?)
 }
 
