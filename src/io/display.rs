@@ -686,12 +686,16 @@ impl<'a> TreeDisplay<'a> {
     ) -> Result<Line<'b>> {
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, users)?;
-        let mut style = fileinfo.style();
+        let mut style = if line_builder.listed {
+            fileinfo.style()
+        } else {
+            Style::new().fg(Color::Blue)
+        };
         Self::reverse_flagged(line_builder, &mut style);
         Self::color_searched(status, &fileinfo, &mut style);
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
-            Self::metadata(&fileinfo, formater, style),
+            Self::metadata(&fileinfo, formater, style, line_builder.listed),
             Self::prefix(line_builder),
             Self::whitespaces(status, path, with_offset),
             Self::filename(line_builder, with_icon, style),
@@ -730,8 +734,17 @@ impl<'a> TreeDisplay<'a> {
         }
     }
 
-    fn metadata<'b>(fileinfo: &FileInfo, formater: &Formater, style: Style) -> Span<'b> {
-        Span::styled(formater(fileinfo, (6, 6)), style)
+    fn metadata<'b>(
+        fileinfo: &FileInfo,
+        formater: &Formater,
+        style: Style,
+        not_empty: bool,
+    ) -> Span<'b> {
+        let mut content = formater(fileinfo, (6, 6));
+        if !not_empty {
+            content = " ".repeat(content.len())
+        };
+        Span::styled(content, style)
     }
 
     fn prefix(line_builder: &TLine) -> Span {

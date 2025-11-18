@@ -12,6 +12,8 @@ use crate::modes::{
     files_collection, ContentWindow, FileInfo, FilterKind, Flagged, Icon, SortKind, ToPath, Users,
 };
 
+const MAX_LISTED: usize = 5;
+
 /// An element of a tree.
 /// It's a file/directory, some optional children.
 /// A Node knows if it's folded or selected.
@@ -25,6 +27,7 @@ pub struct Node {
     folded: bool,
     selected: bool,
     reachable: bool,
+    listed: bool,
 }
 
 impl Node {
@@ -40,6 +43,7 @@ impl Node {
             folded: false,
             selected: false,
             reachable: true,
+            listed: true,
         }
     }
 
@@ -235,12 +239,12 @@ impl<'a> NodesBuilder<'a> {
 
     #[inline]
     fn build(self) -> HashMap<Arc<Path>, Node> {
-        let mut stack = vec![self.root_path.to_owned()];
+        let mut stack = vec![(self.root_path.to_owned(), true)];
         let mut nodes = HashMap::new();
         let mut last_path = self.root_path.to_owned();
         let mut index = 0;
 
-        while let Some(current_path) = stack.pop() {
+        while let Some((current_path, listed)) = stack.pop() {
             let current_depth = current_path.depth();
             if self.current_is_too_deep(current_depth) {
                 continue;
@@ -250,7 +254,8 @@ impl<'a> NodesBuilder<'a> {
             } else {
                 None
             };
-            let current_node = Node::new(&current_path, children, &last_path, index);
+            let mut current_node = Node::new(&current_path, children, &last_path, index);
+            current_node.listed = listed;
             self.set_next_for_last(&mut nodes, &current_path, &last_path);
             last_path = current_path.clone();
             nodes.insert(current_path.clone(), current_node);
@@ -298,7 +303,7 @@ impl<'a> NodesBuilder<'a> {
     #[inline]
     fn create_children(
         &self,
-        stack: &mut Vec<Arc<Path>>,
+        stack: &mut Vec<(Arc<Path>, bool)>,
         current_path: &Path,
     ) -> Option<Vec<Arc<Path>>> {
         if let Some(mut files) = files_collection(
@@ -319,13 +324,17 @@ impl<'a> NodesBuilder<'a> {
 
     #[inline]
     fn make_children_and_stack_them(
-        stack: &mut Vec<Arc<Path>>,
+        stack: &mut Vec<(Arc<Path>, bool)>,
         files: &[FileInfo],
     ) -> Vec<Arc<Path>> {
         files
             .iter()
-            .map(|fileinfo| fileinfo.path.clone())
-            .inspect(|path| stack.push(path.clone()))
+            .enumerate()
+            .map(|(index, fileinfo)| (index, fileinfo.path.clone()))
+            .inspect(|(index, path)| {
+                stack.push((path.clone(), (*index < MAX_LISTED || path.is_dir())))
+            })
+            .map(|(_, path)| path)
             .collect()
     }
 }
@@ -390,6 +399,7 @@ impl<'a> TreeLinesBuilder<'a> {
         let mut stack = vec![("".to_owned(), self.root_path.clone())];
         let mut lines = vec![];
         let mut index = 0;
+        let mut is_listing: bool = true;
 
         while let Some((prefix, path)) = stack.pop() {
             let Some(node) = self.nodes.get(&path) else {
@@ -400,7 +410,16 @@ impl<'a> TreeLinesBuilder<'a> {
                 index = lines.len();
             }
 
-            lines.push(TLine::new(&prefix, node, &path));
+            if node.listed && !is_listing {
+                is_listing = true;
+            } else if !node.listed && is_listing {
+                // TODO: push something else
+                is_listing = false;
+                lines.push(TLine::new(&prefix, node, &path, false))
+            }
+            if is_listing {
+                lines.push(TLine::new(&prefix, node, &path, true));
+            }
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
@@ -488,11 +507,12 @@ pub struct TLine {
     prefix: Arc<str>,
     pub path: Arc<Path>,
     pub is_selected: bool,
+    pub listed: bool,
 }
 
 impl TLine {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
-    fn new(prefix: &str, node: &Node, path: &Path) -> Self {
+    fn new(prefix: &str, node: &Node, path: &Path, listed: bool) -> Self {
         // required for some edge cases when opening the tree while "." is the selected file
         let is_selected = node.selected();
         let prefix = Arc::from(prefix);
@@ -504,12 +524,17 @@ impl TLine {
             prefix,
             path,
             is_selected,
+            listed,
         }
     }
 
     /// Formated filename
     pub fn filename(&self, with_icon: bool) -> String {
-        filename_format(&self.path, self.folded, with_icon)
+        if self.listed {
+            filename_format(&self.path, self.folded, with_icon)
+        } else {
+            "more...".to_string()
+        }
     }
 
     /// Vertical bar displayed before the filename to show
@@ -673,7 +698,10 @@ impl Tree {
                 let Some(next_node) = self.nodes.get(next_path) else {
                     return self.root_path.clone();
                 };
-                if next_node.reachable && !self.node_has_parent_folded(next_node) {
+                if next_node.reachable
+                    && !self.node_has_parent_folded(next_node)
+                    && next_node.listed
+                {
                     return next_path.to_owned();
                 }
                 current_path = next_path.clone();
@@ -695,7 +723,10 @@ impl Tree {
                 let Some(prev_node) = self.nodes.get(prev_path) else {
                     unreachable!("");
                 };
-                if prev_node.reachable && !self.node_has_parent_folded(prev_node) {
+                if prev_node.reachable
+                    && !self.node_has_parent_folded(prev_node)
+                    && prev_node.listed
+                {
                     return prev_path.to_owned();
                 }
                 current_path = prev_path.to_owned();
