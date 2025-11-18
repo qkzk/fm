@@ -1920,6 +1920,30 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: starting path isn't alway added to history
 - [x] FEAT: bind alt+- to open history. '-' is used to go back.
 - [x] FIX: Ctrl+s (aka grep) doesn't update the preview
+- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
+  Only show first 3 non directory children then replace the display by "xx unlisted"
+
+  2 steps : 
+
+  while creating nodes. 
+  1. Instead of using stack = vec![path] use vec![(path, is_listed)]
+      while creating children, run a counter and store false once its reached 
+  2. When creating the lines, don't when the first "non listed" is met, add a string instead.
+
+  requires a lot of changes. 
+
+  The basic idea is to iterate over the nodes and count how much normal files per directory should be listed.
+  We need to alter the first stack (of nodes) to also save a boolean.
+  In the second iteration (creating lines) we stop once the first "non listed" pop and replace this one by a placeholder.
+  
+  When navigating we ensure to skip all non listed.
+
+  PB:
+
+  No way to alter the view (possible ?) to show unlisted 
+  No track of how many aren't listed 
+  The "unlister" or "more..." text is still a treeline, displayed another way...
+- [ ] BUG: big tree moved down and selection is out of screen once again
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
@@ -1935,8 +1959,6 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
-- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
-  Only show first 3 non directory children then replace the display by "xx unlisted"
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
 - [ ] FEAT: configurable tree depth
 - [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
