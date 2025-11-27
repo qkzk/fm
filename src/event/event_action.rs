@@ -269,7 +269,10 @@ impl EventAction {
             .cloned();
         menu.reenter(status)?;
         if should_complete && menu.is_input() && picked.is_some() {
-            status.menu.input.replace(&picked.context("bla")?);
+            status
+                .menu
+                .input
+                .replace(&picked.context("Picker shouldn't be empty")?);
             if let Menu::InputCompleted(input_completed) = menu {
                 status.complete(input_completed)?;
             }
