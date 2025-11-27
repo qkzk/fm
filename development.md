@@ -1959,6 +1959,9 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
+- [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
+  Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
 - [ ] FEAT: configurable tree depth
 - [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
