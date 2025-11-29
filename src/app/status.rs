@@ -349,17 +349,13 @@ impl Status {
         Ok(())
     }
 
+    #[rustfmt::skip]
     fn set_focus_from_window_and_index(&mut self, window: &Window) {
-        self.focus = if self.index == 0 {
-            if matches!(window, Window::Menu) {
-                Focus::LeftMenu
-            } else {
-                Focus::LeftFile
-            }
-        } else if matches!(window, Window::Menu) {
-            Focus::RightMenu
-        } else {
-            Focus::RightFile
+        self.focus = match (self.index == 0, window) {
+            (true,  Window::Menu)   => Focus::LeftMenu,
+            (true,  _)              => Focus::LeftFile,
+            (false, Window::Menu)   => Focus::RightMenu,
+            (false, _)              => Focus::RightFile
         };
     }
 
