@@ -33,7 +33,7 @@ use crate::modes::{
     CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
     FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, JoinQuote, Menu, MenuHolder,
     MountAction, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Tree, Users,
     SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
@@ -335,6 +335,20 @@ impl Status {
             Window::Footer => self.footer_action(col, binds),
             Window::Menu => self.menu_action(row, col),
         }
+    }
+
+    pub fn enter_from_preview(&mut self) -> Result<()> {
+        // TODO: duplicated from click_action_from_window ... to satisfy borrow checker
+        if let Preview::Tree(tree) = &self.tabs[1].preview {
+            let index = tree.displayable().index();
+            let path = &tree.path_from_index(index)?;
+            self.tabs[0].cd_to_file(path)?;
+            self.index = 0;
+            self.focus = Focus::LeftFile;
+        } else {
+            self.open_single_file(Path::new(&self.tabs[1].preview.filepath()))?;
+        }
+        Ok(())
     }
 
     /// Select a given row, if there's something in it.

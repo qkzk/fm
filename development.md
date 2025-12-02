@@ -1944,6 +1944,13 @@ Once that's done, it's all. No not implement anything else
   No track of how many aren't listed 
   The "unlister" or "more..." text is still a treeline, displayed another way...
 - [ ] BUG: big tree moved down and selection is out of screen once again
+- [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
+  - [x] move down & up + scrolling
+  - [x] enter, left click, middle click, right click (context)
+  - [ ] refactor: duplication in status to please the borrow checker
+  - [ ] other actions ? 
+- [ ] BUG: camera folder dragon drop doesn't work (spaces in path ?)
+
 
 - **NO MORE FEATURES** it's enough for v0.2.1
   - [ ] read every commit 
@@ -1959,7 +1966,6 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
-- [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce

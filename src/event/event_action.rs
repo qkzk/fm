@@ -16,9 +16,9 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, ContentWindow,
-    Direction as FuzzyDirection, Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, PreviewBuilder, ReEnterMenu,
-    Search, Selectable,
+    Direction as FuzzyDirection, Display, FuzzyKind, Go, InputCompleted, InputSimple, LeaveMenu,
+    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview, PreviewBuilder,
+    ReEnterMenu, Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -429,7 +429,7 @@ impl EventAction {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
             Display::Fuzzy => status.fuzzy_select(),
-            _ => Ok(()),
+            Display::Preview => status.enter_from_preview(),
         }
     }
 
@@ -957,6 +957,12 @@ impl EventAction {
                 tab.normal_up_one_row();
                 status.toggle_flag_visual();
             }
+            Display::Preview if matches!(&tab.preview, Preview::Tree(_)) => {
+                if let Preview::Tree(tree) = &mut tab.preview {
+                    tree.go(To::Prev);
+                    tab.window.scroll_up_one(tree.displayable().index());
+                }
+            }
             Display::Preview => tab.preview_page_up(),
             Display::Tree => {
                 tab.tree_select_prev();
@@ -973,6 +979,12 @@ impl EventAction {
             Display::Directory => {
                 tab.normal_down_one_row();
                 status.toggle_flag_visual();
+            }
+            Display::Preview if matches!(&tab.preview, Preview::Tree(_)) => {
+                if let Preview::Tree(tree) = &mut tab.preview {
+                    tree.go(To::Next);
+                    tab.window.scroll_down_one(tree.displayable().index());
+                }
             }
             Display::Preview => tab.preview_page_down(),
             Display::Tree => {
