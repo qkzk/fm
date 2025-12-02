@@ -1949,7 +1949,6 @@ Once that's done, it's all. No not implement anything else
   - [x] enter, left click, middle click, right click (context)
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
-- [ ] BUG: camera folder dragon drop doesn't work (spaces in path ?)
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
