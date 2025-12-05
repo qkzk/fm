@@ -1770,6 +1770,13 @@ Once that's done, it's all. No not implement anything else
 - In tree mode, use Ctrl+Space to toggle flag on the children of a directory
 - pasting a file from a GUI file manager or dragon-drop will move the file in current directory.
 - Disable images previewing from arguments or config files
+- Paste a file into a folder and move it there. It allows you to drag and drop files from outside into fm.
+- Paste a text into an input field
+- Disable image previewing from config or command line argument.
+  Use `fm --disable-images` or set `imager: Disabled` in config file to preview "graphical" files another way. Will disable all images from being previewed.
+  Images will also be disable If `fm` can't detect a previewing method (ueberzug not in path or no iterm2 inline image compatible terminal), 
+- Navigate by clicking / moving / entering a file from a previewed tree. Preview in second pane, ctrl+right to change focus, move with arrows and enter. Boom.
+- Open a previewed file with enter when focusing the pane.
 
 ##### Bugfixes
 
@@ -1816,7 +1823,6 @@ Once that's done, it's all. No not implement anything else
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
 - [ ] BUG: preview can stop and display "preview as empty"
-- [ ] BUG: status.index should be replaced by a bool instead of usize.
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
@@ -1892,7 +1898,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
 - [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
 - [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
-- [ ] FEAT: allow files to be dropped by capturing paste.
+- [x] FEAT: allow files to be dropped by capturing paste.
     dragon-drop & pcmanfm output: absolute filetree path
     what about urls ? Do nothing
 
@@ -1903,7 +1909,7 @@ Once that's done, it's all. No not implement anything else
       - [x] pasting into same dir does nothing
       - [x] insert text in menus with input
       - [x] refactor
-      - [ ] Unify with already existant copy/move
+      - [x] Unify with already existant copy/move
 - [x] FEAT: Configure wether user wants to display images (imgs, pdf, videos)
   - [x] config : let the user set what he wants. image: {ueberzug|inline|disabled}, defaults to disabled 
   - [x] parse config, read it before init of display at src/app/displayer.rs
@@ -1920,34 +1926,15 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: starting path isn't alway added to history
 - [x] FEAT: bind alt+- to open history. '-' is used to go back.
 - [x] FIX: Ctrl+s (aka grep) doesn't update the preview
-- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
-  Only show first 3 non directory children then replace the display by "xx unlisted"
-
-  2 steps : 
-
-  while creating nodes. 
-  1. Instead of using stack = vec![path] use vec![(path, is_listed)]
-      while creating children, run a counter and store false once its reached 
-  2. When creating the lines, don't when the first "non listed" is met, add a string instead.
-
-  requires a lot of changes. 
-
-  The basic idea is to iterate over the nodes and count how much normal files per directory should be listed.
-  We need to alter the first stack (of nodes) to also save a boolean.
-  In the second iteration (creating lines) we stop once the first "non listed" pop and replace this one by a placeholder.
-  
-  When navigating we ensure to skip all non listed.
-
-  PB:
-
-  No way to alter the view (possible ?) to show unlisted 
-  No track of how many aren't listed 
-  The "unlister" or "more..." text is still a treeline, displayed another way...
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
   - [x] move down & up + scrolling
   - [x] enter, left click, middle click, right click (context)
+  - [ ] BUG: doesn't work for plugins
+    - [ ] impl a tree filepath for each preview. Current isn't consistent and doesn't respect its signature.
+      should return `Option<impl Path>` where non file previews like help should return `None` and true files and logs should return `Some(path)`.
   - [ ] refactor: duplication in status to please the borrow checker
+  - [ ] open from preview with only should also work in left tab.
   - [ ] other actions ? 
 
 
@@ -2040,6 +2027,31 @@ Once that's done, it's all. No not implement anything else
   - what for ?
 
 ## Won't do
+
+- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
+  Only show first 3 non directory children then replace the display by "xx unlisted"
+
+  2 steps : 
+
+  while creating nodes. 
+  1. Instead of using stack = vec![path] use vec![(path, is_listed)]
+      while creating children, run a counter and store false once its reached 
+  2. When creating the lines, don't when the first "non listed" is met, add a string instead.
+
+  requires a lot of changes. 
+
+  The basic idea is to iterate over the nodes and count how much normal files per directory should be listed.
+  We need to alter the first stack (of nodes) to also save a boolean.
+  In the second iteration (creating lines) we stop once the first "non listed" pop and replace this one by a placeholder.
+  
+  When navigating we ensure to skip all non listed.
+
+  PB:
+
+  No way to alter the view (possible ?) to show unlisted 
+  No track of how many aren't listed 
+  The "unlister" or "more..." text is still a treeline, displayed another way...
+- [ ] IMP: status.index should be replaced by a bool instead of usize. Won't do. Annoying and requires a lot of change.
 
 ### auto stuff
 

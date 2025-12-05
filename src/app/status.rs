@@ -33,7 +33,7 @@ use crate::modes::{
     CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
     FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, JoinQuote, Menu, MenuHolder,
     MountAction, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Tree, Users,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
     SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
@@ -339,6 +339,7 @@ impl Status {
 
     pub fn enter_from_preview(&mut self) -> Result<()> {
         // TODO: duplicated from click_action_from_window ... to satisfy borrow checker
+        // TODO: should handle previewing left & rigth with left focus
         if let Preview::Tree(tree) = &self.tabs[1].preview {
             let index = tree.displayable().index();
             let path = &tree.path_from_index(index)?;
@@ -346,7 +347,11 @@ impl Status {
             self.index = 0;
             self.focus = Focus::LeftFile;
         } else {
-            self.open_single_file(Path::new(&self.tabs[1].preview.filepath()))?;
+            let filepath = &self.tabs[self.focus.index()].preview.filepath();
+            if filepath.is_empty() {
+                return Ok(());
+            }
+            self.open_single_file(Path::new(filepath))?;
         }
         Ok(())
     }
@@ -1189,9 +1194,6 @@ impl Status {
         } else {
             self.complex_move(CopyMove::Copy, sources, &dest)
         }
-        //
-        // move_or_copy(pasted, &dest);
-        // Ok(())
     }
 
     /// Init the fuzzy finder

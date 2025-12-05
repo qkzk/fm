@@ -19,9 +19,9 @@ use syntect::{
 
 use crate::app::previewer_plugins;
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, PDFTOTEXT, READELF,
-    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
+    FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
+    PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
 use crate::config::{get_prefered_imager, get_previewer_plugins, get_syntect_theme, Imagers};
 use crate::io::execute_and_capture_output_without_check;
@@ -203,11 +203,13 @@ impl Preview {
         ContentWindow::new(self.len(), height)
     }
 
+    // TODO: should return the real filepath for every file.
+    // TODO: avoid useless conversions : path -> string (lossy) -> clone. Should store an arc path and voila
     pub fn filepath(&self) -> String {
         match self {
             Self::Empty => "".to_owned(),
             Self::Syntaxed(preview) => preview.filepath().to_owned(),
-            Self::Text(preview) => preview.title.to_owned(),
+            Self::Text(preview) => preview.filepath.clone().unwrap_or_default(),
             Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
             Self::Image(preview) => preview.identifier.to_owned(),
             Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
@@ -446,8 +448,8 @@ impl PreviewBuilder {
         Preview::Text(Text::command_stdout(output, command))
     }
 
-    pub fn plugin_text(text: String, name: &str) -> Preview {
-        Preview::Text(Text::plugin(text, name))
+    pub fn plugin_text(text: String, name: &str, path: &Path) -> Preview {
+        Preview::Text(Text::plugin(text, name, path))
     }
 }
 
@@ -526,6 +528,7 @@ impl Display for TextKind {
 pub struct Text {
     pub kind: TextKind,
     pub title: String,
+    filepath: Option<String>,
     content: Vec<String>,
     length: usize,
 }
@@ -539,17 +542,19 @@ impl Text {
         Self {
             title: "Help".to_string(),
             kind: TextKind::Help,
+            filepath: None,
             length: content.len(),
             content,
         }
     }
 
-    fn plugin(text: String, name: &str) -> Self {
+    fn plugin(text: String, name: &str, path: &Path) -> Self {
         let content: Vec<String> = text.lines().map(|line| line.to_owned()).collect();
         Self {
             title: name.to_string(),
             kind: TextKind::Plugin,
             length: content.len(),
+            filepath: Some(path.to_string_lossy().to_string()),
             content,
         }
     }
@@ -559,6 +564,7 @@ impl Text {
             title: "Logs".to_string(),
             kind: TextKind::Log,
             length: content.len(),
+            filepath: Some(ACTION_LOG_PATH.to_owned()),
             content,
         }
     }
@@ -575,6 +581,7 @@ impl Text {
             title: "Epub".to_string(),
             kind: TextKind::Epub,
             length: content.len(),
+            filepath: Some(path_str.to_owned()),
             content,
         })
     }
@@ -584,6 +591,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::TEXTFILE,
+            filepath: Some(path.to_string_lossy().to_string()),
             length: content.len(),
             content,
         })
@@ -594,6 +602,7 @@ impl Text {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Elf,
             length: elf.len(),
+            filepath: Some(path.to_string_lossy().to_string()),
             content: elf.lines().map(|line| line.to_owned()).collect(),
         })
     }
@@ -607,6 +616,7 @@ impl Text {
             title: command.to_owned(),
             kind,
             length: content.len(),
+            filepath: None,
             content,
         })
     }
@@ -646,6 +656,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Archive,
+            filepath: Some(path.to_string_lossy().to_string()),
             length: content.len(),
             content,
         })
@@ -721,6 +732,7 @@ impl Text {
             title,
             kind: TextKind::CommandStdout,
             content,
+            filepath: None,
             length,
         }
     }

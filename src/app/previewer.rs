@@ -73,6 +73,7 @@ pub mod previewer_plugins {
     use std::{
         collections::HashMap,
         ffi::{c_char, CString},
+        path::Path,
     };
 
     use anyhow::{bail, Result};
@@ -137,17 +138,14 @@ pub mod previewer_plugins {
     }
 
     /// Preview the file if any loaded plugin is able to.
-    pub fn try_build(
-        path: &std::path::Path,
-        plugins: &HashMap<String, PreviewerPlugin>,
-    ) -> Option<Preview> {
+    pub fn try_build(path: &Path, plugins: &HashMap<String, PreviewerPlugin>) -> Option<Preview> {
         let s_path = path.to_string_lossy().to_string();
         let candidate = CString::new(s_path).ok()?.into_raw();
         for plugin in plugins.values() {
             if unsafe { (plugin.is_match)(candidate) } {
                 let c_path = CString::new(path.display().to_string()).ok()?.into_raw();
                 let output = unsafe { plugin.get_output(c_path) }.ok()?;
-                return Some(PreviewBuilder::plugin_text(output, &plugin.name));
+                return Some(PreviewBuilder::plugin_text(output, &plugin.name, path));
             }
         }
         None
