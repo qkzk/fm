@@ -1,4 +1,6 @@
 mod inner {
+    use std::{path::Path, sync::Arc};
+
     use anyhow::{Context, Result};
     use ratatui::{
         layout::{Alignment, Rect},
@@ -534,7 +536,7 @@ mod inner {
             ]
         }
 
-        fn pick_previewed_fileinfo(status: &Status) -> String {
+        fn pick_previewed_fileinfo(status: &Status) -> Arc<Path> {
             if status.session.dual() && status.session.preview() {
                 status.tabs[1].preview.filepath()
             } else {
@@ -551,7 +553,7 @@ mod inner {
                 (
                     format!(
                         " {filepath} ",
-                        filepath = Self::pick_previewed_fileinfo(status)
+                        filepath = Self::pick_previewed_fileinfo(status).display()
                     ),
                     Align::Left,
                 ),

@@ -346,12 +346,13 @@ impl Status {
             self.tabs[0].cd_to_file(path)?;
             self.index = 0;
             self.focus = Focus::LeftFile;
+            self.update_second_pane_for_preview()?;
         } else {
-            let filepath = &self.tabs[self.focus.index()].preview.filepath();
-            if filepath.is_empty() {
+            let filepath = self.tabs[self.focus.index() >> 1].preview.filepath();
+            if !filepath.exists() {
                 return Ok(());
             }
-            self.open_single_file(Path::new(filepath))?;
+            self.open_single_file(&filepath)?;
         }
         Ok(())
     }

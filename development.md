@@ -1930,11 +1930,13 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
   - [x] move down & up + scrolling
   - [x] enter, left click, middle click, right click (context)
-  - [ ] BUG: doesn't work for plugins
-    - [ ] impl a tree filepath for each preview. Current isn't consistent and doesn't respect its signature.
+  - [x] FIX: doesn't work for plugins
+    - [x] impl a tree filepath for each preview. Current isn't consistent and doesn't respect its signature.
       should return `Option<impl Path>` where non file previews like help should return `None` and true files and logs should return `Some(path)`.
+  - [x] open from preview with only should also work in left tab.
+  - [x] BUG: using wrong index when reading focus
+  - [x] FIX: entering a previewed tree doesn't update the right preview
   - [ ] refactor: duplication in status to please the borrow checker
-  - [ ] open from preview with only should also work in left tab.
   - [ ] other actions ? 
 
 

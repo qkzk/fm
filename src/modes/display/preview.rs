@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
@@ -203,16 +204,14 @@ impl Preview {
         ContentWindow::new(self.len(), height)
     }
 
-    // TODO: should return the real filepath for every file.
-    // TODO: avoid useless conversions : path -> string (lossy) -> clone. Should store an arc path and voila
-    pub fn filepath(&self) -> String {
+    pub fn filepath(&self) -> Arc<Path> {
         match self {
-            Self::Empty => "".to_owned(),
-            Self::Syntaxed(preview) => preview.filepath().to_owned(),
-            Self::Text(preview) => preview.filepath.clone().unwrap_or_default(),
-            Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
-            Self::Image(preview) => preview.identifier.to_owned(),
-            Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
+            Self::Empty => Arc::from(Path::new("")),
+            Self::Binary(preview) => preview.filepath(),
+            Self::Image(preview) => preview.filepath(),
+            Self::Syntaxed(preview) => preview.filepath(),
+            Self::Text(preview) => preview.filepath(),
+            Self::Tree(tree) => Arc::from(tree.root_path()),
         }
     }
 }
@@ -389,7 +388,7 @@ impl PreviewBuilder {
         let ss = SyntaxSet::load_defaults_nonewlines();
         Some(Preview::Syntaxed(
             HLContent::from_str(
-                "command".to_owned(),
+                Path::new("command"),
                 &output,
                 ss.clone(),
                 ss.find_syntax_by_extension(ext)?,
@@ -524,13 +523,25 @@ impl Display for TextKind {
 
 /// Holds a preview of a text content.
 /// It's a vector of strings (per line)
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct Text {
     pub kind: TextKind,
     pub title: String,
-    filepath: Option<String>,
+    filepath: Arc<Path>,
     content: Vec<String>,
     length: usize,
+}
+
+impl Default for Text {
+    fn default() -> Self {
+        Self {
+            kind: TextKind::default(),
+            title: String::default(),
+            filepath: Arc::from(Path::new("")),
+            content: vec![],
+            length: 0,
+        }
+    }
 }
 
 impl Text {
@@ -542,7 +553,7 @@ impl Text {
         Self {
             title: "Help".to_string(),
             kind: TextKind::Help,
-            filepath: None,
+            filepath: Arc::from(Path::new("")),
             length: content.len(),
             content,
         }
@@ -554,7 +565,7 @@ impl Text {
             title: name.to_string(),
             kind: TextKind::Plugin,
             length: content.len(),
-            filepath: Some(path.to_string_lossy().to_string()),
+            filepath: Arc::from(path),
             content,
         }
     }
@@ -564,7 +575,7 @@ impl Text {
             title: "Logs".to_string(),
             kind: TextKind::Log,
             length: content.len(),
-            filepath: Some(ACTION_LOG_PATH.to_owned()),
+            filepath: Arc::from(Path::new(ACTION_LOG_PATH)),
             content,
         }
     }
@@ -581,7 +592,7 @@ impl Text {
             title: "Epub".to_string(),
             kind: TextKind::Epub,
             length: content.len(),
-            filepath: Some(path_str.to_owned()),
+            filepath: Arc::from(path),
             content,
         })
     }
@@ -591,7 +602,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::TEXTFILE,
-            filepath: Some(path.to_string_lossy().to_string()),
+            filepath: Arc::from(path),
             length: content.len(),
             content,
         })
@@ -602,7 +613,7 @@ impl Text {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Elf,
             length: elf.len(),
-            filepath: Some(path.to_string_lossy().to_string()),
+            filepath: Arc::from(path),
             content: elf.lines().map(|line| line.to_owned()).collect(),
         })
     }
@@ -616,7 +627,7 @@ impl Text {
             title: command.to_owned(),
             kind,
             length: content.len(),
-            filepath: None,
+            filepath: Arc::from(Path::new("")),
             content,
         })
     }
@@ -656,7 +667,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Archive,
-            filepath: Some(path.to_string_lossy().to_string()),
+            filepath: Arc::from(path),
             length: content.len(),
             content,
         })
@@ -732,7 +743,7 @@ impl Text {
             title,
             kind: TextKind::CommandStdout,
             content,
-            filepath: None,
+            filepath: Arc::from(Path::new("")),
             length,
         }
     }
@@ -740,15 +751,29 @@ impl Text {
     fn len(&self) -> usize {
         self.length
     }
+
+    fn filepath(&self) -> Arc<Path> {
+        self.filepath.clone()
+    }
 }
 
 /// Holds a preview of a code text file whose language is supported by `Syntect`.
 /// The file is colored propery and line numbers are shown.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct HLContent {
-    path: String,
+    path: Arc<Path>,
     content: Vec<Vec<SyntaxedString>>,
     length: usize,
+}
+
+impl Default for HLContent {
+    fn default() -> Self {
+        Self {
+            path: Arc::from(Path::new("")),
+            content: vec![],
+            length: 0,
+        }
+    }
 }
 
 impl HLContent {
@@ -761,16 +786,11 @@ impl HLContent {
     /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
-        Self::build(
-            path.to_string_lossy().to_string(),
-            raw_content,
-            syntax_set,
-            syntax_ref,
-        )
+        Self::build(path, raw_content, syntax_set, syntax_ref)
     }
 
     fn from_str(
-        name: String,
+        name: &Path,
         text: &str,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
@@ -784,14 +804,14 @@ impl HLContent {
     }
 
     fn build(
-        path: String,
+        path: &Path,
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Self> {
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
-            path,
+            path: path.into(),
             length: highlighted_content.len(),
             content: highlighted_content,
         })
@@ -801,8 +821,8 @@ impl HLContent {
         self.length
     }
 
-    fn filepath(&self) -> &str {
-        &self.path
+    fn filepath(&self) -> Arc<Path> {
+        self.path.clone()
     }
 
     fn parse_raw_content(
@@ -875,11 +895,21 @@ impl SyntaxedString {
 /// It doesn't try to respect endianness.
 /// The lines are formatted to display 16 bytes.
 /// The number of lines is truncated to $2^20 = 1048576$.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct BinaryContent {
-    pub path: PathBuf,
+    pub path: Arc<Path>,
     length: u64,
     content: Vec<Line>,
+}
+
+impl Default for BinaryContent {
+    fn default() -> Self {
+        Self {
+            path: Arc::from(Path::new("")),
+            length: 0,
+            content: vec![],
+        }
+    }
 }
 
 impl BinaryContent {
@@ -894,7 +924,7 @@ impl BinaryContent {
         let content = Self::read_content(path)?;
 
         Ok(Self {
-            path: path.to_path_buf(),
+            path: path.into(),
             length,
             content,
         })
@@ -927,6 +957,10 @@ impl BinaryContent {
 
     pub fn is_empty(&self) -> bool {
         self.length == 0
+    }
+
+    pub fn filepath(&self) -> Arc<Path> {
+        self.path.clone()
     }
 
     pub fn number_width_hex(&self) -> usize {
