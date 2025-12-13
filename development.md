@@ -1954,6 +1954,13 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
+- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [ ] marks & temp_marks refactor. Use same architecture in both.
+  - [ ] common trait for marking 
+  - [ ] BUG: ensure mark char is printable
+  - [ ] method: path_is_marked(path) -> bool 
+  - [ ] parent method from status called while moving a file 
+  - [ ] update the marks
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
