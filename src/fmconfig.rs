@@ -7,7 +7,7 @@ use clap::{Args as ClapArgs, Parser, Subcommand};
 use fm::app::FM;
 use fm::common::{CONFIG_PATH, TMP_THUMBNAILS_DIR};
 use fm::config::{cloud_config, load_config, make_default_config_files, Config};
-use fm::io::{add_plugin, list_plugins, remove_plugin};
+use fm::io::{add_plugin, install_plugin, list_plugins, remove_plugin};
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about)]
@@ -52,6 +52,8 @@ pub enum PluginCommand {
 pub enum PluginSubCommand {
     /// Add an already compiled plugin from a path to .so file
     Add { path: String },
+    /// Install a plugin from github. Does the compilation
+    Install { url: String },
     /// Remove a plugin by name
     Remove { name: String },
     /// List all installed plugins
@@ -89,6 +91,7 @@ fn exit_manage_plugins(plugin: &PluginCommand) -> ! {
     let PluginCommand::Plugin { action } = plugin;
     match action {
         PluginSubCommand::Add { path } => add_plugin(path),
+        PluginSubCommand::Install { url } => install_plugin(url),
         PluginSubCommand::Remove { name } => remove_plugin(name),
         PluginSubCommand::List => list_plugins(),
     }

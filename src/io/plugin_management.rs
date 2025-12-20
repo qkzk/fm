@@ -6,6 +6,8 @@ use std::{
 
 use crate::common::{tilde, CONFIG_PATH};
 
+use super::execute_and_capture_output_with_path;
+
 /// Add a plugin from a lib .so file.
 /// Copy the plugin to "~/.local/share/fm/plugins/"
 /// Add "plugin_name: adress" in config file, as first element.
@@ -13,11 +15,17 @@ use crate::common::{tilde, CONFIG_PATH};
 /// Warn the user and exit the process with error code 1 if any error occurs.
 ///
 /// It should never crash.
-pub fn add_plugin(path: &str) {
-    println!("Installing {path}...");
-    let source = Path::new(path);
+pub fn add_plugin<P>(path: P)
+where
+    P: AsRef<Path>,
+{
+    println!("Installing {path}...", path = path.as_ref().display());
+    let source = path.as_ref();
     if !source.exists() {
-        eprintln!("Error installing plugin {path}. File doesn't exist.");
+        eprintln!(
+            "Error installing plugin {path}. File doesn't exist.",
+            path = path.as_ref().display()
+        );
         exit(1);
     }
     println!("Found lib source file...");
@@ -33,7 +41,80 @@ pub fn add_plugin(path: &str) {
     println!("Installation done.");
 }
 
+pub fn install_plugin(author_plugin: &str) {
+    println!("Installing {author_plugin}");
+    // 1. Parse author & plugin name
+    let mut split = author_plugin.split('/');
+    let Some(author) = split.next() else {
+        eprintln!(
+            "Error installing plugin {author_plugin} isn't valid. Please use author/plugin format."
+        );
+        exit(2);
+    };
+    let Some(plugin) = split.next() else {
+        eprintln!(
+            "Error installing plugin {author_plugin} isn't valid. Please use author/plugin format."
+        );
+        exit(2);
+    };
+    // 2. Create clone dir
+    let shared_address = format!("~/.local/share/fm/repositories/{author}");
+    let shared_address = tilde(&shared_address);
+    let shared_address = Path::new(shared_address.as_ref());
+    println!(
+        "Creating {shared_address}",
+        shared_address = shared_address.display()
+    );
+    match std::fs::create_dir_all(shared_address) {
+        Ok(()) => println!(
+            "Created {shared_address}",
+            shared_address = shared_address.display()
+        ),
+        Err(error) => {
+            eprintln!("Error creating directories for {plugin}: {error:?}");
+            exit(3);
+        }
+    }
+    // 3. git clone
+    // "git clone --depth 1 git@github.com:{author_plugin}.git {shared_adress}";
+    let args = [
+        "clone",
+        "--depth",
+        "1",
+        &format!("git@github.com:{author_plugin}.git"),
+    ];
+    let output = execute_and_capture_output_with_path("git", shared_address, &args);
+    match output {
+        Ok(stdout) => println!("{}", stdout),
+        Err(stderr) => {
+            eprintln!("Error cloning the repository :");
+            eprintln!("{}", stderr);
+            exit(4);
+        }
+    }
+    // 4. cargo build --release
+    let args = ["build", "--release"];
+    let mut plugin_path = shared_address.to_path_buf();
+    plugin_path.push(plugin);
+    let output = execute_and_capture_output_with_path("cargo", &plugin_path, &args);
+    match output {
+        Ok(stdout) => println!("{}", stdout),
+        Err(stderr) => {
+            eprintln!("Error compiling the plugin :");
+            eprintln!("{}", stderr);
+            exit(5);
+        }
+    }
+    // 5. check compilation process
+    let ext = format!("target/release/lib{plugin}.so");
+    plugin_path.push(ext);
+    if plugin_path.exists() {
+        add_plugin(&plugin_path);
+    };
+}
+
 fn build_dest_path(source: &Path) -> PathBuf {
+    // TODO: store this address elsewhere
     let mut dest = PathBuf::from(tilde("~/.local/share/fm/plugins").as_ref());
     if !dest.exists() {
         if let Err(error) = std::fs::create_dir_all(&dest) {
@@ -141,6 +222,7 @@ fn config_path() -> String {
 
 fn add_to_config(plugin_name: &str, dest: &Path) {
     let config_path = config_path();
+    println!("add_to_config - config file : {config_path}");
     if is_plugin_name_in_config(&config_path, plugin_name) {
         eprintln!("Config files already contains a plugin with this name");
         exit(1);
@@ -162,7 +244,12 @@ fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
 
 fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
     let config_content = std::fs::read_to_string(config_path).expect("Couldn't read config file");
-    let mut lines: Vec<_> = config_content.lines().map(|l| l.to_string()).collect();
+    let mut lines: Vec<_> = config_content
+        .lines()
+        .map(|line| line.to_string())
+        .collect();
+    println!("{least_before}", least_before = lines[lines.len() - 2]);
+    println!("{least}", least = lines[lines.len() - 1]);
     let mut dest_index = None;
     for (index, line) in lines.iter().enumerate() {
         if line.starts_with("plugins:") && lines[index + 1].starts_with("  previewer:") {
@@ -177,6 +264,9 @@ fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
         } else {
             lines.insert(index, new_line)
         }
+    } else {
+        eprintln!("Error installing {plugin_name}. Couldn't find plugin part in config file.");
+        exit(2);
     }
     let new_content = lines.join("\n");
     if let Err(e) = std::fs::write(config_path, new_content) {

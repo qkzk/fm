@@ -1822,6 +1822,13 @@ Once that's done, it's all. No not implement anything else
   - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
+  - [ ] fm plugin install /url/to/git/repo : clone, cargo build --release, then same as add
+    - [ ] clone
+    - [ ] build
+    - [ ] check build & install with add
+    - [ ] remove should check for clones
+  - [ ] fm plugin update name: 1. remove, 2. pull instead of clone, 3. add
+  - [ ] fm plugin update : do update on every listed plugin
 - [ ] BUG: preview can stop and display "preview as empty"
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
@@ -1938,6 +1945,7 @@ Once that's done, it's all. No not implement anything else
   - [x] FIX: entering a previewed tree doesn't update the right preview
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
+  - [ ] BUG: in tree mode, deleting a directory crashes.
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
