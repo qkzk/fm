@@ -42,8 +42,12 @@ impl Config {
             let Some(plugin_path) = plugin_path.as_str() else {
                 continue;
             };
-            self.plugins
-                .insert(plugin_name.to_owned(), plugin_path.to_owned());
+            if path::Path::new(plugin_path).exists() {
+                self.plugins
+                    .insert(plugin_name.to_owned(), plugin_path.to_owned());
+            } else {
+                log_info!("{plugin_path} is specified in config file but doesn't exists.");
+            }
         }
         log_info!("found plugins: {plugins:#?}", plugins = self.plugins);
     }

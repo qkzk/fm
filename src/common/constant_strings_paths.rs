@@ -18,6 +18,10 @@ pub const SYNTECT_THEMES_PATH: &str = "~/.config/fm/syntect_themes/";
 pub const NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
 /// Path to the action log file
 pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
+/// Path the temporary cloned repositories
+pub const REPOSITORIES_PATH: &str = "/tmp/fm/plugin/cloned_repositories";
+/// Path to the compiled libso plugins
+pub const PLUGIN_LIBSO_PATH: &str = "~/.local/share/fm/plugins";
 /// Path to the trash folder files
 pub const TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file
