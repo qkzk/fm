@@ -575,9 +575,15 @@ impl Tree {
         self.selected.borrow()
     }
 
+    /// Returns an _existing_ path which is either the selected path or its
+    /// first existing parent.
+    ///
+    /// # Errors
+    /// Will fail if the selected node doesn't exists or has no parent.
+    /// It should never be the case since we can't rename or delete the root `/`.
     pub fn selected_path_or_parent(&self) -> Result<PathBuf> {
         if self.selected.exists() {
-            return Ok(self.selected_path().to_owned());
+            return Ok(self.selected.to_path_buf());
         }
         let absolute_root_depth = self.root_path.components().count();
         let mut current_depth = self.selected.components().count();
@@ -586,10 +592,10 @@ impl Tree {
             let Some(current) = current.parent() else {
                 bail!("No parent, are we deleting root / ?");
             };
-            current_depth -= 1;
             if current.exists() {
                 return Ok(current.to_owned());
             }
+            current_depth -= 1;
         }
         Ok(self.root_path().to_owned())
     }
