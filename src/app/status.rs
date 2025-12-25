@@ -1863,7 +1863,13 @@ impl Status {
     }
 
     /// Recursively delete all flagged files.
+    /// If we try to delete the current root of the tab, nothing is deleted but a warning is displayed.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
+        if self.menu.flagged.contains(self.current_tab().root_path()) {
+            log_info!("Can't delete current root path");
+            log_line!("Can't delete current root path");
+            return Ok(());
+        }
         self.menu.delete_flagged_files()?;
         self.reset_menu_mode()?;
         self.clear_flags_and_reset_view()?;

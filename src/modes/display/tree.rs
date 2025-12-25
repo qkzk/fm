@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::impl_index_to_index;
@@ -575,22 +575,23 @@ impl Tree {
         self.selected.borrow()
     }
 
-    pub fn selected_node_or_parent(&self) -> Result<&Node> {
-        if let Some(node) = self.selected_node() {
-            if node.path().exists() {
-                return Ok(node);
+    pub fn selected_path_or_parent(&self) -> Result<PathBuf> {
+        if self.selected.exists() {
+            return Ok(self.selected_path().to_owned());
+        }
+        let absolute_root_depth = self.root_path.components().count();
+        let mut current_depth = self.selected.components().count();
+        let current = self.selected_path();
+        while current_depth >= absolute_root_depth {
+            let Some(current) = current.parent() else {
+                bail!("No parent, are we deleting root / ?");
+            };
+            current_depth -= 1;
+            if current.exists() {
+                return Ok(current.to_owned());
             }
-            while let Some(parent_path) = node.path().parent() {
-                if let Some(parent_node) = self.nodes.get(parent_path) {
-                    if parent_node.path().exists() {
-                        return Ok(parent_node);
-                    }
-                }
-            }
-        };
-        self.nodes
-            .get(&self.root_path)
-            .context("root path should have a node")
+        }
+        Ok(self.root_path().to_owned())
     }
 
     /// Selected node

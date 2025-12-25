@@ -1947,7 +1947,7 @@ Once that's done, it's all. No not implement anything else
   - [x] FIX: entering a previewed tree doesn't update the right preview
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
-- [ ] BUG: in tree mode, deleting a directory crashes.
+- [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1

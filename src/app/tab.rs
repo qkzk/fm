@@ -186,17 +186,28 @@ impl Tab {
         self.directory.path.borrow()
     }
 
+    /// Root path of current display.
+    /// In tree mode it's the path of the root,
+    /// In other display modes, it's the path of the current directory.
+    /// It's only used to ensure we don't delete the current root which is forbidden.
+    pub fn root_path(&self) -> &path::Path {
+        if self.display_mode.is_tree() {
+            self.tree.root_path()
+        } else {
+            self.current_path()
+        }
+    }
+
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
-        match self.display_mode {
-            Display::Tree => {
-                FileInfo::new(self.tree.selected_node_or_parent()?.path(), &self.users)
-            }
-            _ => Ok(self
+        if self.display_mode.is_tree() {
+            FileInfo::new(&self.tree.selected_path_or_parent()?, &self.users)
+        } else {
+            Ok(self
                 .directory
                 .selected()
                 .context("current_file: no selected file")?
-                .to_owned()),
+                .to_owned())
         }
     }
 

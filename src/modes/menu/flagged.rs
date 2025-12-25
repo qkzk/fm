@@ -82,12 +82,14 @@ impl Flagged {
         self.content.binary_search(&path.to_path_buf()).is_ok()
     }
 
-    /// Returns a vector of path which are present in the current directory.
+    /// Returns a vector of path which are present in the current directory but ARE NOT the current dir.
+    /// This prevents the current directory (or root path in tree display mode) to be altered by bulk.
     #[inline]
     #[must_use]
     pub fn in_dir(&self, dir: &Path) -> Vec<PathBuf> {
         self.content
             .iter()
+            .filter(|p| *p != dir)
             .filter(|p| p.starts_with(dir))
             .map(|p| p.to_owned())
             .collect()

@@ -1340,7 +1340,6 @@ impl<'a> Menu<'a> {
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn confirm(&self, confirmed_mode: NeedConfirmation, f: &mut Frame, rect: &Rect) {
-        log_info!("confirm {confirmed_mode} !");
         let dest = path_to_string(
             &self
                 .tab
@@ -1364,7 +1363,6 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
-        log_info!("confirm_default {win:?}", win = self.status.menu.window);
         self.status
             .menu
             .flagged
@@ -1385,13 +1383,6 @@ impl<'a> Menu<'a> {
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
-        // Self::render_content(
-        //     &content,
-        //     f,
-        //     rect,
-        //     4,
-        //     2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
-        // );
     }
 
     fn confirm_delete_cloud(&self, f: &mut Frame, rect: &Rect) {
