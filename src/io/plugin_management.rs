@@ -363,8 +363,8 @@ fn list_plugins_details() -> Vec<(String, String, bool)> {
 
     let config_values: Value =
         from_reader(&config_file).expect("Couldn't read config file as yaml");
-    let plugins = config_values["plugins"]["previewer"].clone();
-    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins) else {
+    let plugins = &config_values["plugins"]["previewer"];
+    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins.to_owned()) else {
         return vec![];
     };
     for (plugin, path) in dmap.into_iter() {
@@ -394,14 +394,12 @@ fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
     let config_file = File::open(config_path).expect("Couldn't open config file");
     let config_values: Value =
         from_reader(&config_file).expect("Couldn't read config file as yaml");
-    let plugins = config_values["plugins"]["previewer"].clone();
-    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins) else {
+    let plugins = &config_values["plugins"]["previewer"];
+    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins.to_owned()) else {
         return false;
     };
     dmap.contains_key(plugin_name)
 }
-
-// TODO: if config file doesn't contain the required parts, add them first.
 
 /// Writes the config file to the config file.
 /// Expects the file to not have the plugin name already.
@@ -413,7 +411,27 @@ fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
 fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
     let mut lines = extract_config_lines(config_path);
     let new_line = format!("    '{plugin_name}': \"{d}\"", d = dest.display());
-    match find_dest_index(&lines) {
+
+    complete_lines_with_required_parts(&mut lines, new_line);
+
+    let new_content = lines.join("\n");
+    if let Err(e) = std::fs::write(config_path, new_content) {
+        eprintln!("Error installing {plugin_name}. Couldn't write to config file: {e:?}");
+        exit(1);
+    }
+}
+
+/// Ensures new plugins are inserted AFTER the `plugins:previewer:` mapping.
+/// If no such mapping is found in configuration, we add it at the end of the file before inserting the new plugin.
+/// We only cover for the cases where:
+/// - `plugins:previewer:` doesn't contain the plugin,
+/// - `plugins:previewer:` is empty,
+/// - `plugins:` is empty,
+/// - `there's no plugins:` in config file.
+///
+/// So, the strange case where previewer: is present and plugin: isn't covered.
+fn complete_lines_with_required_parts(lines: &mut Vec<String>, new_line: String) {
+    match find_dest_index(lines) {
         Some(index) => {
             if index >= lines.len() {
                 lines.push(new_line)
@@ -428,12 +446,6 @@ fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
             lines.push("  previewer:".to_string());
             lines.push(new_line);
         }
-    }
-
-    let new_content = lines.join("\n");
-    if let Err(e) = std::fs::write(config_path, new_content) {
-        eprintln!("Error installing {plugin_name}. Couldn't write to config file: {e:?}");
-        exit(1);
     }
 }
 
