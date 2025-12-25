@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::string::ToString;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use serde_yml::Value;
+use serde_yaml_ng::Value;
 
 use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;

@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use serde::Serialize;
-use serde_yml::{from_reader, to_writer, Error as YamlError, Value as YamlValue};
+use serde_yaml_ng::{from_reader, to_writer, Error as YamlError, Value as YamlValue};
 
 use crate::common::{tilde, SESSION_PATH};
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;

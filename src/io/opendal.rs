@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use anyhow::{anyhow, Context, Result};
 use opendal::{services, Entry, EntryMode, Operator};
 use serde::{Deserialize, Serialize};
-use serde_yml::{from_str, to_string as to_yml_string};
+use serde_yaml_ng::{from_str, to_string as to_yml_string};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};

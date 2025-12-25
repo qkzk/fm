@@ -9,8 +9,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
 };
-use serde_yml::from_reader;
-use serde_yml::Value;
+use serde_yaml_ng::from_reader;
+use serde_yaml_ng::Value;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 

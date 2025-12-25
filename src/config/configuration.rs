@@ -4,7 +4,7 @@ use std::{fs::File, path};
 use anyhow::Result;
 use clap::Parser;
 use ratatui::style::{Color, Style};
-use serde_yml::{from_reader, Value};
+use serde_yaml_ng::{from_reader, Value};
 
 use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
 use crate::config::{make_default_config_files, Bindings, ColorG};

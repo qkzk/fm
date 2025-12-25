@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use anyhow::Context;
 use anyhow::Result;
-use serde_yml::from_reader;
-use serde_yml::Mapping;
+use serde_yaml_ng::from_reader;
+use serde_yaml_ng::Mapping;
 
 use crate::app::Status;
 use crate::common::CLI_PATH;

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use serde_yml::Mapping;
+use serde_yaml_ng::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, TUIS_PATH};

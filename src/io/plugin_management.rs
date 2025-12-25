@@ -1,9 +1,12 @@
 use std::{
     borrow::Cow,
+    collections::BTreeMap,
     fs::File,
     path::{Path, PathBuf},
     process::exit,
 };
+
+use serde_yaml_ng::{from_reader, from_value, Value};
 
 use crate::common::{tilde, CONFIG_PATH, PLUGIN_LIBSO_PATH, REPOSITORIES_PATH};
 use crate::io::execute_and_capture_output_with_path;
@@ -316,7 +319,7 @@ fn remove_repo_directory() -> std::io::Result<()> {
 /// Exits with code 2 if the file couldn't be removed.
 fn remove_libso_file(removed_name: &str) {
     let mut found_in_config = false;
-    for (installed_name, path, exist) in list_plugins_pairs().iter() {
+    for (installed_name, path, exist) in list_plugins_details().iter() {
         if installed_name == removed_name && *exist {
             found_in_config = true;
             match std::fs::remove_file(path) {
@@ -347,31 +350,26 @@ fn remove_libso_file(removed_name: &str) {
 /// It may fail if the config file isn't formated properly.
 pub fn list_plugins() {
     println!("Installed plugins:");
-    for (name, path, exist) in list_plugins_pairs().iter() {
+    for (name, path, exist) in list_plugins_details().iter() {
         let exists = if *exist { "ok" } else { "??" };
         println!("[{exists}]: {name}: {path}");
     }
 }
 
 /// Returns a vector of  `(name, path, existance)` for each referenced plugin in config file.
-fn list_plugins_pairs() -> Vec<(String, String, bool)> {
+fn list_plugins_details() -> Vec<(String, String, bool)> {
     let config_file = File::open(config_path().as_ref()).expect("Couldn't open config file");
-    let value: serde_yml::Value =
-        serde_yml::from_reader(&config_file).expect("Couldn't read config file as yaml");
-
-    let plugins = &value["plugins"]["previewer"];
     let mut installed = vec![];
-    if let Some(serde_yml::Mapping { ref map }) = plugins.as_mapping() {
-        for (name, path) in map.iter() {
-            let Some(name) = name.as_str() else {
-                continue;
-            };
-            let Some(path) = path.as_str() else {
-                continue;
-            };
-            let exists = Path::new(path).exists();
-            installed.push((name.to_owned(), path.to_owned(), exists));
-        }
+
+    let config_values: Value =
+        from_reader(&config_file).expect("Couldn't read config file as yaml");
+    let plugins = config_values["plugins"]["previewer"].clone();
+    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins) else {
+        return vec![];
+    };
+    for (plugin, path) in dmap.into_iter() {
+        let exists = Path::new(&path).exists();
+        installed.push((plugin, path, exists))
     }
     installed
 }
@@ -394,14 +392,13 @@ fn add_to_config(plugin_name: &str, dest: &Path) {
 /// True iff the plugin is referenced in the config file.
 fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
     let config_file = File::open(config_path).expect("Couldn't open config file");
-    let config_values: serde_yml::Value =
-        serde_yml::from_reader(&config_file).expect("Couldn't read config file as yaml");
-    let plugins = &config_values["plugins"]["previewer"];
-    if let Some(serde_yml::Mapping { ref map }) = plugins.as_mapping() {
-        map.contains_key::<serde_yml::Value>(&plugin_name.into())
-    } else {
-        false
-    }
+    let config_values: Value =
+        from_reader(&config_file).expect("Couldn't read config file as yaml");
+    let plugins = config_values["plugins"]["previewer"].clone();
+    let Ok(dmap) = from_value::<BTreeMap<String, String>>(plugins) else {
+        return false;
+    };
+    dmap.contains_key(plugin_name)
 }
 
 // TODO: if config file doesn't contain the required parts, add them first.
@@ -415,18 +412,24 @@ fn is_plugin_name_in_config(config_path: &str, plugin_name: &str) -> bool {
 /// or if the `plugin:previewer:` part can't be found (error code 2).
 fn add_lib_to_config(config_path: &str, plugin_name: &str, dest: &Path) {
     let mut lines = extract_config_lines(config_path);
-
-    if let Some(index) = find_dest_index(&lines) {
-        let new_line = format!("    '{plugin_name}': \"{d}\"", d = dest.display());
-        if index >= lines.len() {
-            lines.push(new_line)
-        } else {
-            lines.insert(index, new_line)
+    let new_line = format!("    '{plugin_name}': \"{d}\"", d = dest.display());
+    match find_dest_index(&lines) {
+        Some(index) => {
+            if index >= lines.len() {
+                lines.push(new_line)
+            } else {
+                lines.insert(index, new_line)
+            }
         }
-    } else {
-        eprintln!("Error installing {plugin_name}. Couldn't find plugin part in config file.");
-        exit(2);
+        None => {
+            if lines.iter().all(|s| s != "plugins:") {
+                lines.push("plugins:".to_string());
+            }
+            lines.push("  previewer:".to_string());
+            lines.push(new_line);
+        }
     }
+
     let new_content = lines.join("\n");
     if let Err(e) = std::fs::write(config_path, new_content) {
         eprintln!("Error installing {plugin_name}. Couldn't write to config file: {e:?}");

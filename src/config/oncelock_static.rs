@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use nucleo::Matcher;
 use parking_lot::{Mutex, MutexGuard};
 use ratatui::style::Color;
-use serde_yml::{from_reader, Value};
+use serde_yaml_ng::{from_reader, Value};
 use strum::{EnumIter, IntoEnumIterator};
 use syntect::{
     dumps::{from_binary, from_dump_file},
