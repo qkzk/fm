@@ -1820,7 +1820,7 @@ Once that's done, it's all. No not implement anything else
     - [x] cloud config/list
     - [x] keybinds list 
   - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
-    - [ ] adding to config should create the required plugin:previewer: part.
+    - [x] adding to config should create the required plugin:previewer: part.
     - [x] an existing plugin... shouldn't do anything to the config but exit with a warning 
   - [x] fm plugin remove name : remove the file from .local and config inform 
   - [x] fm plugin list: will display all plugins
