@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 
 use anyhow::{anyhow, Result};
 
-use crate::common::{random_name, rename, TMP_FOLDER_PATH};
+use crate::common::{random_name, rename_filename, TMP_FOLDER_PATH};
 use crate::event::FmEvents;
 use crate::{log_info, log_line};
 
@@ -93,7 +93,7 @@ impl BulkExecutor {
     fn rename_all(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
         let mut paths = vec![];
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            match rename(path, filename) {
+            match rename_filename(path, filename) {
                 Ok(path) => paths.push(path),
                 Err(error) => log_info!(
                     "Error renaming {path} to {filename}. Error: {error:?}",

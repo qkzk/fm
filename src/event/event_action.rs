@@ -301,7 +301,7 @@ impl EventAction {
                 return Ok(());
             }
         }
-        let old_name = &selected.filename;
+        let old_name = &selected.path.to_string_lossy();
         status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
         Ok(())

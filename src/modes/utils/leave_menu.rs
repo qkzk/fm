@@ -1,10 +1,9 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 
 use crate::app::Status;
-use crate::common::{path_to_string, rename, string_to_path};
+use crate::common::{path_to_string, rename_fullpath, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
@@ -225,22 +224,20 @@ impl LeaveMenu {
             log_info!("Can't rename: new name is empty");
             return Ok(());
         }
-        let new_name = status.menu.input.string();
+        let new_path = status.menu.input.string();
         let old_path = status.current_tab().current_file()?.path;
-        match rename(&old_path, &new_name) {
-            Ok(new_path) => {
+        match rename_fullpath(&old_path, &new_path) {
+            Ok(()) => {
+                status.current_tab_mut().cd_to_file(&new_path)?;
                 status.current_tab_mut().refresh_view()?;
-                status
-                    .current_tab_mut()
-                    .select_by_path(Arc::from(new_path.as_ref()));
             }
             Err(error) => {
                 log_info!(
-                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    "Error renaming {old_path} to {new_path}. Error: {error}",
                     old_path = old_path.display()
                 );
                 log_line!(
-                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    "Error renaming {old_path} to {new_path}. Error: {error}",
                     old_path = old_path.display()
                 );
             }
