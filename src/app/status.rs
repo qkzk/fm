@@ -467,7 +467,7 @@ impl Status {
         )
     }
 
-    /// Returns the sice of the terminal (width, height)
+    /// Returns the size of the terminal (width, height)
     pub fn term_size(&self) -> (u16, u16) {
         self.internal_settings.term_size()
     }
