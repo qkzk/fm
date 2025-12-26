@@ -11,6 +11,8 @@ pub struct Input {
 }
 
 impl Input {
+    const RIGHT_BUFFER: usize = 4;
+
     /// Empty the content and move the cursor to start.
     pub fn reset(&mut self) {
         self.chars.clear();
@@ -37,6 +39,28 @@ impl Input {
     #[must_use]
     pub fn string(&self) -> String {
         self.chars.join("")
+    }
+
+    pub fn left_index(&self, avail: usize) -> usize {
+        if avail < self.len() {
+            (self.index() + Self::RIGHT_BUFFER).saturating_sub(avail)
+        } else {
+            0
+        }
+    }
+
+    pub fn display_index(&self, avail: usize) -> usize {
+        self.index().saturating_sub(self.left_index(avail))
+    }
+
+    pub fn string_in_rect(&self, avail: usize) -> String {
+        self.chars
+            .iter()
+            .skip(self.left_index(avail))
+            .take(avail)
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join("")
     }
 
     /// Returns a string of * for every char typed.

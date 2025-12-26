@@ -1073,7 +1073,7 @@ impl<'a> Draw for Menu<'a> {
         }
         let mode = self.tab.menu_mode;
         self.cursor(f, rect);
-        MenuFirstLine::new(self.status).draw(f, rect);
+        MenuFirstLine::new(self.status, rect).draw(f, rect);
         self.menu_line(f, rect);
         self.content_per_mode(f, rect, mode);
         self.binds_per_mode(f, rect, mode);
@@ -1112,10 +1112,11 @@ impl<'a> Menu<'a> {
     ///
     /// may fail if we can't display on the terminal.
     fn cursor(&self, f: &mut Frame, rect: &Rect) {
-        let offset = self.tab.menu_mode.cursor_offset();
-        let index = self.status.menu.input.index() as u16;
-        let x = rect.x + offset + index;
         if self.tab.menu_mode.show_cursor() {
+            let offset = self.tab.menu_mode.cursor_offset();
+            let avail = rect.width.saturating_sub(offset + 1) as usize;
+            let cursor_index = self.status.menu.input.display_index(avail) as u16;
+            let x = rect.x + offset + cursor_index;
             f.set_cursor_position(Position::new(x, rect.y));
         }
     }
@@ -1143,13 +1144,6 @@ impl<'a> Menu<'a> {
         let input = self.status.menu.input.string();
         let (text, is_valid) = parse_input_permission(&input);
         let style = if is_valid { first } else { menu };
-        // let spans: Vec<_> = parse_input_permission(&input)
-        //     .iter()
-        //     .map(|(text, is_valid)| {
-        //         let style = if *is_valid { first } else { menu };
-        //         Span::styled(*text, style)
-        //     })
-        //     .collect();
         let p_rect = rect.offseted(11, 1);
         Line::styled(text.as_ref(), style).render(p_rect, f.buffer_mut());
     }
@@ -1452,9 +1446,9 @@ impl Draw for MenuFirstLine {
 }
 
 impl MenuFirstLine {
-    fn new(status: &Status) -> Self {
+    fn new(status: &Status, rect: &Rect) -> Self {
         Self {
-            content: status.current_tab().menu_mode.line_display(status),
+            content: status.current_tab().menu_mode.line_display(status, rect),
         }
     }
 }
