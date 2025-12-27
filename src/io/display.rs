@@ -1423,7 +1423,9 @@ impl<'a> Menu<'a> {
     }
 }
 
-struct MenuFirstLine {
+/// First line of every menu. This is where inputs are shown.
+/// For most of the menus, it's their name, some spaces and the input typed by the user.
+pub struct MenuFirstLine {
     content: Vec<String>,
 }
 
@@ -1440,12 +1442,15 @@ impl Draw for MenuFirstLine {
         )
         .map(|(text, style)| Span::styled(text, *style))
         .collect();
-        let p_rect = rect.offseted(2, 0);
+        let p_rect = rect.offseted(Self::LEFT_MARGIN, 0);
         Line::from(spans).render(p_rect, f.buffer_mut());
     }
 }
 
 impl MenuFirstLine {
+    /// Number of spaces between rect border and first char of the line.
+    pub const LEFT_MARGIN: u16 = 2;
+
     fn new(status: &Status, rect: &Rect) -> Self {
         Self {
             content: status.current_tab().menu_mode.line_display(status, rect),
@@ -1754,6 +1759,10 @@ impl Display {
         self.term.clear().expect("Couldn't clear the terminal");
     }
 
+    /// Restore the terminal before leaving the application.
+    /// - disable raw mode, allowing for pasting,
+    /// - leave alternate screens (switch back to the main screen).
+    /// - display the cursor
     pub fn restore_terminal(&mut self) -> Result<()> {
         disable_raw_mode()?;
         execute!(self.term.backend_mut(), LeaveAlternateScreen)?;

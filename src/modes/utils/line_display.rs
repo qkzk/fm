@@ -1,6 +1,7 @@
 use ratatui::layout::Rect;
 
 use crate::app::Status;
+use crate::io::MenuFirstLine;
 use crate::modes::{
     InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation, PasswordKind,
     PasswordUsage,
@@ -27,7 +28,7 @@ impl LineDisplay for Menu {
 
 impl LineDisplay for NeedConfirmation {
     fn line_display(&self, _status: &Status, _: &Rect) -> Vec<String> {
-        vec![format!("{self}"), " (y/n)".to_owned()]
+        vec![self.to_string(), " (y/n)".to_owned()]
     }
 }
 
@@ -80,10 +81,10 @@ impl LineDisplay for InputSimple {
                 vec![PasswordKind::SUDO.to_string(), status.menu.input.password()]
             }
             _ => {
-                let presentation = Menu::InputSimple(*self).to_string();
-                let used_space = presentation.len() + 3;
+                let presentation = self.to_string();
+                let used_space = presentation.len() + MenuFirstLine::LEFT_MARGIN as usize + 1;
                 let avail = (rect.width as usize).saturating_sub(used_space);
-                vec![presentation, status.menu.input.string_in_rect(avail)]
+                vec![presentation, status.menu.input.scrolled_string(avail)]
             }
         }
     }

@@ -27,7 +27,7 @@ mod ueberzug;
 
 pub use args::Args;
 pub use commands::*;
-pub use display::{Display, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
+pub use display::{Display, MenuFirstLine, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;
 pub use git::{git, git_root};
 pub use image_adapter::*;
