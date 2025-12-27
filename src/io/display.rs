@@ -1760,7 +1760,7 @@ impl Display {
     }
 
     /// Restore the terminal before leaving the application.
-    /// - disable raw mode, allowing for pasting,
+    /// - disable raw mode, allowing for "normal" terminal behavior,
     /// - leave alternate screens (switch back to the main screen).
     /// - display the cursor
     pub fn restore_terminal(&mut self) -> Result<()> {
