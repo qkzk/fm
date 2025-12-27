@@ -10,6 +10,8 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
+use parking_lot::lock_api::Mutex;
+use parking_lot::RawMutex;
 use ratatui::layout::Size;
 use sysinfo::Disks;
 use walkdir::WalkDir;
@@ -157,7 +159,19 @@ impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(
+    /// Status is wraped around by an `Arc`, `Mutex` from parking_lot.
+    pub fn arc_mutex_new(
+        size: Size,
+        opener: Opener,
+        binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) -> Result<Arc<Mutex<RawMutex, Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(
+            size, opener, binds, fm_sender,
+        )?)))
+    }
+
+    fn new(
         size: Size,
         opener: Opener,
         binds: &Bindings,

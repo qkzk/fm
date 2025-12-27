@@ -27,6 +27,13 @@ use crate::log_info;
 /// Holds everything about the application itself.
 /// Dropping the instance of FM allows to write again to stdout.
 /// It should be ran like this : `crate::app::Fm::start().run().quit()`.
+///
+/// The application is split into several components:
+/// - a reader of FmEvents,
+/// - a dispatcher of said events,
+/// - the state of the application itself, which is mutated by the dispatcher,
+/// - a displayer which holds a non mutable reference to the state. The displayer can emits events to force state change if needs be.
+/// - a refresher which is used to force a refresh state + display if something happened externally or in some running thread.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
     event_reader: EventReader,
@@ -127,18 +134,23 @@ impl FM {
     }
 
     /// Internal builder. Builds an Fm instance from the config.
+    /// We have to create the terminal before starting the display.
+    /// - status requires the terminal size to be initialized (can we display right tab etc. ?)
+    /// - displays has a cloned arc to status
+    ///
+    /// The terminal is intancied there and passed to the display.
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let fm_sender = Arc::new(fm_sender);
-        let term = Self::init_term();
         let event_reader = EventReader::new(fm_receiver);
-        let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let status = Arc::new(Mutex::new(Status::new(
-            term.size().unwrap(),
+        let fm_sender = Arc::new(fm_sender);
+        let term = Self::init_term()?;
+        let status = Status::arc_mutex_new(
+            term.size()?,
             Opener::default(),
             &config.binds,
             fm_sender.clone(),
-        )?));
+        )?;
+        let event_dispatcher = EventDispatcher::new(config.binds);
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
 
@@ -151,10 +163,10 @@ impl FM {
         })
     }
 
-    fn init_term() -> DefaultTerminal {
+    fn init_term() -> Result<DefaultTerminal> {
         let term = init_term();
-        execute!(stdout(), EnableMouseCapture, EnableBracketedPaste).unwrap();
-        term
+        execute!(stdout(), EnableMouseCapture, EnableBracketedPaste)?;
+        Ok(term)
     }
 
     /// Update itself, changing its status.
