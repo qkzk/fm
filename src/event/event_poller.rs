@@ -14,8 +14,10 @@ impl EventReader {
         Self { fm_receiver }
     }
 
+    const POLL_WAIT_MS: Duration = Duration::from_millis(20);
+
     /// Returns the events as they're received. Loops until an event is received.
-    /// We should spend most of the application life here, doing nothing :)
+    /// We should spend most of the application life here, polling for next event :)
     ///
     /// It's an interface for internal and extenal events (through terminal)
     /// casting them into an [`crate::event::FmEvents`].
@@ -24,7 +26,7 @@ impl EventReader {
             if let Ok(event) = self.fm_receiver.try_recv() {
                 return event;
             }
-            let Ok(true) = crossterm::event::poll(Duration::from_millis(20)) else {
+            let Ok(true) = crossterm::event::poll(Self::POLL_WAIT_MS) else {
                 continue;
             };
             let Ok(term_event) = crossterm::event::read() else {
