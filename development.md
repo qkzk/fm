@@ -1948,17 +1948,10 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
+- [ ] horizontal scroll of input ?
+  - [ ] needs more testing
 - [ ] FEAT: dired inspiration 
-  - [ ] WONTDO: mouse over should color something
-  - [ ] WONTDO: folders should end with / 
-  - [ ] color for each stat instead of common gradient 
-    - [ ] option for kind of coloring 
-    - [ ] filename keep their color 
-    - [ ] color per stat with sane defaults
-    - [ ] make display::FileFormater return a vector
-  - [ ] searching: only matchs should be colored, don't color everything
   - [x] renaming/creating should prepend current path (shortened ?) before filename itself... 
-  - [ ] horizontal scroll of input ?
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
@@ -1976,6 +1969,15 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
+- [ ] FEAT: dired inspiration.
+  - [ ] WONTDO: mouse over should color something
+  - [ ] WONTDO: folders should end with / 
+  - [ ] searching: only matchs should be colored, don't color everything
+  - [ ] color for each stat instead of common gradient 
+    - [ ] option for kind of coloring 
+    - [ ] filename keep their color 
+    - [ ] color per stat with sane defaults
+    - [ ] make display::FileFormater return a vector
 - [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
   - [ ] marks & temp_marks refactor. Use same architecture in both.
   - [ ] common trait for marking 
