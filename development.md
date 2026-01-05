@@ -1950,6 +1950,8 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
 - [ ] horizontal scroll of input ?
   - [ ] needs more testing
+- [x] FIX: renaming a file doesn't select it anymore
+- [ ] FEAT: ctrl+left / right should jump word by word
 - [ ] FEAT: dired inspiration 
   - [x] renaming/creating should prepend current path (shortened ?) before filename itself... 
 

@@ -228,8 +228,8 @@ impl LeaveMenu {
         let old_path = status.current_tab().current_file()?.path;
         match rename_fullpath(&old_path, &new_path) {
             Ok(()) => {
-                status.current_tab_mut().cd_to_file(&new_path)?;
                 status.current_tab_mut().refresh_view()?;
+                status.current_tab_mut().cd_to_file(&new_path)?;
             }
             Err(error) => {
                 log_info!(
