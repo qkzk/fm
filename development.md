@@ -1777,6 +1777,7 @@ Once that's done, it's all. No not implement anything else
   Images will also be disable If `fm` can't detect a previewing method (ueberzug not in path or no iterm2 inline image compatible terminal), 
 - Navigate by clicking / moving / entering a file from a previewed tree. Preview in second pane, ctrl+right to change focus, move with arrows and enter. Boom.
 - Open a previewed file with enter when focusing the pane.
+- In inputs Alt+left, Alt+right move the cursor word by word
 
 ##### Bugfixes
 
@@ -1948,10 +1949,10 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
-- [ ] horizontal scroll of input ?
-  - [ ] needs more testing
+- [ ] FEAT: horizontal scroll of input ?
+  - [ ] needs more testing. Seems to work fine.
 - [x] FIX: renaming a file doesn't select it anymore
-- [ ] FEAT: ctrl+left / right should jump word by word
+- [x] FEAT: In inputs,alt+left / right should jump word by word
 - [ ] FEAT: dired inspiration 
   - [x] renaming/creating should prepend current path (shortened ?) before filename itself... 
 

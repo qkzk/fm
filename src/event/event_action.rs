@@ -950,6 +950,20 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn next_word(status: &mut Status) -> Result<()> {
+        if status.current_tab().menu_mode.is_input() && !status.focus.is_file() {
+            status.menu.input.next_word();
+        }
+        Ok(())
+    }
+
+    pub fn previous_word(status: &mut Status) -> Result<()> {
+        if status.current_tab().menu_mode.is_input() && !status.focus.is_file() {
+            status.menu.input.previous_word();
+        }
+        Ok(())
+    }
+
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {

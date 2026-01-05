@@ -329,6 +329,8 @@ impl Bindings {
 
             (KeyEvent::new(KeyCode::Tab,          KeyModifiers::ALT), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
+            (KeyEvent::new(KeyCode::Right,        KeyModifiers::ALT), ActionMap::NextWord),
+            (KeyEvent::new(KeyCode::Left,         KeyModifiers::ALT), ActionMap::PreviousWord),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
 

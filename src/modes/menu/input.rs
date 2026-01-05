@@ -175,7 +175,9 @@ impl Input {
         self.cursor_index = 0;
     }
 
-    /// Deletes left symbols until a separator is reached or the start of the line
+    /// Deletes left symbols until a word is reached or the start of the line
+    /// A word is delimited by a "separator"
+    /// \t/\\.,;!?%_-+*(){}[]
     pub fn delete_left(&mut self) {
         while self.cursor_index > 0 {
             self.symbols.remove(self.cursor_index.saturating_sub(1));
@@ -203,10 +205,38 @@ impl Input {
             .collect();
         self.cursor_end();
     }
+
+    /// Move the cursor to the previous "word".
+    /// A word is delimited by a "separator"
+    /// \t/\\.,;!?%_-+*(){}[]
+    pub fn next_word(&mut self) {
+        while self.cursor_index < self.symbols.len() {
+            self.cursor_index += 1;
+            if self.cursor_index == self.symbols.len()
+                || is_separator(&self.symbols[self.cursor_index])
+            {
+                break;
+            }
+        }
+    }
+
+    /// Move the cursor to the previous "word".
+    /// A word is delimited by a "separator"
+    /// \t/\\.,;!?%_-+*(){}[]
+    pub fn previous_word(&mut self) {
+        while self.cursor_index > 0 {
+            self.cursor_index -= 1;
+            if self.cursor_index == 0
+                || is_separator(&self.symbols[self.cursor_index.saturating_sub(1)])
+            {
+                break;
+            }
+        }
+    }
 }
 
 #[rustfmt::skip]
 #[inline]
 fn is_separator(word: &str) -> bool {
-    matches!(word, " " | "/" | "\\" | "." | "," | ";" | "!" | "?" | "%" | "_" | "-" | "+" | "*" | "(" | ")" | "{" | "}" | "[" | "]") 
+    matches!(word, " " | "\t" | "/" | "\\" | "." | "," | ";" | "!" | "?" | "%" | "_" | "-" | "+" | "*" | "(" | ")" | "{" | "}" | "[" | "]") 
 }
