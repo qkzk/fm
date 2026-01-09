@@ -18,7 +18,7 @@ use syntect::{
     parsing::{SyntaxReference, SyntaxSet},
 };
 
-use crate::app::previewer_plugins;
+use crate::app::try_build;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
     FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
@@ -252,7 +252,7 @@ impl PreviewBuilder {
 
     fn plugin_preview(&self) -> Option<Preview> {
         if let Some(plugins) = get_previewer_plugins() {
-            previewer_plugins::try_build(&self.path, plugins)
+            try_build(&self.path, plugins)
         } else {
             None
         }

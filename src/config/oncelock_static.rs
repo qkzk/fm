@@ -16,7 +16,7 @@ use syntect::{
     highlighting::{Theme, ThemeSet},
 };
 
-use crate::app::previewer_plugins::{build_plugins, PreviewerPlugin};
+use crate::app::{build_plugins, PreviewerPlugin};
 use crate::config::{
     read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, PreferedImager,
     SyntectTheme, MAX_GRADIENT_NORMAL,
