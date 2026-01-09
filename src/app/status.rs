@@ -1721,9 +1721,9 @@ impl Status {
 
     /// Reads and parse a shell command. Some arguments may be expanded.
     /// See [`crate::modes::shell_command_parser`] for more information.
-    pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
+    pub fn execute_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        self.parse_shell_command(shell_command, None, true)
+        self.execute_shell_command(shell_command, None, true)
     }
 
     // TODO: move to shell something, it doesn't belong here
@@ -1735,8 +1735,8 @@ impl Status {
         }
     }
 
-    /// Parse a shell command and expand tokens like %s, %t etc.
-    pub fn parse_shell_command(
+    /// Parse and execute a shell command and expand tokens like %s, %t etc.
+    pub fn execute_shell_command(
         &mut self,
         shell_command: String,
         files: Option<Vec<String>>,
@@ -2099,7 +2099,7 @@ impl Status {
 
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
-        self.parse_shell_command(string.to_owned(), None, true)?;
+        self.execute_shell_command(string.to_owned(), None, true)?;
         Ok(())
     }
 

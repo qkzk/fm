@@ -209,7 +209,7 @@ impl LeaveMenu {
     /// but expansions are supported
     /// It won't return an `Err` if the command fail but log a message.
     fn shell_command(status: &mut Status) -> Result<()> {
-        status.parse_shell_command_from_input()?;
+        status.execute_shell_command_from_input()?;
         Ok(())
     }
 
@@ -284,7 +284,7 @@ impl LeaveMenu {
             bail!("exec: empty directory")
         }
         let exec_command = status.menu.input.string();
-        if status.parse_shell_command(
+        if status.execute_shell_command(
             exec_command,
             Some(status.menu.flagged.as_strings()),
             false,
