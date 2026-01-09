@@ -88,7 +88,10 @@ pub mod previewer_plugins {
                 Ok(loaded_plugin) => {
                     loaded_plugins.push((name, loaded_plugin));
                 }
-                Err(error) => crate::log_info!("Error loading plugin {error:?}"),
+                Err(error) => {
+                    crate::log_info!("Error loading plugin {error:?}");
+                    crate::log_line!("Plugin {name} couldn't be loaded. See logs.")
+                }
             }
         }
         loaded_plugins
