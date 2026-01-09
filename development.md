@@ -1801,6 +1801,9 @@ Once that's done, it's all. No not implement anything else
 
     spec in fm.config 
       - name & path_to_lib.so
+- [ ] FEAT: install plugins from CLI.
+  Allow "paths" to be an url link instead of a filepath. `fmconfig plugin update` would update all "url" plugins.
+- [ ] FEAT: allow settings in plugins & store them in config file
 - [x] example plugin: bat previewer 
 - [x] FIX: displaying preview directly skip the whole plugin.
 - [x] FIX: crash without config files. Save default config while building, include them in code.
