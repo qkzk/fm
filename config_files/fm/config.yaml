@@ -170,9 +170,6 @@ custom:
   # drag & drop the selected file to a GUI application
   "shift-d": "/usr/bin/dragon-drop %s"
 
-# TODO: allow plugins to be loaded from internet.
-# should we allow a git repo ? and compile the plugin ourselves ?
-
 # Plugins
 # Plugins are external libs, written in rust.
 # ATM only previewers plugins are supported.
