@@ -85,9 +85,7 @@ pub mod previewer_plugins {
         let mut loaded_plugins = vec![];
         for (name, path) in plugins.into_iter() {
             match load_plugin(path) {
-                Ok(loaded_plugin) => {
-                    loaded_plugins.push((name, loaded_plugin));
-                }
+                Ok(loaded_plugin) => loaded_plugins.push((name, loaded_plugin)),
                 Err(error) => {
                     crate::log_info!("Error loading plugin {error:?}");
                     crate::log_line!("Plugin {name} couldn't be loaded. See logs.")
