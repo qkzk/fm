@@ -88,21 +88,22 @@ pub mod previewer_plugins {
     pub fn build_plugins(plugins: HashMap<String, String>) -> HashMap<String, PreviewerPlugin> {
         let mut loaded_plugins = HashMap::new();
         for (name, path) in plugins.into_iter() {
-            let Some(loaded_plugin) = load_plugin(path) else {
-                continue;
-            };
-            loaded_plugins.insert(name, loaded_plugin);
+            match load_plugin(path) {
+                Ok(loaded_plugin) => {
+                    loaded_plugins.insert(name, loaded_plugin);
+                }
+                Err(error) => crate::log_info!("Error loading plugin {error:?}"),
+            }
         }
         loaded_plugins
     }
 
-    // TODO: make it a result allowing errors in log
-    fn load_plugin(path: String) -> Option<PreviewerPlugin> {
-        let _lib = unsafe { get_lib(path) }.ok()?;
-        let name = unsafe { get_name(&_lib) }.ok()?;
-        let is_match = unsafe { *(get_matcher(&_lib).ok()?) };
-        let previewer = unsafe { *(get_previewer(&_lib)).ok()? };
-        Some(PreviewerPlugin {
+    fn load_plugin(path: String) -> Result<PreviewerPlugin> {
+        let _lib = unsafe { get_lib(path) }?;
+        let name = unsafe { get_name(&_lib) }?;
+        let is_match = unsafe { *(get_matcher(&_lib)?) };
+        let previewer = unsafe { *(get_previewer(&_lib))? };
+        Ok(PreviewerPlugin {
             _lib,
             name,
             is_match,
