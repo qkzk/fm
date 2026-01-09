@@ -274,12 +274,9 @@ impl External {
     }
 
     fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
-        // TODO: use join_quote instead of building it here. Keep the OsString as long as possible.
-        // TODO: the whole function is ugly and should be done another way.
         let arg = paths
             .iter()
-            .filter_map(|p| p.to_str())
-            .filter_map(|s| s.quote().ok())
+            .filter_map(|p| p.to_str().and_then(|s| s.quote().ok()))
             .collect::<Vec<_>>()
             .join(" ");
         Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
