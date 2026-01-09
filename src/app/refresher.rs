@@ -20,54 +20,44 @@ impl Refresher {
 
     /// Event sent to Fm event poller which is interpreted
     /// as a request for refresh.
-    /// This key can't be bound to anything (who would use that ?).
 
     /// Spawn a thread which sends events to the terminal.
     /// Those events are interpreted as refresh requests.
     /// It also listen to a receiver for quit messages.
-    ///
-    /// Using Event::User(()) conflicts with skim internal which interpret this
-    /// event as a signal(1) and hangs the terminal.
     pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
         let (tx, rx) = mpsc::channel();
-        let mut counter: u16 = 0;
+        // let mut counter: u16 = 0;
+        let mut counter = Counter::default();
         let (socket_path, socket_listener) = create_stream().expect("Error creating stream");
         socket_listener
             .set_nonblocking(true)
             .expect("Couldn't set socket to non blocking");
         let handle = thread::spawn(move || loop {
+            // TODO: This isn't the responsability of refresher to transfer events from the socket.
+            // TODO: either create anoter thread for that or do it cleaner.
+            // TODO: too much send there should be only one in the whole closure.
             if let Ok((mut stream, path)) = socket_listener.accept() {
                 crate::log_info!("Accepted socket connection from {path:?}");
                 if let Some(msg) = read_from_stream(&mut stream) {
                     let event = FmEvents::Ipc(msg);
-                    // TODO: too much send there should be only one in the whole closure.
                     if fm_sender.send(event).is_err() {
-                        std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
-                        log_info!("Deleted socket {socket_path}");
+                        remove_socket(&socket_path);
                         break;
                     }
                 }
             }
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
-                    std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
-                    log_info!("Deleted socket {socket_path}");
-                    log_info!("terminating refresher");
+                    remove_socket(&socket_path);
                     return;
                 }
                 Err(TryRecvError::Empty) => {}
             }
-            counter += 1;
+            counter.incr();
             thread::sleep(Duration::from_millis(10));
-            let event = if counter >= Self::TEN_SECONDS_IN_CENTISECONDS {
-                counter = 0;
-                FmEvents::Refresh
-            } else {
-                FmEvents::UpdateTick
-            };
+            let event = counter.pick_according_to_counter();
             if fm_sender.send(event).is_err() {
-                std::fs::remove_file(&socket_path).expect("Couldn't delete socket file");
-                log_info!("Deleted socket {socket_path}");
+                remove_socket(&socket_path);
                 break;
             }
         });
@@ -79,5 +69,31 @@ impl Refresher {
     pub fn quit(self) {
         let _ = self.tx.send(());
         let _ = self.handle.join();
+    }
+}
+
+fn remove_socket(socket_path: &str) {
+    std::fs::remove_file(socket_path).expect("Couldn't delete socket file");
+    log_info!("Deleted socket {socket_path}");
+    log_info!("terminating refresher");
+}
+
+#[derive(Default)]
+struct Counter {
+    counter: u16,
+}
+
+impl Counter {
+    fn pick_according_to_counter(&mut self) -> FmEvents {
+        if self.counter >= Refresher::TEN_SECONDS_IN_CENTISECONDS {
+            self.counter = 0;
+            FmEvents::Refresh
+        } else {
+            FmEvents::UpdateTick
+        }
+    }
+
+    fn incr(&mut self) {
+        self.counter += 1;
     }
 }
