@@ -83,3 +83,12 @@ impl JoinQuote for &Vec<String> {
             .join(sep)
     }
 }
+
+/// Returns the received command with those files quoted and appended. If no file were provided
+/// (if `files` is `None`), it returns the shell command it self.
+pub fn append_files_to_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
+    let Some(files) = &files else {
+        return shell_command;
+    };
+    shell_command + " " + &files.join_quote(" ")
+}

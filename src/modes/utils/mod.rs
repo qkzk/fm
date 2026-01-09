@@ -17,5 +17,5 @@ pub use menu_holder::MenuHolder;
 pub use mount_help::{MountCommands, MountParameters};
 pub use second_line::SecondLine;
 pub use selectable_content::{Content, IndexToIndex, Selectable, ToPath};
-pub use shell_escape::{JoinQuote, Quote};
+pub use shell_escape::{append_files_to_shell_command, JoinQuote, Quote};
 pub use shell_parser::{shell_command_parser, SAME_WINDOW_TOKEN};

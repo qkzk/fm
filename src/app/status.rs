@@ -31,12 +31,12 @@ use crate::io::{
     Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, parse_line_output, regex_flagger, shell_command_parser, Content, ContentWindow,
-    CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, JoinQuote, Menu, MenuHolder,
-    MountAction, MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users,
-    SAME_WINDOW_TOKEN,
+    append_files_to_shell_command, copy_move, parse_line_output, regex_flagger,
+    shell_command_parser, Content, ContentWindow, CopyMove, CursorOffset,
+    Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
+    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction, MountCommands,
+    Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller,
+    Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -1726,15 +1726,6 @@ impl Status {
         self.execute_shell_command(shell_command, None, true)
     }
 
-    // TODO: move to shell something, it doesn't belong here
-    fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
-        if let Some(files) = &files {
-            shell_command + " " + &files.join_quote(" ")
-        } else {
-            shell_command
-        }
-    }
-
     /// Parse and execute a shell command and expand tokens like %s, %t etc.
     pub fn execute_shell_command(
         &mut self,
@@ -1742,7 +1733,7 @@ impl Status {
         files: Option<Vec<String>>,
         capture_output: bool,
     ) -> Result<bool> {
-        let command = Self::build_shell_command(shell_command, files);
+        let command = append_files_to_shell_command(shell_command, files);
         let Ok(args) = shell_command_parser(&command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
