@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::{fs::File, path};
 
 use anyhow::Result;
@@ -19,7 +18,7 @@ use crate::log_info;
 pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
-    pub plugins: HashMap<String, String>,
+    pub plugins: Vec<(String, String)>,
 }
 
 impl Config {
@@ -44,7 +43,7 @@ impl Config {
             };
             if path::Path::new(plugin_path).exists() {
                 self.plugins
-                    .insert(plugin_name.to_owned(), plugin_path.to_owned());
+                    .push((plugin_name.to_owned(), plugin_path.to_owned()));
             } else {
                 log_info!("{plugin_path} is specified in config file but doesn't exists.");
             }

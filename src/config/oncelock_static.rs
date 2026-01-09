@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::File,
     ops::DerefMut,
     path::{Path, PathBuf},
@@ -58,7 +57,7 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
-static PLUGINS: OnceLock<HashMap<String, PreviewerPlugin>> = OnceLock::new();
+static PLUGINS: OnceLock<Vec<(String, PreviewerPlugin)>> = OnceLock::new();
 
 static PREFERED_IMAGER: OnceLock<PreferedImager> = OnceLock::new();
 
@@ -67,13 +66,13 @@ pub fn get_prefered_imager() -> Option<&'static PreferedImager> {
 }
 
 /// Attach a map of name -> path to the `PLUGINS` static variable.
-pub fn set_previewer_plugins(plugins: HashMap<String, String>) -> Result<()> {
+pub fn set_previewer_plugins(plugins: Vec<(String, String)>) -> Result<()> {
     let _ = PLUGINS.set(build_plugins(plugins));
     Ok(())
 }
 
 /// `PLUGINS` static map. Returns a map of name -> path.
-pub fn get_previewer_plugins() -> Option<&'static HashMap<String, PreviewerPlugin>> {
+pub fn get_previewer_plugins() -> Option<&'static Vec<(String, PreviewerPlugin)>> {
     PLUGINS.get()
 }
 
@@ -255,7 +254,7 @@ pub fn set_icon_icon_with_metadata() -> Result<()> {
 /// Set all the values which could be configured from config file or arguments staticly.
 /// It allows us to read those values globally without having to pass them through to every function.
 /// All values use a [`std::sync::OnceLock`] internally.
-pub fn set_configurable_static(start_folder: &str, plugins: HashMap<String, String>) -> Result<()> {
+pub fn set_configurable_static(start_folder: &str, plugins: Vec<(String, String)>) -> Result<()> {
     set_start_folder(start_folder)?;
     set_menu_styles()?;
     set_file_styles()?;

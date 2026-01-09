@@ -71,7 +71,6 @@ impl Previewer {
 /// TODO: move elesewhere
 pub mod previewer_plugins {
     use std::{
-        collections::HashMap,
         ffi::{c_char, CString},
         path::Path,
     };
@@ -81,16 +80,13 @@ pub mod previewer_plugins {
 
     use crate::modes::{Preview, PreviewBuilder};
 
-    // TODO: don't use hashmap since plugins are tested with `map.iter()` and it uses arbitrary order.
-    // we must ensure the plugins are tested with the order the user provided
-
     /// Build an hashmap of name and preview builder from an hashmap of name and path.
-    pub fn build_plugins(plugins: HashMap<String, String>) -> HashMap<String, PreviewerPlugin> {
-        let mut loaded_plugins = HashMap::new();
+    pub fn build_plugins(plugins: Vec<(String, String)>) -> Vec<(String, PreviewerPlugin)> {
+        let mut loaded_plugins = vec![];
         for (name, path) in plugins.into_iter() {
             match load_plugin(path) {
                 Ok(loaded_plugin) => {
-                    loaded_plugins.insert(name, loaded_plugin);
+                    loaded_plugins.push((name, loaded_plugin));
                 }
                 Err(error) => crate::log_info!("Error loading plugin {error:?}"),
             }
@@ -139,10 +135,10 @@ pub mod previewer_plugins {
     }
 
     /// Preview the file if any loaded plugin is able to.
-    pub fn try_build(path: &Path, plugins: &HashMap<String, PreviewerPlugin>) -> Option<Preview> {
+    pub fn try_build(path: &Path, plugins: &[(String, PreviewerPlugin)]) -> Option<Preview> {
         let s_path = path.to_string_lossy().to_string();
         let candidate = CString::new(s_path).ok()?.into_raw();
-        for plugin in plugins.values() {
+        for (_, plugin) in plugins.iter() {
             if unsafe { (plugin.is_match)(candidate) } {
                 let c_path = CString::new(path.display().to_string()).ok()?.into_raw();
                 let output = unsafe { plugin.get_output(c_path) }.ok()?;
