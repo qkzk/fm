@@ -38,7 +38,6 @@ pub struct InternalSettings {
     pub size: Size,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
-    // TODO: make it private and refactor disk space without using collect
     pub disks: Disks,
     /// true if the application was launched inside a neovim terminal emulator
     pub inside_neovim: bool,

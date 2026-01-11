@@ -28,11 +28,11 @@ use crate::{log_info, log_line};
 /// we return the first disk whose mount point match the path.
 pub fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&'a Disk> = disks.list().iter().collect();
-    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().as_os_str().len());
+    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().components().count());
     disks
         .iter()
-        .copied()
         .find(|&disk| path.starts_with(disk.mount_point()))
+        .map(|disk| &**disk)
 }
 
 fn disk_space_used(disk: Option<&Disk>) -> String {
