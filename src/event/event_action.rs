@@ -15,7 +15,7 @@ use crate::io::{read_log, Args, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, ContentWindow,
+    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, Content, ContentWindow,
     Direction as FuzzyDirection, Display, FuzzyKind, Go, InputCompleted, InputSimple, LeaveMenu,
     MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview, PreviewBuilder,
     ReEnterMenu, Search, Selectable, To,
@@ -261,18 +261,13 @@ impl EventAction {
 
     // TODO: rename, refactor. Associate an "enter" function to each mode ? use it everywhere possible
     pub fn reenter_menu(status: &mut Status, menu: Menu, should_complete: bool) -> Result<()> {
-        let picked = status
-            .menu
-            .picker
-            .content
-            .get(status.menu.picker.index)
-            .cloned();
         menu.reenter(status)?;
+        let picked = &status.menu.picker.selected();
         if should_complete && menu.is_input() && picked.is_some() {
             status
                 .menu
                 .input
-                .replace(&picked.context("Picker shouldn't be empty")?);
+                .replace(picked.context("Picker shouldn't be empty")?);
             if let Menu::InputCompleted(input_completed) = menu {
                 status.complete(input_completed)?;
             }

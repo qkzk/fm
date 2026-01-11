@@ -452,8 +452,7 @@ impl ReEnterMenu for Menu {
             Self::InputSimple(InputSimple::Sort)                    => EventAction::sort(status),
             Self::InputSimple(InputSimple::Filter)                  => EventAction::filter(status),
             Self::InputSimple(InputSimple::SetNvimAddr)             => EventAction::set_nvim_server(status),
-            // TODO: should do something
-            Self::InputSimple(InputSimple::Password(_mount_action, _usage)) => Ok(()),
+            Self::InputSimple(InputSimple::Password(_mount_action, _usage)) => unreachable!("Can't pick a password, those aren't saved."),
             Self::InputSimple(InputSimple::ShellCommand)            => EventAction::shell_command(status),
             Self::InputSimple(InputSimple::Remote)                  => EventAction::remote_mount(status),
             Self::InputSimple(InputSimple::CloudNewdir)             => EventAction::cloud_enter_newdir_mode(status),
@@ -469,8 +468,7 @@ impl ReEnterMenu for Menu {
                 MarkAction::New => EventAction::temp_marks_new(status),
             },
             Self::Navigate(Navigate::Mount)                         => EventAction::mount(status),
-            // TODO: ... isn't good
-            Self::Navigate(Navigate::Picker)                        => Ok(()),
+            Self::Navigate(Navigate::Picker)                        => unreachable!("Can't reenter picker from itself"),
             Self::Navigate(Navigate::Compress)                      => EventAction::compress(status),
             Self::Navigate(Navigate::TuiApplication)                => EventAction::tui_menu(status),
             Self::Navigate(Navigate::CliApplication)                => EventAction::cli_menu(status),
