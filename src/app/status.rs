@@ -558,10 +558,7 @@ impl Status {
     /// If the menu is a picker for input history, it will reenter the caller menu.
     /// Example: Menu CD -> History of CDs <Esc> -> Menu CD
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
-        if matches!(
-            self.current_tab().menu_mode,
-            Menu::Navigate(Navigate::Picker)
-        ) {
+        if self.current_tab().menu_mode.is_picker() {
             if let Some(PickerCaller::Menu(menu)) = self.menu.picker.caller {
                 EventAction::reenter_menu(self, menu, false)?;
                 return Ok(false);
