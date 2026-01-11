@@ -20,7 +20,7 @@ use ratatui::{init as init_term, DefaultTerminal};
 use crate::app::{Displayer, Refresher, Status};
 use crate::common::{clear_input_socket_files, clear_tmp_files, save_final_path, CONFIG_PATH};
 use crate::config::{load_config, set_configurable_static, Config, IS_LOGGING};
-use crate::event::{EventDispatcher, EventReader, FmEvents};
+use crate::event::{remove_socket, EventDispatcher, EventReader, FmEvents};
 use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
 
@@ -220,6 +220,7 @@ impl FM {
 
         clear_tmp_files();
 
+        remove_socket(&self.event_reader.socket_path);
         drop(self.event_reader);
         drop(self.event_dispatcher);
         self.displayer.quit();

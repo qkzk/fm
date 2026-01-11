@@ -67,3 +67,9 @@ pub fn write_to_stream(stream: &mut UnixStream, data: String) -> Result<()> {
     stream.write_all(data.as_bytes())?;
     Ok(())
 }
+
+pub fn remove_socket(socket_path: &str) {
+    std::fs::remove_file(socket_path).expect("Couldn't delete socket file");
+    crate::log_info!("Deleted socket {socket_path}");
+    crate::log_info!("terminating refresher");
+}

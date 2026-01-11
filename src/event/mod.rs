@@ -23,5 +23,5 @@ pub use event_dispatch::EventDispatcher;
 pub use event_poller::EventReader;
 pub use fm_events::FmEvents;
 pub use ipc_socket::{
-    build_input_socket_filepath, create_stream, read_from_stream, write_to_stream,
+    build_input_socket_filepath, create_stream, read_from_stream, remove_socket, write_to_stream,
 };
