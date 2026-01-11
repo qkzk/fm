@@ -48,7 +48,6 @@ impl ContextMenu {
 
 type StaticStr = &'static str;
 
-impl_selectable!(ContextMenu);
 impl_content!(ContextMenu, StaticStr);
 impl_draw_menu_with_char!(ContextMenu, StaticStr);
 

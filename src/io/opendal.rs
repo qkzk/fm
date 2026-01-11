@@ -405,7 +405,6 @@ impl OpendalContainer {
     }
 }
 
-impl_selectable!(OpendalContainer);
 impl_content!(OpendalContainer, Entry);
 
 impl CowStr for Entry {

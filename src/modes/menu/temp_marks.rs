@@ -90,5 +90,4 @@ impl TempMarks {
 
 type Opb = Option<PathBuf>;
 
-impl_selectable!(TempMarks);
 impl_content!(TempMarks, Opb);

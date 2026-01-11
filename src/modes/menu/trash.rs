@@ -486,7 +486,6 @@ impl Trash {
     }
 }
 
-impl_selectable!(Trash);
 impl_content!(Trash, Info);
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {

@@ -1210,7 +1210,6 @@ fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
         input.as_ref().to_string()
     }
 }
-impl_selectable!(Mount);
 impl_content!(Mount, Mountable);
 
 impl DrawMenu<Mountable> for Mount {

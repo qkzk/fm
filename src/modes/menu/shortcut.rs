@@ -147,6 +147,5 @@ impl Shortcut {
     }
 }
 
-impl_selectable!(Shortcut);
 impl_content!(Shortcut, PathBuf);
 impl_draw_menu_with_char!(Shortcut, PathBuf);

@@ -174,6 +174,5 @@ impl CowStr for CliCommand {
     }
 }
 
-impl_selectable!(CliApplications);
 impl_content!(CliApplications, CliCommand);
 impl_draw_menu_with_char!(CliApplications, CliCommand);

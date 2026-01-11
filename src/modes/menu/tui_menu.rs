@@ -66,6 +66,5 @@ impl TerminalApplications<String, ()> for TuiApplications {
     }
 }
 
-impl_selectable!(TuiApplications);
 impl_content!(TuiApplications, String);
 impl_draw_menu_with_char!(TuiApplications, String);

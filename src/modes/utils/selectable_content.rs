@@ -3,8 +3,6 @@ use std::slice::Iter;
 
 use ratatui::style::Style;
 
-// TODO: pick a more telling name. `Selectable` doesn't say what it does.
-
 /// Allow selection of a element and basic navigation.
 /// Its implementation is mostly made by the macro [`crate::impl_selectable`]
 /// which allows to manipulate all sort of content in a common manner.
@@ -63,9 +61,11 @@ pub trait IndexToIndex<T> {
     /// Useful when going to next match in search results
     fn index_to_index(&self) -> Chain<Skip<Iter<T>>, Take<Iter<T>>>;
 }
+
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
 /// It implements: `is_empty`, `len`, `next`, `prev`, `set_index` and `selected_is_last`.
+/// This macro should not be called directly. Use [crate::impl_content] instead.
 #[macro_export]
 macro_rules! impl_selectable {
     ($struct:ident) => {
@@ -150,13 +150,22 @@ macro_rules! impl_index_to_index {
     };
 }
 
-/// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
+/// Implement two traits allowing to select and navigate into a struct.
+/// It's used for menu which share a common structure.
+///
+/// Implement the `Selectable` trait for struct `$struc` with content type `$content_type`.
+/// This trait allows to navigate through a vector of element `content_type`.
+/// It implements: `is_empty`, `len`, `next`, `prev`, `set_index` and `selected_is_last`.
+///
+/// Implement the `Content` trait for struct `$struct` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
 /// It implements: `selected`, `content`, `push`, `style`.
 /// `selected` returns an optional reference to the value.
 #[macro_export]
 macro_rules! impl_content {
     ($struct:ident, $content_type:ident) => {
+        impl_selectable!($struct);
+
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.

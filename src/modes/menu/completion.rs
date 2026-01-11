@@ -299,7 +299,6 @@ fn create_parent(vec_steps: Vec<&str>) -> String {
     tilde(&parent).to_string()
 }
 
-impl_selectable!(Completion);
 impl_content!(Completion, String);
 
 impl DrawMenu<String> for Completion {}

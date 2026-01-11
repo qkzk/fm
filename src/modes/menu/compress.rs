@@ -163,7 +163,6 @@ impl Compresser {
     }
 }
 
-impl_selectable!(Compresser);
 impl_content!(Compresser, CompressionMethod);
 
 impl CowStr for CompressionMethod {
