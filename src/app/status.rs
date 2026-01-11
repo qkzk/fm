@@ -99,6 +99,11 @@ impl Focus {
         *self as usize
     }
 
+    /// Index of the tab Left is 0 and Right is one.
+    pub fn tab_index(&self) -> usize {
+        self.index() >> 1
+    }
+
     /// Is the window a left menu ?
     pub fn is_left_menu(&self) -> bool {
         matches!(self, Self::LeftMenu)
@@ -337,38 +342,41 @@ impl Status {
                     if let Preview::Tree(tree) = &self.tabs[1].preview {
                         let index = row_to_window_index(row) + self.tabs[1].window.top;
                         let path = &tree.path_from_index(index)?;
-                        self.tabs[0].cd_to_file(path)?;
-                        self.index = 0;
-                        self.focus = Focus::LeftFile;
+                        self.select_file_from_right_tree(path)?;
                     }
                 } else {
-                    self.tab_select_row(row)?
+                    self.tab_select_row(row)?;
+                    self.update_second_pane_for_preview()?;
                 }
-                self.update_second_pane_for_preview()
+                Ok(())
             }
             Window::Footer => self.footer_action(col, binds),
             Window::Menu => self.menu_action(row, col),
         }
     }
 
+    /// Action when user press enter on a preview.
+    /// If the preview is a tree in right tab, the left file will be selected in the left tab.
+    /// Otherwise, we open the file if it exists in the file tree.
     pub fn enter_from_preview(&mut self) -> Result<()> {
-        // TODO: duplicated from click_action_from_window ... to satisfy borrow checker
-        // TODO: should handle previewing left & rigth with left focus
         if let Preview::Tree(tree) = &self.tabs[1].preview {
             let index = tree.displayable().index();
             let path = &tree.path_from_index(index)?;
-            self.tabs[0].cd_to_file(path)?;
-            self.index = 0;
-            self.focus = Focus::LeftFile;
-            self.update_second_pane_for_preview()?;
+            self.select_file_from_right_tree(path)?;
         } else {
-            let filepath = self.tabs[self.focus.index() >> 1].preview.filepath();
-            if !filepath.exists() {
-                return Ok(());
+            let filepath = self.tabs[self.focus.tab_index()].preview.filepath();
+            if filepath.exists() {
+                self.open_single_file(&filepath)?;
             }
-            self.open_single_file(&filepath)?;
         }
         Ok(())
+    }
+
+    fn select_file_from_right_tree(&mut self, path: &Path) -> Result<()> {
+        self.tabs[0].cd_to_file(path)?;
+        self.index = 0;
+        self.focus = Focus::LeftFile;
+        self.update_second_pane_for_preview()
     }
 
     /// Select a given row, if there's something in it.
