@@ -412,7 +412,7 @@ impl LeaveMenu {
         };
         match caller {
             PickerCaller::Cloud => status.cloud_load_config(),
-            PickerCaller::Menu(menu) => EventAction::reenter_menu(status, *menu, true),
+            PickerCaller::Menu(menu) => EventAction::reenter_menu_from_picker(status, *menu),
             PickerCaller::Unknown => Ok(()),
         }
     }

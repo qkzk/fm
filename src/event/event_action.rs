@@ -259,20 +259,19 @@ impl EventAction {
         Ok(())
     }
 
-    // TODO: rename, refactor. Associate an "enter" function to each mode ? use it everywhere possible
-    pub fn reenter_menu(status: &mut Status, menu: Menu, should_complete: bool) -> Result<()> {
+    pub fn reenter_menu_from_picker(status: &mut Status, menu: Menu) -> Result<()> {
         menu.reenter(status)?;
-        let picked = &status.menu.picker.selected();
-        if should_complete && menu.is_input() && picked.is_some() {
-            status
-                .menu
-                .input
-                .replace(picked.context("Picker shouldn't be empty")?);
-            if let Menu::InputCompleted(input_completed) = menu {
-                status.complete(input_completed)?;
-            }
+        if !menu.is_input() {
+            return Ok(());
         }
-        Ok(())
+        let Some(picked) = &status.menu.picker.selected() else {
+            return Ok(());
+        };
+        status.menu.input.replace(picked);
+        let Menu::InputCompleted(input_completed) = menu else {
+            return Ok(());
+        };
+        status.complete(input_completed)
     }
 
     /// Enter the rename mode.

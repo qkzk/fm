@@ -23,7 +23,7 @@ use crate::common::{
     path_to_string, row_to_window_index, set_current_dir, tilde, MountPoint,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
-use crate::event::{ActionMap, EventAction, FmEvents};
+use crate::event::{ActionMap, FmEvents};
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
     execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
@@ -35,7 +35,7 @@ use crate::modes::{
     Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
     InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction, MountCommands,
     Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller,
-    Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    Preview, PreviewBuilder, ReEnterMenu, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -560,7 +560,7 @@ impl Status {
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
         if self.current_tab().menu_mode.is_picker() {
             if let Some(PickerCaller::Menu(menu)) = self.menu.picker.caller {
-                EventAction::reenter_menu(self, menu, false)?;
+                menu.reenter(self)?;
                 return Ok(false);
             }
         }
