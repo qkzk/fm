@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc::Sender, Arc};
 
@@ -108,8 +108,16 @@ impl InternalSettings {
         &self.disks
     }
 
-    pub fn mount_points(&mut self) -> Vec<&Path> {
+    pub fn mount_points_vec(&mut self) -> Vec<&Path> {
         self.disks().iter().map(|d| d.mount_point()).collect()
+    }
+
+    pub fn mount_points_set(&self) -> HashSet<&Path> {
+        self.disks
+            .list()
+            .iter()
+            .map(|disk| disk.mount_point())
+            .collect()
     }
 
     pub fn update_nvim_listen_address(&mut self) {

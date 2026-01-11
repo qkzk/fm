@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::env;
 use std::fs::{metadata, read_to_string, File};
 use std::io::{BufRead, Write};
@@ -21,12 +22,28 @@ use crate::io::Extension;
 use crate::modes::{human_size, nvim_open, ContentWindow, Users};
 use crate::{log_info, log_line};
 
+/// The mount point of a path
+pub trait MountPoint<'a> {
+    /// Returns the mount point of a path.
+    fn mount_point(&self, mount_points: &'a HashSet<&'a Path>) -> Option<&Self>;
+}
+
+impl<'a> MountPoint<'a> for Path {
+    fn mount_point(&self, mount_points: &'a HashSet<&'a Path>) -> Option<&Self> {
+        let mut current = self;
+        while !mount_points.contains(current) {
+            current = current.parent()?;
+        }
+        Some(current)
+    }
+}
+
 /// Returns the disk owning a path.
 /// None if the path can't be found.
 ///
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
-pub fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
+fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&'a Disk> = disks.list().iter().collect();
     disks.sort_by_key(|disk| usize::MAX - disk.mount_point().components().count());
     disks

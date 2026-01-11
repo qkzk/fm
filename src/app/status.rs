@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{
@@ -20,8 +19,8 @@ use crate::app::{
     ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
 };
 use crate::common::{
-    build_dest_path, current_username, disk_space, disk_used_by_path, filename_from_path,
-    is_in_path, is_sudo_command, path_to_string, row_to_window_index, set_current_dir, tilde,
+    build_dest_path, current_username, disk_space, filename_from_path, is_in_path, is_sudo_command,
+    path_to_string, row_to_window_index, set_current_dir, tilde, MountPoint,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::{ActionMap, EventAction, FmEvents};
@@ -475,7 +474,7 @@ impl Status {
     /// demand.
     pub fn refresh_shortcuts(&mut self) {
         self.menu.refresh_shortcuts(
-            &self.internal_settings.mount_points(),
+            &self.internal_settings.mount_points_vec(),
             self.tabs[0].current_path(),
             self.tabs[1].current_path(),
         );
@@ -1080,26 +1079,19 @@ impl Status {
 
     /// True iff it's a _move_ (not a copy) where all sources share the same mountpoint as destination.
     fn is_simple_move(&self, cut_or_copy: &CopyMove, sources: &[PathBuf], dest: &Path) -> bool {
-        if matches!(cut_or_copy, CopyMove::Copy) {
+        if cut_or_copy.is_copy() || sources.is_empty() {
             return false;
         }
-        let mut disks = HashSet::new();
+        let mount_points = self.internal_settings.mount_points_set();
+        let Some(source_mount_point) = sources[0].mount_point(&mount_points) else {
+            return false;
+        };
         for source in sources {
-            let Some(s) = disk_used_by_path(&self.internal_settings.disks, source) else {
+            if source.mount_point(&mount_points) != Some(source_mount_point) {
                 return false;
-            };
-            disks.insert(s.mount_point());
+            }
         }
-        if disks.len() != 1 {
-            return false;
-        }
-        let Some(s) = disks.iter().next() else {
-            return false;
-        };
-        let Some(d) = disk_used_by_path(&self.internal_settings.disks, dest) else {
-            return false;
-        };
-        *s == d.mount_point()
+        Some(source_mount_point) == dest.mount_point(&mount_points)
     }
 
     fn simple_move(&mut self, sources: &[PathBuf], dest: &Path) -> Result<()> {
