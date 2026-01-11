@@ -13,7 +13,7 @@ use crate::io::Args;
 
 /// filepath of the socked used
 /// If the user provided a filepath (will be the case if you use neovim
-/// companion plugin [fm-picker.nvim}(https://github.com/qkzk/fm-picker.nvim))
+/// companion plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim))
 /// then we use it.
 /// Otherwise, it's `/tmp/fm-socket-{pid}.sock` where `pid` is the process
 /// identifier of the current process.
