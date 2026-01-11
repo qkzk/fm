@@ -382,6 +382,18 @@ impl Menu {
     pub fn is_complete(&self) -> bool {
         matches!(self, Self::InputCompleted(_))
     }
+
+    pub fn is_picker(&self) -> bool {
+        matches!(self, Self::Navigate(Navigate::Picker))
+    }
+
+    /// Nice name for the picker menu.
+    pub fn name_for_picker(&self) -> Option<String> {
+        self.to_string()
+            .split(':')
+            .next()
+            .and_then(|s| Some(s.to_string()))
+    }
 }
 
 impl CursorOffset for Menu {

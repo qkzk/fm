@@ -2187,21 +2187,18 @@ impl Status {
         self.filter()
     }
 
+    /// Open the picker menu. Does nothing if already in a picker.
     pub fn open_picker(&mut self) -> Result<()> {
-        if self.menu.input_history.filtered_is_empty() {
+        if self.current_tab().menu_mode.is_picker() || self.menu.input_history.filtered_is_empty() {
             return Ok(());
         }
         let menu = self.current_tab().menu_mode;
         let content = self.menu.input_history.filtered_as_list();
-        let name = menu
-            .to_string()
-            .split(':')
-            .next()
-            .unwrap_or_default()
-            .to_string();
-        self.menu
-            .picker
-            .set(Some(PickerCaller::Menu(menu)), Some(name), content);
+        self.menu.picker.set(
+            Some(PickerCaller::Menu(menu)),
+            menu.name_for_picker(),
+            content,
+        );
 
         self.set_menu_mode(self.index, Menu::Navigate(Navigate::Picker))
     }
