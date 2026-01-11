@@ -1788,6 +1788,7 @@ Once that's done, it's all. No not implement anything else
 - Prevent the use from moving to a subdirectory which is impossible. Display a message.
 - Completion is updated when something is deleted (backspace, delete). In search mode, the selected file is also updated.
 - Context menu (Alt+t or right click) should do nothing in fuzzy or preview mode
+- Opening a picker (like Alt+h in a menu) twice and pressing enter would crash
 
 #### Changelog
 
