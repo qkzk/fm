@@ -180,7 +180,7 @@ mod inner {
     impl Header {
         /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size().0;
+            let full_width = status.term_width();
             let canvas_width = status.canvas_width()?;
             let left = Self::make_left(tab, canvas_width)?;
             let right = Self::make_right(tab, canvas_width)?;
@@ -328,7 +328,7 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size().0;
+            let full_width = status.term_width();
             let canvas_width = status.canvas_width()?;
             let left = Self::make_elems(status, tab, canvas_width)?;
             Ok(Self { left, full_width })

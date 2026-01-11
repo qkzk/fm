@@ -1958,6 +1958,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: In inputs,alt+left / right should jump word by word
 - [ ] FEAT: dired inspiration 
   - [x] renaming/creating should prepend current path (shortened ?) before filename itself... 
+- [ ] IMP: use Size for holding terminal sizes, improving readability.
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1

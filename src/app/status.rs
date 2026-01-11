@@ -311,7 +311,7 @@ impl Status {
     /// When a mouse event occurs, focus is given to the window where it happened.
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
-        let window = self.window_from_row(row, self.term_size().1);
+        let window = self.window_from_row(row, self.term_size().height);
         self.set_focus_from_window_and_index(&window);
         Ok(window)
     }
@@ -410,7 +410,7 @@ impl Status {
     /// Height of the second window (menu).
     /// Watchout : it's always ~height / 2 - 2, even if menu is closed.
     pub fn second_window_height(&self) -> Result<usize> {
-        let (_, height) = self.term_size();
+        let height = self.term_size().height;
         Ok((height / 2).saturating_sub(2) as usize)
     }
 
@@ -490,12 +490,13 @@ impl Status {
     }
 
     /// Returns the size of the terminal (width, height)
-    pub fn term_size(&self) -> (u16, u16) {
+    pub fn term_size(&self) -> Size {
         self.internal_settings.term_size()
     }
 
-    fn term_width(&self) -> u16 {
-        self.term_size().0
+    /// Returns the width of the terminal window.
+    pub fn term_width(&self) -> u16 {
+        self.term_size().width
     }
 
     /// Clears the right preview
@@ -640,7 +641,7 @@ impl Status {
     }
 
     fn wide_enough_for_dual(&self) -> bool {
-        self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+        self.term_width() >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
     fn couldnt_dual_but_want(&self) -> bool {
@@ -653,9 +654,9 @@ impl Status {
 
     fn left_window_width(&self) -> u16 {
         if self.use_dual() {
-            self.internal_settings.width / 2
+            self.term_width() / 2
         } else {
-            self.internal_settings.width
+            self.term_width()
         }
     }
 
@@ -875,7 +876,7 @@ impl Status {
 
     /// Set the height of the menu and scroll to the selected item.
     pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
-        let height = self.internal_settings.term_size().1;
+        let height = self.term_size().height;
         let prim_window_height = if menu_mode.is_nothing() {
             height
         } else {
@@ -1147,7 +1148,7 @@ impl Status {
                 sources,
                 dest,
                 self.left_window_width(),
-                self.internal_settings.term_size().1,
+                self.term_size().height,
                 Arc::clone(&self.fm_sender),
             )?;
             self.internal_settings.store_copy_progress(in_mem);
@@ -2140,7 +2141,7 @@ impl Status {
 
     /// The width of a displayed canvas.
     pub fn canvas_width(&self) -> Result<u16> {
-        let full_width = self.internal_settings.term_size().0;
+        let full_width = self.term_width();
         if self.session.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
         } else {
