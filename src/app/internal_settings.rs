@@ -78,7 +78,6 @@ impl InternalSettings {
         }
     }
 
-    // TODO: returns size
     /// Returns the size of the terminal (width, height)
     pub fn term_size(&self) -> Size {
         self.size
