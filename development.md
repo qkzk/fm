@@ -1834,7 +1834,6 @@ Once that's done, it's all. No not implement anything else
     - [x] remove should check for clones
     - [x] update should do the same
   - [ ] make actions transactional. If it fails, restore as it were before.
-- [ ] BUG: preview can stop and display "preview as empty"
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
@@ -1842,6 +1841,7 @@ Once that's done, it's all. No not implement anything else
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
 
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping.
+  Can't solve easily
 - [x] Neovim integration 
   - [x] open fm with current file selected whatever the terminal used 
   - [x] renaming in fm renames the buffer 
@@ -1904,7 +1904,6 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
   - [x] use menu window & existant methods for need confirmation which use "flagged files".
   - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
-- [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [x] color search results in display & tree
 - [x] FIX: right click shouldn't do anything in fuzzy finding
 - [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
@@ -1977,6 +1976,8 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
+- [ ] FEAT PLUGIN: replace float term by something else ? see reddit
+- [ ] BUG: preview can stop and display "preview as empty". Can't reproduce
 - [ ] FEAT: common themes
 - [ ] FEAT: allow settings in plugins & store them in config file
   - [ ] should be done from 
