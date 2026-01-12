@@ -50,13 +50,13 @@ pub enum PluginCommand {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum PluginSubCommand {
-    /// Add an already compiled plugin from a path to .so file
+    /// fmconfig plugin add <path_to_plugin.so>. Add a compiled plugin from its .so file
     Add { path: String },
-    /// Install a plugin from github. Does the compilation
+    /// fmconfig plugin install author/repo>. Install a plugin from github
     Install { url: String },
-    /// Remove a plugin by name
+    /// fmconfig plugin remove <name>. Remove a plugin by its name
     Remove { name: String },
-    /// List all installed plugins
+    /// fmconfig plugin list. List all installed plugins
     List,
 }
 
