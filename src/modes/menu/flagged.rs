@@ -49,6 +49,9 @@ impl Flagged {
     /// Push a new path into the content.
     /// We maintain the content sorted and it's used to make `contains` faster.
     pub fn push(&mut self, path: PathBuf) {
+        if !path.exists() {
+            return;
+        }
         let Err(pos) = self.content.binary_search(&path) else {
             return;
         };

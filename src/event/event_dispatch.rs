@@ -136,6 +136,10 @@ impl EventDispatcher {
 
     #[rustfmt::skip]
     fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<bool> {
+        if let KeyEvent{code:KeyCode ::Char(' '),modifiers:KeyModifiers::CONTROL, kind:_,state:_} = key {
+            status.fuzzy_flag_selected()?;
+            return Ok(true);
+        }
         let KeyEvent {
             code,
             modifiers: KeyModifiers::NONE,

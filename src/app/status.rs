@@ -1278,6 +1278,20 @@ impl Status {
         self.fuzzy_leave()
     }
 
+    pub fn fuzzy_flag_selected(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        if let Some(pick) = fuzzy.pick() {
+            if let FuzzyKind::File = fuzzy.kind {
+                self.menu.flagged.push(PathBuf::from(pick))
+            }
+        } else {
+            log_info!("Fuzzy had nothing to select from");
+        };
+        Ok(())
+    }
+
     /// Run a command directly from help.
     /// Search a command with fuzzy finder, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
