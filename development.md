@@ -1976,9 +1976,11 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
+- [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
+- [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc. 
+- [ ] FEAT: common themes
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [ ] BUG: preview can stop and display "preview as empty". Can't reproduce
-- [ ] FEAT: common themes
 - [ ] FEAT: allow settings in plugins & store them in config file
   - [ ] should be done from 
 - [ ] FEAT: dired inspiration.
