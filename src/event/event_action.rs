@@ -129,6 +129,40 @@ impl EventAction {
         status.refresh_view()
     }
 
+    /// Decrease the depth of tree in tree mode
+    pub fn tree_depth_decr(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() && status.current_tab().display_mode.is_tree() {
+            return Ok(());
+        }
+        let current_depth = status.current_tab().settings.tree_max_depth;
+        if current_depth > 1 {
+            status.current_tab_mut().settings.tree_max_depth -= 1;
+            log_info!(
+                "Decrease tree depth current: {new_depth}",
+                new_depth = status.current_tab().settings.tree_max_depth
+            );
+        }
+        status.current_tab_mut().toggle_tree_mode()?;
+        status.current_tab_mut().toggle_tree_mode()?;
+        Ok(())
+    }
+
+    /// Increase the depth of tree in tree mode
+    pub fn tree_depth_incr(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() && status.current_tab().display_mode.is_tree() {
+            return Ok(());
+        }
+        status.current_tab_mut().settings.tree_max_depth += 1;
+        log_info!(
+            "Increase tree depth current: {new_depth}",
+            new_depth = status.current_tab().settings.tree_max_depth
+        );
+
+        status.current_tab_mut().toggle_tree_mode()?;
+        status.current_tab_mut().toggle_tree_mode()?;
+        Ok(())
+    }
+
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(status: &mut Status) -> Result<()> {

@@ -262,6 +262,8 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('!'),    KeyModifiers::NONE), ActionMap::ShellCommand),
             (KeyEvent::new(KeyCode::Char('@'),    KeyModifiers::NONE), ActionMap::GoStart),
             (KeyEvent::new(KeyCode::Char(':'),    KeyModifiers::NONE), ActionMap::Action),
+            (KeyEvent::new(KeyCode::Char('%'),    KeyModifiers::NONE), ActionMap::TreeDepthIncr),
+            (KeyEvent::new(KeyCode::Char('§'),    KeyModifiers::NONE), ActionMap::TreeDepthDecr),
             (KeyEvent::new(KeyCode::Char('6'),    KeyModifiers::NONE), ActionMap::History),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::OpenConfig),
@@ -339,12 +341,12 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::CONTROL), ActionMap::PageDown),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::CONTROL), ActionMap::FuzzyFind),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::CONTROL), ActionMap::Shortcut),
-            (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::CONTROL), ActionMap::FuzzyFindLine),
-            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::CONTROL), ActionMap::PageUp),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::CONTROL), ActionMap::OpenAll),
             (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::CONTROL), ActionMap::CopyFilepath),
             (KeyEvent::new(KeyCode::Char('q'),    KeyModifiers::CONTROL), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::CONTROL), ActionMap::RefreshView),
+            (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::CONTROL), ActionMap::FuzzyFindLine),
+            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::CONTROL), ActionMap::PageUp),
             (KeyEvent::new(KeyCode::Char('z'),    KeyModifiers::CONTROL), ActionMap::TreeFoldAll),
 
             (KeyEvent::new(KeyCode::Right,        KeyModifiers::SHIFT), ActionMap::SyncLTR),

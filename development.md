@@ -1778,6 +1778,7 @@ Once that's done, it's all. No not implement anything else
 - Navigate by clicking / moving / entering a file from a previewed tree. Preview in second pane, ctrl+right to change focus, move with arrows and enter. Boom.
 - Open a previewed file with enter when focusing the pane.
 - In inputs Alt+left, Alt+right move the cursor word by word
+- In tree display mode, % and § increases and decrease the depth. Watchout, it may be take some time to explore a large file tree. This setting is associated to tab and can't be saved in config file. 
 
 ##### Bugfixes
 
@@ -1959,6 +1960,7 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: use Size for holding terminal sizes, improving readability.
 - [x] IMP: solved a lot of TODO! by refactoring
 - [x] FIX: open a menu (like goto Alt+G), Alt+H to open picker, Alt+H again (picker from picker) then enter. Crash
+- [x] FEAT: make tree depth variable
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
@@ -1977,7 +1979,7 @@ Once that's done, it's all. No not implement anything else
 
 
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
-- [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc. 
+- [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [ ] BUG: preview can stop and display "preview as empty". Can't reproduce

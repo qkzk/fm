@@ -149,7 +149,14 @@ Different modes for the bottom window
             ToggleVisual,
         ),
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
-        tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
+        tree_actions = action_descriptions!(
+            Tree,
+            TreeFold,
+            TreeFoldAll,
+            TreeUnFoldAll,
+            TreeDepthIncr,
+            TreeDepthDecr
+        ),
         display_modes = action_descriptions!(ResetMode, Tree, Preview),
         menu_modes = action_descriptions!(
             Chmod,

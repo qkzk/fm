@@ -34,6 +34,8 @@ pub struct TabSettings {
     pub sort_kind: SortKind,
     /// should the last displayed image be erased ?
     pub should_clear_image: bool,
+    /// the max depth of the tree
+    pub tree_max_depth: usize,
 }
 
 impl TabSettings {
@@ -42,11 +44,13 @@ impl TabSettings {
         let show_hidden = args.all;
         let sort_kind = SortKind::default();
         let should_clear_image = false;
+        let tree_max_depth = 5;
         Self {
             show_hidden,
             filter,
             sort_kind,
             should_clear_image,
+            tree_max_depth,
         }
     }
 
@@ -294,7 +298,7 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) {
+    fn make_tree(&mut self, sort_kind: Option<SortKind>) {
         let sort_kind = sort_kind.unwrap_or_default();
         self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
@@ -303,6 +307,7 @@ impl Tab {
             .with_hidden(self.settings.show_hidden)
             .with_filter_kind(&self.settings.filter)
             .with_sort_kind(sort_kind)
+            .with_max_depth(self.settings.tree_max_depth)
             .build();
     }
 
