@@ -137,10 +137,9 @@ impl EventAction {
         let current_depth = status.current_tab().settings.tree_max_depth;
         if current_depth > 1 {
             status.current_tab_mut().settings.tree_max_depth -= 1;
-            log_info!(
-                "Decrease tree depth current: {new_depth}",
-                new_depth = status.current_tab().settings.tree_max_depth
-            );
+            let new_depth = status.current_tab().settings.tree_max_depth;
+            log_info!("Decrease tree depth current: {new_depth}");
+            log_line!("Decrease tree depth current: {new_depth}");
         }
         status.current_tab_mut().toggle_tree_mode()?;
         status.current_tab_mut().toggle_tree_mode()?;
@@ -153,10 +152,9 @@ impl EventAction {
             return Ok(());
         }
         status.current_tab_mut().settings.tree_max_depth += 1;
-        log_info!(
-            "Increase tree depth current: {new_depth}",
-            new_depth = status.current_tab().settings.tree_max_depth
-        );
+        let new_depth = status.current_tab().settings.tree_max_depth;
+        log_info!("Increase tree depth current: {new_depth}");
+        log_line!("Increase tree depth current: {new_depth}");
 
         status.current_tab_mut().toggle_tree_mode()?;
         status.current_tab_mut().toggle_tree_mode()?;
