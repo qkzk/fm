@@ -1961,6 +1961,12 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: solved a lot of TODO! by refactoring
 - [x] FIX: open a menu (like goto Alt+G), Alt+H to open picker, Alt+H again (picker from picker) then enter. Crash
 - [x] FEAT: make tree depth variable
+- [ ] FEAT: fuzzy finder, <ctrl+space> -> flag the file
+  - [x] <ctrl+space> flag a file if it exists 
+  - [x] <ctrl+space> **toggle** flag
+  - [x] <ctrl+space> move to next
+  - [x] display flagged  
+  - [ ] more consistant colors
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
@@ -1978,11 +1984,6 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
-- [ ] FEAT: fuzzy finder, <ctrl+space> -> flag the file
-  - [x] <ctrl+space> flag a file if it exists 
-  - [x] <ctrl+space> **toggle** flag
-  - [ ] <ctrl+space> move to next
-  - [x] display flagged  
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
