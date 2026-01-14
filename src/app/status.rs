@@ -1278,13 +1278,13 @@ impl Status {
         self.fuzzy_leave()
     }
 
-    pub fn fuzzy_flag_selected(&mut self) -> Result<()> {
+    pub fn fuzzy_toggle_flag_selected(&mut self) -> Result<()> {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
         if let Some(pick) = fuzzy.pick() {
             if let FuzzyKind::File = fuzzy.kind {
-                self.menu.flagged.push(PathBuf::from(pick))
+                self.menu.flagged.toggle(Path::new(&pick))
             }
         } else {
             log_info!("Fuzzy had nothing to select from");

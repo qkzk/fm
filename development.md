@@ -1980,9 +1980,9 @@ Once that's done, it's all. No not implement anything else
 
 - [ ] FEAT: fuzzy finder, <ctrl+space> -> flag the file
   - [x] <ctrl+space> flag a file if it exists 
-  - [ ] <ctrl+space> **toggle** flag
+  - [x] <ctrl+space> **toggle** flag
   - [ ] <ctrl+space> move to next
-  - [ ] display flagged  
+  - [x] display flagged  
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
