@@ -553,8 +553,11 @@ static HIGHLIGHTED_SELECTED_FLAGGED: Style = Style {
 };
 
 /// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
-static ARRAY_STYLES: [Style; 4] = [DEFAULT_STYLE, HIGHLIGHTED, SELECTED, HIGHLIGHTED_SELECTED];
-static ARRAY_STYLES_FLAGGED: [Style; 4] = [
+static ARRAY_STYLES: [Style; 8] = [
+    DEFAULT_STYLE,
+    HIGHLIGHTED,
+    SELECTED,
+    HIGHLIGHTED_SELECTED,
     DEFAULT_STYLE_FLAGGED,
     HIGHLIGHTED_FLAGGED,
     SELECTED_FLAGGED,
@@ -573,12 +576,9 @@ fn create_spans(is_selected: bool) -> Vec<Span<'static>> {
 }
 
 fn choose_style(is_selected: bool, is_highlighted: bool, is_flagged: bool) -> Style {
-    let index = ((is_selected as usize) << 1) + is_highlighted as usize;
-    if is_flagged {
-        ARRAY_STYLES_FLAGGED[index]
-    } else {
-        ARRAY_STYLES[index]
-    }
+    let index =
+        ((is_flagged as usize) << 2) + ((is_selected as usize) << 1) + is_highlighted as usize;
+    ARRAY_STYLES[index]
 }
 
 fn create_span<'a>(
