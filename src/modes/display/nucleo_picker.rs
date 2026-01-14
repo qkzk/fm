@@ -422,6 +422,7 @@ pub fn highlighted_text<'a>(
     highlighted: &[usize],
     is_selected: bool,
     is_file: bool,
+    is_flagged: bool,
 ) -> Line<'a> {
     let mut spans = create_spans(is_selected);
     if is_file && with_icon() || with_icon_metadata() {
@@ -434,10 +435,16 @@ pub fn highlighted_text<'a>(
     for (index, grapheme) in text.graphemes(true).enumerate() {
         if Some(index) == next_highlight {
             if !curr_segment.is_empty() {
-                push_clear(&mut spans, &mut curr_segment, is_selected, false);
+                push_clear(
+                    &mut spans,
+                    &mut curr_segment,
+                    is_selected,
+                    false,
+                    is_flagged,
+                );
             }
             curr_segment.push_str(grapheme);
-            push_clear(&mut spans, &mut curr_segment, is_selected, true);
+            push_clear(&mut spans, &mut curr_segment, is_selected, true, is_flagged);
             next_highlight = highlight_indices.next();
         } else {
             curr_segment.push_str(grapheme);
@@ -445,7 +452,7 @@ pub fn highlighted_text<'a>(
     }
 
     if !curr_segment.is_empty() {
-        spans.push(create_span(curr_segment, is_selected, false));
+        spans.push(create_span(curr_segment, is_selected, false, is_flagged));
     }
 
     Line::from(spans)
@@ -470,11 +477,13 @@ fn push_clear(
     curr_segment: &mut String,
     is_selected: bool,
     is_highlighted: bool,
+    is_flagged: bool,
 ) {
     spans.push(create_span(
         curr_segment.clone(),
         is_selected,
         is_highlighted,
+        is_flagged,
     ));
     curr_segment.clear();
 }
@@ -511,8 +520,46 @@ static HIGHLIGHTED_SELECTED: Style = Style {
     sub_modifier: Modifier::empty(),
 };
 
+static DEFAULT_STYLE_FLAGGED: Style = Style {
+    fg: Some(Color::Yellow),
+    bg: None,
+    add_modifier: Modifier::empty(),
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static SELECTED_FLAGGED: Style = Style {
+    fg: Some(Color::Black),
+    bg: Some(Color::Yellow),
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static HIGHLIGHTED_FLAGGED: Style = Style {
+    fg: Some(Color::Yellow),
+    bg: None,
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
+static HIGHLIGHTED_SELECTED_FLAGGED: Style = Style {
+    fg: Some(Color::Yellow),
+    bg: Some(Color::Cyan),
+    add_modifier: Modifier::BOLD,
+    underline_color: None,
+    sub_modifier: Modifier::empty(),
+};
+
 /// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
 static ARRAY_STYLES: [Style; 4] = [DEFAULT_STYLE, HIGHLIGHTED, SELECTED, HIGHLIGHTED_SELECTED];
+static ARRAY_STYLES_FLAGGED: [Style; 4] = [
+    DEFAULT_STYLE_FLAGGED,
+    HIGHLIGHTED_FLAGGED,
+    SELECTED_FLAGGED,
+    HIGHLIGHTED_SELECTED_FLAGGED,
+];
 
 static SPACER_DEFAULT: &str = "  ";
 static SPACER_SELECTED: &str = "> ";
@@ -525,11 +572,23 @@ fn create_spans(is_selected: bool) -> Vec<Span<'static>> {
     }]
 }
 
-fn choose_style(is_selected: bool, is_highlighted: bool) -> Style {
+fn choose_style(is_selected: bool, is_highlighted: bool, is_flagged: bool) -> Style {
     let index = ((is_selected as usize) << 1) + is_highlighted as usize;
-    ARRAY_STYLES[index]
+    if is_flagged {
+        ARRAY_STYLES_FLAGGED[index]
+    } else {
+        ARRAY_STYLES[index]
+    }
 }
 
-fn create_span<'a>(curr_segment: String, is_selected: bool, is_highlighted: bool) -> Span<'a> {
-    Span::styled(curr_segment, choose_style(is_selected, is_highlighted))
+fn create_span<'a>(
+    curr_segment: String,
+    is_selected: bool,
+    is_highlighted: bool,
+    is_flagged: bool,
+) -> Span<'a> {
+    Span::styled(
+        curr_segment,
+        choose_style(is_selected, is_highlighted, is_flagged),
+    )
 }

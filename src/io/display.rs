@@ -406,11 +406,19 @@ impl<'a> FuzzyDisplay<'a> {
                 );
                 let text = t.matcher_columns[0].to_string();
                 let highlights_usize = Self::highlights_indices(&mut indices);
+                let is_flagged = is_file
+                    && self
+                        .status
+                        .menu
+                        .flagged
+                        .contains(std::path::Path::new(&text));
+
                 let line = highlighted_text(
                     &text,
                     &highlights_usize,
                     index as u32 + top == fuzzy.index,
                     is_file,
+                    is_flagged,
                 );
                 let line_rect = Self::line_rect(rect, index);
                 line.render(line_rect, f.buffer_mut());
