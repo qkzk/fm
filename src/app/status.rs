@@ -1284,7 +1284,8 @@ impl Status {
         };
         if let Some(pick) = fuzzy.pick() {
             if let FuzzyKind::File = fuzzy.kind {
-                self.menu.flagged.toggle(Path::new(&pick))
+                self.menu.flagged.toggle(Path::new(&pick));
+                self.fuzzy_navigate(FuzzyDirection::Down)?;
             }
         } else {
             log_info!("Fuzzy had nothing to select from");
