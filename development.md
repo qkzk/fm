@@ -1779,7 +1779,7 @@ Once that's done, it's all. No not implement anything else
 - Open a previewed file with enter when focusing the pane.
 - In inputs Alt+left, Alt+right move the cursor word by word
 - In tree display mode, % and § increases and decrease the depth. Watchout, it may be take some time to explore a large file tree. This setting is associated to tab and can't be saved in config file. 
-- In fuzzy finder for files (Ctrl+s), you can toggle flag on files with ctrl+space. Flagged files are shown in yellow
+- In fuzzy finder for files (Ctrl+f), you can toggle flag on files with ctrl+space. Flagged files are shown in yellow
 
 ##### Bugfixes
 
@@ -1986,6 +1986,7 @@ Once that's done, it's all. No not implement anything else
 
 
 
+- [ ] FEAT: improve fuzzy finder for lines, move preview to considered line
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
