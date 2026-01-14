@@ -424,9 +424,9 @@ pub fn highlighted_text<'a>(
     is_file: bool,
     is_flagged: bool,
 ) -> Line<'a> {
-    let mut spans = create_spans(is_selected);
+    let mut spans = create_spans(is_selected, is_flagged);
     if is_file && with_icon() || with_icon_metadata() {
-        push_icon(text, is_selected, &mut spans);
+        push_icon(text, is_selected, is_flagged, &mut spans);
     }
     let mut curr_segment = String::new();
     let mut highlight_indices = highlighted.iter().copied().peekable();
@@ -458,7 +458,7 @@ pub fn highlighted_text<'a>(
     Line::from(spans)
 }
 
-fn push_icon(text: &str, is_selected: bool, spans: &mut Vec<Span>) {
+fn push_icon(text: &str, is_selected: bool, is_flagged: bool, spans: &mut Vec<Span>) {
     let file_path = std::path::Path::new(&text);
     let Ok(meta) = file_path.symlink_metadata() else {
         return;
@@ -468,7 +468,10 @@ fn push_icon(text: &str, is_selected: bool, spans: &mut Vec<Span>) {
         FileKind::NormalFile => extract_extension(file_path).icon(),
         file_kind => file_kind.icon(),
     };
-    let index = if is_selected { 2 } else { 0 };
+    let mut index = if is_selected { 2 } else { 0 };
+    if is_flagged {
+        index += 4;
+    }
     spans.push(Span::styled(file_icon, ARRAY_STYLES[index]))
 }
 
@@ -545,8 +548,8 @@ static HIGHLIGHTED_FLAGGED: Style = Style {
 };
 
 static HIGHLIGHTED_SELECTED_FLAGGED: Style = Style {
-    fg: Some(Color::Yellow),
-    bg: Some(Color::Cyan),
+    fg: Some(Color::White),
+    bg: Some(Color::Yellow),
     add_modifier: Modifier::BOLD,
     underline_color: None,
     sub_modifier: Modifier::empty(),
@@ -567,12 +570,15 @@ static ARRAY_STYLES: [Style; 8] = [
 static SPACER_DEFAULT: &str = "  ";
 static SPACER_SELECTED: &str = "> ";
 
-fn create_spans(is_selected: bool) -> Vec<Span<'static>> {
-    vec![if is_selected {
-        Span::styled(SPACER_SELECTED, SELECTED)
+fn create_spans(is_selected: bool, is_flagged: bool) -> Vec<Span<'static>> {
+    let index = ((is_flagged as usize) << 2) + ((is_selected as usize) << 1);
+    let style = ARRAY_STYLES[index];
+    let space = if is_selected {
+        SPACER_SELECTED
     } else {
-        Span::styled(SPACER_DEFAULT, DEFAULT_STYLE)
-    }]
+        SPACER_DEFAULT
+    };
+    vec![Span::styled(space, style)]
 }
 
 fn choose_style(is_selected: bool, is_highlighted: bool, is_flagged: bool) -> Style {
