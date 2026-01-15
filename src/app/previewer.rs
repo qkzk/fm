@@ -7,7 +7,7 @@ use anyhow::Result;
 use crate::modes::{Preview, PreviewBuilder};
 
 enum PreviewRequest {
-    Request((PathBuf, usize)),
+    Request((PathBuf, usize, Option<usize>)),
     Quit,
 }
 
@@ -32,14 +32,14 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
+    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize, Option<usize>)>) -> Self {
         let (tx_request, rx_request) = mpsc::channel::<PreviewRequest>();
         thread::spawn(move || {
             while let Some(request) = rx_request.iter().next() {
                 match request {
-                    PreviewRequest::Request((path, index)) => {
+                    PreviewRequest::Request((path, index, line_index)) => {
                         if let Ok(preview) = PreviewBuilder::new(&path).build() {
-                            tx_preview.send((path, preview, index)).unwrap();
+                            tx_preview.send((path, preview, index, line_index)).unwrap();
                         };
                     }
                     PreviewRequest::Quit => break,
@@ -61,9 +61,9 @@ impl Previewer {
     /// Sends an "ask preview" to the previewer loop. A preview will be built, which won't block the application.
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
-    pub fn build(&self, path: PathBuf, index: usize) -> Result<()> {
+    pub fn build(&self, path: PathBuf, index: usize, line_index: Option<usize>) -> Result<()> {
         self.tx_request
-            .send(PreviewRequest::Request((path, index)))?;
+            .send(PreviewRequest::Request((path, index, line_index)))?;
         Ok(())
     }
 }

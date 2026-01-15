@@ -152,7 +152,7 @@ pub struct Status {
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
     /// Receiver of previews, used to build & display previews without bloking
-    preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize)>,
+    preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize, Option<usize>)>,
     /// Non bloking preview builder
     pub previewer: Previewer,
     /// Preview manager
@@ -693,12 +693,13 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].menu_mode = Menu::Nothing;
-        let Some(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+        let Ok((Some(fileinfo), line_index)) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
         log_info!("sending preview request");
-        self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
-        // self.preview_manager.enqueue(&fileinfo.path);
+
+        self.previewer
+            .build(fileinfo.path.to_path_buf(), 1, line_index)?;
 
         Ok(())
     }
@@ -746,7 +747,9 @@ impl Status {
     /// Does nothing otherwise.
     pub fn check_preview(&mut self) -> Result<()> {
         match self.preview_receiver.try_recv() {
-            Ok((path, preview, index)) => self.attach_preview(path, preview, index)?,
+            Ok((path, preview, index, line_nr)) => {
+                self.attach_preview(path, preview, index, line_nr)?
+            }
             Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
             Err(TryRecvError::Empty) => (),
         }
@@ -756,7 +759,13 @@ impl Status {
     /// Attach a preview to the correct tab.
     /// Nothing is done if the preview doesn't match the file.
     /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
-    fn attach_preview(&mut self, path: PathBuf, preview: Preview, index: usize) -> Result<()> {
+    fn attach_preview(
+        &mut self,
+        path: PathBuf,
+        preview: Preview,
+        index: usize,
+        line_index: Option<usize>,
+    ) -> Result<()> {
         let compared_index = self.pick_correct_tab_from(index)?;
         if !self.preview_has_correct_path(compared_index, path.as_path())? {
             return Ok(());
@@ -765,6 +774,10 @@ impl Status {
         self.tabs[index]
             .window
             .reset(self.tabs[index].preview.len());
+
+        if let Some(line_index) = line_index {
+            self.tabs[index].window.scroll_to(line_index);
+        }
         log_info!(
             "status: attach_preview {path} - {index}",
             path = path.display()
@@ -797,19 +810,17 @@ impl Status {
     /// fuzzy mode ? its selection,
     /// navigation (shortcut, marks or history) ? the selection,
     /// otherwise, it's the current selection.
-    fn get_correct_fileinfo_for_preview(&self) -> Option<FileInfo> {
+    fn get_correct_fileinfo_for_preview(&self) -> Result<(Option<FileInfo>, Option<usize>)> {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
         if left_tab.display_mode.is_fuzzy() {
-            FileInfo::new(
-                Path::new(&parse_line_output(&self.fuzzy_current_selection()?).ok()?),
-                users,
-            )
-            .ok()
+            let (opt_path, line_nr) =
+                parse_line_output(&self.fuzzy_current_selection().context("No selection")?)?;
+            Ok((FileInfo::new(&opt_path, users).ok(), line_nr))
         } else if self.focus.is_left_menu() {
-            self.fileinfo_from_navigate(left_tab, users)
+            Ok((self.fileinfo_from_navigate(left_tab, users), None))
         } else {
-            left_tab.current_file().ok()
+            Ok((left_tab.current_file().ok(), None))
         }
     }
 
@@ -1269,7 +1280,9 @@ impl Status {
         if let Some(pick) = fuzzy.pick() {
             match fuzzy.kind {
                 FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(&pick))?,
-                FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(&pick)?)?,
+                FuzzyKind::Line => {
+                    self.tabs[self.index].cd_to_file(&parse_line_output(&pick)?.0)?
+                }
                 FuzzyKind::Action => self.fuzzy_send_event(&pick)?,
             }
         } else {

@@ -382,10 +382,11 @@ impl FuzzyFinder<String> {
 }
 
 /// Parse a line output from the fuzzy finder.
-pub fn parse_line_output(item: &str) -> Result<PathBuf> {
-    Ok(canonicalize(PathBuf::from(
-        item.split(':').next().unwrap_or_default(),
-    ))?)
+pub fn parse_line_output(item: &str) -> Result<(PathBuf, Option<usize>)> {
+    let mut split = item.split(':');
+    let path = split.next().unwrap_or_default();
+    let line_index = split.next().map(|s| s.parse().unwrap_or_default());
+    Ok((canonicalize(PathBuf::from(path))?, line_index))
 }
 
 trait PushLine {
