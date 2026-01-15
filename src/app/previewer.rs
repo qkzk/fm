@@ -6,9 +6,46 @@ use anyhow::Result;
 
 use crate::modes::{Preview, PreviewBuilder};
 
-enum PreviewRequest {
-    Request((PathBuf, usize, Option<usize>)),
+enum RequestKind {
+    PreviewRequest(PreviewRequest),
     Quit,
+}
+
+struct PreviewRequest {
+    path: PathBuf,
+    tab_index: usize,
+    line_nr: Option<usize>,
+}
+
+impl PreviewRequest {
+    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>) -> Self {
+        Self {
+            path,
+            tab_index,
+            line_nr,
+        }
+    }
+}
+
+/// Response from the preview builder with the request data it came from.
+/// The path and tab index are used to ensure we're attaching the correct preview for this tab,
+/// The line number, if any, is used to scroll the the line. Only fuzzy picker of line may output a line number.
+pub struct PreviewResponse {
+    pub path: PathBuf,
+    pub tab_index: usize,
+    pub line_nr: Option<usize>,
+    pub preview: Preview,
+}
+
+impl PreviewResponse {
+    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>, preview: Preview) -> Self {
+        Self {
+            path,
+            tab_index,
+            line_nr,
+            preview,
+        }
+    }
 }
 
 /// Non blocking preview builder.
@@ -21,7 +58,7 @@ enum PreviewRequest {
 ///
 /// ATM only the previews for the second pane are built here. It's useless if the user display previews in the current tab since navigation isn't possible.
 pub struct Previewer {
-    tx_request: mpsc::Sender<PreviewRequest>,
+    tx_request: mpsc::Sender<RequestKind>,
 }
 
 impl Previewer {
@@ -32,17 +69,23 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize, Option<usize>)>) -> Self {
-        let (tx_request, rx_request) = mpsc::channel::<PreviewRequest>();
+    pub fn new(tx_preview: mpsc::Sender<PreviewResponse>) -> Self {
+        let (tx_request, rx_request) = mpsc::channel::<RequestKind>();
         thread::spawn(move || {
             while let Some(request) = rx_request.iter().next() {
                 match request {
-                    PreviewRequest::Request((path, index, line_index)) => {
+                    RequestKind::PreviewRequest(PreviewRequest {
+                        path,
+                        tab_index,
+                        line_nr,
+                    }) => {
                         if let Ok(preview) = PreviewBuilder::new(&path).build() {
-                            tx_preview.send((path, preview, index, line_index)).unwrap();
+                            tx_preview
+                                .send(PreviewResponse::new(path, tab_index, line_nr, preview))
+                                .unwrap();
                         };
                     }
-                    PreviewRequest::Quit => break,
+                    RequestKind::Quit => break,
                 }
             }
         });
@@ -52,7 +95,7 @@ impl Previewer {
     /// Sends a "quit" message to the previewer loop. It will break the loop, exiting the previewer.
     pub fn quit(&self) {
         crate::log_info!("stopping previewer loop");
-        match self.tx_request.send(PreviewRequest::Quit) {
+        match self.tx_request.send(RequestKind::Quit) {
             Ok(()) => (),
             Err(e) => crate::log_info!("Previewer::quit error {e:?}"),
         };
@@ -63,7 +106,9 @@ impl Previewer {
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
     pub fn build(&self, path: PathBuf, index: usize, line_index: Option<usize>) -> Result<()> {
         self.tx_request
-            .send(PreviewRequest::Request((path, index, line_index)))?;
+            .send(RequestKind::PreviewRequest(PreviewRequest::new(
+                path, index, line_index,
+            )))?;
         Ok(())
     }
 }

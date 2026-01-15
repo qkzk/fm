@@ -28,7 +28,7 @@ pub use application::FM;
 pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, ClickableString, Footer, Header, PreviewHeader};
 pub use internal_settings::InternalSettings;
-pub use previewer::Previewer;
+pub use previewer::{PreviewResponse, Previewer};
 pub use previewer_plugins::{build_plugins, try_build, PreviewerPlugin};
 pub use refresher::Refresher;
 pub use session::Session;

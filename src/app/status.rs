@@ -16,7 +16,8 @@ use sysinfo::Disks;
 use walkdir::WalkDir;
 
 use crate::app::{
-    ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
+    ClickableLine, Footer, Header, InternalSettings, PreviewResponse, Previewer, Session, Tab,
+    ThumbnailManager,
 };
 use crate::common::{
     build_dest_path, current_username, disk_space, filename_from_path, is_in_path, is_sudo_command,
@@ -152,7 +153,7 @@ pub struct Status {
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
     /// Receiver of previews, used to build & display previews without bloking
-    preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize, Option<usize>)>,
+    preview_receiver: mpsc::Receiver<PreviewResponse>,
     /// Non bloking preview builder
     pub previewer: Previewer,
     /// Preview manager
@@ -747,9 +748,7 @@ impl Status {
     /// Does nothing otherwise.
     pub fn check_preview(&mut self) -> Result<()> {
         match self.preview_receiver.try_recv() {
-            Ok((path, preview, index, line_nr)) => {
-                self.attach_preview(path, preview, index, line_nr)?
-            }
+            Ok(preview_response) => self.attach_preview(preview_response)?,
             Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
             Err(TryRecvError::Empty) => (),
         }
@@ -759,29 +758,27 @@ impl Status {
     /// Attach a preview to the correct tab.
     /// Nothing is done if the preview doesn't match the file.
     /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
-    fn attach_preview(
-        &mut self,
-        path: PathBuf,
-        preview: Preview,
-        index: usize,
-        line_index: Option<usize>,
-    ) -> Result<()> {
-        let compared_index = self.pick_correct_tab_from(index)?;
+    fn attach_preview(&mut self, preview_response: PreviewResponse) -> Result<()> {
+        let PreviewResponse {
+            path,
+            tab_index,
+            line_nr,
+            preview,
+        } = preview_response;
+        let compared_index = self.pick_correct_tab_from(tab_index)?;
         if !self.preview_has_correct_path(compared_index, path.as_path())? {
             return Ok(());
         }
-        self.tabs[index].preview = preview;
-        self.tabs[index]
-            .window
-            .reset(self.tabs[index].preview.len());
-
-        if let Some(line_index) = line_index {
-            self.tabs[index].window.scroll_to(line_index);
+        let tab = &mut self.tabs[tab_index];
+        tab.preview = preview;
+        tab.window.reset(tab.preview.len());
+        if let Some(line_nr) = line_nr {
+            tab.window.scroll_to(line_nr);
         }
-        log_info!(
-            "status: attach_preview {path} - {index}",
-            path = path.display()
-        );
+        // log_info!(
+        //     "status: attach_preview {path} - {tab_index}",
+        //     path = path.display()
+        // );
         Ok(())
     }
 

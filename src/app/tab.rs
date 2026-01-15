@@ -369,10 +369,6 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
-        log_info!(
-            "tab.reset_preview. prev = {prev}",
-            prev = self.preview.kind_display()
-        );
         if matches!(self.preview, Preview::Image(_)) {
             log_info!("Clear the image");
             self.settings.should_clear_image = true;
