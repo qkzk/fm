@@ -1780,6 +1780,7 @@ Once that's done, it's all. No not implement anything else
 - In inputs Alt+left, Alt+right move the cursor word by word
 - In tree display mode, % and § increases and decrease the depth. Watchout, it may be take some time to explore a large file tree. This setting is associated to tab and can't be saved in config file. 
 - In fuzzy finder for files (Ctrl+f), you can toggle flag on files with ctrl+space. Flagged files are shown in yellow
+- fuzzy finder for lines (Ctrl+s) will move the preview to the matched line
 
 ##### Bugfixes
 
@@ -1968,6 +1969,7 @@ Once that's done, it's all. No not implement anything else
   - [x] <ctrl+space> move to next
   - [x] display flagged  
   - [x] more consistant colors
+- [x] FEAT: improve fuzzy finder for lines, move preview to considered line
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1
@@ -1986,7 +1988,6 @@ Once that's done, it's all. No not implement anything else
 
 
 
-- [ ] FEAT: improve fuzzy finder for lines, move preview to considered line
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
@@ -2004,6 +2005,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] color per stat with sane defaults
     - [ ] make display::FileFormater return a vector
 - [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [ ] display marks/temp marks directory/tree display mode
   - [ ] marks & temp_marks refactor. Use same architecture in both.
   - [ ] common trait for marking 
   - [ ] BUG: ensure mark char is printable
@@ -2013,7 +2015,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
-- [ ] FEAT: configurable tree depth
 - [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
 - [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
