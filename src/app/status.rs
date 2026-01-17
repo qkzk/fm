@@ -775,10 +775,6 @@ impl Status {
         if let Some(line_nr) = line_nr {
             tab.window.scroll_to(line_nr);
         }
-        // log_info!(
-        //     "status: attach_preview {path} - {tab_index}",
-        //     path = path.display()
-        // );
         Ok(())
     }
 
