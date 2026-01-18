@@ -206,7 +206,9 @@ impl Tab {
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
             Display::Tree => FileInfo::new(&self.tree.selected_path_or_parent()?, &self.users),
-            Display::Preview => FileInfo::new(&self.preview.filepath(), &self.users),
+            Display::Preview if !self.preview.is_empty() => {
+                FileInfo::new(&self.preview.filepath(), &self.users)
+            }
             _ => Ok(self
                 .directory
                 .selected()
@@ -218,7 +220,7 @@ impl Tab {
     pub fn selected_path(&self) -> Option<Arc<std::path::Path>> {
         match self.display_mode {
             Display::Tree => Some(Arc::from(self.tree.selected_path())),
-            Display::Preview => Some(self.preview.filepath()),
+            Display::Preview if !self.preview.is_empty() => Some(self.preview.filepath()),
             _ => Some(self.directory.selected()?.path.clone()),
         }
     }
@@ -395,11 +397,7 @@ impl Tab {
     }
 
     fn clone_selected_path(&self) -> Result<Arc<path::Path>> {
-        Ok(self
-            .current_file()
-            .context("refresh: no selected file")?
-            .path
-            .clone())
+        Ok(self.current_file()?.path.clone())
     }
 
     /// Select the given file from its path.
