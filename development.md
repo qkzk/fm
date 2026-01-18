@@ -1825,17 +1825,18 @@ Once that's done, it's all. No not implement anything else
     - [x] plugin <subcommand>: ...
     - [x] cloud config/list
     - [x] keybinds list 
-  - [x] fm plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
+  - [x] fmconfig plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
     - [x] adding to config should create the required plugin:previewer: part.
     - [x] an existing plugin... shouldn't do anything to the config but exit with a warning 
-  - [x] fm plugin remove name : remove the file from .local and config inform 
-  - [x] fm plugin list: will display all plugins
-  - [x] fm plugin install author/plugin
+  - [x] fmconfig plugin remove name : remove the file from .local and config inform 
+  - [x] fmconfig plugin list: will display all plugins
+  - [x] fmconfig plugin install author/plugin
     - [x] clone
     - [x] build
     - [x] check build & install with add
     - [x] remove should check for clones
     - [x] update should do the same
+  - [x] fmconfig plugin install https://hostname/author/plugin
   - [ ] make actions transactional. If it fails, restore as it were before.
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
