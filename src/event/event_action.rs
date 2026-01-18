@@ -318,16 +318,19 @@ impl EventAction {
             status.reset_menu_mode()?;
             return Ok(());
         };
-        let selected = status.current_tab().current_file()?;
-        if selected.path == status.current_tab().directory.path {
+        let selected_path = status
+            .current_tab()
+            .selected_path()
+            .context("No selected file")?;
+        if selected_path == status.current_tab().directory.path {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if selected.path == std::sync::Arc::from(parent) {
+            if selected_path.as_ref() == parent {
                 return Ok(());
             }
         }
-        let old_name = &selected.path.to_string_lossy();
+        let old_name = &selected_path.to_string_lossy();
         status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
         Ok(())
@@ -479,7 +482,10 @@ impl EventAction {
 
     /// Execute the selected node if it's a file else enter the directory.
     fn tree_enter_file(status: &mut Status) -> Result<()> {
-        let path = status.current_tab().current_file()?.path;
+        let path = status
+            .current_tab()
+            .selected_path()
+            .context("No selected file")?;
         if path.is_dir() {
             status.current_tab_mut().tree_enter_dir(path)
         } else {
@@ -519,10 +525,13 @@ impl EventAction {
             return Ok(());
         }
         if status.menu.flagged.is_empty() {
-            status
-                .menu
-                .flagged
-                .push(status.current_tab().current_file()?.path.to_path_buf());
+            status.menu.flagged.push(
+                status
+                    .current_tab()
+                    .selected_path()
+                    .context("No selected file")?
+                    .to_path_buf(),
+            );
         }
         status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
     }
@@ -833,10 +842,10 @@ impl EventAction {
         };
         let nvim_server = &status.internal_settings.nvim_server;
         if status.menu.flagged.is_empty() {
-            let Ok(fileinfo) = status.current_tab().current_file() else {
+            let Some(path) = status.current_tab().selected_path() else {
                 return Ok(());
             };
-            open_in_current_neovim(&fileinfo.path, nvim_server);
+            open_in_current_neovim(&path, nvim_server);
         } else {
             for file_path in status.menu.flagged.content.iter() {
                 open_in_current_neovim(file_path, nvim_server)
@@ -1463,10 +1472,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                content_to_clipboard(&file_info.path);
+                content_to_clipboard(&path);
             }
             _ => return Ok(()),
         }
@@ -1479,10 +1488,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                filename_to_clipboard(&file_info.path);
+                filename_to_clipboard(&path);
             }
             _ => return Ok(()),
         }
@@ -1496,10 +1505,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                filepath_to_clipboard(&file_info.path);
+                filepath_to_clipboard(&path);
             }
             _ => return Ok(()),
         }

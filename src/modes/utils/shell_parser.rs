@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
@@ -101,18 +101,20 @@ impl FmExpansion {
     fn filename(status: &Status) -> Result<Vec<String>> {
         Ok(vec![status
             .current_tab()
-            .current_file()?
-            .filename
-            .as_ref()
+            .selected_path()
+            .context("No selected file")?
+            .file_name()
+            .context("No filename")?
             .quote()?])
     }
 
     fn extension(status: &Status) -> Result<Vec<String>> {
         Ok(vec![status
             .current_tab()
-            .current_file()?
-            .extension
-            .as_ref()
+            .selected_path()
+            .context("No selected file")?
+            .extension()
+            .context("No extension")?
             .quote()?])
     }
 

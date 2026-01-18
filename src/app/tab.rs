@@ -237,7 +237,9 @@ impl Tab {
 
     /// Path of the currently selected file.
     pub fn current_file_string(&self) -> Result<String> {
-        Ok(path_to_string(&self.current_file()?.path))
+        Ok(path_to_string(
+            &self.selected_path().context("No selected path")?,
+        ))
     }
 
     /// Returns true if the current mode requires 2 windows.
@@ -332,7 +334,7 @@ impl Tab {
 
     /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
-        let current_file = self.current_file()?;
+        let current_path = self.selected_path().context("No selected_path")?;
         if self.display_mode.is_tree() {
             {
                 self.tree = Tree::default();
@@ -344,7 +346,7 @@ impl Tab {
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
-        self.go_to_file(current_file.path);
+        self.go_to_file(current_path);
         Ok(())
     }
 
@@ -397,7 +399,7 @@ impl Tab {
     }
 
     fn clone_selected_path(&self) -> Result<Arc<path::Path>> {
-        Ok(self.current_file()?.path.clone())
+        Ok(self.selected_path().context("No selected path")?.clone())
     }
 
     /// Select the given file from its path.
@@ -485,7 +487,7 @@ impl Tab {
     }
 
     fn sort_directory(&mut self, c: char) -> Result<()> {
-        let path = self.current_file()?.path;
+        let path = self.selected_path().context("No selected path")?;
         self.settings.update_sort_from_char(c);
         self.directory.sort(&self.settings.sort_kind);
         self.normal_go_top();
@@ -511,8 +513,9 @@ impl Tab {
     where
         P: AsRef<path::Path>,
     {
-        crate::log_info!("cd_to_file: #{path}#", path = path.as_ref().display());
+        log_info!("cd_to_file: #{path}#", path = path.as_ref().display());
         if !path.as_ref().exists() {
+            log_info!("{path} doesn't exist.", path = path.as_ref().display());
             return Ok(());
         }
         let parent = match path.as_ref().parent() {
@@ -550,7 +553,8 @@ impl Tab {
                 return Ok(());
             }
         }
-        self.history.push(&self.current_file()?.path);
+        self.history
+            .push(&self.selected_path().context("No selected_path")?);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if self.display_mode.is_tree() {
@@ -583,7 +587,7 @@ impl Tab {
     where
         P: AsRef<path::Path>,
     {
-        if self.display_mode.is_preview() {
+        if self.display_mode.is_tree() {
             self.tree.go(To::Path(file.as_ref()));
         } else {
             let index = self.directory.select_file(file.as_ref());

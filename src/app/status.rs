@@ -404,7 +404,9 @@ impl Status {
     /// Sync right tab from left tab path or vice versa.
     pub fn sync_tabs(&mut self, direction: Direction) -> Result<()> {
         let (source, dest) = direction.source_dest();
-        self.tabs[dest].cd(&self.tabs[source].current_file()?.path)
+        self.tabs[dest].cd(&self.tabs[source]
+            .selected_path()
+            .context("No selected path")?)
     }
 
     /// Height of the second window (menu).
@@ -795,7 +797,7 @@ impl Status {
         let tab = &self.tabs[compared_index];
         Ok(tab.display_mode.is_fuzzy()
             || tab.menu_mode.is_navigate()
-            || tab.current_file()?.path.as_ref() == path)
+            || tab.selected_path().context("No selected path")?.as_ref() == path)
     }
 
     /// Look for the correct file_info to preview.
@@ -911,10 +913,10 @@ impl Status {
     /// Returns the pathes of flagged file or the selected file if nothing is flagged
     fn flagged_or_selected(&self) -> Vec<PathBuf> {
         if self.menu.flagged.is_empty() {
-            let Ok(file) = self.current_tab().current_file() else {
+            let Some(path) = self.current_tab().selected_path() else {
                 return vec![];
             };
-            vec![file.path.to_path_buf()]
+            vec![path.to_path_buf()]
         } else {
             self.menu.flagged.content().to_owned()
         }
@@ -970,16 +972,16 @@ impl Status {
 
     /// Flag all _file_ (everything but directories) which are children of a directory.
     pub fn toggle_flag_for_children(&mut self) {
-        let Ok(file) = self.current_tab().current_file() else {
+        let Some(path) = self.current_tab().selected_path() else {
             return;
         };
         match self.current_tab().display_mode {
             Display::Directory => self.toggle_flag_for_selected(),
             Display::Tree => {
-                if !file.path.is_dir() {
-                    self.menu.flagged.toggle(&file.path);
+                if !path.is_dir() {
+                    self.menu.flagged.toggle(&path);
                 } else {
-                    for entry in WalkDir::new(&file.path).into_iter().filter_map(|e| e.ok()) {
+                    for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
                         let p = entry.path();
                         if !p.is_dir() {
                             self.menu.flagged.toggle(p);
@@ -994,25 +996,25 @@ impl Status {
     }
     /// Flag the selected file if any
     pub fn toggle_flag_for_selected(&mut self) {
-        let Ok(file) = self.current_tab().current_file() else {
+        let Some(path) = self.current_tab().selected_path() else {
             return;
         };
         match self.current_tab().display_mode {
             Display::Directory => {
-                self.menu.flagged.toggle(&file.path);
+                self.menu.flagged.toggle(&path);
                 if !self.current_tab().directory.selected_is_last() {
                     self.tabs[self.index].normal_down_one_row();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
             Display::Tree => {
-                self.menu.flagged.toggle(&file.path);
+                self.menu.flagged.toggle(&path);
                 if !self.current_tab().tree.selected_is_last() {
                     self.current_tab_mut().tree_select_next();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
-            Display::Preview => (),
+            Display::Preview => self.menu.flagged.toggle(&path),
             Display::Fuzzy => (),
         }
         if matches!(
@@ -1521,7 +1523,10 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let path = self.current_tab().current_file()?.path;
+        let path = self
+            .current_tab()
+            .selected_path()
+            .context("No selected path")?;
         self.open_single_file(&path)
     }
 
@@ -1542,7 +1547,12 @@ impl Status {
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
         if self.menu.iso_device.is_none() {
-            let path = path_to_string(&self.current_tab().current_file()?.path);
+            let path = path_to_string(
+                &self
+                    .current_tab()
+                    .selected_path()
+                    .context("No selected path")?,
+            );
             self.menu.iso_device = Some(IsoDevice::from_path(path));
         }
         Ok(())
@@ -2350,10 +2360,10 @@ impl Status {
 
     pub fn toggle_flag_visual(&mut self) {
         if self.current_tab().visual {
-            let Ok(file) = self.current_tab().current_file() else {
+            let Some(path) = self.current_tab().selected_path() else {
                 return;
             };
-            self.menu.flagged.toggle(&file.path)
+            self.menu.flagged.toggle(&path)
         }
     }
 

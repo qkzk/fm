@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, ffi::OsStr};
 
 use anyhow::Result;
 
@@ -34,6 +34,12 @@ impl Quote<String> for &str {
 impl Quote<String> for Cow<'_, str> {
     fn quote(&self) -> Result<String> {
         try_quote(self)
+    }
+}
+
+impl Quote<String> for &OsStr {
+    fn quote(&self) -> Result<String> {
+        self.to_string_lossy().quote()
     }
 }
 
