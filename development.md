@@ -1953,12 +1953,10 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor: duplication in status to please the borrow checker
   - [ ] other actions ? 
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
-- [ ] FEAT: horizontal scroll of input ?
-  - [ ] needs more testing. Seems to work fine.
+- [x] FEAT: horizontal scroll of input ?
 - [x] FIX: renaming a file doesn't select it anymore
 - [x] FEAT: In inputs,alt+left / right should jump word by word
-- [ ] FEAT: dired inspiration 
-  - [x] renaming/creating should prepend current path (shortened ?) before filename itself... 
+- [x] FEAT: renaming/creating should prepend current path (shortened ?) before filename itself... 
 - [x] IMP: use Size for holding terminal sizes, improving readability.
 - [x] IMP: solved a lot of TODO! by refactoring
 - [x] FIX: open a menu (like goto Alt+G), Alt+H to open picker, Alt+H again (picker from picker) then enter. Crash
