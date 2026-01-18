@@ -476,8 +476,8 @@ impl Status {
     pub fn refresh_shortcuts(&mut self) {
         self.menu.refresh_shortcuts(
             &self.internal_settings.mount_points_vec(),
-            self.tabs[0].current_path(),
-            self.tabs[1].current_path(),
+            self.tabs[0].current_directory_path(),
+            self.tabs[1].current_directory_path(),
         );
     }
 
@@ -485,7 +485,7 @@ impl Status {
     pub fn disk_spaces_of_selected(&self) -> String {
         disk_space(
             &self.internal_settings.disks,
-            self.current_tab().current_path(),
+            self.current_tab().current_directory_path(),
         )
     }
 
@@ -1188,7 +1188,7 @@ impl Status {
             return Ok(());
         }
         // build dest path
-        let dest = self.current_tab().current_path().to_path_buf();
+        let dest = self.current_tab().current_directory_path().to_path_buf();
         let Some(dest_filename) = build_dest_path(pasted, &dest) else {
             return Ok(());
         };
@@ -1227,7 +1227,7 @@ impl Status {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        let current_path = self.current_tab().current_path().to_path_buf();
+        let current_path = self.current_tab().current_directory_path().to_path_buf();
         fuzzy.find_files(current_path);
         Ok(())
     }
@@ -1464,7 +1464,7 @@ impl Status {
             return Ok(());
         };
         let current_path = match self.current_tab().display_mode {
-            Display::Directory => self.current_tab().current_path(),
+            Display::Directory => self.current_tab().current_directory_path(),
             Display::Tree => self.current_tab().tree.root_path(),
             _ => {
                 return Ok(());

@@ -659,7 +659,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        set_current_dir(status.current_tab().current_path())?;
+        set_current_dir(status.current_tab().current_directory_path())?;
         status.internal_settings.disable_display();
         External::open_shell_in_window()?;
         status.internal_settings.enable_display();

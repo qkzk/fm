@@ -1158,7 +1158,7 @@ impl<'a> Menu<'a> {
 
     fn menu_line_remote(&self, f: &mut Frame, rect: &Rect, first: Style) {
         let input = self.status.menu.input.string();
-        let current_path = path_to_string(&self.tab.current_path());
+        let current_path = path_to_string(&self.tab.current_directory_path());
 
         if let Some(remote) = Remote::from_input(input, &current_path) {
             let command = format!("{command:?}", command = remote.command());

@@ -164,7 +164,10 @@ impl MenuHolder {
     fn fill_completion(&mut self, tab: &mut Tab) {
         match tab.menu_mode {
             Menu::InputCompleted(InputCompleted::Cd) => self.completion.cd(
-                tab.current_path().as_os_str().to_string_lossy().as_ref(),
+                tab.current_directory_path()
+                    .as_os_str()
+                    .to_string_lossy()
+                    .as_ref(),
                 &self.input.string(),
             ),
             Menu::InputCompleted(InputCompleted::Exec) => {

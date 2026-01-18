@@ -1950,8 +1950,8 @@ Once that's done, it's all. No not implement anything else
   - [x] open from preview with only should also work in left tab.
   - [x] BUG: using wrong index when reading focus
   - [x] FIX: entering a previewed tree doesn't update the right preview
+  - [x] exec (`e`)
   - [ ] refactor: duplication in status to please the borrow checker
-  - [ ] other actions ? 
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
 - [x] FEAT: horizontal scroll of input ?
 - [x] FIX: renaming a file doesn't select it anymore
@@ -1968,6 +1968,7 @@ Once that's done, it's all. No not implement anything else
   - [x] display flagged  
   - [x] more consistant colors
 - [x] FEAT: improve fuzzy finder for lines, move preview to considered line
+- [ ] IMP: useless cloning while getting display_mode invariant current file. Use arc path instead.
 
 
 - **NO MORE FEATURES** it's enough for v0.2.1

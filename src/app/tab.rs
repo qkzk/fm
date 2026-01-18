@@ -186,7 +186,7 @@ impl Tab {
     }
 
     /// Current path of this tab in directory display mode.
-    pub fn current_path(&self) -> &path::Path {
+    pub fn current_directory_path(&self) -> &path::Path {
         self.directory.path.borrow()
     }
 
@@ -198,20 +198,28 @@ impl Tab {
         if self.display_mode.is_tree() {
             self.tree.root_path()
         } else {
-            self.current_path()
+            self.current_directory_path()
         }
     }
 
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
-        if self.display_mode.is_tree() {
-            FileInfo::new(&self.tree.selected_path_or_parent()?, &self.users)
-        } else {
-            Ok(self
+        match self.display_mode {
+            Display::Tree => FileInfo::new(&self.tree.selected_path_or_parent()?, &self.users),
+            Display::Preview => FileInfo::new(&self.preview.filepath(), &self.users),
+            _ => Ok(self
                 .directory
                 .selected()
                 .context("current_file: no selected file")?
-                .to_owned())
+                .to_owned()),
+        }
+    }
+
+    pub fn selected_path(&self) -> Option<Arc<std::path::Path>> {
+        match self.display_mode {
+            Display::Tree => Some(Arc::from(self.tree.selected_path())),
+            Display::Preview => Some(self.preview.filepath()),
+            _ => Some(self.directory.selected()?.path.clone()),
         }
     }
 
@@ -878,7 +886,7 @@ impl Tab {
     }
 
     pub fn save_origin_path(&mut self) {
-        self.origin_path = Some(self.current_path().to_owned());
+        self.origin_path = Some(self.current_directory_path().to_owned());
     }
 
     pub fn toggle_visual(&mut self) {
