@@ -7,6 +7,7 @@ use std::{
 };
 
 use serde_yaml_ng::{from_reader, from_value, Value};
+use url::Url;
 
 use crate::common::{tilde, CONFIG_PATH, PLUGIN_LIBSO_PATH, REPOSITORIES_PATH};
 use crate::io::execute_and_capture_output_with_path;
@@ -34,21 +35,21 @@ use crate::io::execute_and_capture_output_with_path;
 /// # Failure
 ///
 /// If any step fails (except adding the plugin to config file), it exits with an error printed to stderr.
-pub fn install_plugin(author_plugin: &str) {
-    println!("Installing {author_plugin} from its github repository");
+pub fn install_plugin(url: &str) {
+    println!("Installing {url} from its github repository");
     // 1. Parse author & plugin name
-    let plugin = parse_plugin_name(author_plugin);
+    let (hostname, plugin) = parse_hostname_plugin_name(url);
     // 2. build repository address
     let repositories_path = tilde(REPOSITORIES_PATH);
     let repositories_path = Path::new(repositories_path.as_ref());
     // 3. Create clone dir
     create_clone_directory(repositories_path);
     // 4. git clone
-    clone_repository(repositories_path, author_plugin);
+    clone_repository(hostname, repositories_path, url);
     // 5. build release target
-    let plugin_path = cargo_build_release(repositories_path, plugin);
+    let plugin_path = cargo_build_release(repositories_path, &plugin);
     // 6. check compilation process
-    let Some(libso_path) = find_compiled_target(plugin_path, plugin) else {
+    let Some(libso_path) = find_compiled_target(plugin_path, &plugin) else {
         remove_repo_directory().expect("Couldn't delete plugin repository");
         exit(6);
     };
@@ -66,7 +67,40 @@ pub fn install_plugin(author_plugin: &str) {
 /// prints error to stderr and exits with
 /// - error code 2 if the `author_plugin` doesn't contain a /
 /// - error code 3 if `author_plugin` contains nothing after /
-fn parse_plugin_name(author_plugin: &str) -> &str {
+fn parse_hostname_plugin_name(author_plugin: &str) -> (String, String) {
+    let nb_slashes = author_plugin.chars().filter(|c| *c == '/').count();
+
+    let mut author_plugin = author_plugin.to_string();
+    let hostname: String;
+    if nb_slashes == 1 {
+        // "qkzk/bat_previewer"; // 1
+        hostname = "github.com".to_string();
+    } else if nb_slashes == 4 {
+        // "https://github.com/qkzk/bat_previewer"; // 4
+        hostname = match Url::parse(&author_plugin) {
+            Ok(url) => {
+                if url.cannot_be_a_base() {
+                    "github.com".to_string()
+                } else {
+                    let Some(hostname) = url.host_str() else {
+                        eprintln!("{author_plugin} has no hostname");
+                        exit(3);
+                    };
+                    author_plugin = url.path().to_string().chars().skip(1).collect();
+                    hostname.to_string()
+                }
+            }
+            Err(_) => {
+                eprintln!("Cannot parse {author_plugin} as an url.");
+                exit(3);
+            }
+        };
+    } else {
+        eprintln!("Can't parse {author_plugin}. It should have 1 or 4 / like \"qkzk/bat_previewer\" or \"https://github.com/qkzk/bat_previewer\"");
+        exit(3);
+    }
+    eprintln!("Parsed url. hostname: ++{hostname}++ author/plugin: ++{author_plugin}++");
+
     let mut split = author_plugin.split('/');
     let Some(_) = split.next() else {
         eprintln!(
@@ -80,7 +114,7 @@ fn parse_plugin_name(author_plugin: &str) -> &str {
         );
         exit(3);
     };
-    plugin
+    (hostname, plugin.to_string())
 }
 
 /// Creates the [`REPOSITORIES_PATH`] directory
@@ -105,13 +139,14 @@ fn create_clone_directory(repositories_path: &Path) {
 ///
 /// # Failure
 /// Exits with error code 4 if the clone failed, printing the error to stderr.
-fn clone_repository(plugin_repositories: &Path, author_plugin: &str) {
+fn clone_repository(hostname: String, plugin_repositories: &Path, author_plugin: &str) {
     let args = [
         "clone",
         "--depth",
         "1",
-        &format!("git@github.com:{author_plugin}.git"),
+        &format!("git@{hostname}:{author_plugin}.git"),
     ];
+    println!("args: {args:?}");
     let output = execute_and_capture_output_with_path("git", plugin_repositories, &args);
     match output {
         Ok(stdout) => println!("- Cloned {author_plugin}{stdout} git repository"),
