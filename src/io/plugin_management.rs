@@ -12,8 +12,6 @@ use url::Url;
 use crate::common::{tilde, CONFIG_PATH, PLUGIN_LIBSO_PATH, REPOSITORIES_PATH};
 use crate::io::execute_and_capture_output_with_path;
 
-// TODO: allow for other sources than github with a complete url.
-
 /// Install a plugin from its github repository.
 /// It can also be used to update a plugin if its repository was updated.
 ///

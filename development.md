@@ -1753,7 +1753,7 @@ Once that's done, it's all. No not implement anything else
 #### Summary
 
 - Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text. Some plugins (only one atm) are available at [https://github.com/qkzk/fm_plugins].
-- CLI configuration helper: `fm_config`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove a plugin etc.
+- CLI configuration helper: `fmconfig`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove a plugin etc.
 - Neovim file picker. File picking in Neovim never was reliable. It never worked if you open fm yourself in a toggleterm instance. Use the associated plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim) to do the work. It uses 2 sockets to send and receive commands.
 - Execute commands from outside. Related to the previous point. If you don't use neovim, you can still take control of fm through sockets. Specify an output socket in command line arguments and send commands.
   - `GO <path>` will select the path,

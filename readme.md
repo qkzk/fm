@@ -14,6 +14,7 @@
 ### fm help 
 
 ```
+$ fm --help
 FM : a file manager inspired by ranger and dired
 
 Config files   ~/.config/fm/
@@ -37,6 +38,7 @@ Options:
 ### fmconfig help 
 
 ```
+$ fmconfig --help
 Welcome to Fm configuration application.
 FM : a file manager inspired by ranger and dired
 
@@ -59,11 +61,32 @@ Options:
   -V, --version       Print version
 ```
 
+`fmconfig plugin --help` :
+
+```
+$ fmconfig plugin -h`
+Welcome to Fm configuration application.
+Plugin management. fm plugin -h for more details
+
+Usage: fmconfig plugin <COMMAND>
+
+Commands:
+  add      fmconfig plugin add <path_to_plugin.so>. Add a compiled plugin from its .so file
+  install  fmconfig plugin install <author/repo>. Install a plugin from github fmconfig plugin install <https://hostname/author/repo>. Install a plugin from `hostname` (gitlab, codeberg etc.)
+  remove   fmconfig plugin remove <name>. Remove a plugin by its name
+  list     fmconfig plugin list. List all installed plugins
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
+```
+
 _fmconfig_ is still in early stages and may change a lot.
 
 ## Platform
 
-X11-Linux is the only supported platform. It may be usable on MacOS and Wayland but I can't be sure since I can't test them.
+X11-Linux is the only supported platform. It may be usable on MacOS or Wayland but I can't be sure since I can't test them.
+It should work over ssh or without a GUI on any linux platform.
 
 ## Video
 
@@ -170,7 +193,7 @@ fm ships with "bat_previewer" which relies on `bat` to generate highlighted prev
 
 ### How to install a plugin ?
 
-2 ways.
+3 ways.
 
 1. Edit your config and add this :
 
@@ -197,6 +220,13 @@ fm ships with "bat_previewer" which relies on `bat` to generate highlighted prev
 
   See [bat_previewer](./plugins/bat_previewer/src/lib.rs) for more an example of a "simple" plugin.
 
+3. Install it directly from a git repository with :
+
+- `fmconfig plugin install qkzk/bat_previewer`
+- `fmconfig plugin install https://github.com/qkzk/bat_previewer`
+
+Replace the hostname, author and plugin name.
+
 ### Fuzzy finders
 
 - Ctrl-f : search in filenames and move there,
@@ -218,7 +248,7 @@ We use [Nucleo](https://github.com/helix-editor/nucleo), a fuzzy matcher made fo
 
 You can specify an incoming socket to take control of fm and send it `GO <path>`, `KEY <key>` or `ACTION <action>` commands.
 
-You can specify an outgoing socket to implement a file picker your self. Opening a file with <Enter> or deleting one will result in a message sent in the form of `OPEN <path>` or `DELETE <path>`.
+You can specify an outgoing socket to implement a file picker yourself. Opening a file with <Enter> or deleting one will result in a message sent in the form of `OPEN <path>` or `DELETE <path>`.
 
 It's what is done in the fm-picker plugin.
 
@@ -254,15 +284,14 @@ end
 
 ### Archives
 
-- Decompress an archive by opening it (o, enter, right click)
+- Decompress an archive by opening it (o, enter, middle click)
 - Compress flagged files with C. Pick the desired algorithm from a menu.
 
 ### Custom binds
 
 You can bind any _unbound_ key to a shell command.
 
-- pipe & redirections (| > >> <) aren't supported !
-- the first word you type is the executable. Don't start your command with environment variables, it won't work.
+The command is executed in a new shell : `sh -c "<YOUR COMMAND>"`.
 
 Expansions :
 
@@ -322,7 +351,7 @@ Only developpers of fm should be concerned.
 
 ### More
 
-- Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
+- Copy a filename/filepath/file content to clipboard with Ctrl+n, Ctrl+p, Ctrl+a
 - Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
 - Drag and drop files (requires dragon-drop installed) with D
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
@@ -331,9 +360,9 @@ Only developpers of fm should be concerned.
 - Change permissions (chmod) with Alt+m or '+'. A nice menu will help you.
 - Mount a remote filesystem using sshfs with Alt-r.
 - Mount a MTP device with Alt-R.
-- Set temporary marks (reset on quit) with `Alt-"` (to save) and `"`
+- Set temporary marks (erased on quit) with `Alt-"` (to save) and `"` to jump.
 
-Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
+Most of those features are inspired by ranger, dired and alternatives (Midnight commander, nnn, lf etc.).
 
 ## Default keybindings
 
@@ -469,7 +498,6 @@ You can configure :
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
 - **Custom actions**. You can bind any key to a shell command.
-  - don't use pipes or redirectons, they won't be parsed correctly
   - use an unset bind
   - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
   - See the [config](./config_files/fm/config.yaml) or an example.
