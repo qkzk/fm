@@ -872,7 +872,7 @@ impl Tab {
         }
     }
 
-    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<FileInfo>>>> {
+    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<'_, FileInfo>>>> {
         let len = self.directory.content.len();
         self.directory
             .enumerate()

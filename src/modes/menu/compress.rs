@@ -166,7 +166,7 @@ impl Compresser {
 impl_content!(Compresser, CompressionMethod);
 
 impl CowStr for CompressionMethod {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_str().into()
     }
 }

@@ -55,17 +55,15 @@ impl Shortcut {
 
     /// Insert a shortcut to home directory of the current user.
     fn push_home_path(shortcuts: &mut Vec<PathBuf>) {
-        if let Ok(home_path) = PathBuf::from_str(tilde("~").borrow()) {
-            shortcuts.push(home_path);
-        }
+        let Ok(home_path) = PathBuf::from_str(tilde("~").borrow());
+        shortcuts.push(home_path);
     }
 
     /// Insert a shortcut to trash directory of the current user.
     fn push_trash_folder(shortcuts: &mut Vec<PathBuf>) {
-        if let Ok(trash_path) = PathBuf::from_str(tilde(TRASH_FOLDER_FILES).borrow()) {
-            if trash_path.exists() {
-                shortcuts.push(trash_path);
-            }
+        let Ok(trash_path) = PathBuf::from_str(tilde(TRASH_FOLDER_FILES).borrow());
+        if trash_path.exists() {
+            shortcuts.push(trash_path);
         }
     }
 

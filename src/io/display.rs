@@ -131,7 +131,7 @@ impl FilesAttributes {
 struct FilesBuilder;
 
 impl FilesBuilder {
-    fn dual(status: &Status) -> (Files, Files) {
+    fn dual(status: &Status) -> (Files<'_>, Files<'_>) {
         let first_selected = status.focus.is_left();
         let menu_selected = !first_selected;
         let attributes_left = FilesAttributes::new(
@@ -149,7 +149,7 @@ impl FilesBuilder {
         (files_left, files_right)
     }
 
-    fn single(status: &Status) -> Files {
+    fn single(status: &Status) -> Files<'_> {
         let attributes_left =
             FilesAttributes::new(TabPosition::Left, true, status.tabs[0].need_menu_window());
         Files::new(status, 0, attributes_left)
@@ -360,7 +360,7 @@ impl<'a> FuzzyDisplay<'a> {
         });
     }
 
-    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line {
+    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line<'_> {
         Line::from(vec![
             Span::styled("  ", Style::default().fg(Color::Yellow)),
             Span::styled(
@@ -742,7 +742,7 @@ impl<'a> TreeDisplay<'a> {
         Span::styled(formater(fileinfo, (6, 6)), style)
     }
 
-    fn prefix(line_builder: &TLine) -> Span {
+    fn prefix(line_builder: &TLine) -> Span<'_> {
         Span::raw(line_builder.prefix())
     }
 

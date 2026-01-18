@@ -69,7 +69,6 @@ impl CursorOffset for NeedConfirmation {
     /// Offset before the cursor.
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
-    #[must_use]
     fn cursor_offset(&self) -> u16 {
         self.to_string().utf_width_u16() + 9
     }
@@ -272,7 +271,6 @@ impl fmt::Display for Navigate {
 
 impl CursorOffset for Navigate {
     #[inline]
-    #[must_use]
     fn cursor_offset(&self) -> u16 {
         0
     }
@@ -400,7 +398,7 @@ impl CursorOffset for Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
     #[inline]
-    #[must_use]
+
     fn cursor_offset(&self) -> u16 {
         match self {
             Self::InputCompleted(input_completed) => input_completed.cursor_offset(),

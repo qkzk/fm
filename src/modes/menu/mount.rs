@@ -884,7 +884,7 @@ impl Mountable {
 }
 
 impl CowStr for Mountable {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_string().into()
     }
 }

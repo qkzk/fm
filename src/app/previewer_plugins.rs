@@ -53,13 +53,13 @@ unsafe fn get_name(lib: &Library) -> Result<String> {
 
 unsafe fn get_matcher(
     lib: &Library,
-) -> Result<Symbol<unsafe extern "C" fn(*mut c_char) -> bool>, libloading::Error> {
+) -> Result<Symbol<'_, unsafe extern "C" fn(*mut c_char) -> bool>, libloading::Error> {
     lib.get(b"is_match")
 }
 
 unsafe fn get_previewer(
     lib: &Library,
-) -> Result<Symbol<unsafe extern "C" fn(*mut c_char) -> *mut c_char>, libloading::Error> {
+) -> Result<Symbol<'_, unsafe extern "C" fn(*mut c_char) -> *mut c_char>, libloading::Error> {
     lib.get(b"preview")
 }
 

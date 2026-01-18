@@ -90,7 +90,7 @@ fn home_dir() -> Option<std::path::PathBuf> {
 
 /// Expand ~/Downloads to /home/user/Downloads where user is the current user.
 /// Copied from <https://gitlab.com/ijackson/rust-shellexpand/-/blob/main/src/funcs.rs?ref_type=heads#L673>
-fn tilde(input_str: &str) -> std::borrow::Cow<str> {
+fn tilde(input_str: &str) -> std::borrow::Cow<'_, str> {
     if let Some(input_after_tilde) = input_str.strip_prefix('~') {
         if input_after_tilde.is_empty() || input_after_tilde.starts_with('/') {
             if let Some(hd) = home_dir() {

@@ -408,7 +408,7 @@ impl OpendalContainer {
 impl_content!(OpendalContainer, Entry);
 
 impl CowStr for Entry {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         format!("{mode} {path}", mode = self.mode_fmt(), path = self.path()).into()
     }
 }

@@ -467,7 +467,7 @@ fn home_dir() -> Option<PathBuf> {
 
 /// Expand ~/Downloads to /home/user/Downloads where user is the current user.
 /// Copied from <https://gitlab.com/ijackson/rust-shellexpand/-/blob/main/src/funcs.rs?ref_type=heads#L673>
-pub fn tilde(input_str: &str) -> Cow<str> {
+pub fn tilde(input_str: &str) -> Cow<'_, str> {
     if let Some(input_after_tilde) = input_str.strip_prefix('~') {
         if input_after_tilde.is_empty() || input_after_tilde.starts_with('/') {
             if let Some(hd) = home_dir() {

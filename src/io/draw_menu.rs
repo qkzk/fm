@@ -46,29 +46,29 @@ macro_rules! colored_skip_take {
 /// Converts itself into a [`std::borrow::Cow<str>`].
 /// It's used to call `print_with_style` which requires an `&str`.
 pub trait CowStr {
-    fn cow_str(&self) -> Cow<str>;
+    fn cow_str(&self) -> Cow<'_, str>;
 }
 
 impl CowStr for (char, std::path::PathBuf) {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         format!("{c} {p}", c = self.0, p = self.1.display()).into()
     }
 }
 
 impl CowStr for std::path::PathBuf {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_string_lossy()
     }
 }
 
 impl CowStr for String {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.into()
     }
 }
 
 impl CowStr for &str {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         (*self).into()
     }
 }

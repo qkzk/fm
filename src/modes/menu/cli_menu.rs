@@ -162,7 +162,7 @@ impl TerminalApplications<CliCommand, (String, String)> for CliApplications {
 }
 
 impl CowStr for CliCommand {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         let desc_size = 20_usize.saturating_sub(self.desc.len());
         format!(
             "{desc}{space:<desc_size$}{exe}",

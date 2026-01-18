@@ -516,7 +516,7 @@ where
 }
 
 impl CowStr for Info {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_string().into()
     }
 }

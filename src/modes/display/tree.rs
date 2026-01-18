@@ -904,7 +904,7 @@ impl Tree {
     pub fn lines_enum_skip_take(
         &self,
         window: &ContentWindow,
-    ) -> Take<Skip<Enumerate<Iter<TLine>>>> {
+    ) -> Take<Skip<Enumerate<Iter<'_, TLine>>>> {
         let lines = self.displayable().lines();
         let length = lines.len();
         lines
@@ -919,7 +919,7 @@ impl IndexToIndex<TLine> for Tree {
     /// Iterate over line from current index to bottom then from top to current index.
     ///
     /// Useful when going to next match in search results
-    fn index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+    fn index_to_index(&self) -> Chain<Skip<Iter<'_, TLine>>, Take<Iter<'_, TLine>>> {
         self.displayable().index_to_index()
     }
 }

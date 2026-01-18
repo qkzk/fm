@@ -59,7 +59,7 @@ pub trait IndexToIndex<T> {
     /// Iterate over line from current index to bottom then from top to current index.
     ///
     /// Useful when going to next match in search results
-    fn index_to_index(&self) -> Chain<Skip<Iter<T>>, Take<Iter<T>>>;
+    fn index_to_index(&self) -> Chain<Skip<Iter<'_, T>>, Take<Iter<'_, T>>>;
 }
 
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
@@ -141,7 +141,7 @@ macro_rules! impl_index_to_index {
             /// Useful when going to next match in search results
             fn index_to_index(
                 &self,
-            ) -> Chain<Skip<Iter<$content_type>>, Take<Iter<$content_type>>> {
+            ) -> Chain<Skip<Iter<'_, $content_type>>, Take<Iter<'_, $content_type>>> {
                 let index = self.index;
                 let elems = self.content();
                 elems.iter().skip(index + 1).chain(elems.iter().take(index))
