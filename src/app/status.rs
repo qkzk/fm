@@ -961,7 +961,8 @@ impl Status {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
-        if self.current_tab().display_mode.is_preview() {
+        log_info!("Reverse flags");
+        if !self.current_tab().display_mode.is_preview() {
             self.tabs[self.index]
                 .directory
                 .content
