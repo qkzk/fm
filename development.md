@@ -1968,7 +1968,6 @@ Once that's done, it's all. No not implement anything else
   - [x] display flagged  
   - [x] more consistant colors
 - [x] FEAT: improve fuzzy finder for lines, move preview to considered line
-- [ ] IMP: useless cloning while getting display_mode invariant current file. Use arc path instead.
 - [x] FIX: exec (`e`) a non terminal executable from a preview would crash.
 - [x] IMP: remove useless clone while getting path of current selection
 - [x] FIX: reverse flags wasn't doing anything
