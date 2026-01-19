@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 /// The destination is `~/.config/fm`.
 /// If there's already some configuration files, no overwrite is done.
 fn main() -> std::io::Result<()> {
+    eprintln!("building fm...");
     copy_config_to_home_dir();
     Ok(())
 }
