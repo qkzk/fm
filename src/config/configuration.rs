@@ -52,7 +52,7 @@ impl Config {
     }
 }
 
-fn ensure_config_files_exists(path: &str) -> std::io::Result<()> {
+fn ensure_config_files_exists(path: &str) -> Result<()> {
     let expanded_path = tilde(path);
     let expanded_config_path = path::Path::new(expanded_path.as_ref());
     if !expanded_config_path.exists() {

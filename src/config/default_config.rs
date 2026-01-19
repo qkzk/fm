@@ -1,7 +1,6 @@
-use crate::{
-    common::{tilde, CONFIG_FOLDER},
-    modes::decompress_zip,
-};
+use anyhow::{Context, Result};
+
+use crate::common::{tilde, CONFIG_FOLDER};
 
 /// Creates the default config if it doesn't exists.
 /// Creates the trash folder if it doesn't exists.
@@ -9,7 +8,7 @@ use crate::{
 /// Errors
 ///
 /// It may fail if the user has no write access to $HOME which shouldn't happen in a normal environment.
-pub fn make_default_config_files() -> std::io::Result<()> {
+pub fn make_default_config_files() -> Result<()> {
     create_config_folder()?;
     copy_default_config_files()?;
     create_trash_folders()?;
@@ -22,20 +21,45 @@ fn create_config_folder() -> std::io::Result<()> {
     std::fs::create_dir_all(p.as_ref())
 }
 
-/// Copy the config files to ~/.config/fm/
-/// The default config files are zipped and included in the code. I couldn't find a better idea...
-/// It uses ~120 bytes.
-/// Once copied, the zip file in unzipped and removed.
-fn copy_default_config_files() -> std::io::Result<()> {
-    // TODO automatise the zipping
-    let mut dest = std::path::PathBuf::from(tilde(CONFIG_FOLDER).as_ref());
-    dest.push("fm_config.zip");
-    let config_bytes = include_bytes!("../../config_files/fm_config.zip");
+const DEFAULT_CONFIG: &str = include_str!("../../config_files/fm/config.yaml");
+const DEFAULT_CLI: &str = include_str!("../../config_files/fm/cli.yaml");
+const DEFAULT_OPENER: &str = include_str!("../../config_files/fm/opener.yaml");
+const DEFAULT_SESSION: &str = include_str!("../../config_files/fm/session.yaml");
+const DEFAULT_TUIS: &str = include_str!("../../config_files/fm/tuis.yaml");
+const DEFAULT_LOG_FM: &str = include_str!("../../config_files/fm/log/fm.log");
+const DEFAULT_LOG_ACTION_LOGGER: &str = include_str!("../../config_files/fm/log/action_logger.log");
+const DEFAULT_LOG_INPUT_HISTORY: &str = include_str!("../../config_files/fm/log/input_history.log");
 
-    std::fs::write(&dest, config_bytes)?;
-    decompress_zip(&dest)
-        .map_err(|_| std::io::Error::other("Couldn't decompress"))?;
-    std::fs::remove_file(&dest)
+#[rustfmt::skip]
+const DEFAULT_CONFIGS: [(&str, &str); 8] = [
+    ("config.yaml", DEFAULT_CONFIG),
+    ("cli.yaml", DEFAULT_CLI),
+    ("opener.yaml", DEFAULT_OPENER),
+    ("session.yaml", DEFAULT_SESSION),
+    ("tuis.yaml", DEFAULT_TUIS),
+    ("log/fm.log", DEFAULT_LOG_FM),
+    ("log/action_logger.log", DEFAULT_LOG_ACTION_LOGGER,),
+    ("log/input_history.log", DEFAULT_LOG_INPUT_HISTORY,),
+];
+
+fn ensure_config(path: &std::path::Path, contents: &str) -> Result<()> {
+    if !path.exists() {
+        std::fs::create_dir_all(path.parent().context("No parent")?)?;
+        std::fs::write(path, contents)?;
+    }
+    Ok(())
+}
+
+/// Copy the config files to ~/.config/fm/
+fn copy_default_config_files() -> Result<()> {
+    let dest = std::path::PathBuf::from(tilde(CONFIG_FOLDER).as_ref());
+
+    for (config_rel_path, contents) in &DEFAULT_CONFIGS {
+        let mut path = dest.clone();
+        path.push(config_rel_path);
+        ensure_config(&path, contents)?;
+    }
+    Ok(())
 }
 
 /// Creates the trash folders:
