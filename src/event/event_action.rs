@@ -52,7 +52,7 @@ impl EventAction {
 
     /// Handle pasting. Paste a file or an input.
     /// - Paste an absolute, existing path to current directory in Directory or Tree display mode.
-    ///     Does nothing if the file already exists in current directory.
+    ///   Does nothing if the file already exists in current directory.
     /// - Paste a text in an input box.
     /// - Does nothing otherwiser.
     pub fn paste(status: &mut Status, pasted: String) -> Result<()> {

@@ -375,17 +375,17 @@ impl<'a> TreeLinesBuilder<'a> {
     /// Create a displayable content from the tree.
     /// Returns 2 informations :
     /// - the index of the selected node into this content.
-    ///      It's usefull to know where the user clicked
+    ///   It's usefull to know where the user clicked
     /// - a vector of `TreeLineMaker` which holds every information
-    ///     needed to display the tree.
-    ///     We try to keep as much reference as possible and generate
-    ///     the information lazyly, avoiding as much useless calcuations
-    ///     as possible.
-    ///     The metadata information (permissions, modified time etc.) must be
-    ///     calculated immediatly, therefore for every node, since it requires
-    ///     an access to the user list.
-    ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
-    ///     Name format is calculated on the fly.
+    ///   needed to display the tree.
+    ///   We try to keep as much reference as possible and generate
+    ///   the information lazyly, avoiding as much useless calcuations
+    ///   as possible.
+    ///   The metadata information (permissions, modified time etc.) must be
+    ///   calculated immediatly, therefore for every node, since it requires
+    ///   an access to the user list.
+    ///   The prefix (straight lines displaying targets) must also be calcuated immediatly.
+    ///   Name format is calculated on the fly.
     fn build(self) -> TreeLines {
         let mut stack = vec![("".to_owned(), self.root_path.clone())];
         let mut lines = vec![];

@@ -387,9 +387,7 @@ impl Menu {
 
     /// Nice name for the picker menu.
     pub fn name_for_picker(&self) -> Option<String> {
-        self.to_string()
-            .split(':')
-            .next().map(|s| s.to_string())
+        self.to_string().split(':').next().map(|s| s.to_string())
     }
 }
 
@@ -397,7 +395,6 @@ impl CursorOffset for Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
     #[inline]
-
     fn cursor_offset(&self) -> u16 {
         match self {
             Self::InputCompleted(input_completed) => input_completed.cursor_offset(),

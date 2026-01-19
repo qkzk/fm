@@ -19,7 +19,7 @@ impl Refresher {
 
     /// Event sent to Fm event poller which is interpreted
     /// as a request for refresh.
-
+    ///
     /// Spawn a thread which sends events to the terminal.
     /// Those events are interpreted as refresh requests.
     /// It also listen to a receiver for quit messages.
