@@ -252,7 +252,7 @@ impl OpendalContainer {
     }
 
     fn selected_filename(&self) -> Option<&str> {
-        self.selected()?.path().split('/').last()
+        self.selected()?.path().split('/').next_back()
     }
 
     fn create_downloaded_path(&self, dest: &std::path::Path) -> Option<std::path::PathBuf> {

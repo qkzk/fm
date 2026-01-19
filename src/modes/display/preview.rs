@@ -292,7 +292,7 @@ impl PreviewBuilder {
 
     fn normal_file(&self) -> Result<Preview> {
         let extension = extract_extension(&self.path)
-            .trim_end_matches(&['~', '_'])
+            .trim_end_matches(['~', '_'])
             .to_lowercase();
         let kind = ExtensionKind::matcher(&extension);
         match kind {

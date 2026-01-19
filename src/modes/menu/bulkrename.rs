@@ -253,10 +253,7 @@ impl Bulk {
     }
 
     pub fn watch_in_thread(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
-        match &self.bulk {
-            Some(bulk) => bulk.watch_modification_in_thread(fm_sender)?,
-            None => (),
-        }
+        if let Some(bulk) = &self.bulk { bulk.watch_modification_in_thread(fm_sender)? }
         Ok(())
     }
 

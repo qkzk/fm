@@ -389,8 +389,7 @@ impl Menu {
     pub fn name_for_picker(&self) -> Option<String> {
         self.to_string()
             .split(':')
-            .next()
-            .and_then(|s| Some(s.to_string()))
+            .next().map(|s| s.to_string())
     }
 }
 

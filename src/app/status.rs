@@ -1381,20 +1381,14 @@ impl Status {
 
     /// Issue a tick to the fuzzy finder
     pub fn fuzzy_tick(&mut self) {
-        match &mut self.fuzzy {
-            Some(fuzzy) => {
-                fuzzy.tick(false);
-            }
-            None => (),
+        if let Some(fuzzy) = &mut self.fuzzy {
+            fuzzy.tick(false);
         }
     }
 
     /// Resize the fuzzy finder according to given height
     pub fn fuzzy_resize(&mut self, height: usize) {
-        match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.resize(height),
-            None => (),
-        }
+        if let Some(fuzzy) = &mut self.fuzzy { fuzzy.resize(height) }
     }
 
     /// Replace the current input by the next result from history

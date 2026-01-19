@@ -34,7 +34,7 @@ fn copy_default_config_files() -> std::io::Result<()> {
 
     std::fs::write(&dest, config_bytes)?;
     decompress_zip(&dest)
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Couldn't decompress"))?;
+        .map_err(|_| std::io::Error::other("Couldn't decompress"))?;
     std::fs::remove_file(&dest)
 }
 
