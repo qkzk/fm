@@ -1753,7 +1753,7 @@ Once that's done, it's all. No not implement anything else
 #### Summary
 
 - Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text. Some plugins (only one atm) are available at [https://github.com/qkzk/fm_plugins].
-- CLI configuration helper: `fmconfig`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove a plugin etc.
+- CLI configuration helper: `fmconfig`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove/install a plugin etc.
 - Neovim file picker. File picking in Neovim never was reliable. It never worked if you open fm yourself in a toggleterm instance. Use the associated plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim) to do the work. It uses 2 sockets to send and receive commands.
 - Execute commands from outside. Related to the previous point. If you don't use neovim, you can still take control of fm through sockets. Specify an output socket in command line arguments and send commands.
   - `GO <path>` will select the path,
@@ -1837,15 +1837,12 @@ Once that's done, it's all. No not implement anything else
     - [x] remove should check for clones
     - [x] update should do the same
   - [x] fmconfig plugin install https://hostname/author/plugin
-  - [ ] make actions transactional. If it fails, restore as it were before.
 - [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
     https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
     https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_271
     https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
 
-- [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping.
-  Can't solve easily
 - [x] Neovim integration 
   - [x] open fm with current file selected whatever the terminal used 
   - [x] renaming in fm renames the buffer 
@@ -1901,7 +1898,6 @@ Once that's done, it's all. No not implement anything else
       /run/user/1000/fm.nvim.whatever
     - [x] more binds to reset mode since Esc is captured by neovim : Alt-Tab & Ins
     - [x] send msg to nvim to toggle fm window ??? Is quiting enough ? Yes
-    - [ ] test a lot: picking, deleting, renaming, closing the window, trash etc.
 
 - [x] FIX: search, down, enter. Selection should follow up/down/pgup/pgdown,click
 - [x] FIX: deleting chars doesn't update completion
@@ -1935,14 +1931,12 @@ Once that's done, it's all. No not implement anything else
   - [x] read picked & replace input
   - [x] alt+h in a menu (never used ?) opens the picker
   - [x] picker for each mode with a callback
-  - [ ] refactor the callback
   - [x] completion
   - [x] Esc should set back to menu not leave it
 - [x] FIX: starting path isn't alway added to history
 - [x] FEAT: bind alt+- to open history. '-' is used to go back.
 - [x] FIX: Ctrl+s (aka grep) doesn't update the preview
-- [ ] BUG: big tree moved down and selection is out of screen once again
-- [ ] FEAT: preview a tree in second pane should have some kind of navigation ?
+- [x] FEAT: preview a tree in second pane should have some kind of navigation ?
   - [x] move down & up + scrolling
   - [x] enter, left click, middle click, right click (context)
   - [x] FIX: doesn't work for plugins
@@ -1952,7 +1946,6 @@ Once that's done, it's all. No not implement anything else
   - [x] BUG: using wrong index when reading focus
   - [x] FIX: entering a previewed tree doesn't update the right preview
   - [x] exec (`e`)
-  - [ ] refactor: duplication in status to please the borrow checker
 - [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
 - [x] FEAT: horizontal scroll of input ?
 - [x] FIX: renaming a file doesn't select it anymore
@@ -1974,22 +1967,14 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: reverse flags wasn't doing anything
 
 
-- **NO MORE FEATURES** it's enough for v0.2.1
-  - [ ] read every commit 
-  - [ ] remove non working 
-  - [ ] test everything again" "
-  - [ ] script for testing using new socket ?
-  - [ ] documentation 
-  - [ ] closing & publishing 
-
-
-
 ## TODO
 
 ### Other ideas
 
 
 
+- [ ] BUG: big tree moved down and selection is out of screen once again
+- [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
 - [ ] FEAT: common themes
