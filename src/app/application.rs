@@ -1,4 +1,3 @@
-use std::fs::{read_dir, remove_file};
 use std::io::stdout;
 use std::panic;
 use std::process::exit;
@@ -9,26 +8,32 @@ use std::backtrace;
 
 use anyhow::Result;
 use clap::Parser;
-use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor,
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture},
     execute,
-    terminal::disable_raw_mode,
+    terminal::{disable_raw_mode, Clear, ClearType},
 };
 use parking_lot::Mutex;
 use ratatui::{init as init_term, DefaultTerminal};
 
 use crate::app::{Displayer, Refresher, Status};
-use crate::common::{clear_tmp_files, save_final_path, CONFIG_PATH, TMP_THUMBNAILS_DIR};
-use crate::config::{cloud_config, load_config, set_configurable_static, Config};
-use crate::event::{EventDispatcher, EventReader, FmEvents};
+use crate::common::{clear_input_socket_files, clear_tmp_files, save_final_path, CONFIG_PATH};
+use crate::config::{load_config, set_configurable_static, Config, IS_LOGGING};
+use crate::event::{remove_socket, EventDispatcher, EventReader, FmEvents};
 use crate::io::{Args, FMLogger, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
 /// Dropping the instance of FM allows to write again to stdout.
 /// It should be ran like this : `crate::app::Fm::start().run().quit()`.
+///
+/// The application is split into several components:
+/// - a reader of FmEvents,
+/// - a dispatcher of said events,
+/// - the state of the application itself, which is mutated by the dispatcher,
+/// - a displayer which holds a non mutable reference to the state. The displayer can emits events to force state change if needs be.
+/// - a refresher which is used to force a refresh state + display if something happened externally or in some running thread.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
     event_reader: EventReader,
@@ -39,7 +44,7 @@ pub struct FM {
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It also has a [`std::mpsc::Sender`] to send a quit message and reset the cursor.
     refresher: Refresher,
-    /// Used to handle every display on the screen, except from skim (fuzzy finds).
+    /// Used to handle every display on the screen.
     /// It runs a single thread with an mpsc receiver to handle quit events.
     /// Drawing is done 30 times per second.
     displayer: Displayer,
@@ -61,9 +66,10 @@ impl FM {
     /// May fail if the [`ratatui::DefaultTerminal`] can't be started or crashes
     pub fn start() -> Result<Self> {
         Self::set_panic_hook();
-        let (config, start_folder) = Self::early_exit()?;
+        let (mut config, start_folder) = Self::early_exit()?;
         log_info!("start folder: {start_folder}");
-        set_configurable_static(&start_folder)?;
+        let plugins = std::mem::take(&mut config.plugins);
+        set_configurable_static(&start_folder, plugins)?;
         Self::build(config)
     }
 
@@ -77,7 +83,12 @@ impl FM {
         panic::set_hook(Box::new(|traceback| {
             clear_tmp_files();
             let _ = disable_raw_mode();
-            let _ = execute!(stdout(), cursor::Show, DisableMouseCapture);
+            let _ = execute!(
+                stdout(),
+                cursor::Show,
+                DisableMouseCapture,
+                DisableBracketedPaste
+            );
 
             if cfg!(debug_assertions) {
                 if let Some(payload) = traceback.payload().downcast_ref::<&str>() {
@@ -103,67 +114,43 @@ impl FM {
     /// as a String.
     fn early_exit() -> Result<(Config, String)> {
         let args = Args::parse();
+        IS_LOGGING.get_or_init(|| args.log);
         if args.log {
             FMLogger::default().init()?;
         }
+        log_info!("args {args:#?}");
         let Ok(config) = load_config(CONFIG_PATH) else {
             Self::exit_wrong_config()
         };
-        if args.keybinds {
-            Self::exit_with_binds(&config);
-        }
-        if args.cloudconfig {
-            Self::exit_with_cloud_config()?;
-        }
-        if args.clear_cache {
-            Self::exit_with_clear_cache()?;
-        }
         Ok((config, args.path))
-    }
-
-    fn exit_with_binds(config: &Config) {
-        println!("{binds}", binds = config.binds.to_str());
-        exit(0);
-    }
-
-    fn exit_with_cloud_config() -> Result<()> {
-        cloud_config()?;
-        exit(0);
-    }
-
-    fn exit_with_clear_cache() -> Result<()> {
-        read_dir(TMP_THUMBNAILS_DIR)?
-            .filter_map(|entry| entry.ok())
-            .for_each(|e| {
-                if let Err(e) = remove_file(e.path()) {
-                    println!("Couldn't remove {TMP_THUMBNAILS_DIR}: error {e}");
-                }
-            });
-        println!("Cleared {TMP_THUMBNAILS_DIR}");
-        exit(0);
     }
 
     /// Exit the application and log a message.
     /// Used when the config can't be read.
-    fn exit_wrong_config() -> ! {
+    pub fn exit_wrong_config() -> ! {
         eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
         log_info!("Couldn't read the config file {CONFIG_PATH}");
         exit(1)
     }
 
     /// Internal builder. Builds an Fm instance from the config.
+    /// We have to create the terminal before starting the display.
+    /// - status requires the terminal size to be initialized (can we display right tab etc. ?)
+    /// - displays has a cloned arc to status
+    ///
+    /// The terminal is intancied there and passed to the display.
     fn build(config: Config) -> Result<Self> {
         let (fm_sender, fm_receiver) = mpsc::channel::<FmEvents>();
-        let fm_sender = Arc::new(fm_sender);
-        let term = Self::init_term();
         let event_reader = EventReader::new(fm_receiver);
-        let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let status = Arc::new(Mutex::new(Status::new(
-            term.size().unwrap(),
+        let fm_sender = Arc::new(fm_sender);
+        let term = Self::init_term()?;
+        let status = Status::arc_mutex_new(
+            term.size()?,
             Opener::default(),
             &config.binds,
             fm_sender.clone(),
-        )?));
+        )?;
+        let event_dispatcher = EventDispatcher::new(config.binds);
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
 
@@ -176,10 +163,10 @@ impl FM {
         })
     }
 
-    fn init_term() -> DefaultTerminal {
+    fn init_term() -> Result<DefaultTerminal> {
         let term = init_term();
-        execute!(stdout(), EnableMouseCapture).unwrap();
-        term
+        execute!(stdout(), EnableMouseCapture, EnableBracketedPaste)?;
+        Ok(term)
     }
 
     /// Update itself, changing its status.
@@ -213,7 +200,7 @@ impl FM {
 
     /// Disable the mouse capture before normal exit.
     fn disable_mouse_capture() -> Result<()> {
-        execute!(stdout(), DisableMouseCapture)?;
+        execute!(stdout(), DisableMouseCapture, DisableBracketedPaste)?;
         Ok(())
     }
 
@@ -233,6 +220,7 @@ impl FM {
 
         clear_tmp_files();
 
+        remove_socket(&self.event_reader.socket_path);
         drop(self.event_reader);
         drop(self.event_dispatcher);
         self.displayer.quit();
@@ -245,6 +233,7 @@ impl FM {
         drop(status);
 
         drop(self.status);
+        clear_input_socket_files()?;
         Self::disable_mouse_capture()?;
         save_final_path(&final_path);
         Ok(())

@@ -1,19 +1,21 @@
 use std::os::unix::fs::MetadataExt;
 
 use anyhow::Result;
+use clap::Parser;
 use ratatui::layout::Rect;
 use ratatui::Frame;
 
 use crate::app::Tab;
 use crate::common::{index_from_a, INPUT_HISTORY_PATH};
 use crate::config::Bindings;
-use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
+use crate::io::{Args, DrawMenu};
 use crate::log_line;
 use crate::modes::{
-    Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu, Flagged, History,
-    Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate, PasswordHolder, Picker, Remote,
-    Selectable, Shortcut, TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
+    nvim_inform_ipc, Bulk, CliApplications, Completion, Compresser, ContentWindow, ContextMenu,
+    Flagged, History, Input, InputCompleted, IsoDevice, Marks, Menu, Mount, Navigate,
+    NeedConfirmation, NvimIPCAction, PasswordHolder, Picker, Remote, Selectable, Shortcut,
+    TempMarks, Trash, TuiApplications, MAX_FILE_MODE,
 };
 
 macro_rules! impl_navigate_from_char {
@@ -162,7 +164,10 @@ impl MenuHolder {
     fn fill_completion(&mut self, tab: &mut Tab) {
         match tab.menu_mode {
             Menu::InputCompleted(InputCompleted::Cd) => self.completion.cd(
-                tab.current_path().as_os_str().to_string_lossy().as_ref(),
+                tab.current_directory_path()
+                    .as_os_str()
+                    .to_string_lossy()
+                    .as_ref(),
                 &self.input.string(),
             ),
             Menu::InputCompleted(InputCompleted::Exec) => {
@@ -200,13 +205,24 @@ impl MenuHolder {
         self.trash.delete_permanently()
     }
 
+    /// Delete all the flagged files & directory recursively.
+    /// If an output socket was provided at launch, it will inform the IPC server about those deletions.
+    /// Clear the flagged files.
+    ///
+    /// # Errors
+    ///
+    /// May fail if any deletion is impossible (permissions, file already deleted etc.)
     pub fn delete_flagged_files(&mut self) -> Result<()> {
         let nb = self.flagged.len();
+        let output_socket = Args::parse().output_socket;
         for pathbuf in self.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
             } else {
                 std::fs::remove_file(pathbuf)?;
+            }
+            if let Some(output_socket) = &output_socket {
+                nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(pathbuf))?;
             }
         }
         self.flagged.clear();
@@ -251,6 +267,11 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Menu::InputCompleted(_) => self.completion.len(),
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => {
+                self.flagged.len()
+            }
+            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.len(),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => self.bulk.len(),
             _ => 0,
         }
     }
@@ -259,6 +280,11 @@ impl MenuHolder {
         match menu_mode {
             Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Menu::InputCompleted(_) => self.completion.index,
+            Menu::NeedConfirmation(need_confirmation) if need_confirmation.use_flagged_files() => {
+                self.flagged.index()
+            }
+            Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => self.trash.index(),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction) => self.bulk.index(),
             _ => 0,
         }
     }

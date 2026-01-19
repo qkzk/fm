@@ -1,7 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
+use crate::modes::Quote;
 use crate::{log_info, log_line};
 
 /// Token used while parsing a command to execute it using the current window.
@@ -90,27 +91,31 @@ impl FmExpansion {
     }
 
     fn selected(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status.current_tab().current_file_string()?])
+        Ok(vec![status.current_tab().current_file_string()?.quote()?])
     }
 
     fn path(status: &Status) -> Result<Vec<String>> {
-        Ok(vec![status.current_tab().directory_str()])
+        Ok(vec![status.current_tab().directory_str().quote()?])
     }
 
     fn filename(status: &Status) -> Result<Vec<String>> {
         Ok(vec![status
             .current_tab()
-            .current_file()?
-            .filename
-            .to_string()])
+            .selected_path()
+            .context("No selected file")?
+            .file_name()
+            .context("No filename")?
+            .quote()?])
     }
 
     fn extension(status: &Status) -> Result<Vec<String>> {
         Ok(vec![status
             .current_tab()
-            .current_file()?
-            .extension
-            .to_string()])
+            .selected_path()
+            .context("No selected file")?
+            .extension()
+            .context("No extension")?
+            .quote()?])
     }
 
     fn flagged(status: &Status) -> Result<Vec<String>> {
@@ -120,6 +125,7 @@ impl FmExpansion {
             .content
             .iter()
             .map(path_to_string)
+            .filter_map(|s| s.quote().ok())
             .collect())
     }
 

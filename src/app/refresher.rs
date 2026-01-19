@@ -4,7 +4,6 @@ use std::thread;
 use std::time::Duration;
 
 use crate::event::FmEvents;
-use crate::log_info;
 
 /// Allows refresh if the current path has been modified externally.
 pub struct Refresher {
@@ -20,33 +19,24 @@ impl Refresher {
 
     /// Event sent to Fm event poller which is interpreted
     /// as a request for refresh.
-    /// This key can't be bound to anything (who would use that ?).
-
+    ///
     /// Spawn a thread which sends events to the terminal.
     /// Those events are interpreted as refresh requests.
     /// It also listen to a receiver for quit messages.
-    ///
-    /// Using Event::User(()) conflicts with skim internal which interpret this
-    /// event as a signal(1) and hangs the terminal.
     pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
         let (tx, rx) = mpsc::channel();
-        let mut counter: u16 = 0;
+        // let mut counter: u16 = 0;
+        let mut counter = Counter::default();
         let handle = thread::spawn(move || loop {
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
-                    log_info!("terminating refresher");
                     return;
                 }
                 Err(TryRecvError::Empty) => {}
             }
-            counter += 1;
+            counter.incr();
             thread::sleep(Duration::from_millis(10));
-            let event = if counter >= Self::TEN_SECONDS_IN_CENTISECONDS {
-                counter = 0;
-                FmEvents::Refresh
-            } else {
-                FmEvents::UpdateTick
-            };
+            let event = counter.pick_according_to_counter();
             if fm_sender.send(event).is_err() {
                 break;
             }
@@ -59,5 +49,25 @@ impl Refresher {
     pub fn quit(self) {
         let _ = self.tx.send(());
         let _ = self.handle.join();
+    }
+}
+
+#[derive(Default)]
+struct Counter {
+    counter: u16,
+}
+
+impl Counter {
+    fn pick_according_to_counter(&mut self) -> FmEvents {
+        if self.counter >= Refresher::TEN_SECONDS_IN_CENTISECONDS {
+            self.counter = 0;
+            FmEvents::Refresh
+        } else {
+            FmEvents::UpdateTick
+        }
+    }
+
+    fn incr(&mut self) {
+        self.counter += 1;
     }
 }

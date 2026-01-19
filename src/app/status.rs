@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -8,29 +9,34 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
+use parking_lot::lock_api::Mutex;
+use parking_lot::RawMutex;
 use ratatui::layout::Size;
 use sysinfo::Disks;
+use walkdir::WalkDir;
 
 use crate::app::{
-    ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab, ThumbnailManager,
+    ClickableLine, Footer, Header, InternalSettings, PreviewResponse, Previewer, Session, Tab,
+    ThumbnailManager,
 };
 use crate::common::{
-    current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
-    is_sudo_command, path_to_string, row_to_window_index, set_current_dir,
+    build_dest_path, current_username, disk_space, filename_from_path, is_in_path, is_sudo_command,
+    path_to_string, row_to_window_index, set_current_dir, tilde, MountPoint,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
-use crate::event::FmEvents;
+use crate::event::{ActionMap, FmEvents};
 use crate::io::{
     build_tokio_greper, execute_and_capture_output, execute_sudo_command_with_password,
     execute_without_output, get_cloud_token_names, google_drive, reset_sudo_faillock, Args,
     Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, parse_line_output, regex_flagger, shell_command_parser, Content, ContentWindow,
-    CopyMove, CursorOffset, Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind,
-    FuzzyFinder, FuzzyKind, InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction,
-    MountCommands, Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Search, Selectable, Users, SAME_WINDOW_TOKEN,
+    append_files_to_shell_command, copy_move, parse_line_output, regex_flagger,
+    shell_command_parser, Content, ContentWindow, CopyMove, CursorOffset,
+    Direction as FuzzyDirection, Display, FileInfo, FileKind, FilterKind, FuzzyFinder, FuzzyKind,
+    InputCompleted, InputSimple, IsoDevice, Menu, MenuHolder, MountAction, MountCommands,
+    Mountable, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions, PickerCaller,
+    Preview, PreviewBuilder, ReEnterMenu, Search, Selectable, Users, SAME_WINDOW_TOKEN,
 };
 use crate::{log_info, log_line};
 
@@ -93,6 +99,11 @@ impl Focus {
         *self as usize
     }
 
+    /// Index of the tab Left is 0 and Right is one.
+    pub fn tab_index(&self) -> usize {
+        self.index() >> 1
+    }
+
     /// Is the window a left menu ?
     pub fn is_left_menu(&self) -> bool {
         matches!(self, Self::LeftMenu)
@@ -142,7 +153,7 @@ pub struct Status {
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
     /// Receiver of previews, used to build & display previews without bloking
-    preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize)>,
+    preview_receiver: mpsc::Receiver<PreviewResponse>,
     /// Non bloking preview builder
     pub previewer: Previewer,
     /// Preview manager
@@ -153,7 +164,19 @@ impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(
+    /// Status is wraped around by an `Arc`, `Mutex` from parking_lot.
+    pub fn arc_mutex_new(
+        size: Size,
+        opener: Opener,
+        binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) -> Result<Arc<Mutex<RawMutex, Self>>> {
+        Ok(Arc::new(Mutex::new(Self::new(
+            size, opener, binds, fm_sender,
+        )?)))
+    }
+
+    fn new(
         size: Size,
         opener: Opener,
         binds: &Bindings,
@@ -288,7 +311,7 @@ impl Status {
     /// When a mouse event occurs, focus is given to the window where it happened.
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
-        let window = self.window_from_row(row, self.term_size().1);
+        let window = self.window_from_row(row, self.term_size().height);
         self.set_focus_from_window_and_index(&window);
         Ok(window)
     }
@@ -319,18 +342,41 @@ impl Status {
                     if let Preview::Tree(tree) = &self.tabs[1].preview {
                         let index = row_to_window_index(row) + self.tabs[1].window.top;
                         let path = &tree.path_from_index(index)?;
-                        self.tabs[0].cd_to_file(path)?;
-                        self.index = 0;
-                        self.focus = Focus::LeftFile;
+                        self.select_file_from_right_tree(path)?;
                     }
                 } else {
-                    self.tab_select_row(row)?
+                    self.tab_select_row(row)?;
+                    self.update_second_pane_for_preview()?;
                 }
-                self.update_second_pane_for_preview()
+                Ok(())
             }
             Window::Footer => self.footer_action(col, binds),
             Window::Menu => self.menu_action(row, col),
         }
+    }
+
+    /// Action when user press enter on a preview.
+    /// If the preview is a tree in right tab, the left file will be selected in the left tab.
+    /// Otherwise, we open the file if it exists in the file tree.
+    pub fn enter_from_preview(&mut self) -> Result<()> {
+        if let Preview::Tree(tree) = &self.tabs[1].preview {
+            let index = tree.displayable().index();
+            let path = &tree.path_from_index(index)?;
+            self.select_file_from_right_tree(path)?;
+        } else {
+            let filepath = self.tabs[self.focus.tab_index()].preview.filepath();
+            if filepath.exists() {
+                self.open_single_file(&filepath)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn select_file_from_right_tree(&mut self, path: &Path) -> Result<()> {
+        self.tabs[0].cd_to_file(path)?;
+        self.index = 0;
+        self.focus = Focus::LeftFile;
+        self.update_second_pane_for_preview()
     }
 
     /// Select a given row, if there's something in it.
@@ -345,30 +391,28 @@ impl Status {
         Ok(())
     }
 
+    #[rustfmt::skip]
     fn set_focus_from_window_and_index(&mut self, window: &Window) {
-        self.focus = if self.index == 0 {
-            if matches!(window, Window::Menu) {
-                Focus::LeftMenu
-            } else {
-                Focus::LeftFile
-            }
-        } else if matches!(window, Window::Menu) {
-            Focus::RightMenu
-        } else {
-            Focus::RightFile
+        self.focus = match (self.index == 0, window) {
+            (true,  Window::Menu)   => Focus::LeftMenu,
+            (true,  _)              => Focus::LeftFile,
+            (false, Window::Menu)   => Focus::RightMenu,
+            (false, _)              => Focus::RightFile
         };
     }
 
     /// Sync right tab from left tab path or vice versa.
     pub fn sync_tabs(&mut self, direction: Direction) -> Result<()> {
         let (source, dest) = direction.source_dest();
-        self.tabs[dest].cd(&self.tabs[source].current_file()?.path)
+        self.tabs[dest].cd(&self.tabs[source]
+            .selected_path()
+            .context("No selected path")?)
     }
 
     /// Height of the second window (menu).
     /// Watchout : it's always ~height / 2 - 2, even if menu is closed.
     pub fn second_window_height(&self) -> Result<usize> {
-        let (_, height) = self.term_size();
+        let height = self.term_size().height;
         Ok((height / 2).saturating_sub(2) as usize)
     }
 
@@ -385,7 +429,23 @@ impl Status {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
                     navigate => self.menu.set_index(index, navigate),
                 },
-                Menu::InputCompleted(_) => self.menu.completion.set_index(index),
+                Menu::InputCompleted(input_completed) => {
+                    self.menu.completion.set_index(index);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        self.follow_search()?;
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    self.menu.flagged.set_index(index)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    self.menu.trash.set_index(index)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    self.menu.bulk.set_index(index)
+                }
                 _ => (),
             }
             self.menu.window.scroll_to(index);
@@ -417,9 +477,9 @@ impl Status {
     /// demand.
     pub fn refresh_shortcuts(&mut self) {
         self.menu.refresh_shortcuts(
-            &self.internal_settings.mount_points(),
-            self.tabs[0].current_path(),
-            self.tabs[1].current_path(),
+            &self.internal_settings.mount_points_vec(),
+            self.tabs[0].current_directory_path(),
+            self.tabs[1].current_directory_path(),
         );
     }
 
@@ -427,17 +487,18 @@ impl Status {
     pub fn disk_spaces_of_selected(&self) -> String {
         disk_space(
             &self.internal_settings.disks,
-            self.current_tab().current_path(),
+            self.current_tab().current_directory_path(),
         )
     }
 
-    /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> (u16, u16) {
+    /// Returns the size of the terminal (width, height)
+    pub fn term_size(&self) -> Size {
         self.internal_settings.term_size()
     }
 
-    fn term_width(&self) -> u16 {
-        self.term_size().0
+    /// Returns the width of the terminal window.
+    pub fn term_width(&self) -> u16 {
+        self.term_size().width
     }
 
     /// Clears the right preview
@@ -497,7 +558,15 @@ impl Status {
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
+    /// If the menu is a picker for input history, it will reenter the caller menu.
+    /// Example: Menu CD -> History of CDs `<Esc>` -> Menu CD
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
+        if self.current_tab().menu_mode.is_picker() {
+            if let Some(PickerCaller::Menu(menu)) = self.menu.picker.caller {
+                menu.reenter(self)?;
+                return Ok(false);
+            }
+        }
         self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
         self.set_menu_mode(self.index, Menu::Nothing)?;
@@ -571,7 +640,7 @@ impl Status {
     }
 
     fn wide_enough_for_dual(&self) -> bool {
-        self.internal_settings.width >= MIN_WIDTH_FOR_DUAL_PANE
+        self.term_width() >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
     fn couldnt_dual_but_want(&self) -> bool {
@@ -584,9 +653,9 @@ impl Status {
 
     fn left_window_width(&self) -> u16 {
         if self.use_dual() {
-            self.internal_settings.width / 2
+            self.term_width() / 2
         } else {
-            self.internal_settings.width
+            self.term_width()
         }
     }
 
@@ -627,12 +696,13 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].menu_mode = Menu::Nothing;
-        let Some(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+        let Ok((Some(fileinfo), line_index)) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
         log_info!("sending preview request");
-        self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
-        // self.preview_manager.enqueue(&fileinfo.path);
+
+        self.previewer
+            .build(fileinfo.path.to_path_buf(), 1, line_index)?;
 
         Ok(())
     }
@@ -680,7 +750,7 @@ impl Status {
     /// Does nothing otherwise.
     pub fn check_preview(&mut self) -> Result<()> {
         match self.preview_receiver.try_recv() {
-            Ok((path, preview, index)) => self.attach_preview(path, preview, index)?,
+            Ok(preview_response) => self.attach_preview(preview_response)?,
             Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
             Err(TryRecvError::Empty) => (),
         }
@@ -690,15 +760,23 @@ impl Status {
     /// Attach a preview to the correct tab.
     /// Nothing is done if the preview doesn't match the file.
     /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
-    fn attach_preview(&mut self, path: PathBuf, preview: Preview, index: usize) -> Result<()> {
-        let compared_index = self.pick_correct_tab_from(index)?;
+    fn attach_preview(&mut self, preview_response: PreviewResponse) -> Result<()> {
+        let PreviewResponse {
+            path,
+            tab_index,
+            line_nr,
+            preview,
+        } = preview_response;
+        let compared_index = self.pick_correct_tab_from(tab_index)?;
         if !self.preview_has_correct_path(compared_index, path.as_path())? {
             return Ok(());
         }
-        self.tabs[index].preview = preview;
-        self.tabs[index]
-            .window
-            .reset(self.tabs[index].preview.len());
+        let tab = &mut self.tabs[tab_index];
+        tab.preview = preview;
+        tab.window.reset(tab.preview.len());
+        if let Some(line_nr) = line_nr {
+            tab.window.scroll_to(line_nr);
+        }
         Ok(())
     }
 
@@ -719,7 +797,7 @@ impl Status {
         let tab = &self.tabs[compared_index];
         Ok(tab.display_mode.is_fuzzy()
             || tab.menu_mode.is_navigate()
-            || tab.current_file()?.path.as_ref() == path)
+            || tab.selected_path().context("No selected path")?.as_ref() == path)
     }
 
     /// Look for the correct file_info to preview.
@@ -727,15 +805,17 @@ impl Status {
     /// fuzzy mode ? its selection,
     /// navigation (shortcut, marks or history) ? the selection,
     /// otherwise, it's the current selection.
-    fn get_correct_fileinfo_for_preview(&self) -> Option<FileInfo> {
+    fn get_correct_fileinfo_for_preview(&self) -> Result<(Option<FileInfo>, Option<usize>)> {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
         if left_tab.display_mode.is_fuzzy() {
-            FileInfo::new(Path::new(&self.fuzzy_current_selection()?), users).ok()
+            let (opt_path, line_nr) =
+                parse_line_output(&self.fuzzy_current_selection().context("No selection")?)?;
+            Ok((FileInfo::new(&opt_path, users).ok(), line_nr))
         } else if self.focus.is_left_menu() {
-            self.fileinfo_from_navigate(left_tab, users)
+            Ok((self.fileinfo_from_navigate(left_tab, users), None))
         } else {
-            left_tab.current_file().ok()
+            Ok((left_tab.current_file().ok(), None))
         }
     }
 
@@ -798,7 +878,7 @@ impl Status {
 
     /// Set the height of the menu and scroll to the selected item.
     pub fn set_height_for_menu_mode(&mut self, index: usize, menu_mode: Menu) -> Result<()> {
-        let height = self.internal_settings.term_size().1;
+        let height = self.term_size().height;
         let prim_window_height = if menu_mode.is_nothing() {
             height
         } else {
@@ -833,10 +913,10 @@ impl Status {
     /// Returns the pathes of flagged file or the selected file if nothing is flagged
     fn flagged_or_selected(&self) -> Vec<PathBuf> {
         if self.menu.flagged.is_empty() {
-            let Ok(file) = self.current_tab().current_file() else {
+            let Some(path) = self.current_tab().selected_path() else {
                 return vec![];
             };
-            vec![file.path.to_path_buf()]
+            vec![path.to_path_buf()]
         } else {
             self.menu.flagged.content().to_owned()
         }
@@ -881,7 +961,8 @@ impl Status {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
-        if self.current_tab().display_mode.is_preview() {
+        log_info!("Reverse flags");
+        if !self.current_tab().display_mode.is_preview() {
             self.tabs[self.index]
                 .directory
                 .content
@@ -890,27 +971,51 @@ impl Status {
         }
     }
 
+    /// Flag all _file_ (everything but directories) which are children of a directory.
+    pub fn toggle_flag_for_children(&mut self) {
+        let Some(path) = self.current_tab().selected_path() else {
+            return;
+        };
+        match self.current_tab().display_mode {
+            Display::Directory => self.toggle_flag_for_selected(),
+            Display::Tree => {
+                if !path.is_dir() {
+                    self.menu.flagged.toggle(&path);
+                } else {
+                    for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+                        let p = entry.path();
+                        if !p.is_dir() {
+                            self.menu.flagged.toggle(p);
+                        }
+                    }
+                }
+                let _ = self.update_second_pane_for_preview();
+            }
+            Display::Preview => (),
+            Display::Fuzzy => (),
+        }
+    }
     /// Flag the selected file if any
     pub fn toggle_flag_for_selected(&mut self) {
-        let Ok(file) = self.current_tab().current_file() else {
+        let Some(path) = self.current_tab().selected_path() else {
             return;
         };
         match self.current_tab().display_mode {
             Display::Directory => {
-                self.menu.flagged.toggle(&file.path);
+                self.menu.flagged.toggle(&path);
                 if !self.current_tab().directory.selected_is_last() {
                     self.tabs[self.index].normal_down_one_row();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
             Display::Tree => {
-                self.menu.flagged.toggle(&file.path);
+                self.menu.flagged.toggle(&path);
                 if !self.current_tab().tree.selected_is_last() {
                     self.current_tab_mut().tree_select_next();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
-            Display::Preview => (),
+            Display::Preview => self.menu.flagged.toggle(&path),
             Display::Fuzzy => (),
         }
         if matches!(
@@ -940,6 +1045,21 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.menu.flagged.content.clone();
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
+        self.cut_or_copy_files(cut_or_copy, sources, dest)
+    }
+
+    fn cut_or_copy_files(
+        &mut self,
+        cut_or_copy: CopyMove,
+        mut sources: Vec<PathBuf>,
+        dest: &Path,
+    ) -> Result<()> {
+        if matches!(cut_or_copy, CopyMove::Move) {
+            sources = Self::remove_subdir_of_dest(sources, dest);
+            if sources.is_empty() {
+                return Ok(());
+            }
+        }
 
         if self.is_simple_move(&cut_or_copy, &sources, dest) {
             self.simple_move(&sources, dest)
@@ -948,38 +1068,53 @@ impl Status {
         }
     }
 
+    /// Prevent the user from moving to a subdirectory of itself.
+    /// Only used before _moving_, for copying it doesn't matter.
+    fn remove_subdir_of_dest(mut sources: Vec<PathBuf>, dest: &Path) -> Vec<PathBuf> {
+        for index in (0..sources.len()).rev() {
+            if sources[index].starts_with(dest) {
+                log_info!("Cannot move to a subdirectory of itself");
+                log_line!("Cannot move to a subdirectory of itself");
+                sources.remove(index);
+            }
+        }
+        sources
+    }
+
+    /// True iff it's a _move_ (not a copy) where all sources share the same mountpoint as destination.
     fn is_simple_move(&self, cut_or_copy: &CopyMove, sources: &[PathBuf], dest: &Path) -> bool {
-        if matches!(cut_or_copy, CopyMove::Copy) {
+        if cut_or_copy.is_copy() || sources.is_empty() {
             return false;
         }
-        if sources.len() != 1 {
+        let mount_points = self.internal_settings.mount_points_set();
+        let Some(source_mount_point) = sources[0].mount_point(&mount_points) else {
             return false;
+        };
+        for source in sources {
+            if source.mount_point(&mount_points) != Some(source_mount_point) {
+                return false;
+            }
         }
-        // let disks = &self.disks();
-        let Some(s) = disk_used_by_path(&self.internal_settings.disks, &sources[0]) else {
-            return false;
-        };
-        let Some(d) = disk_used_by_path(&self.internal_settings.disks, dest) else {
-            return false;
-        };
-        s.mount_point() == d.mount_point()
+        Some(source_mount_point) == dest.mount_point(&mount_points)
     }
 
     fn simple_move(&mut self, sources: &[PathBuf], dest: &Path) -> Result<()> {
-        let source = &sources[0];
-        let filename = filename_from_path(source)?;
-        let dest = dest.to_path_buf().join(filename);
-        match std::fs::rename(source, &dest) {
-            Ok(()) => {
-                log_line!(
-                    "Moved {source} to {dest}",
-                    source = source.display(),
-                    dest = dest.display()
-                )
-            }
-            Err(e) => {
-                log_info!("Error: {e:?}");
-                log_line!("Error: {e:?}")
+        for source in sources {
+            let filename = filename_from_path(source)?;
+            let dest = dest.to_path_buf().join(filename);
+            log_info!("simple_move {source:?} -> {dest:?}");
+            match std::fs::rename(source, &dest) {
+                Ok(()) => {
+                    log_line!(
+                        "Moved {source} to {dest}",
+                        source = source.display(),
+                        dest = dest.display()
+                    )
+                }
+                Err(e) => {
+                    log_info!("Error: {e:?}");
+                    log_line!("Error: {e:?}")
+                }
             }
         }
         self.clear_flags_and_reset_view()
@@ -989,7 +1124,7 @@ impl Status {
         &mut self,
         cut_or_copy: CopyMove,
         sources: Vec<PathBuf>,
-        dest: &PathBuf,
+        dest: &Path,
     ) -> Result<()> {
         let mut must_act_now = true;
         if matches!(cut_or_copy, CopyMove::Copy) {
@@ -999,7 +1134,7 @@ impl Status {
             }
             self.internal_settings
                 .copy_file_queue
-                .push((sources.to_owned(), dest.clone()));
+                .push((sources.to_owned(), dest.to_path_buf()));
         }
 
         if must_act_now {
@@ -1009,7 +1144,7 @@ impl Status {
                 sources,
                 dest,
                 self.left_window_width(),
-                self.internal_settings.term_size().1,
+                self.term_size().height,
                 Arc::clone(&self.fm_sender),
             )?;
             self.internal_settings.store_copy_progress(in_mem);
@@ -1021,6 +1156,64 @@ impl Status {
     pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
         self.internal_settings
             .copy_next_file_in_queue(self.fm_sender.clone(), self.left_window_width())
+    }
+
+    /// Paste a text into an input box.
+    pub fn paste_input(&mut self, pasted: &str) -> Result<()> {
+        if self.focus.is_file() && self.current_tab().display_mode.is_fuzzy() {
+            let Some(fuzzy) = &mut self.fuzzy else {
+                return Ok(());
+            };
+            fuzzy.input.insert_string(pasted);
+        } else if !self.focus.is_file() && self.current_tab().menu_mode.is_input() {
+            self.menu.input.insert_string(pasted);
+        }
+        Ok(())
+    }
+
+    /// Paste a path a move or copy file in current directory.
+    pub fn paste_pathes(&mut self, pasted: &str) -> Result<()> {
+        for pasted in pasted.split_whitespace() {
+            self.paste_path(pasted)?;
+        }
+        Ok(())
+    }
+
+    fn paste_path(&mut self, pasted: &str) -> Result<()> {
+        // recognize pathes
+        let pasted = Path::new(&pasted);
+        if !pasted.is_absolute() {
+            log_info!("pasted {pasted} isn't absolute.", pasted = pasted.display());
+            return Ok(());
+        }
+        if !pasted.exists() {
+            log_info!("pasted {pasted} doesn't exist.", pasted = pasted.display());
+            return Ok(());
+        }
+        // build dest path
+        let dest = self.current_tab().current_directory_path().to_path_buf();
+        let Some(dest_filename) = build_dest_path(pasted, &dest) else {
+            return Ok(());
+        };
+        if dest_filename == pasted {
+            log_info!("pasted is same directory.");
+            return Ok(());
+        }
+        if dest_filename.exists() {
+            log_info!(
+                "pasted {dest_filename} already exists",
+                dest_filename = dest_filename.display()
+            );
+            return Ok(());
+        }
+        let sources = vec![pasted.to_path_buf()];
+
+        log_info!("pasted copy {sources:?} to {dest:?}");
+        if self.is_simple_move(&CopyMove::Move, &sources, &dest) {
+            self.simple_move(&sources, &dest)
+        } else {
+            self.complex_move(CopyMove::Copy, sources, &dest)
+        }
     }
 
     /// Init the fuzzy finder
@@ -1037,7 +1230,7 @@ impl Status {
         let Some(fuzzy) = &self.fuzzy else {
             bail!("Fuzzy should be set");
         };
-        let current_path = self.current_tab().current_path().to_path_buf();
+        let current_path = self.current_tab().current_directory_path().to_path_buf();
         fuzzy.find_files(current_path);
         Ok(())
     }
@@ -1083,13 +1276,30 @@ impl Status {
         if let Some(pick) = fuzzy.pick() {
             match fuzzy.kind {
                 FuzzyKind::File => self.tabs[self.index].cd_to_file(Path::new(&pick))?,
-                FuzzyKind::Line => self.tabs[self.index].cd_to_file(&parse_line_output(&pick)?)?,
+                FuzzyKind::Line => {
+                    self.tabs[self.index].cd_to_file(&parse_line_output(&pick)?.0)?
+                }
                 FuzzyKind::Action => self.fuzzy_send_event(&pick)?,
             }
         } else {
             log_info!("Fuzzy had nothing to pick from");
         };
         self.fuzzy_leave()
+    }
+
+    pub fn fuzzy_toggle_flag_selected(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        if let Some(pick) = fuzzy.pick() {
+            if let FuzzyKind::File = fuzzy.kind {
+                self.menu.flagged.toggle(Path::new(&pick));
+                self.fuzzy_navigate(FuzzyDirection::Down)?;
+            }
+        } else {
+            log_info!("Fuzzy had nothing to select from");
+        };
+        Ok(())
     }
 
     /// Run a command directly from help.
@@ -1171,19 +1381,15 @@ impl Status {
 
     /// Issue a tick to the fuzzy finder
     pub fn fuzzy_tick(&mut self) {
-        match &mut self.fuzzy {
-            Some(fuzzy) => {
-                fuzzy.tick(false);
-            }
-            None => (),
+        if let Some(fuzzy) = &mut self.fuzzy {
+            fuzzy.tick(false);
         }
     }
 
     /// Resize the fuzzy finder according to given height
     pub fn fuzzy_resize(&mut self, height: usize) {
-        match &mut self.fuzzy {
-            Some(fuzzy) => fuzzy.resize(height),
-            None => (),
+        if let Some(fuzzy) = &mut self.fuzzy {
+            fuzzy.resize(height)
         }
     }
 
@@ -1217,7 +1423,7 @@ impl Status {
         self.complete(input_completed)
     }
 
-    fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
+    pub fn complete(&mut self, input_completed: InputCompleted) -> Result<()> {
         match input_completed {
             InputCompleted::Search => self.complete_search(),
             _ => self.complete_non_search(),
@@ -1247,6 +1453,25 @@ impl Status {
         if let Ok(search) = Search::new(&self.menu.input.string()) {
             self.current_tab_mut().search = search;
         };
+        Ok(())
+    }
+
+    /// Select the currently proposed item in search mode.
+    /// This is usefull to allow the user to select an item when moving with up or down.
+    pub fn follow_search(&mut self) -> Result<()> {
+        let Some(proposition) = self.menu.completion.selected() else {
+            return Ok(());
+        };
+        let current_path = match self.current_tab().display_mode {
+            Display::Directory => self.current_tab().current_directory_path(),
+            Display::Tree => self.current_tab().tree.root_path(),
+            _ => {
+                return Ok(());
+            }
+        };
+        let mut full_path = current_path.to_path_buf();
+        full_path.push(proposition);
+        self.current_tab_mut().select_by_path(Arc::from(full_path));
         Ok(())
     }
 
@@ -1295,7 +1520,10 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let path = self.current_tab().current_file()?.path;
+        let path = self
+            .current_tab()
+            .selected_path()
+            .context("No selected path")?;
         self.open_single_file(&path)
     }
 
@@ -1316,7 +1544,12 @@ impl Status {
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
         if self.menu.iso_device.is_none() {
-            let path = path_to_string(&self.current_tab().current_file()?.path);
+            let path = path_to_string(
+                &self
+                    .current_tab()
+                    .selected_path()
+                    .context("No selected path")?,
+            );
             self.menu.iso_device = Some(IsoDevice::from_path(path));
         }
         Ok(())
@@ -1514,27 +1747,19 @@ impl Status {
 
     /// Reads and parse a shell command. Some arguments may be expanded.
     /// See [`crate::modes::shell_command_parser`] for more information.
-    pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
+    pub fn execute_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        self.parse_shell_command(shell_command, None, true)
+        self.execute_shell_command(shell_command, None, true)
     }
 
-    fn build_shell_command(shell_command: String, files: Option<Vec<String>>) -> String {
-        if let Some(files) = &files {
-            shell_command + " " + &files.join(" ")
-        } else {
-            shell_command
-        }
-    }
-
-    /// Parse a shell command and expand tokens like %s, %t etc.
-    pub fn parse_shell_command(
+    /// Parse and execute a shell command and expand tokens like %s, %t etc.
+    pub fn execute_shell_command(
         &mut self,
         shell_command: String,
         files: Option<Vec<String>>,
         capture_output: bool,
     ) -> Result<bool> {
-        let command = Self::build_shell_command(shell_command, files);
+        let command = append_files_to_shell_command(shell_command, files);
         let Ok(args) = shell_command_parser(&command, self) else {
             self.set_menu_mode(self.index, Menu::Nothing)?;
             return Ok(true);
@@ -1669,7 +1894,13 @@ impl Status {
     }
 
     /// Recursively delete all flagged files.
+    /// If we try to delete the current root of the tab, nothing is deleted but a warning is displayed.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
+        if self.menu.flagged.contains(self.current_tab().root_path()) {
+            log_info!("Can't delete current root path");
+            log_line!("Can't delete current root path");
+            return Ok(());
+        }
         self.menu.delete_flagged_files()?;
         self.reset_menu_mode()?;
         self.clear_flags_and_reset_view()?;
@@ -1885,7 +2116,7 @@ impl Status {
 
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
-        self.parse_shell_command(string.to_owned(), None, true)?;
+        self.execute_shell_command(string.to_owned(), None, true)?;
         Ok(())
     }
 
@@ -1927,7 +2158,7 @@ impl Status {
 
     /// The width of a displayed canvas.
     pub fn canvas_width(&self) -> Result<u16> {
-        let full_width = self.internal_settings.term_size().0;
+        let full_width = self.term_width();
         if self.session.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
             Ok(full_width / 2)
         } else {
@@ -1979,6 +2210,22 @@ impl Status {
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.filter()
+    }
+
+    /// Open the picker menu. Does nothing if already in a picker.
+    pub fn open_picker(&mut self) -> Result<()> {
+        if self.current_tab().menu_mode.is_picker() || self.menu.input_history.filtered_is_empty() {
+            return Ok(());
+        }
+        let menu = self.current_tab().menu_mode;
+        let content = self.menu.input_history.filtered_as_list();
+        self.menu.picker.set(
+            Some(PickerCaller::Menu(menu)),
+            menu.name_for_picker(),
+            content,
+        );
+
+        self.set_menu_mode(self.index, Menu::Navigate(Navigate::Picker))
     }
 
     /// Load the selected cloud configuration file from the config folder and open navigation the menu.
@@ -2110,11 +2357,54 @@ impl Status {
 
     pub fn toggle_flag_visual(&mut self) {
         if self.current_tab().visual {
-            let Ok(file) = self.current_tab().current_file() else {
+            let Some(path) = self.current_tab().selected_path() else {
                 return;
             };
-            self.menu.flagged.toggle(&file.path)
+            self.menu.flagged.toggle(&path)
         }
+    }
+
+    /// Parse and execute the received IPC message.
+    /// IPC message can currently be of 3 forms:
+    /// - `GO <path>` -> cd to this path and select the file.
+    /// - `KEY <key>` -> act as if the key was pressed. `<key>` should be formated like in the config file.
+    /// - `ACTION <action>` -> execute the action. Similar to `:<action><Enter>`. `<action>` should be formated like in the config file.
+    ///
+    /// Other messages are ignored.
+    /// Failed messages (path don't exists, wrongly formated key or action) are ignored silently.
+    pub fn parse_ipc(&mut self, msg: String) -> Result<()> {
+        let mut split = msg.split_whitespace();
+        match split.next() {
+            Some("GO") => {
+                log_info!("Received IPC command GO");
+                if let Some(dest) = split.next() {
+                    log_info!("Received IPC command GO to {dest}");
+                    let dest = tilde(dest);
+                    self.current_tab_mut().cd_to_file(dest.as_ref())?
+                }
+            }
+            Some("KEY") => {
+                log_info!("Received IPC command KEY");
+                if let Some(keyname) = split.next() {
+                    if let Some(key) = from_keyname(keyname) {
+                        self.fm_sender.send(FmEvents::Term(Event::Key(key)))?;
+                        log_info!("Sent key event: {key:?}");
+                    }
+                }
+            }
+            Some("ACTION") => {
+                log_info!("Received IPC command ACTION");
+                if let Some(action_str) = split.next() {
+                    if let Ok(action) = ActionMap::from_str(action_str) {
+                        log_info!("Sent action event: {action:?}");
+                        self.fm_sender.send(FmEvents::Action(action))?;
+                    }
+                }
+            }
+            Some(_unknown) => log_info!("Received unknown IPC command: {msg}"),
+            None => (),
+        };
+        Ok(())
     }
 }
 

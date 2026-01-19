@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc::Sender, Arc};
 
@@ -34,13 +34,10 @@ pub struct InternalSettings {
     pub nvim_server: String,
     /// The opener used by the application.
     pub opener: Opener,
-    /// terminal width
-    pub width: u16,
-    /// terminal height
-    pub height: u16,
+    /// Termin size, width & height
+    pub size: Size,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
-    // TODO: make it private and refactor disk space without using collect
     pub disks: Disks,
     /// true if the application was launched inside a neovim terminal emulator
     pub inside_neovim: bool,
@@ -64,8 +61,6 @@ impl InternalSettings {
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let in_mem_progress = None;
-        let width = size.width;
-        let height = size.height;
         let is_disabled = false;
         let clear_before_quit = false;
         Self {
@@ -74,8 +69,7 @@ impl InternalSettings {
             nvim_server,
             opener,
             disks,
-            width,
-            height,
+            size,
             inside_neovim,
             copy_file_queue,
             in_mem_progress,
@@ -84,15 +78,13 @@ impl InternalSettings {
         }
     }
 
-    // TODO: returns size
     /// Returns the size of the terminal (width, height)
-    pub fn term_size(&self) -> (u16, u16) {
-        (self.width, self.height)
+    pub fn term_size(&self) -> Size {
+        self.size
     }
 
     pub fn update_size(&mut self, width: u16, height: u16) {
-        self.width = width;
-        self.height = height;
+        self.size = Size::from((width, height))
     }
 
     /// Set a "force clear" flag to true, which will reset the display.
@@ -115,8 +107,16 @@ impl InternalSettings {
         &self.disks
     }
 
-    pub fn mount_points(&mut self) -> Vec<&Path> {
+    pub fn mount_points_vec(&mut self) -> Vec<&Path> {
         self.disks().iter().map(|d| d.mount_point()).collect()
+    }
+
+    pub fn mount_points_set(&self) -> HashSet<&Path> {
+        self.disks
+            .list()
+            .iter()
+            .map(|disk| disk.mount_point())
+            .collect()
     }
 
     pub fn update_nvim_listen_address(&mut self) {
@@ -161,7 +161,7 @@ impl InternalSettings {
         width: u16,
     ) -> Result<()> {
         let (sources, dest) = self.copy_file_queue[0].clone();
-        let (_, height) = self.term_size();
+        let Size { width: _, height } = self.term_size();
         let in_mem = copy_move(
             crate::modes::CopyMove::Copy,
             sources,

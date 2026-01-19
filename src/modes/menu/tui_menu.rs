@@ -1,5 +1,5 @@
 use anyhow::Result;
-use serde_yml::Mapping;
+use serde_yaml_ng::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, TUIS_PATH};
@@ -66,6 +66,5 @@ impl TerminalApplications<String, ()> for TuiApplications {
     }
 }
 
-impl_selectable!(TuiApplications);
 impl_content!(TuiApplications, String);
 impl_draw_menu_with_char!(TuiApplications, String);

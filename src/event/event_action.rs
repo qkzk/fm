@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 use indicatif::InMemoryTerm;
 
 use crate::app::{Direction, Focus, Status, Tab};
@@ -10,13 +11,14 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, External};
+use crate::io::{read_log, Args, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_udisksctl_installed, ContentWindow, Direction as FuzzyDirection,
-    Display, FuzzyKind, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
-    NeedConfirmation, PreviewBuilder, Search, Selectable,
+    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, Content, ContentWindow,
+    Direction as FuzzyDirection, Display, FuzzyKind, Go, InputCompleted, InputSimple, LeaveMenu,
+    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview, PreviewBuilder,
+    ReEnterMenu, Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -46,6 +48,22 @@ impl EventAction {
         status.menu.flagged.remove_non_existant();
         status.tabs[0].refresh_if_needed()?;
         status.tabs[1].refresh_if_needed()
+    }
+
+    /// Handle pasting. Paste a file or an input.
+    /// - Paste an absolute, existing path to current directory in Directory or Tree display mode.
+    ///   Does nothing if the file already exists in current directory.
+    /// - Paste a text in an input box.
+    /// - Does nothing otherwiser.
+    pub fn paste(status: &mut Status, pasted: String) -> Result<()> {
+        log_info!("pasted: ###'{pasted}'###");
+        let pasted = pasted.trim();
+        let display_mode = status.current_tab().display_mode;
+        if status.focus.is_file() && (display_mode.is_tree() || display_mode.is_directory()) {
+            status.paste_pathes(pasted)
+        } else {
+            status.paste_input(pasted)
+        }
     }
 
     pub fn resize(status: &mut Status, width: u16, height: u16) -> Result<()> {
@@ -109,6 +127,38 @@ impl EventAction {
         }
         status.current_tab_mut().toggle_tree_mode()?;
         status.refresh_view()
+    }
+
+    /// Decrease the depth of tree in tree mode
+    pub fn tree_depth_decr(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() && status.current_tab().display_mode.is_tree() {
+            return Ok(());
+        }
+        let current_depth = status.current_tab().settings.tree_max_depth;
+        if current_depth > 1 {
+            status.current_tab_mut().settings.tree_max_depth -= 1;
+            let new_depth = status.current_tab().settings.tree_max_depth;
+            log_info!("Decrease tree depth current: {new_depth}");
+            log_line!("Decrease tree depth current: {new_depth}");
+        }
+        status.current_tab_mut().toggle_tree_mode()?;
+        status.current_tab_mut().toggle_tree_mode()?;
+        Ok(())
+    }
+
+    /// Increase the depth of tree in tree mode
+    pub fn tree_depth_incr(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() && status.current_tab().display_mode.is_tree() {
+            return Ok(());
+        }
+        status.current_tab_mut().settings.tree_max_depth += 1;
+        let new_depth = status.current_tab().settings.tree_max_depth;
+        log_info!("Increase tree depth current: {new_depth}");
+        log_line!("Increase tree depth current: {new_depth}");
+
+        status.current_tab_mut().toggle_tree_mode()?;
+        status.current_tab_mut().toggle_tree_mode()?;
+        Ok(())
     }
 
     /// Fold the current node of the tree.
@@ -233,6 +283,29 @@ impl EventAction {
         Ok(())
     }
 
+    /// Flag all _file_ (everything but directories) which are children of a directory.
+    pub fn toggle_flag_children(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            status.toggle_flag_for_children();
+        }
+        Ok(())
+    }
+
+    pub fn reenter_menu_from_picker(status: &mut Status, menu: Menu) -> Result<()> {
+        menu.reenter(status)?;
+        if !menu.is_input() {
+            return Ok(());
+        }
+        let Some(picked) = &status.menu.picker.selected() else {
+            return Ok(());
+        };
+        status.menu.input.replace(picked);
+        let Menu::InputCompleted(input_completed) = menu else {
+            return Ok(());
+        };
+        status.complete(input_completed)
+    }
+
     /// Enter the rename mode.
     /// Keep a track of the current mode to ensure we rename the correct file.
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
@@ -245,16 +318,19 @@ impl EventAction {
             status.reset_menu_mode()?;
             return Ok(());
         };
-        let selected = status.current_tab().current_file()?;
-        if selected.path == status.current_tab().directory.path {
+        let selected_path = status
+            .current_tab()
+            .selected_path()
+            .context("No selected file")?;
+        if selected_path == status.current_tab().directory.path {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if selected.path == std::sync::Arc::from(parent) {
+            if selected_path.as_ref() == parent {
                 return Ok(());
             }
         }
-        let old_name = &selected.filename;
+        let old_name = &selected_path.to_string_lossy();
         status.set_menu_mode(status.index, Menu::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
         Ok(())
@@ -381,7 +457,8 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
-            _ => Ok(()),
+            Display::Fuzzy => status.fuzzy_select(),
+            Display::Preview => status.enter_from_preview(),
         }
     }
 
@@ -405,7 +482,10 @@ impl EventAction {
 
     /// Execute the selected node if it's a file else enter the directory.
     fn tree_enter_file(status: &mut Status) -> Result<()> {
-        let path = status.current_tab().current_file()?.path;
+        let path = status
+            .current_tab()
+            .selected_path()
+            .context("No selected file")?;
         if path.is_dir() {
             status.current_tab_mut().tree_enter_dir(path)
         } else {
@@ -435,8 +515,7 @@ impl EventAction {
         status.open_flagged_files()
     }
 
-    /// Enter the execute mode. Most commands must be executed to allow for
-    /// a confirmation.
+    /// Enter the execute mode.
     pub fn exec(status: &mut Status) -> Result<()> {
         if matches!(
             status.current_tab().menu_mode,
@@ -446,10 +525,13 @@ impl EventAction {
             return Ok(());
         }
         if status.menu.flagged.is_empty() {
-            status
-                .menu
-                .flagged
-                .push(status.current_tab().current_file()?.path.to_path_buf());
+            status.menu.flagged.push(
+                status
+                    .current_tab()
+                    .selected_path()
+                    .context("No selected file")?
+                    .to_path_buf(),
+            );
         }
         status.set_menu_mode(status.index, Menu::InputCompleted(InputCompleted::Exec))
     }
@@ -586,7 +668,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        set_current_dir(status.current_tab().current_path())?;
+        set_current_dir(status.current_tab().current_directory_path())?;
         status.internal_settings.disable_display();
         External::open_shell_in_window()?;
         status.internal_settings.enable_display();
@@ -750,7 +832,6 @@ impl EventAction {
     /// otherwise, flagged files are picked.
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
-    /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
@@ -759,16 +840,15 @@ impl EventAction {
         if status.internal_settings.nvim_server.is_empty() {
             return Ok(());
         };
-        let nvim_server = status.internal_settings.nvim_server.clone();
+        let nvim_server = &status.internal_settings.nvim_server;
         if status.menu.flagged.is_empty() {
-            let Ok(fileinfo) = status.current_tab().current_file() else {
+            let Some(path) = status.current_tab().selected_path() else {
                 return Ok(());
             };
-            open_in_current_neovim(&fileinfo.path, &nvim_server);
+            open_in_current_neovim(&path, nvim_server);
         } else {
-            let flagged = status.menu.flagged.content.clone();
-            for file_path in flagged.iter() {
-                open_in_current_neovim(file_path, &nvim_server)
+            for file_path in status.menu.flagged.content.iter() {
+                open_in_current_neovim(file_path, nvim_server)
             }
         }
 
@@ -858,7 +938,22 @@ impl EventAction {
                 Menu::Navigate(Navigate::History) => tab.history.prev(),
                 Menu::Navigate(navigate) => status.menu.prev(navigate),
                 Menu::InputCompleted(input_completed) => {
-                    status.menu.completion_prev(input_completed)
+                    status.menu.completion_prev(input_completed);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    status.menu.prev(Navigate::Flagged)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    status.menu.prev(Navigate::Trash)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    status.menu.bulk.prev();
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -890,12 +985,32 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn next_word(status: &mut Status) -> Result<()> {
+        if status.current_tab().menu_mode.is_input() && !status.focus.is_file() {
+            status.menu.input.next_word();
+        }
+        Ok(())
+    }
+
+    pub fn previous_word(status: &mut Status) -> Result<()> {
+        if status.current_tab().menu_mode.is_input() && !status.focus.is_file() {
+            status.menu.input.previous_word();
+        }
+        Ok(())
+    }
+
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => {
                 tab.normal_up_one_row();
                 status.toggle_flag_visual();
+            }
+            Display::Preview if matches!(&tab.preview, Preview::Tree(_)) => {
+                if let Preview::Tree(tree) = &mut tab.preview {
+                    tree.go(To::Prev);
+                    tab.window.scroll_up_one(tree.displayable().index());
+                }
             }
             Display::Preview => tab.preview_page_up(),
             Display::Tree => {
@@ -913,6 +1028,12 @@ impl EventAction {
             Display::Directory => {
                 tab.normal_down_one_row();
                 status.toggle_flag_visual();
+            }
+            Display::Preview if matches!(&tab.preview, Preview::Tree(_)) => {
+                if let Preview::Tree(tree) = &mut tab.preview {
+                    tree.go(To::Next);
+                    tab.window.scroll_down_one(tree.displayable().index());
+                }
             }
             Display::Preview => tab.preview_page_down(),
             Display::Tree => {
@@ -934,7 +1055,22 @@ impl EventAction {
                 Menu::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
                 Menu::Navigate(navigate) => status.menu.next(navigate),
                 Menu::InputCompleted(input_completed) => {
-                    status.menu.completion_next(input_completed)
+                    status.menu.completion_next(input_completed);
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    status.menu.next(Navigate::Flagged)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    status.menu.next(Navigate::Trash)
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    status.menu.bulk.next();
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -1046,8 +1182,15 @@ impl EventAction {
             Menu::Navigate(Navigate::TempMarks(_)) => {
                 status.menu.temp_marks.erase_current_mark();
             }
-            Menu::InputSimple(_) | Menu::InputCompleted(_) => {
+            Menu::InputSimple(_) => {
                 status.menu.input.delete_char_left();
+            }
+            Menu::InputCompleted(input_completed) => {
+                status.menu.input.delete_char_left();
+                status.complete(input_completed)?;
+                if matches!(input_completed, InputCompleted::Search) {
+                    status.follow_search()?;
+                }
             }
             _ => (),
         }
@@ -1055,14 +1198,23 @@ impl EventAction {
     }
 
     /// When files are focused, try to delete the flagged files (or selected if no file is flagged)
+    /// Inform through the output socket if any was provided in console line arguments.
     /// When edit window is focused, delete all chars to the right in mode allowing edition.
     pub fn delete(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
             Self::delete_file(status)
         } else {
             match status.current_tab_mut().menu_mode {
-                Menu::InputSimple(_) | Menu::InputCompleted(_) => {
+                Menu::InputSimple(_) => {
                     status.menu.input.delete_chars_right();
+                    Ok(())
+                }
+                Menu::InputCompleted(input_completed) => {
+                    status.menu.input.delete_chars_right();
+                    status.complete(input_completed)?;
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
                     Ok(())
                 }
                 _ => Ok(()),
@@ -1160,6 +1312,27 @@ impl EventAction {
                     for _ in 0..10 {
                         status.menu.completion_prev(input_completed)
                     }
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    for _ in 0..10 {
+                        status.menu.prev(Navigate::Flagged)
+                    }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    for _ in 0..10 {
+                        status.menu.prev(Navigate::Trash)
+                    }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    for _ in 0..10 {
+                        status.menu.bulk.prev()
+                    }
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -1197,6 +1370,27 @@ impl EventAction {
                     for _ in 0..10 {
                         status.menu.completion_next(input_completed)
                     }
+                    if matches!(input_completed, InputCompleted::Search) {
+                        status.follow_search()?;
+                    }
+                }
+                Menu::NeedConfirmation(need_confirmation)
+                    if need_confirmation.use_flagged_files() =>
+                {
+                    for _ in 0..10 {
+                        status.menu.next(Navigate::Flagged)
+                    }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::EmptyTrash) => {
+                    for _ in 0..10 {
+                        status.menu.next(Navigate::Trash)
+                    }
+                }
+                Menu::NeedConfirmation(NeedConfirmation::BulkAction) => {
+                    for _ in 0..10 {
+                        status.menu.bulk.next()
+                    }
+                    status.menu.window.scroll_to(status.menu.bulk.index())
                 }
                 _ => (),
             };
@@ -1278,10 +1472,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                content_to_clipboard(&file_info.path);
+                content_to_clipboard(&path);
             }
             _ => return Ok(()),
         }
@@ -1294,10 +1488,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                filename_to_clipboard(&file_info.path);
+                filename_to_clipboard(&path);
             }
             _ => return Ok(()),
         }
@@ -1311,10 +1505,10 @@ impl EventAction {
         }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
-                let Ok(file_info) = status.current_tab().current_file() else {
+                let Some(path) = status.current_tab().selected_path() else {
                     return Ok(());
                 };
-                filepath_to_clipboard(&file_info.path);
+                filepath_to_clipboard(&path);
             }
             _ => return Ok(()),
         }
@@ -1322,8 +1516,10 @@ impl EventAction {
     }
 
     /// Move flagged files to the trash directory.
-    /// If no file is flagged, flag the selected file.
-    /// More information in the trash crate itself.
+    /// If no file is flagged, flag the selected file and move it to trash.
+    /// Inform the listener through the output_socket if any was provided in console line arguments.
+    /// More information in the trash mod itself.
+    /// We can't trash file which aren't mounted in the same partition.
     /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
     /// it is moved there.
     /// Else, nothing is done.
@@ -1336,8 +1532,13 @@ impl EventAction {
         }
 
         status.menu.trash.update()?;
+        let output_socket = Args::parse().output_socket;
         for flagged in status.menu.flagged.content.iter() {
-            let _ = status.menu.trash.trash(flagged);
+            if status.menu.trash.trash(flagged).is_ok() {
+                if let Some(output_socket) = &output_socket {
+                    nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(flagged))?;
+                }
+            }
         }
         status.menu.flagged.clear();
         status.current_tab_mut().refresh_view()?;
@@ -1414,6 +1615,12 @@ impl EventAction {
     /// Enter the context menu mode where the user can choose a basic file action.
     pub fn context(status: &mut Status) -> Result<()> {
         if matches!(
+            status.current_tab().display_mode,
+            Display::Fuzzy | Display::Preview
+        ) {
+            return Ok(());
+        }
+        if matches!(
             status.current_tab().menu_mode,
             Menu::Navigate(Navigate::Context)
         ) {
@@ -1444,11 +1651,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
-        status.run_custom_command(input_string)
-    }
-
     /// Enter the remote mount mode where the user can provide an username, an adress and
     /// a mount point to mount a remote device through SSHFS.
     pub fn remote_mount(status: &mut Status) -> Result<()> {
@@ -1465,6 +1667,13 @@ impl EventAction {
         status.cloud_open()
     }
 
+    pub fn cloud_enter_newdir_mode(status: &mut Status) -> Result<()> {
+        status.cloud_enter_newdir_mode()
+    }
+
+    pub fn cloud_enter_delete_mode(status: &mut Status) -> Result<()> {
+        status.cloud_enter_delete_mode()
+    }
     /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
@@ -1588,5 +1797,15 @@ impl EventAction {
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Mount))?;
         }
         Ok(())
+    }
+
+    /// Execute a custom event on the selected file
+    pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
+        status.run_custom_command(input_string)
+    }
+
+    /// Parse and execute the received IPC message.
+    pub fn parse_rpc(status: &mut Status, ipc_msg: String) -> Result<()> {
+        status.parse_ipc(ipc_msg)
     }
 }

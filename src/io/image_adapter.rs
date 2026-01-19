@@ -4,6 +4,7 @@ use anyhow::Result;
 use ratatui::layout::Rect;
 
 use crate::common::{is_in_path, UEBERZUG};
+use crate::config::{get_prefered_imager, Imagers};
 use crate::io::{user_has_x11, InlineImage, Ueberzug};
 use crate::log_info;
 use crate::modes::DisplayedImage;
@@ -34,12 +35,28 @@ impl ImageAdapter {
     /// Else, we check for the executable ueberzug and the X11 capacity,
     /// Else we can't display the image.
     pub fn detect() -> Self {
-        for variable in COMPATIBLES {
-            if var(variable).is_ok() {
-                log_info!("detected Inline Image Protocol compatible terminal from {variable}");
-                return Self::InlineImage(InlineImage::default());
+        let Some(prefered_imager) = get_prefered_imager() else {
+            return Self::Unable;
+        };
+
+        match prefered_imager.imager {
+            Imagers::Disabled => Self::Unable,
+            Imagers::Inline => {
+                for variable in COMPATIBLES {
+                    if var(variable).is_ok() {
+                        log_info!(
+                            "detected Inline Image Protocol compatible terminal from {variable}"
+                        );
+                        return Self::InlineImage(InlineImage::default());
+                    }
+                }
+                Self::try_ueberzug()
             }
+            Imagers::Ueberzug => Self::try_ueberzug(),
         }
+    }
+
+    fn try_ueberzug() -> Self {
         if is_in_path(UEBERZUG) && user_has_x11() {
             log_info!("detected ueberzug");
             Self::Ueberzug(Ueberzug::default())

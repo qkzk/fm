@@ -6,13 +6,14 @@ use std::time::{Duration, SystemTime};
 
 use anyhow::{anyhow, Result};
 
-use crate::common::{random_name, rename, TMP_FOLDER_PATH};
+use crate::common::{random_name, rename_filename, TMP_FOLDER_PATH};
 use crate::event::FmEvents;
 use crate::{log_info, log_line};
 
 type OptionVecPathBuf = Option<Vec<PathBuf>>;
 
 struct BulkExecutor {
+    index: usize,
     original_filepath: Vec<PathBuf>,
     temp_file: PathBuf,
     new_filenames: Vec<String>,
@@ -23,6 +24,7 @@ impl BulkExecutor {
     fn new(original_filepath: Vec<PathBuf>, parent_dir: &str) -> Self {
         let temp_file = generate_random_filepath();
         Self {
+            index: 0,
             original_filepath,
             temp_file,
             new_filenames: vec![],
@@ -91,7 +93,7 @@ impl BulkExecutor {
     fn rename_all(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
         let mut paths = vec![];
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            match rename(path, filename) {
+            match rename_filename(path, filename) {
                 Ok(path) => paths.push(path),
                 Err(error) => log_info!(
                     "Error renaming {path} to {filename}. Error: {error:?}",
@@ -141,6 +143,38 @@ impl BulkExecutor {
     fn del_temporary_file(&self) -> Result<()> {
         std::fs::remove_file(&self.temp_file)?;
         Ok(())
+    }
+
+    fn len(&self) -> usize {
+        self.new_filenames.len()
+    }
+
+    fn next(&mut self) {
+        self.index = (self.index + 1) % self.len()
+    }
+
+    fn prev(&mut self) {
+        if self.index > 0 {
+            self.index -= 1
+        } else {
+            self.index = self.len() - 1
+        }
+    }
+
+    /// Set the index to a new value if the value is below the length.
+    fn set_index(&mut self, index: usize) {
+        if index < self.len() {
+            self.index = index;
+        }
+    }
+
+    /// Reverse the received effect if the index match the selected index.
+    fn style(&self, index: usize, style: &ratatui::style::Style) -> ratatui::style::Style {
+        let mut style = *style;
+        if index == self.index {
+            style.add_modifier |= ratatui::style::Modifier::REVERSED;
+        }
+        style
     }
 }
 
@@ -219,10 +253,7 @@ impl Bulk {
     }
 
     pub fn watch_in_thread(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
-        match &self.bulk {
-            Some(bulk) => bulk.watch_modification_in_thread(fm_sender)?,
-            None => (),
-        }
+        if let Some(bulk) = &self.bulk { bulk.watch_modification_in_thread(fm_sender)? }
         Ok(())
     }
 
@@ -272,5 +303,52 @@ impl Bulk {
     /// None if `self.bulk` is `None`.
     pub fn temp_file(&self) -> Option<PathBuf> {
         self.bulk.as_ref().map(|bulk| bulk.temp_file.to_owned())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn len(&self) -> usize {
+        let Some(bulk) = &self.bulk else {
+            return 0;
+        };
+        bulk.len()
+    }
+
+    pub fn index(&self) -> usize {
+        let Some(bulk) = &self.bulk else {
+            return 0;
+        };
+        bulk.index
+    }
+
+    pub fn next(&mut self) {
+        let Some(bulk) = &mut self.bulk else {
+            return;
+        };
+        bulk.next()
+    }
+
+    pub fn prev(&mut self) {
+        let Some(bulk) = &mut self.bulk else {
+            return;
+        };
+        bulk.prev()
+    }
+
+    /// Set the index to a new value if the value is below the length.
+    pub fn set_index(&mut self, index: usize) {
+        let Some(bulk) = &mut self.bulk else {
+            return;
+        };
+        bulk.set_index(index)
+    }
+
+    pub fn style(&self, index: usize, style: &ratatui::style::Style) -> ratatui::style::Style {
+        let Some(bulk) = &self.bulk else {
+            return ratatui::style::Style::default();
+        };
+        bulk.style(index, style)
     }
 }

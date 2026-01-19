@@ -49,6 +49,9 @@ impl Flagged {
     /// Push a new path into the content.
     /// We maintain the content sorted and it's used to make `contains` faster.
     pub fn push(&mut self, path: PathBuf) {
+        if !path.exists() {
+            return;
+        }
         let Err(pos) = self.content.binary_search(&path) else {
             return;
         };
@@ -82,12 +85,14 @@ impl Flagged {
         self.content.binary_search(&path.to_path_buf()).is_ok()
     }
 
-    /// Returns a vector of path which are present in the current directory.
+    /// Returns a vector of path which are present in the current directory but ARE NOT the current dir.
+    /// This prevents the current directory (or root path in tree display mode) to be altered by bulk.
     #[inline]
     #[must_use]
     pub fn in_dir(&self, dir: &Path) -> Vec<PathBuf> {
         self.content
             .iter()
+            .filter(|p| *p != dir)
             .filter(|p| p.starts_with(dir))
             .map(|p| p.to_owned())
             .collect()
@@ -147,7 +152,6 @@ impl Flagged {
     }
 }
 
-impl_selectable!(Flagged);
 impl_content!(Flagged, PathBuf);
 
 impl DrawMenu<PathBuf> for Flagged {}

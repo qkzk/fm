@@ -42,6 +42,12 @@ pub enum CopyMove {
 }
 
 impl CopyMove {
+    /// True iff this operation is a copy and not a move.
+    #[inline]
+    pub fn is_copy(&self) -> bool {
+        matches!(self, Self::Copy)
+    }
+
     fn verb(&self) -> &str {
         match self {
             Self::Copy => "copy",

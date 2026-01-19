@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use std::ffi::OsStr;
 use std::fs::metadata;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::common::{
@@ -110,6 +111,11 @@ impl DisplayedImage {
             index,
         }
     }
+
+    pub fn filepath(&self) -> Arc<Path> {
+        Arc::from(self.images[self.index].as_path())
+    }
+
     /// Only affect pdf thumbnail. Will decrease the index if possible.
     pub fn up_one_row(&mut self) {
         if self.kind.allow_multiples() && self.index > 0 {

@@ -13,6 +13,14 @@ pub struct History {
 }
 
 impl History {
+    /// Creates a new history with the starting path.
+    pub fn new(start_dir: &std::path::Path) -> Self {
+        Self {
+            content: vec![start_dir.to_path_buf()],
+            index: 0,
+        }
+    }
+
     /// Add a new path and a selected file in the stack, without duplicates, and select the last
     /// one.
     pub fn push(&mut self, file: &Path) {
@@ -51,7 +59,6 @@ impl History {
     }
 }
 
-impl_selectable!(History);
 impl_content!(History, PathBuf);
 
 impl DrawMenu<PathBuf> for History {}

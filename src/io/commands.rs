@@ -130,9 +130,10 @@ pub fn execute_and_capture_output_with_path<
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
-        log_info!("{err}", err = String::from_utf8(output.stderr)?);
+        let err = String::from_utf8(output.stderr)?;
+        log_info!("{err}");
         Err(anyhow!(
-            "execute_and_capture_output: command didn't finish properly",
+            "execute_and_capture_output: command didn't finish properly: {err}",
         ))
     }
 }

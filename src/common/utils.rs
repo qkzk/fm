@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::env;
 use std::fs::{metadata, read_to_string, File};
 use std::io::{BufRead, Write};
@@ -13,23 +14,42 @@ use sysinfo::Disk;
 use sysinfo::Disks;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::common::CONFIG_FOLDER;
+use crate::common::{CONFIG_FOLDER, ZOXIDE};
+use crate::config::IS_LOGGING;
+use crate::event::build_input_socket_filepath;
+use crate::io::execute_without_output;
 use crate::io::Extension;
-use crate::modes::{human_size, nvim, ContentWindow, Users};
+use crate::modes::{human_size, nvim_open, ContentWindow, Users};
 use crate::{log_info, log_line};
+
+/// The mount point of a path
+pub trait MountPoint<'a> {
+    /// Returns the mount point of a path.
+    fn mount_point(&self, mount_points: &'a HashSet<&'a Path>) -> Option<&Self>;
+}
+
+impl<'a> MountPoint<'a> for Path {
+    fn mount_point(&self, mount_points: &'a HashSet<&'a Path>) -> Option<&Self> {
+        let mut current = self;
+        while !mount_points.contains(current) {
+            current = current.parent()?;
+        }
+        Some(current)
+    }
+}
 
 /// Returns the disk owning a path.
 /// None if the path can't be found.
 ///
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
-pub fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
+fn disk_used_by_path<'a>(disks: &'a Disks, path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&'a Disk> = disks.list().iter().collect();
-    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().as_os_str().len());
+    disks.sort_by_key(|disk| usize::MAX - disk.mount_point().components().count());
     disks
         .iter()
-        .copied()
         .find(|&disk| path.starts_with(disk.mount_point()))
+        .map(|disk| &**disk)
 }
 
 fn disk_space_used(disk: Option<&Disk>) -> String {
@@ -54,10 +74,13 @@ pub fn disk_space(disks: &Disks, path: &Path) -> String {
 /// Must be called last since we erase temporary with similar name
 /// before leaving.
 pub fn save_final_path(final_path: &str) {
-    let mut file = File::create("/tmp/fm_output.txt").expect("Failed to create file");
-    writeln!(file, "{final_path}").expect("Failed to write to file");
     log_info!("print on quit {final_path}");
-    println!("{final_path}")
+    println!("{final_path}");
+    let Ok(mut file) = File::create("/tmp/fm_output.txt") else {
+        log_info!("Couldn't save {final_path} to /tmp/fm_output.txt");
+        return;
+    };
+    writeln!(file, "{final_path}").expect("Failed to write to file");
 }
 
 /// Returns the buffered lines from a text file.
@@ -204,11 +227,8 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
         "open_in_current_neovim {nvim_server} {path}",
         path = path.display()
     );
-    match nvim(nvim_server, &path.display().to_string()) {
-        Ok(()) => log_line!(
-            "Opened {path} in neovim at {nvim_server}",
-            path = path.display()
-        ),
+    match nvim_open(nvim_server, path) {
+        Ok(()) => log_line!("Opened {path} in neovim", path = path.display()),
         Err(error) => log_line!(
             "Couldn't open {path} in neovim. Error {error:?}",
             path = path.display()
@@ -237,6 +257,14 @@ pub fn clear_tmp_files() {
         .filter_map(|e| e.ok())
         .filter(|e| e.file_name().to_string_lossy().starts_with("fm_thumbnail"))
         .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
+}
+
+pub fn clear_input_socket_files() -> Result<()> {
+    let input_socket_filepath = build_input_socket_filepath();
+    if std::path::Path::new(&input_socket_filepath).exists() {
+        std::fs::remove_file(&input_socket_filepath)?;
+    }
+    Ok(())
 }
 
 /// True if the directory is empty,
@@ -277,7 +305,7 @@ where
     }
 }
 
-/// Rename a file giving it a new file name.
+/// Rename a file giving it a new **file name**.
 /// It uses `std::fs::rename` and `std::fs:create_dir_all` and has same limitations.
 /// If the new name contains intermediate slash (`'/'`) like: `"a/b/d"`,
 /// all intermediate folders will be created in the parent folder of `old_path` if needed.
@@ -286,7 +314,7 @@ where
 ///
 /// It may fail for the same reasons as [`std::fs::rename`] and [`std::fs::create_dir_all`].
 /// See those for more details.
-pub fn rename<P, Q>(old_path: P, new_name: Q) -> Result<std::path::PathBuf>
+pub fn rename_filename<P, Q>(old_path: P, new_name: Q) -> Result<std::path::PathBuf>
 where
     P: AsRef<std::path::Path>,
     Q: AsRef<std::path::Path>,
@@ -325,6 +353,50 @@ where
     std::fs::create_dir_all(new_parent)?;
     std::fs::rename(old_path, &new_path)?;
     Ok(new_path)
+}
+
+/// Rename a file giving it a new **full path**.
+/// It uses `std::fs::rename` and `std::fs:create_dir_all` and has same limitations.
+/// If the new name contains intermediate slash (`'/'`) like: `"a/b/d"`,
+/// all intermediate folders will be created if needed.
+///
+/// # Errors
+///
+/// It may fail for the same reasons as [`std::fs::rename`] and [`std::fs::create_dir_all`].
+/// See those for more details.
+pub fn rename_fullpath<P, Q>(old_path: P, new_path: Q) -> Result<()>
+where
+    P: AsRef<std::path::Path>,
+    Q: AsRef<std::path::Path>,
+{
+    let new_path = new_path.as_ref();
+    if new_path.exists() {
+        return Err(anyhow!(
+            "File already exists {new_path}",
+            new_path = new_path.display()
+        ));
+    }
+    let Some(new_parent) = new_path.parent() else {
+        return Err(anyhow!(
+            "no parent for {new_path}",
+            new_path = new_path.display()
+        ));
+    };
+
+    log_info!(
+        "renaming: {} -> {}",
+        old_path.as_ref().display(),
+        new_path.display()
+    );
+    log_line!(
+        "renaming: {} -> {}",
+        old_path.as_ref().display(),
+        new_path.display()
+    );
+
+    std::fs::create_dir_all(new_parent)?;
+    std::fs::rename(old_path, new_path)?;
+    Ok(())
 }
 
 /// This trait `UtfWidth` is defined with a single
@@ -395,7 +467,7 @@ fn home_dir() -> Option<PathBuf> {
 
 /// Expand ~/Downloads to /home/user/Downloads where user is the current user.
 /// Copied from <https://gitlab.com/ijackson/rust-shellexpand/-/blob/main/src/funcs.rs?ref_type=heads#L673>
-pub fn tilde(input_str: &str) -> Cow<str> {
+pub fn tilde(input_str: &str) -> Cow<'_, str> {
     if let Some(input_after_tilde) = input_str.strip_prefix('~') {
         if input_after_tilde.is_empty() || input_after_tilde.starts_with('/') {
             if let Some(hd) = home_dir() {
@@ -418,4 +490,29 @@ pub fn tilde(input_str: &str) -> Cow<str> {
 /// Sets the current working directory environment
 pub fn set_current_dir<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(env::set_current_dir(path.as_ref())?)
+}
+
+/// Update zoxide database.
+///
+/// Nothing is done if logging isn't enabled.
+///
+/// # Errors
+///
+/// May fail if zoxide command failed.
+pub fn update_zoxide<P: AsRef<Path>>(path: P) -> Result<()> {
+    let Some(is_logging) = IS_LOGGING.get() else {
+        return Ok(());
+    };
+    if *is_logging && is_in_path(ZOXIDE) {
+        execute_without_output(ZOXIDE, &["add", path.as_ref().to_string_lossy().as_ref()])?;
+    }
+    Ok(())
+}
+
+/// Append source filename to dest.
+pub fn build_dest_path(source: &Path, dest: &Path) -> Option<PathBuf> {
+    let mut dest = dest.to_path_buf();
+    let filename = source.file_name()?;
+    dest.push(filename);
+    Some(dest)
 }

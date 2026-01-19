@@ -30,6 +30,7 @@ impl EventDispatcher {
     /// which needs to know those keybindings.
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
+            FmEvents::Term(Event::Paste(pasted)) => EventAction::paste(status, pasted),
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
             FmEvents::Term(Event::Resize(width, height)) => {
@@ -40,6 +41,7 @@ impl EventDispatcher {
             FmEvents::FileCopied => EventAction::file_copied(status),
             FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
+            FmEvents::Ipc(msg) => EventAction::parse_rpc(status, msg),
             _ => Ok(()),
         }
     }
@@ -54,6 +56,12 @@ impl EventDispatcher {
             } if !status.focus.is_file() && modifier_is_shift_or_none(modifiers) => {
                 self.menu_char_key_matcher(status, c)?
             }
+            KeyEvent {
+                code: KeyCode::Char('h'),
+                modifiers: KeyModifiers::ALT,
+                kind: _,
+                state: _,
+            } if !status.focus.is_file() => status.open_picker()?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
@@ -128,6 +136,10 @@ impl EventDispatcher {
 
     #[rustfmt::skip]
     fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<bool> {
+        if let KeyEvent{code:KeyCode ::Char(' '),modifiers:KeyModifiers::CONTROL, kind:_,state:_} = key {
+            status.fuzzy_toggle_flag_selected()?;
+            return Ok(true);
+        }
         let KeyEvent {
             code,
             modifiers: KeyModifiers::NONE,
@@ -203,9 +215,9 @@ impl EventDispatcher {
             }
 
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
-            Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
+            Navigate::Cloud if c == 'd' => EventAction::cloud_enter_newdir_mode(status),
             Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
-            Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
+            Navigate::Cloud if c == 'x' => EventAction::cloud_enter_delete_mode(status),
             Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
 
             Navigate::Flagged if c == 'u' => {

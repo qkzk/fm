@@ -1728,8 +1728,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 Tried to fix cargo doc but failed... :(
 
-## Current dev
-
 ### Version 0.1.35
 
 #### Summary
@@ -1745,10 +1743,275 @@ Updated some dependencies to avoid yanked version of crates. Documentation shoul
 
 Once that's done, it's all. No not implement anything else
 
+
+## Current dev
+
+### Version 0.2.1 : plugins
+
+
+
+#### Summary
+
+- Plugin system for previews. You can install an external plugin used to preview files. The current versions comes with "bat_previewer" which replace the internal previewer for highlighted text. Some plugins (only one atm) are available at [https://github.com/qkzk/fm_plugins].
+- CLI configuration helper: `fmconfig`. Used to display binds, reset the config file, create a cloud configuration, list/add/remove/install a plugin etc.
+- Neovim file picker. File picking in Neovim never was reliable. It never worked if you open fm yourself in a toggleterm instance. Use the associated plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim) to do the work. It uses 2 sockets to send and receive commands.
+- Execute commands from outside. Related to the previous point. If you don't use neovim, you can still take control of fm through sockets. Specify an output socket in command line arguments and send commands.
+  - `GO <path>` will select the path,
+  - `KEY <key>` will execute this key like if you pressed it yourself,
+  - `Action <action>` will execute this action.
+
+  Both `<key>` & `<action>` should be formated like in the config file.
+- .ape files are previewed as music files with mediainfo
+- files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
+- update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
+- Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
+- Color search results (/) with second colors of menu. Search results should be more visible
+- Middle click in fuzzy finder display mode moves to the selected element (same as enter)
+- In tree mode, use Ctrl+Space to toggle flag on the children of a directory
+- pasting a file from a GUI file manager or dragon-drop will move the file in current directory.
+- Disable images previewing from arguments or config files
+- Paste a file into a folder and move it there. It allows you to drag and drop files from outside into fm.
+- Paste a text into an input field
+- Disable image previewing from config or command line argument.
+  Use `fm --disable-images` or set `imager: Disabled` in config file to preview "graphical" files another way. Will disable all images from being previewed.
+  Images will also be disable If `fm` can't detect a previewing method (ueberzug not in path or no iterm2 inline image compatible terminal), 
+- Navigate by clicking / moving / entering a file from a previewed tree. Preview in second pane, ctrl+right to change focus, move with arrows and enter. Boom.
+- Open a previewed file with enter when focusing the pane.
+- In inputs Alt+left, Alt+right move the cursor word by word
+- In tree display mode, % and § increases and decrease the depth. Watchout, it may be take some time to explore a large file tree. This setting is associated to tab and can't be saved in config file. 
+- In fuzzy finder for files (Ctrl+f), you can toggle flag on files with ctrl+space. Flagged files are shown in yellow
+- fuzzy finder for lines (Ctrl+s) will move the preview to the matched line
+- History of previous inputs. When logs are enabled, your inputs are saved and you can pick any of them. For example, open CD mode with Alt+g, then Alt+h will open the history and you can pick a previous input.
+
+##### Bugfixes
+
+- fm couldn't start without a config file. If no config file is found for the current user, we'll copy the default ones in ~/.config/fm.
+- Previewing a text file containing ANSI control sequence would alter the terminal display. Instead of displaying the content directly, we clean it first, removing ANSI control chars with a regex.
+- Opening a file whose path contains spaces wouldn't work.
+- Moving multiple files won't show a progress bar if all source files share the same mount point as the destination.
+- Prevent the use from moving to a subdirectory which is impossible. Display a message.
+- Completion is updated when something is deleted (backspace, delete). In search mode, the selected file is also updated.
+- Context menu (Alt+t or right click) should do nothing in fuzzy or preview mode
+- Opening a picker (like Alt+h in a menu) twice and pressing enter would crash
+
+#### Changelog
+
+- [x] previewer plugins
+    previewer plugins 
+
+    API :
+    - plugin.name() -> String,
+    - plugin.is_match(path: *mut c_char) -> bool ("jpg png gif")
+    - plugin.preview(path: *mut c_char) -> *mut c_char
+
+    spec in fm.config 
+      - name & path_to_lib.so
+- [x] FEAT: install plugins from CLI.
+- [x] example plugin: bat previewer 
+- [x] FIX: displaying preview directly skip the whole plugin.
+- [x] FIX: crash without config files. Save default config while building, include them in code.
+- [x] FIX: ANSI control sequence in text file can't be displayed properly. Use a regex to remove ANSI control chars.
+- [x] IMP: preview .ape files as music files with mediain
+- [x] IMP: extensions ending with ~ or _ like .png~ should be previewed normally.
+- [x] FIX: opening a path with space in neovim is buggy
+- [x] IMP: cd mode selection should update zoxide
+- [x] FIX: moving files from same part shouldn't require a copy and should be instant
+- [x] IMP: should we prevent moving to a subdirectory ? `mv: cannot move to a subdirectory of itself`
+- [x] separate CLI binary: fmconfig
+  - [x] hello world 
+  - [x] move all clap "early exit" here: keybinds, plugins, cloud 
+  - [x] IMP: allow to reset config, cloud config, see keybinds, install a plugin
+  - [x] make separate subcommands:
+    - [x] reset: reset the config,
+    - [x] plugin <subcommand>: ...
+    - [x] cloud config/list
+    - [x] keybinds list 
+  - [x] fmconfig plugin add /path/to/libname.so : copy the file.so to .local/fm/plugins/previewer/ and add it at the end of config file with 'name'
+    - [x] adding to config should create the required plugin:previewer: part.
+    - [x] an existing plugin... shouldn't do anything to the config but exit with a warning 
+  - [x] fmconfig plugin remove name : remove the file from .local and config inform 
+  - [x] fmconfig plugin list: will display all plugins
+  - [x] fmconfig plugin install author/plugin
+    - [x] clone
+    - [x] build
+    - [x] check build & install with add
+    - [x] remove should check for clones
+    - [x] update should do the same
+  - [x] fmconfig plugin install https://hostname/author/plugin
+- [x] FIX: opening a _shell_ command with a path containing `'` or `"` requires those chars to be escaped.
+    https://github.com/ranger/ranger/blob/master/ranger/ext/shell_escape.py
+    https://github.com/sxyazi/yazi/blob/main/yazi-shared/src/shell/unix.rs
+    https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_271
+    https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_170
+
+- [x] Neovim integration 
+  - [x] open fm with current file selected whatever the terminal used 
+  - [x] renaming in fm renames the buffer 
+  - [x] deleting in fm deletes the buffer 
+  - [x] open a file in fm opens a new buffer with the file
+  - [x] FIX: filepicker opens in terminal window instead of full & keeps the terminal window settings (no line number...)
+    The problems comes from incompatibiliy between floatterm & normal terminal.
+    In floatterm, we have to exit _the floatterm_, then open the new buffer,
+    In normal terminal, we have to exit _the terminal:_ then open the new buffer.
+    Current code works fine in normal terminals, not in float term
+    A solution would be to allow the edition of the command itself from config file.
+    Another would be to create a neovim plugin...
+
+  solution: 
+
+  - plugin + RPC/server
+    requires a lot of work 
+    fm becomes a server: needs to know its address & communicate it
+    actions -> send to neovim (rpc -> fm)
+    neovim -> fm (fm_rpc)
+
+    - [x] define events to read 
+    - [x] define events to send 
+    - [x] use PID in name instead of randomstring
+    - [x] open socket : https://doc.rust-lang.org/std/os/unix/net/struct.UnixStream.html
+    - [x] listen to socket 
+    - [x] write to socket from external 
+
+      ```bash 
+      socat - UNIX-CONNECT:${ls /tmp/fm*.sock}
+      ```
+      then `GO /some/path/to/file`, enter, ctrl+c
+    - [x] move it to refresher, send an event if needed and let dispatch capture it
+    - [x] remove the socket file before leaving
+    - [x] write to socket from fm
+    - [x] GO <path>
+    - [x] ACTION <ActionMap>
+    - [x] KEY <Key>
+    - [x] documentation
+      - [x] public functions
+      - [x] here
+      - [x] readme
+      - [x] changelog
+    - [x] neovim companion plugin [fm-picker.nvim](https://github/qkzk/fm-picker.nvim)
+      - [x] nvim -> fm open, pick 
+      - [x] fm -> nvim pick 
+      - [x] fm -> nvim delete
+      - [x] make it a plugin
+      - [x] configure the plugin
+    - [x] ensure socket files are removed
+      /run/user/1000 is deleted by systemd at logout
+      /run/user/1000/nvim.fm.whatever
+      /run/user/1000/fm.nvim.whatever
+    - [x] more binds to reset mode since Esc is captured by neovim : Alt-Tab & Ins
+    - [x] send msg to nvim to toggle fm window ??? Is quiting enough ? Yes
+
+- [x] FIX: search, down, enter. Selection should follow up/down/pgup/pgdown,click
+- [x] FIX: deleting chars doesn't update completion
+- [x] FEAT: need confirmation should be scrollable (up down, pgup, pgdown, mwhell)
+  - [x] use menu window & existant methods for need confirmation which use "flagged files".
+  - [x] other modes: len, index, next, prev, pgup, pgdown, click (event action)
+- [x] color search results in display & tree
+- [x] FIX: right click shouldn't do anything in fuzzy finding
+- [x] FEAT: middle click in fuzzy should open like in normal / tree display mode
+- [x] FEAT: Ctrl+space flags all children files of a dictory in tree mode
+- [x] FIX: in help "<SPC>" should be used instead of `' '` for the "space" character since it's whitespace.
+- [x] FEAT: allow files to be dropped by capturing paste.
+    dragon-drop & pcmanfm output: absolute filetree path
+    what about urls ? Do nothing
+
+    - [x] enable & disable brackedted paste
+    - [x] detect absolute filetree path  
+    - [x] absolute path 
+      - [x] copy or move in cwd if display::file::whatever & focus & same mount point, otherwize ?
+      - [x] pasting into same dir does nothing
+      - [x] insert text in menus with input
+      - [x] refactor
+      - [x] Unify with already existant copy/move
+- [x] FEAT: Configure wether user wants to display images (imgs, pdf, videos)
+  - [x] config : let the user set what he wants. image: {ueberzug|inline|disabled}, defaults to disabled 
+  - [x] parse config, read it before init of display at src/app/displayer.rs
+  - [x] set fallback previewers for all supported types
+  - [x] arg
+- [x] FEAT: history picker for previous input
+  - [x] common entry point for entering a menu
+  - [x] read picked & replace input
+  - [x] alt+h in a menu (never used ?) opens the picker
+  - [x] picker for each mode with a callback
+  - [x] completion
+  - [x] Esc should set back to menu not leave it
+- [x] FIX: starting path isn't alway added to history
+- [x] FEAT: bind alt+- to open history. '-' is used to go back.
+- [x] FIX: Ctrl+s (aka grep) doesn't update the preview
+- [x] FEAT: preview a tree in second pane should have some kind of navigation ?
+  - [x] move down & up + scrolling
+  - [x] enter, left click, middle click, right click (context)
+  - [x] FIX: doesn't work for plugins
+    - [x] impl a tree filepath for each preview. Current isn't consistent and doesn't respect its signature.
+      should return `Option<impl Path>` where non file previews like help should return `None` and true files and logs should return `Some(path)`.
+  - [x] open from preview with only should also work in left tab.
+  - [x] BUG: using wrong index when reading focus
+  - [x] FIX: entering a previewed tree doesn't update the right preview
+  - [x] exec (`e`)
+- [x] FIX: in tree mode, deleting a directory crashes. In any display mode, renaming/moving/deleting the "root" node is prevented. 
+- [x] FEAT: horizontal scroll of input ?
+- [x] FIX: renaming a file doesn't select it anymore
+- [x] FEAT: In inputs,alt+left / right should jump word by word
+- [x] FEAT: renaming/creating should prepend current path (shortened ?) before filename itself... 
+- [x] IMP: use Size for holding terminal sizes, improving readability.
+- [x] IMP: solved a lot of TODO! by refactoring
+- [x] FIX: open a menu (like goto Alt+G), Alt+H to open picker, Alt+H again (picker from picker) then enter. Crash
+- [x] FEAT: make tree depth variable
+- [x] FEAT: fuzzy finder, <ctrl+space> -> flag the file
+  - [x] <ctrl+space> flag a file if it exists 
+  - [x] <ctrl+space> **toggle** flag
+  - [x] <ctrl+space> move to next
+  - [x] display flagged  
+  - [x] more consistant colors
+- [x] FEAT: improve fuzzy finder for lines, move preview to considered line
+- [x] FIX: exec (`e`) a non terminal executable from a preview would crash.
+- [x] IMP: remove useless clone while getting path of current selection
+- [x] FIX: reverse flags wasn't doing anything
+
+
 ## TODO
 
 ### Other ideas
 
+
+
+- [ ] BUG: big tree moved down and selection is out of screen once again
+- [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
+- [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
+- [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
+- [ ] FEAT: common themes
+- [ ] FEAT PLUGIN: replace float term by something else ? see reddit
+- [ ] BUG: preview can stop and display "preview as empty". Can't reproduce
+- [ ] FEAT: allow settings in plugins & store them in config file
+  - [ ] should be done from 
+- [ ] FEAT: dired inspiration.
+  - [ ] WONTDO: mouse over should color something
+  - [ ] WONTDO: folders should end with / 
+  - [ ] searching: only matchs should be colored, don't color everything
+  - [ ] color for each stat instead of common gradient 
+    - [ ] option for kind of coloring 
+    - [ ] filename keep their color 
+    - [ ] color per stat with sane defaults
+    - [ ] make display::FileFormater return a vector
+- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [ ] display marks/temp marks directory/tree display mode
+  - [ ] marks & temp_marks refactor. Use same architecture in both.
+  - [ ] common trait for marking 
+  - [ ] BUG: ensure mark char is printable
+  - [ ] method: path_is_marked(path) -> bool 
+  - [ ] parent method from status called while moving a file 
+  - [ ] update the marks
+- [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
+  Should I switch to a state machine ?
+- [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
+- [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
+- [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
+- [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
+- [ ] Merge "need confirmation" into navigate ?
+- [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
+- [ ] plugin system 
+  menus are insteresting but requires too much change. What I want to do requires to move/duplicate a lot of code and I don't like it.
+  IPC may be the solution for menus.
+- [ ] IMP: why cloning PathBuf when Arc<Path> would do the trick ? Useful if path is mutated... ?
 - [ ] IMP: quicker trees using eza idea : https://github.com/eza-community/eza/blob/main/src/output/tree.rs ?
 - [ ] BUG: preview a pdf in right, open it with middle click, close it. Can't preview anything. Can't reproduce every time...
 - [ ] BUG: Camera folder crash. Can't reproduce
@@ -1811,6 +2074,31 @@ Once that's done, it's all. No not implement anything else
   - what for ?
 
 ## Won't do
+
+- [ ] FEAT: reduce bloat in tree like [broot](https://dystroy.org/broot/)
+  Only show first 3 non directory children then replace the display by "xx unlisted"
+
+  2 steps : 
+
+  while creating nodes. 
+  1. Instead of using stack = vec![path] use vec![(path, is_listed)]
+      while creating children, run a counter and store false once its reached 
+  2. When creating the lines, don't when the first "non listed" is met, add a string instead.
+
+  requires a lot of changes. 
+
+  The basic idea is to iterate over the nodes and count how much normal files per directory should be listed.
+  We need to alter the first stack (of nodes) to also save a boolean.
+  In the second iteration (creating lines) we stop once the first "non listed" pop and replace this one by a placeholder.
+  
+  When navigating we ensure to skip all non listed.
+
+  PB:
+
+  No way to alter the view (possible ?) to show unlisted 
+  No track of how many aren't listed 
+  The "unlister" or "more..." text is still a treeline, displayed another way...
+- [ ] IMP: status.index should be replaced by a bool instead of usize. Won't do. Annoying and requires a lot of change.
 
 ### auto stuff
 

@@ -6,27 +6,37 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
+use regex::Regex;
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle},
     parsing::{SyntaxReference, SyntaxSet},
 };
 
+use crate::app::try_build;
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
-    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, READELF,
-    RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
+    FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
+    PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::get_syntect_theme;
+use crate::config::{get_prefered_imager, get_previewer_plugins, get_syntect_theme, Imagers};
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
     DisplayedImageBuilder, FileKind, FilterKind, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
+
+fn images_are_enabled() -> bool {
+    let Some(prefered_imager) = get_prefered_imager() else {
+        return false;
+    };
+    !matches!(prefered_imager.imager, Imagers::Disabled)
+}
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -61,7 +71,7 @@ impl ExtensionKind {
             => Self::Sevenz,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
             => Self::Image,
-            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac"
+            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac" | "ape"
             => Self::Audio,
             "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
             => Self::Video,
@@ -125,22 +135,23 @@ impl ExtensionKind {
 impl std::fmt::Display for ExtensionKind {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Archive   => write!(f, "archive"),
-            Self::Image     => write!(f, "image"),
-            Self::Audio     => write!(f, "audio"),
-            Self::Video     => write!(f, "video"),
-            Self::Font      => write!(f, "font"),
-            Self::Sevenz    => write!(f, "7zip"),
-            Self::Svg       => write!(f, "svg"),
-            Self::Pdf       => write!(f, "pdf"),
-            Self::Iso       => write!(f, "iso"),
-            Self::Notebook  => write!(f, "notebook"),
-            Self::Office    => write!(f, "office"),
-            Self::Epub      => write!(f, "epub"),
-            Self::Torrent   => write!(f, "torrent"),
-            Self::Default   => write!(f, "default"),
-        }
+        let repr = match self {
+            Self::Archive   => "archive",
+            Self::Image     => "image",
+            Self::Audio     => "audio",
+            Self::Video     => "video",
+            Self::Font      => "font",
+            Self::Sevenz    => "7zip",
+            Self::Svg       => "svg",
+            Self::Pdf       => "pdf",
+            Self::Iso       => "iso",
+            Self::Notebook  => "notebook",
+            Self::Office    => "office",
+            Self::Epub      => "epub",
+            Self::Torrent   => "torrent",
+            Self::Default   => "default",
+        };
+        write!(f, "{}", repr)
     }
 }
 
@@ -193,14 +204,14 @@ impl Preview {
         ContentWindow::new(self.len(), height)
     }
 
-    pub fn filepath(&self) -> String {
+    pub fn filepath(&self) -> Arc<Path> {
         match self {
-            Self::Empty => "".to_owned(),
-            Self::Syntaxed(preview) => preview.filepath().to_owned(),
-            Self::Text(preview) => preview.title.to_owned(),
-            Self::Binary(preview) => preview.path.to_string_lossy().to_string(),
-            Self::Image(preview) => preview.identifier.to_owned(),
-            Self::Tree(tree) => tree.root_path().to_string_lossy().to_string(),
+            Self::Empty => Arc::from(Path::new("")),
+            Self::Binary(preview) => preview.filepath(),
+            Self::Image(preview) => preview.filepath(),
+            Self::Syntaxed(preview) => preview.filepath(),
+            Self::Text(preview) => preview.filepath(),
+            Self::Tree(tree) => Arc::from(tree.root_path()),
         }
     }
 }
@@ -233,6 +244,21 @@ impl PreviewBuilder {
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
     pub fn build(self) -> Result<Preview> {
+        if let Some(preview) = self.plugin_preview() {
+            return Ok(preview);
+        }
+        self.internal_preview()
+    }
+
+    fn plugin_preview(&self) -> Option<Preview> {
+        if let Some(plugins) = get_previewer_plugins() {
+            try_build(&self.path, plugins)
+        } else {
+            None
+        }
+    }
+
+    fn internal_preview(&self) -> Result<Preview> {
         clear_tmp_files();
         let file_kind = FileKind::new(&symlink_metadata(&self.path)?, &self.path);
         match file_kind {
@@ -265,7 +291,9 @@ impl PreviewBuilder {
     }
 
     fn normal_file(&self) -> Result<Preview> {
-        let extension = extract_extension(&self.path).to_lowercase();
+        let extension = extract_extension(&self.path)
+            .trim_end_matches(['~', '_'])
+            .to_lowercase();
         let kind = ExtensionKind::matcher(&extension);
         match kind {
             ExtensionKind::Archive if kind.has_programs() => {
@@ -287,7 +315,10 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            _ if kind.is_image_kind() && kind.has_programs() => Self::image(&self.path, kind),
+            _ if kind.is_image_kind() && kind.has_programs() && images_are_enabled() => {
+                Self::image(&self.path, kind)
+            }
+            _ if kind.is_image_kind() => Self::text_image(&self.path, kind),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -302,6 +333,21 @@ impl PreviewBuilder {
         } else {
             Ok(Preview::Image(preview))
         }
+    }
+
+    fn text_image(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+        let preview = match kind {
+            ExtensionKind::Image | ExtensionKind::Video if is_in_path(MEDIAINFO) => {
+                Preview::Text(Text::media_content(path)?)
+            }
+            ExtensionKind::Pdf if is_in_path(PDFTOTEXT) => Preview::Text(Text::pdf_text(path)?),
+            ExtensionKind::Office if is_in_path(LIBREOFFICE) => {
+                Preview::Text(Text::office_text(path)?)
+            }
+            ExtensionKind::Font | ExtensionKind::Svg => Preview::Binary(BinaryContent::new(path)?),
+            _ => Preview::Empty,
+        };
+        Ok(preview)
     }
 
     fn socket(&self) -> Result<Preview> {
@@ -342,7 +388,7 @@ impl PreviewBuilder {
         let ss = SyntaxSet::load_defaults_nonewlines();
         Some(Preview::Syntaxed(
             HLContent::from_str(
-                "command".to_owned(),
+                Path::new("command"),
                 &output,
                 ss.clone(),
                 ss.find_syntax_by_extension(ext)?,
@@ -400,15 +446,22 @@ impl PreviewBuilder {
         crate::log_info!("cli_info. command {command} - output\n{output}");
         Preview::Text(Text::command_stdout(output, command))
     }
+
+    pub fn plugin_text(text: String, name: &str, path: &Path) -> Preview {
+        Preview::Text(Text::plugin(text, name, path))
+    }
 }
 
-/// Read a number of lines from a text file. Returns a vector of strings.
+/// Reads a number of lines from a text file, _removing all ANSI control characters_.
+/// Returns a vector of strings.
 fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
+    let re = Regex::new(r"[[:cntrl:]]").unwrap();
     let reader = std::io::BufReader::new(std::fs::File::open(path)?);
     Ok(reader
         .lines()
         .take(size_limit)
-        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+        .map(|line| line.unwrap_or_default())
+        .map(|s| re.replace_all(&s, "").to_string())
         .collect())
 }
 
@@ -429,6 +482,9 @@ pub enum TextKind {
     Iso,
     Log,
     Mediacontent,
+    Office,
+    Pdf,
+    Plugin,
     Sevenz,
     Socket,
     Torrent,
@@ -448,7 +504,10 @@ impl TextKind {
             Self::Help => "Help",
             Self::Iso => "Iso",
             Self::Log => "Log",
+            Self::Plugin => "a text",
+            Self::Office => "a doc",
             Self::Mediacontent => "a media content",
+            Self::Pdf => "a pdf",
             Self::Sevenz => "a 7z archive",
             Self::Socket => "a Socket file",
             Self::Torrent => "a torrent",
@@ -464,12 +523,25 @@ impl Display for TextKind {
 
 /// Holds a preview of a text content.
 /// It's a vector of strings (per line)
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct Text {
     pub kind: TextKind,
     pub title: String,
+    filepath: Arc<Path>,
     content: Vec<String>,
     length: usize,
+}
+
+impl Default for Text {
+    fn default() -> Self {
+        Self {
+            kind: TextKind::default(),
+            title: String::default(),
+            filepath: Arc::from(Path::new("")),
+            content: vec![],
+            length: 0,
+        }
+    }
 }
 
 impl Text {
@@ -481,7 +553,19 @@ impl Text {
         Self {
             title: "Help".to_string(),
             kind: TextKind::Help,
+            filepath: Arc::from(Path::new("")),
             length: content.len(),
+            content,
+        }
+    }
+
+    fn plugin(text: String, name: &str, path: &Path) -> Self {
+        let content: Vec<String> = text.lines().map(|line| line.to_owned()).collect();
+        Self {
+            title: name.to_string(),
+            kind: TextKind::Plugin,
+            length: content.len(),
+            filepath: Arc::from(path),
             content,
         }
     }
@@ -491,6 +575,7 @@ impl Text {
             title: "Logs".to_string(),
             kind: TextKind::Log,
             length: content.len(),
+            filepath: Arc::from(Path::new(ACTION_LOG_PATH)),
             content,
         }
     }
@@ -507,6 +592,7 @@ impl Text {
             title: "Epub".to_string(),
             kind: TextKind::Epub,
             length: content.len(),
+            filepath: Arc::from(path),
             content,
         })
     }
@@ -516,6 +602,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::TEXTFILE,
+            filepath: Arc::from(path),
             length: content.len(),
             content,
         })
@@ -526,6 +613,7 @@ impl Text {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Elf,
             length: elf.len(),
+            filepath: Arc::from(path),
             content: elf.lines().map(|line| line.to_owned()).collect(),
         })
     }
@@ -539,6 +627,7 @@ impl Text {
             title: command.to_owned(),
             kind,
             length: content.len(),
+            filepath: Arc::from(Path::new("")),
             content,
         })
     }
@@ -548,6 +637,18 @@ impl Text {
             TextKind::Mediacontent,
             MEDIAINFO,
             &[path_to_string(&path).as_str()],
+        )
+    }
+
+    fn pdf_text(path: &Path) -> Result<Self> {
+        Self::from_command_output(TextKind::Pdf, PDFTOTEXT, &[path_to_string(&path).as_str()])
+    }
+
+    fn office_text(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::Office,
+            LIBREOFFICE,
+            &["--cat", path_to_string(&path).as_str()],
         )
     }
 
@@ -566,6 +667,7 @@ impl Text {
         Ok(Self {
             title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::Archive,
+            filepath: Arc::from(path),
             length: content.len(),
             content,
         })
@@ -641,6 +743,7 @@ impl Text {
             title,
             kind: TextKind::CommandStdout,
             content,
+            filepath: Arc::from(Path::new("")),
             length,
         }
     }
@@ -648,15 +751,29 @@ impl Text {
     fn len(&self) -> usize {
         self.length
     }
+
+    fn filepath(&self) -> Arc<Path> {
+        self.filepath.clone()
+    }
 }
 
 /// Holds a preview of a code text file whose language is supported by `Syntect`.
 /// The file is colored propery and line numbers are shown.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct HLContent {
-    path: String,
+    path: Arc<Path>,
     content: Vec<Vec<SyntaxedString>>,
     length: usize,
+}
+
+impl Default for HLContent {
+    fn default() -> Self {
+        Self {
+            path: Arc::from(Path::new("")),
+            content: vec![],
+            length: 0,
+        }
+    }
 }
 
 impl HLContent {
@@ -669,16 +786,11 @@ impl HLContent {
     /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
-        Self::build(
-            path.to_string_lossy().to_string(),
-            raw_content,
-            syntax_set,
-            syntax_ref,
-        )
+        Self::build(path, raw_content, syntax_set, syntax_ref)
     }
 
     fn from_str(
-        name: String,
+        name: &Path,
         text: &str,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
@@ -692,14 +804,14 @@ impl HLContent {
     }
 
     fn build(
-        path: String,
+        path: &Path,
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Self> {
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
-            path,
+            path: path.into(),
             length: highlighted_content.len(),
             content: highlighted_content,
         })
@@ -709,8 +821,8 @@ impl HLContent {
         self.length
     }
 
-    fn filepath(&self) -> &str {
-        &self.path
+    fn filepath(&self) -> Arc<Path> {
+        self.path.clone()
     }
 
     fn parse_raw_content(
@@ -783,11 +895,21 @@ impl SyntaxedString {
 /// It doesn't try to respect endianness.
 /// The lines are formatted to display 16 bytes.
 /// The number of lines is truncated to $2^20 = 1048576$.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct BinaryContent {
-    pub path: PathBuf,
+    pub path: Arc<Path>,
     length: u64,
     content: Vec<Line>,
+}
+
+impl Default for BinaryContent {
+    fn default() -> Self {
+        Self {
+            path: Arc::from(Path::new("")),
+            length: 0,
+            content: vec![],
+        }
+    }
 }
 
 impl BinaryContent {
@@ -802,7 +924,7 @@ impl BinaryContent {
         let content = Self::read_content(path)?;
 
         Ok(Self {
-            path: path.to_path_buf(),
+            path: path.into(),
             length,
             content,
         })
@@ -835,6 +957,10 @@ impl BinaryContent {
 
     pub fn is_empty(&self) -> bool {
         self.length == 0
+    }
+
+    pub fn filepath(&self) -> Arc<Path> {
+        self.path.clone()
     }
 
     pub fn number_width_hex(&self) -> usize {

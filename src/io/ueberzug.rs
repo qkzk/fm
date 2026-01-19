@@ -38,10 +38,12 @@ use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result};
 use ratatui::layout::Rect;
+use serde::Serialize;
+use serde_json::Result as ResultSerdeJson;
 
 use crate::common::UEBERZUG;
 use crate::io::ImageDisplayer;
-use crate::modes::DisplayedImage;
+use crate::modes::{DisplayedImage, Quote};
 
 /// Check if user has X11 display capabilities.
 /// Call it before trying to spawn ueberzug.
@@ -91,14 +93,15 @@ impl Default for Ueberzug {
 impl ImageDisplayer for Ueberzug {
     /// Draws the Image using ueberzug
     fn draw(&mut self, image: &DisplayedImage, rect: Rect) -> Result<()> {
-        let path = image.selected_path();
+        let path = image.selected_path().quote()?;
+
         if self.is_the_same_image(&path) {
             Ok(())
         } else {
             self.clear(image)?;
             self.is_displaying = true;
             self.last_displayed = Some(path.to_string());
-            self.run(&UeConf::build_json(image, rect))
+            self.run(&UeConf::add_json(image, rect)?)
         }
     }
 
@@ -125,8 +128,7 @@ impl Ueberzug {
     fn clear_internal(&mut self) -> Result<()> {
         self.is_displaying = false;
         self.last_displayed = None;
-        let cmd = UeConf::remove("fm_tui").to_json();
-        self.run(&cmd)
+        self.run(&UeConf::remove_json("fm_tui")?)
     }
     /// true iff the same image was already displayed
     fn is_the_same_image(&mut self, new: &str) -> bool {
@@ -152,13 +154,21 @@ impl Ueberzug {
             .as_mut()
             .context("stdin shouldn't be None")?
             .write_all(cmd.as_bytes())?;
+        self.driver
+            .stdin
+            .as_mut()
+            .context("stdin shouldn't be None")?
+            .write_all(b"\n")?;
         Ok(())
     }
 }
 
 /// Action enum for the json value
+#[derive(Serialize)]
 pub enum Actions {
+    #[serde(rename(serialize = "add"))]
     Add,
+    #[serde(rename(serialize = "remove"))]
     Remove,
 }
 
@@ -171,13 +181,19 @@ impl fmt::Display for Actions {
     }
 }
 /// Scalers that can be applied to the image and are supported by ueberzug
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize)]
 pub enum Scalers {
+    #[serde(rename(serialize = "crop"))]
     Crop,
+    #[serde(rename(serialize = "distort"))]
     Distort,
+    #[serde(rename(serialize = "fit_contain"))]
     FitContain,
+    #[serde(rename(serialize = "contain"))]
     Contain,
+    #[serde(rename(serialize = "forced_cover"))]
     ForcedCover,
+    #[serde(rename(serialize = "cover"))]
     Cover,
 }
 
@@ -221,18 +237,26 @@ impl fmt::Display for Scalers {
 ///             ..Default::default()
 ///             };
 ///```
+#[derive(Serialize)]
 pub struct UeConf<'a> {
     pub action: Actions,
+    pub path: &'a str,
     pub identifier: &'a str,
     pub x: u16,
     pub y: u16,
-    pub path: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scaler: Option<Scalers>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub draw: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub synchronously_draw: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scaling_position_x: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scaling_position_y: Option<f32>,
 }
 
@@ -255,64 +279,24 @@ impl<'a> Default for UeConf<'a> {
     }
 }
 
-macro_rules! if_not_none {
-    ($st:expr,$name:expr,$val:expr) => {
-        match $val {
-            Some(z) => $st + &format!(",\"{}\":\"{}\"", $name, z),
-            None => $st,
-        }
-    };
-}
-
 impl<'a> UeConf<'a> {
-    fn remove(identifier: &'a str) -> Self {
-        Self {
+    fn remove_json(identifier: &'a str) -> ResultSerdeJson<String> {
+        let config = Self {
             action: Actions::Remove,
             identifier,
             ..Default::default()
-        }
+        };
+        serde_json::to_string(&config)
     }
 
-    fn to_json(&self) -> String {
-        if self.identifier.is_empty() {
-            panic!("Incomplete Information : Itentifier Not Found");
-        }
-        match self.action {
-            Actions::Add => {
-                if self.path.is_empty() {
-                    panic!("Incomplete Information : Path empty");
-                }
-                let mut jsn = String::from(r#"{"action":"add","#);
-                jsn = jsn
-                    + &format!(
-                        "\"path\":\"{}\",\"identifier\":\"{}\",\"x\":{},\"y\":{}",
-                        self.path, self.identifier, self.x, self.y
-                    );
-                jsn = if_not_none!(jsn, "width", self.width);
-                jsn = if_not_none!(jsn, "height", self.height);
-                jsn = if_not_none!(jsn, "scaler", self.scaler);
-                jsn = if_not_none!(jsn, "draw", self.draw);
-                jsn = if_not_none!(jsn, "sync", self.synchronously_draw);
-                jsn = if_not_none!(jsn, "scaling_position_x", self.scaling_position_x);
-                jsn = if_not_none!(jsn, "scaling_position_y", self.scaling_position_y);
-                jsn += "}\n";
-                jsn
-            }
-            Actions::Remove => format!(
-                "{{\"action\":\"remove\",\"identifier\":\"{}\"}}\n",
-                self.identifier
-            ),
-        }
-    }
-
-    fn build_json(image: &DisplayedImage, rect: Rect) -> String {
+    fn add_json(image: &DisplayedImage, rect: Rect) -> ResultSerdeJson<String> {
         let path = &image.selected_path();
         let x = rect.x;
         let y = rect.y.saturating_sub(1);
         let width = Some(rect.width);
         let height = Some(rect.height.saturating_sub(1));
         let scaler = Some(Scalers::FitContain);
-        let config = &UeConf {
+        let config = UeConf {
             identifier: "fm_tui",
             path,
             x,
@@ -322,7 +306,8 @@ impl<'a> UeConf<'a> {
             scaler,
             ..Default::default()
         };
-        config.to_json()
+
+        serde_json::to_string(&config)
     }
 }
 
@@ -339,26 +324,5 @@ mod tests {
         let scaler_2 = Scalers::FitContain;
         assert_eq!(scaler_1.to_string(), "contain");
         assert_eq!(scaler_2.to_string(), "fit_contain");
-    }
-    #[test]
-    fn json_conversion() {
-        let conf = UeConf {
-            identifier: "a",
-            path: "a",
-            ..Default::default()
-        };
-        let rem_conf = UeConf {
-            action: Actions::Remove,
-            identifier: "a",
-            ..Default::default()
-        };
-        assert_eq!(
-            conf.to_json(),
-            "{\"action\":\"add\",\"path\":\"a\",\"identifier\":\"a\",\"x\":0,\"y\":0}\n"
-        );
-        assert_eq!(
-            rem_conf.to_json(),
-            "{\"action\":\"remove\",\"identifier\":\"a\"}\n"
-        );
     }
 }

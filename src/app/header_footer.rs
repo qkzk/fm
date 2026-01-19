@@ -1,4 +1,6 @@
 mod inner {
+    use std::{path::Path, sync::Arc};
+
     use anyhow::{Context, Result};
     use ratatui::{
         layout::{Alignment, Rect},
@@ -130,7 +132,7 @@ mod inner {
         /// Action for each associated file.
         fn action(&self, col: u16, is_right: bool) -> &ActionMap {
             let offset = self.offset(is_right);
-            let col = col - offset;
+            let col = col.saturating_sub(offset);
             for clickable in self.left().iter().chain(self.right().iter()) {
                 if clickable.left <= col && col < clickable.right {
                     return &clickable.action;
@@ -178,7 +180,7 @@ mod inner {
     impl Header {
         /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size().0;
+            let full_width = status.term_width();
             let canvas_width = status.canvas_width()?;
             let left = Self::make_left(tab, canvas_width)?;
             let right = Self::make_right(tab, canvas_width)?;
@@ -326,7 +328,7 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let full_width = status.internal_settings.term_size().0;
+            let full_width = status.term_width();
             let canvas_width = status.canvas_width()?;
             let left = Self::make_elems(status, tab, canvas_width)?;
             Ok(Self { left, full_width })
@@ -534,7 +536,7 @@ mod inner {
             ]
         }
 
-        fn pick_previewed_fileinfo(status: &Status) -> String {
+        fn pick_previewed_fileinfo(status: &Status) -> Arc<Path> {
             if status.session.dual() && status.session.preview() {
                 status.tabs[1].preview.filepath()
             } else {
@@ -551,7 +553,7 @@ mod inner {
                 (
                     format!(
                         " {filepath} ",
-                        filepath = Self::pick_previewed_fileinfo(status)
+                        filepath = Self::pick_previewed_fileinfo(status).display()
                     ),
                     Align::Left,
                 ),

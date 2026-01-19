@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use anyhow::{anyhow, Context, Result};
 use opendal::{services, Entry, EntryMode, Operator};
 use serde::{Deserialize, Serialize};
-use serde_yml::{from_str, to_string as to_yml_string};
+use serde_yaml_ng::{from_str, to_string as to_yml_string};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
@@ -252,7 +252,7 @@ impl OpendalContainer {
     }
 
     fn selected_filename(&self) -> Option<&str> {
-        self.selected()?.path().split('/').last()
+        self.selected()?.path().split('/').next_back()
     }
 
     fn create_downloaded_path(&self, dest: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -405,11 +405,10 @@ impl OpendalContainer {
     }
 }
 
-impl_selectable!(OpendalContainer);
 impl_content!(OpendalContainer, Entry);
 
 impl CowStr for Entry {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         format!("{mode} {path}", mode = self.mode_fmt(), path = self.path()).into()
     }
 }

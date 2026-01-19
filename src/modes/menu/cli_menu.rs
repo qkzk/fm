@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use anyhow::Context;
 use anyhow::Result;
-use serde_yml::from_reader;
-use serde_yml::Mapping;
+use serde_yaml_ng::from_reader;
+use serde_yaml_ng::Mapping;
 
 use crate::app::Status;
 use crate::common::CLI_PATH;
@@ -162,7 +162,7 @@ impl TerminalApplications<CliCommand, (String, String)> for CliApplications {
 }
 
 impl CowStr for CliCommand {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         let desc_size = 20_usize.saturating_sub(self.desc.len());
         format!(
             "{desc}{space:<desc_size$}{exe}",
@@ -174,6 +174,5 @@ impl CowStr for CliCommand {
     }
 }
 
-impl_selectable!(CliApplications);
 impl_content!(CliApplications, CliCommand);
 impl_draw_menu_with_char!(CliApplications, CliCommand);

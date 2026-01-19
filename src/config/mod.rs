@@ -10,6 +10,7 @@
 mod cloud_config;
 mod colors;
 mod configuration;
+mod default_config;
 mod gradient;
 mod keybindings;
 mod oncelock_static;
@@ -17,11 +18,14 @@ mod oncelock_static;
 pub use cloud_config::cloud_config;
 pub use colors::{extension_color, str_to_ratatui, ColorG, NormalFileColorer, MAX_GRADIENT_NORMAL};
 pub use configuration::{
-    load_config, read_normal_file_colorer, Config, FileStyle, MenuStyle, SyntectTheme,
+    load_config, read_normal_file_colorer, Config, FileStyle, Imagers, MenuStyle, PreferedImager,
+    SyntectTheme,
 };
+pub use default_config::*;
 pub use gradient::Gradient;
 pub use keybindings::{from_keyname, Bindings};
 pub use oncelock_static::{
-    get_syntect_theme, set_configurable_static, set_icon_icon_with_metadata, with_icon,
-    with_icon_metadata, ARRAY_GRADIENT, COLORER, FILE_STYLES, MATCHER, MENU_STYLES, START_FOLDER,
+    get_prefered_imager, get_previewer_plugins, get_syntect_theme, set_configurable_static,
+    set_icon_icon_with_metadata, set_previewer_plugins, with_icon, with_icon_metadata,
+    ARRAY_GRADIENT, COLORER, FILE_STYLES, IS_LOGGING, MATCHER, MENU_STYLES, START_FOLDER,
 };

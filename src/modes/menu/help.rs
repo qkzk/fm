@@ -11,7 +11,7 @@ const CUSTOM_HELP: &str = "
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory,
+%d: the full path of the current directory,
 %t: execute the command in the same window,
 %c: the current clipboard as a string.
 ";
@@ -134,6 +134,7 @@ Different modes for the bottom window
         more_actions = action_descriptions!(Action),
         flagged_actions = action_descriptions!(
             ToggleFlag,
+            ToggleFlagChildren,
             FlagAll,
             ClearFlags,
             ReverseFlags,
@@ -148,7 +149,14 @@ Different modes for the bottom window
             ToggleVisual,
         ),
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
-        tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
+        tree_actions = action_descriptions!(
+            Tree,
+            TreeFold,
+            TreeFoldAll,
+            TreeUnFoldAll,
+            TreeDepthIncr,
+            TreeDepthDecr
+        ),
         display_modes = action_descriptions!(ResetMode, Tree, Preview),
         menu_modes = action_descriptions!(
             Chmod,

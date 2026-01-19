@@ -60,7 +60,11 @@ impl InputHistory {
             .iter()
             .filter(|elem| elem.kind == kind)
             .map(|elem| elem.to_owned())
-            .collect()
+            .collect();
+        crate::log_info!(
+            "input history filtered for {menu_mode} has {len} elts",
+            len = self.filtered.len()
+        );
     }
 
     pub fn prev(&mut self) {
@@ -126,6 +130,17 @@ impl InputHistory {
                 | Menu::InputSimple(InputSimple::CloudNewdir)
                 | Menu::NeedConfirmation(_)
         )
+    }
+
+    pub fn filtered_as_list(&self) -> Vec<String> {
+        self.filtered
+            .iter()
+            .map(|elt| elt.content.clone())
+            .collect()
+    }
+
+    pub fn filtered_is_empty(&self) -> bool {
+        self.filtered.is_empty()
     }
 }
 

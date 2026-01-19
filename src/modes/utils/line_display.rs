@@ -1,4 +1,7 @@
+use ratatui::layout::Rect;
+
 use crate::app::Status;
+use crate::io::MenuFirstLine;
 use crate::modes::{
     InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation, PasswordKind,
     PasswordUsage,
@@ -8,29 +11,29 @@ use crate::modes::{
 /// Most of the time it's a few lines describing the menu actions.
 pub trait LineDisplay {
     /// Returns a displayable representation of the object as a vector of `String`s
-    fn line_display(&self, status: &Status) -> Vec<String>;
+    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String>;
 }
 
 impl LineDisplay for Menu {
-    fn line_display(&self, status: &Status) -> Vec<String> {
+    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String> {
         match self {
-            Self::Navigate(mode) => mode.line_display(status),
-            Self::InputSimple(mode) => mode.line_display(status),
-            Self::InputCompleted(mode) => mode.line_display(status),
-            Self::NeedConfirmation(mode) => mode.line_display(status),
+            Self::Navigate(mode) => mode.line_display(status, rect),
+            Self::InputSimple(mode) => mode.line_display(status, rect),
+            Self::InputCompleted(mode) => mode.line_display(status, rect),
+            Self::NeedConfirmation(mode) => mode.line_display(status, rect),
             Self::Nothing => vec![],
         }
     }
 }
 
 impl LineDisplay for NeedConfirmation {
-    fn line_display(&self, _status: &Status) -> Vec<String> {
-        vec![format!("{self}"), " (y/n)".to_owned()]
+    fn line_display(&self, _status: &Status, _: &Rect) -> Vec<String> {
+        vec![self.to_string(), " (y/n)".to_owned()]
     }
 }
 
 impl LineDisplay for Navigate {
-    fn line_display(&self, _status: &Status) -> Vec<String> {
+    fn line_display(&self, _status: &Status, _: &Rect) -> Vec<String> {
         match self {
             Self::Marks(MarkAction::Jump) => {
                 vec!["Jump to...".to_owned()]
@@ -46,7 +49,7 @@ impl LineDisplay for Navigate {
 }
 
 impl LineDisplay for InputCompleted {
-    fn line_display(&self, status: &Status) -> Vec<String> {
+    fn line_display(&self, status: &Status, _: &Rect) -> Vec<String> {
         let tab = status.current_tab();
         let mut completion_strings = vec![tab.menu_mode.to_string(), status.menu.input.string()];
         if let Some(completion) = status
@@ -66,7 +69,7 @@ impl LineDisplay for InputCompleted {
 }
 
 impl LineDisplay for InputSimple {
-    fn line_display(&self, status: &Status) -> Vec<String> {
+    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String> {
         match self {
             Self::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) => {
                 vec![
@@ -78,10 +81,10 @@ impl LineDisplay for InputSimple {
                 vec![PasswordKind::SUDO.to_string(), status.menu.input.password()]
             }
             _ => {
-                vec![
-                    Menu::InputSimple(*self).to_string(),
-                    status.menu.input.string(),
-                ]
+                let presentation = self.to_string();
+                let used_space = presentation.len() + MenuFirstLine::LEFT_MARGIN as usize + 1;
+                let avail = (rect.width as usize).saturating_sub(used_space);
+                vec![presentation, status.menu.input.scrolled_string(avail)]
             }
         }
     }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::impl_index_to_index;
@@ -375,17 +375,17 @@ impl<'a> TreeLinesBuilder<'a> {
     /// Create a displayable content from the tree.
     /// Returns 2 informations :
     /// - the index of the selected node into this content.
-    ///      It's usefull to know where the user clicked
+    ///   It's usefull to know where the user clicked
     /// - a vector of `TreeLineMaker` which holds every information
-    ///     needed to display the tree.
-    ///     We try to keep as much reference as possible and generate
-    ///     the information lazyly, avoiding as much useless calcuations
-    ///     as possible.
-    ///     The metadata information (permissions, modified time etc.) must be
-    ///     calculated immediatly, therefore for every node, since it requires
-    ///     an access to the user list.
-    ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
-    ///     Name format is calculated on the fly.
+    ///   needed to display the tree.
+    ///   We try to keep as much reference as possible and generate
+    ///   the information lazyly, avoiding as much useless calcuations
+    ///   as possible.
+    ///   The metadata information (permissions, modified time etc.) must be
+    ///   calculated immediatly, therefore for every node, since it requires
+    ///   an access to the user list.
+    ///   The prefix (straight lines displaying targets) must also be calcuated immediatly.
+    ///   Name format is calculated on the fly.
     fn build(self) -> TreeLines {
         let mut stack = vec![("".to_owned(), self.root_path.clone())];
         let mut lines = vec![];
@@ -575,22 +575,29 @@ impl Tree {
         self.selected.borrow()
     }
 
-    pub fn selected_node_or_parent(&self) -> Result<&Node> {
-        if let Some(node) = self.selected_node() {
-            if node.path().exists() {
-                return Ok(node);
+    /// Returns an _existing_ path which is either the selected path or its
+    /// first existing parent.
+    ///
+    /// # Errors
+    /// Will fail if the selected node doesn't exists or has no parent.
+    /// It should never be the case since we can't rename or delete the root `/`.
+    pub fn selected_path_or_parent(&self) -> Result<PathBuf> {
+        if self.selected.exists() {
+            return Ok(self.selected.to_path_buf());
+        }
+        let absolute_root_depth = self.root_path.components().count();
+        let mut current_depth = self.selected.components().count();
+        let current = self.selected_path();
+        while current_depth >= absolute_root_depth {
+            let Some(current) = current.parent() else {
+                bail!("No parent, are we deleting root / ?");
+            };
+            if current.exists() {
+                return Ok(current.to_owned());
             }
-            while let Some(parent_path) = node.path().parent() {
-                if let Some(parent_node) = self.nodes.get(parent_path) {
-                    if parent_node.path().exists() {
-                        return Ok(parent_node);
-                    }
-                }
-            }
-        };
-        self.nodes
-            .get(&self.root_path)
-            .context("root path should have a node")
+            current_depth -= 1;
+        }
+        Ok(self.root_path().to_owned())
     }
 
     /// Selected node
@@ -809,6 +816,7 @@ impl Tree {
         }
         self.remake_displayable();
     }
+
     fn children_of_selected(&self) -> Option<&Vec<Arc<Path>>> {
         self.nodes.get(&self.selected)?.children.as_ref()
     }
@@ -896,7 +904,7 @@ impl Tree {
     pub fn lines_enum_skip_take(
         &self,
         window: &ContentWindow,
-    ) -> Take<Skip<Enumerate<Iter<TLine>>>> {
+    ) -> Take<Skip<Enumerate<Iter<'_, TLine>>>> {
         let lines = self.displayable().lines();
         let length = lines.len();
         lines
@@ -911,7 +919,7 @@ impl IndexToIndex<TLine> for Tree {
     /// Iterate over line from current index to bottom then from top to current index.
     ///
     /// Useful when going to next match in search results
-    fn index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+    fn index_to_index(&self) -> Chain<Skip<Iter<'_, TLine>>, Take<Iter<'_, TLine>>> {
         self.displayable().index_to_index()
     }
 }

@@ -884,7 +884,7 @@ impl Mountable {
 }
 
 impl CowStr for Mountable {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_string().into()
     }
 }
@@ -1182,7 +1182,7 @@ fn umount_remote_no_password(mountpoint: &str) -> Result<bool> {
     Ok(success)
 }
 
-/// True iff `lsblk` and `cryptsetup` are in path.
+/// True iff `lsblk` and `udisksctl` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_udisksctl_installed() -> bool {
     is_in_path(LSBLK) && is_in_path(UDISKSCTL)
@@ -1210,7 +1210,6 @@ fn truncate_string<S: AsRef<str>>(input: S, max_length: usize) -> String {
         input.as_ref().to_string()
     }
 }
-impl_selectable!(Mount);
 impl_content!(Mount, Mountable);
 
 impl DrawMenu<Mountable> for Mount {

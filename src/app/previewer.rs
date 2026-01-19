@@ -6,9 +6,46 @@ use anyhow::Result;
 
 use crate::modes::{Preview, PreviewBuilder};
 
-enum PreviewRequest {
-    Request((PathBuf, usize)),
+enum RequestKind {
+    PreviewRequest(PreviewRequest),
     Quit,
+}
+
+struct PreviewRequest {
+    path: PathBuf,
+    tab_index: usize,
+    line_nr: Option<usize>,
+}
+
+impl PreviewRequest {
+    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>) -> Self {
+        Self {
+            path,
+            tab_index,
+            line_nr,
+        }
+    }
+}
+
+/// Response from the preview builder with the request data it came from.
+/// The path and tab index are used to ensure we're attaching the correct preview for this tab,
+/// The line number, if any, is used to scroll the the line. Only fuzzy picker of line may output a line number.
+pub struct PreviewResponse {
+    pub path: PathBuf,
+    pub tab_index: usize,
+    pub line_nr: Option<usize>,
+    pub preview: Preview,
+}
+
+impl PreviewResponse {
+    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>, preview: Preview) -> Self {
+        Self {
+            path,
+            tab_index,
+            line_nr,
+            preview,
+        }
+    }
 }
 
 /// Non blocking preview builder.
@@ -21,7 +58,7 @@ enum PreviewRequest {
 ///
 /// ATM only the previews for the second pane are built here. It's useless if the user display previews in the current tab since navigation isn't possible.
 pub struct Previewer {
-    tx: mpsc::Sender<PreviewRequest>,
+    tx_request: mpsc::Sender<RequestKind>,
 }
 
 impl Previewer {
@@ -32,27 +69,33 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
-        let (tx, rx) = mpsc::channel::<PreviewRequest>();
+    pub fn new(tx_preview: mpsc::Sender<PreviewResponse>) -> Self {
+        let (tx_request, rx_request) = mpsc::channel::<RequestKind>();
         thread::spawn(move || {
-            while let Some(request) = rx.iter().next() {
+            while let Some(request) = rx_request.iter().next() {
                 match request {
-                    PreviewRequest::Request((path, index)) => {
+                    RequestKind::PreviewRequest(PreviewRequest {
+                        path,
+                        tab_index,
+                        line_nr,
+                    }) => {
                         if let Ok(preview) = PreviewBuilder::new(&path).build() {
-                            tx_preview.send((path, preview, index)).unwrap();
+                            tx_preview
+                                .send(PreviewResponse::new(path, tab_index, line_nr, preview))
+                                .unwrap();
                         };
                     }
-                    PreviewRequest::Quit => break,
+                    RequestKind::Quit => break,
                 }
             }
         });
-        Self { tx }
+        Self { tx_request }
     }
 
     /// Sends a "quit" message to the previewer loop. It will break the loop, exiting the previewer.
     pub fn quit(&self) {
         crate::log_info!("stopping previewer loop");
-        match self.tx.send(PreviewRequest::Quit) {
+        match self.tx_request.send(RequestKind::Quit) {
             Ok(()) => (),
             Err(e) => crate::log_info!("Previewer::quit error {e:?}"),
         };
@@ -61,8 +104,11 @@ impl Previewer {
     /// Sends an "ask preview" to the previewer loop. A preview will be built, which won't block the application.
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
-    pub fn build(&self, path: PathBuf, index: usize) -> Result<()> {
-        self.tx.send(PreviewRequest::Request((path, index)))?;
+    pub fn build(&self, path: PathBuf, index: usize, line_index: Option<usize>) -> Result<()> {
+        self.tx_request
+            .send(RequestKind::PreviewRequest(PreviewRequest::new(
+                path, index, line_index,
+            )))?;
         Ok(())
     }
 }

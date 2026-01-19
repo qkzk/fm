@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::string::ToString;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use serde_yml::Value;
+use serde_yaml_ng::Value;
 
 use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
@@ -65,6 +65,8 @@ pub fn from_keyname(keyname: &str) -> Option<KeyEvent> {
         "ctrl-down"                         => Some(KeyEvent::new(KeyCode::Down,      KeyModifiers::CONTROL)),
         "ctrl-left"                         => Some(KeyEvent::new(KeyCode::Left,      KeyModifiers::CONTROL)),
         "ctrl-right"                        => Some(KeyEvent::new(KeyCode::Right,     KeyModifiers::CONTROL)),
+
+        "ctrl-tab"                          => Some(KeyEvent::new(KeyCode::Tab,       KeyModifiers::CONTROL)),
 
         "ctrl-alt-space"                    => Some(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::CONTROL | KeyModifiers::ALT)),
         "ctrl-alt-a"                        => Some(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL | KeyModifiers::ALT)),
@@ -234,6 +236,7 @@ impl Bindings {
     pub fn new() -> Self {
         let binds = HashMap::from([
             (KeyEvent::new(KeyCode::Esc,          KeyModifiers::NONE), ActionMap::ResetMode),
+            (KeyEvent::new(KeyCode::Insert,       KeyModifiers::NONE), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Up,           KeyModifiers::NONE), ActionMap::MoveUp),
             (KeyEvent::new(KeyCode::Down,         KeyModifiers::NONE), ActionMap::MoveDown),
             (KeyEvent::new(KeyCode::Left,         KeyModifiers::NONE), ActionMap::MoveLeft),
@@ -259,6 +262,8 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('!'),    KeyModifiers::NONE), ActionMap::ShellCommand),
             (KeyEvent::new(KeyCode::Char('@'),    KeyModifiers::NONE), ActionMap::GoStart),
             (KeyEvent::new(KeyCode::Char(':'),    KeyModifiers::NONE), ActionMap::Action),
+            (KeyEvent::new(KeyCode::Char('%'),    KeyModifiers::NONE), ActionMap::TreeDepthIncr),
+            (KeyEvent::new(KeyCode::Char('§'),    KeyModifiers::NONE), ActionMap::TreeDepthDecr),
             (KeyEvent::new(KeyCode::Char('6'),    KeyModifiers::NONE), ActionMap::History),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::SHIFT), ActionMap::OpenConfig),
@@ -322,8 +327,12 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('x'),    KeyModifiers::ALT), ActionMap::TrashEmpty),
             (KeyEvent::new(KeyCode::Char('"'),    KeyModifiers::ALT), ActionMap::TempMarksNew),
             (KeyEvent::new(KeyCode::Char('\''),   KeyModifiers::ALT), ActionMap::MarksNew),
+            (KeyEvent::new(KeyCode::Char('-'),    KeyModifiers::ALT), ActionMap::History),
 
+            (KeyEvent::new(KeyCode::Tab,          KeyModifiers::ALT), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Backspace,    KeyModifiers::ALT), ActionMap::DeleteLeft),
+            (KeyEvent::new(KeyCode::Right,        KeyModifiers::ALT), ActionMap::NextWord),
+            (KeyEvent::new(KeyCode::Left,         KeyModifiers::ALT), ActionMap::PreviousWord),
 
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::ALT | KeyModifiers::SHIFT), ActionMap::CloudDrive),
 
@@ -332,12 +341,12 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::CONTROL), ActionMap::PageDown),
             (KeyEvent::new(KeyCode::Char('f'),    KeyModifiers::CONTROL), ActionMap::FuzzyFind),
             (KeyEvent::new(KeyCode::Char('g'),    KeyModifiers::CONTROL), ActionMap::Shortcut),
-            (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::CONTROL), ActionMap::FuzzyFindLine),
-            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::CONTROL), ActionMap::PageUp),
             (KeyEvent::new(KeyCode::Char('o'),    KeyModifiers::CONTROL), ActionMap::OpenAll),
             (KeyEvent::new(KeyCode::Char('p'),    KeyModifiers::CONTROL), ActionMap::CopyFilepath),
             (KeyEvent::new(KeyCode::Char('q'),    KeyModifiers::CONTROL), ActionMap::ResetMode),
             (KeyEvent::new(KeyCode::Char('r'),    KeyModifiers::CONTROL), ActionMap::RefreshView),
+            (KeyEvent::new(KeyCode::Char('s'),    KeyModifiers::CONTROL), ActionMap::FuzzyFindLine),
+            (KeyEvent::new(KeyCode::Char('u'),    KeyModifiers::CONTROL), ActionMap::PageUp),
             (KeyEvent::new(KeyCode::Char('z'),    KeyModifiers::CONTROL), ActionMap::TreeFoldAll),
 
             (KeyEvent::new(KeyCode::Right,        KeyModifiers::SHIFT), ActionMap::SyncLTR),
@@ -350,6 +359,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Right,        KeyModifiers::CONTROL), ActionMap::FocusGoRight),
             (KeyEvent::new(KeyCode::Left,         KeyModifiers::CONTROL), ActionMap::FocusGoLeft),
 
+            (KeyEvent::new(KeyCode::Char(' '),    KeyModifiers::CONTROL), ActionMap::ToggleFlagChildren),
             (KeyEvent::new(KeyCode::Char('h'),    KeyModifiers::CONTROL), ActionMap::FocusGoLeft),
             (KeyEvent::new(KeyCode::Char('j'),    KeyModifiers::CONTROL), ActionMap::FocusGoDown),
             (KeyEvent::new(KeyCode::Char('k'),    KeyModifiers::CONTROL), ActionMap::FocusGoUp),
@@ -470,6 +480,7 @@ impl ForHelp for KeyEvent {
             _ => "",
         };
         let scode = match *code {
+            KeyCode::Char(' ') => "<SPC>".to_string(),
             KeyCode::Char(c) => c.to_string(),
             KeyCode::F(u) => format!("f{u}"),
             KeyCode::Enter => "enter".to_string(),

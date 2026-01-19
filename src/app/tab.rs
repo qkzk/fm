@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_current_dir,
+    update_zoxide,
 };
 use crate::config::START_FOLDER;
 use crate::io::Args;
@@ -33,6 +34,8 @@ pub struct TabSettings {
     pub sort_kind: SortKind,
     /// should the last displayed image be erased ?
     pub should_clear_image: bool,
+    /// the max depth of the tree
+    pub tree_max_depth: usize,
 }
 
 impl TabSettings {
@@ -41,11 +44,13 @@ impl TabSettings {
         let show_hidden = args.all;
         let sort_kind = SortKind::default();
         let should_clear_image = false;
+        let tree_max_depth = 5;
         Self {
             show_hidden,
             filter,
             sort_kind,
             should_clear_image,
+            tree_max_depth,
         }
     }
 
@@ -136,7 +141,7 @@ impl Tab {
         let menu_mode = Menu::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
-        let history = History::default();
+        let history = History::new(path);
         let search = Search::empty();
         let index = directory.select_file(path);
         let tree = Tree::default();
@@ -181,21 +186,42 @@ impl Tab {
     }
 
     /// Current path of this tab in directory display mode.
-    pub fn current_path(&self) -> &path::Path {
+    pub fn current_directory_path(&self) -> &path::Path {
         self.directory.path.borrow()
+    }
+
+    /// Root path of current display.
+    /// In tree mode it's the path of the root,
+    /// In other display modes, it's the path of the current directory.
+    /// It's only used to ensure we don't delete the current root which is forbidden.
+    pub fn root_path(&self) -> &path::Path {
+        if self.display_mode.is_tree() {
+            self.tree.root_path()
+        } else {
+            self.current_directory_path()
+        }
     }
 
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
-            Display::Tree => {
-                FileInfo::new(self.tree.selected_node_or_parent()?.path(), &self.users)
+            Display::Tree => FileInfo::new(&self.tree.selected_path_or_parent()?, &self.users),
+            Display::Preview if !self.preview.is_empty() => {
+                FileInfo::new(&self.preview.filepath(), &self.users)
             }
             _ => Ok(self
                 .directory
                 .selected()
                 .context("current_file: no selected file")?
                 .to_owned()),
+        }
+    }
+
+    pub fn selected_path(&self) -> Option<Arc<std::path::Path>> {
+        match self.display_mode {
+            Display::Tree => Some(Arc::from(self.tree.selected_path())),
+            Display::Preview if !self.preview.is_empty() => Some(self.preview.filepath()),
+            _ => Some(self.directory.selected()?.path.clone()),
         }
     }
 
@@ -211,7 +237,9 @@ impl Tab {
 
     /// Path of the currently selected file.
     pub fn current_file_string(&self) -> Result<String> {
-        Ok(path_to_string(&self.current_file()?.path))
+        Ok(path_to_string(
+            &self.selected_path().context("No selected path")?,
+        ))
     }
 
     /// Returns true if the current mode requires 2 windows.
@@ -282,7 +310,7 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) {
+    fn make_tree(&mut self, sort_kind: Option<SortKind>) {
         let sort_kind = sort_kind.unwrap_or_default();
         self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
@@ -291,6 +319,7 @@ impl Tab {
             .with_hidden(self.settings.show_hidden)
             .with_filter_kind(&self.settings.filter)
             .with_sort_kind(sort_kind)
+            .with_max_depth(self.settings.tree_max_depth)
             .build();
     }
 
@@ -305,7 +334,7 @@ impl Tab {
 
     /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
-        let current_file = self.current_file()?;
+        let current_path = self.selected_path().context("No selected_path")?;
         if self.display_mode.is_tree() {
             {
                 self.tree = Tree::default();
@@ -317,7 +346,7 @@ impl Tab {
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
-        self.go_to_file(current_file.path);
+        self.go_to_file(current_path);
         Ok(())
     }
 
@@ -352,10 +381,6 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
-        log_info!(
-            "tab.reset_preview. prev = {prev}",
-            prev = self.preview.kind_display()
-        );
         if matches!(self.preview, Preview::Image(_)) {
             log_info!("Clear the image");
             self.settings.should_clear_image = true;
@@ -374,11 +399,7 @@ impl Tab {
     }
 
     fn clone_selected_path(&self) -> Result<Arc<path::Path>> {
-        Ok(self
-            .current_file()
-            .context("refresh: no selected file")?
-            .path
-            .clone())
+        Ok(self.selected_path().context("No selected path")?.clone())
     }
 
     /// Select the given file from its path.
@@ -466,7 +487,7 @@ impl Tab {
     }
 
     fn sort_directory(&mut self, c: char) -> Result<()> {
-        let path = self.current_file()?.path;
+        let path = self.selected_path().context("No selected path")?;
         self.settings.update_sort_from_char(c);
         self.directory.sort(&self.settings.sort_kind);
         self.normal_go_top();
@@ -488,11 +509,18 @@ impl Tab {
         };
     }
 
-    pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
-        crate::log_info!("cd_to_file: {path}", path = path.display());
-        let parent = match path.parent() {
+    pub fn cd_to_file<P>(&mut self, path: P) -> Result<()>
+    where
+        P: AsRef<path::Path>,
+    {
+        log_info!("cd_to_file: #{path}#", path = path.as_ref().display());
+        if !path.as_ref().exists() {
+            log_info!("{path} doesn't exist.", path = path.as_ref().display());
+            return Ok(());
+        }
+        let parent = match path.as_ref().parent() {
             Some(parent) => parent,
-            None => std::path::Path::new("/"),
+            None => path::Path::new("/"),
         };
         self.cd(parent)?;
         self.go_to_file(path);
@@ -525,7 +553,8 @@ impl Tab {
                 return Ok(());
             }
         }
-        self.history.push(&self.current_file()?.path);
+        self.history
+            .push(&self.selected_path().context("No selected_path")?);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if self.display_mode.is_tree() {
@@ -534,6 +563,7 @@ impl Tab {
         } else {
             self.window.reset(self.directory.content.len());
         }
+        update_zoxide(path)?;
         Ok(())
     }
 
@@ -557,7 +587,7 @@ impl Tab {
     where
         P: AsRef<path::Path>,
     {
-        if self.display_mode.is_preview() {
+        if self.display_mode.is_tree() {
             self.tree.go(To::Path(file.as_ref()));
         } else {
             let index = self.directory.select_file(file.as_ref());
@@ -842,7 +872,7 @@ impl Tab {
         }
     }
 
-    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<FileInfo>>>> {
+    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<'_, FileInfo>>>> {
         let len = self.directory.content.len();
         self.directory
             .enumerate()
@@ -852,13 +882,13 @@ impl Tab {
 
     pub fn cd_origin_path(&mut self) -> Result<()> {
         if let Some(op) = &self.origin_path {
-            self.cd_to_file(&op.to_owned())?;
+            self.cd_to_file(op.clone())?;
         }
         Ok(())
     }
 
     pub fn save_origin_path(&mut self) {
-        self.origin_path = Some(self.current_path().to_owned());
+        self.origin_path = Some(self.current_directory_path().to_owned());
     }
 
     pub fn toggle_visual(&mut self) {

@@ -1,10 +1,14 @@
 use std::fmt;
 
+use anyhow::Result;
+
+use crate::app::Status;
 use crate::common::{
     UtfWidth, CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES,
     NVIM_ADDRESS_LINES, PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES,
     RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
+use crate::event::EventAction;
 use crate::modes::InputCompleted;
 use crate::modes::MountAction;
 use crate::modes::{PasswordKind, PasswordUsage};
@@ -55,13 +59,16 @@ impl NeedConfirmation {
             Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
     }
+
+    pub fn use_flagged_files(&self) -> bool {
+        matches!(self, Self::Copy | Self::Move | Self::Delete)
+    }
 }
 
 impl CursorOffset for NeedConfirmation {
     /// Offset before the cursor.
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
-    #[must_use]
     fn cursor_offset(&self) -> u16 {
         self.to_string().utf_width_u16() + 9
     }
@@ -264,7 +271,6 @@ impl fmt::Display for Navigate {
 
 impl CursorOffset for Navigate {
     #[inline]
-    #[must_use]
     fn cursor_offset(&self) -> u16 {
         0
     }
@@ -366,8 +372,22 @@ impl Menu {
         matches!(self, Self::Navigate(_))
     }
 
+    /// True iff the menu requires an input aka InputSimple or InputCompleted.
     pub fn is_input(&self) -> bool {
         matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
+    }
+
+    pub fn is_complete(&self) -> bool {
+        matches!(self, Self::InputCompleted(_))
+    }
+
+    pub fn is_picker(&self) -> bool {
+        matches!(self, Self::Navigate(Navigate::Picker))
+    }
+
+    /// Nice name for the picker menu.
+    pub fn name_for_picker(&self) -> Option<String> {
+        self.to_string().split(':').next().map(|s| s.to_string())
     }
 }
 
@@ -375,7 +395,6 @@ impl CursorOffset for Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
     #[inline]
-    #[must_use]
     fn cursor_offset(&self) -> u16 {
         match self {
             Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
@@ -419,10 +438,64 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
+pub trait ReEnterMenu {
+    fn reenter(&self, status: &mut Status) -> Result<()>;
+}
+
+impl ReEnterMenu for Menu {
+    #[rustfmt::skip]
+    fn reenter(&self, status: &mut Status) -> Result<()> {
+        match self {
+            Self::InputCompleted(InputCompleted::Cd)                => EventAction::cd(status),
+            Self::InputCompleted(InputCompleted::Search)            => EventAction::search(status),
+            Self::InputCompleted(InputCompleted::Exec)              => EventAction::exec(status),
+            Self::InputCompleted(InputCompleted::Action)            => EventAction::action(status),
+            Self::InputSimple(InputSimple::Rename)                  => EventAction::rename(status),
+            Self::InputSimple(InputSimple::Chmod)                   => EventAction::chmod(status),
+            Self::InputSimple(InputSimple::Newfile)                 => EventAction::new_file(status),
+            Self::InputSimple(InputSimple::Newdir)                  => EventAction::new_dir(status),
+            Self::InputSimple(InputSimple::RegexMatch)              => EventAction::regex_match(status),
+            Self::InputSimple(InputSimple::Sort)                    => EventAction::sort(status),
+            Self::InputSimple(InputSimple::Filter)                  => EventAction::filter(status),
+            Self::InputSimple(InputSimple::SetNvimAddr)             => EventAction::set_nvim_server(status),
+            Self::InputSimple(InputSimple::Password(_mount_action, _usage)) => unreachable!("Can't pick a password, those aren't saved."),
+            Self::InputSimple(InputSimple::ShellCommand)            => EventAction::shell_command(status),
+            Self::InputSimple(InputSimple::Remote)                  => EventAction::remote_mount(status),
+            Self::InputSimple(InputSimple::CloudNewdir)             => EventAction::cloud_enter_newdir_mode(status),
+            Self::Navigate(Navigate::History)                       => EventAction::history(status),
+            Self::Navigate(Navigate::Shortcut)                      => EventAction::shortcut(status),
+            Self::Navigate(Navigate::Trash)                         => EventAction::trash_open(status),
+            Self::Navigate(Navigate::Marks(markaction)) => match markaction {
+                MarkAction::Jump => EventAction::marks_jump(status),
+                MarkAction::New => EventAction::marks_new(status),
+            },
+            Self::Navigate(Navigate::TempMarks(markaction)) => match markaction {
+                MarkAction::Jump => EventAction::temp_marks_jump(status),
+                MarkAction::New => EventAction::temp_marks_new(status),
+            },
+            Self::Navigate(Navigate::Mount)                         => EventAction::mount(status),
+            Self::Navigate(Navigate::Picker)                        => unreachable!("Can't reenter picker from itself"),
+            Self::Navigate(Navigate::Compress)                      => EventAction::compress(status),
+            Self::Navigate(Navigate::TuiApplication)                => EventAction::tui_menu(status),
+            Self::Navigate(Navigate::CliApplication)                => EventAction::cli_menu(status),
+            Self::Navigate(Navigate::Context)                       => EventAction::context(status),
+            Self::Navigate(Navigate::Cloud)                         => EventAction::cloud_drive(status),
+            Self::Navigate(Navigate::Flagged)                       => EventAction::display_flagged(status),
+            Self::NeedConfirmation(NeedConfirmation::Copy)          => EventAction::copy_paste(status),
+            Self::NeedConfirmation(NeedConfirmation::Delete)        => EventAction::delete_file(status),
+            Self::NeedConfirmation(NeedConfirmation::DeleteCloud)   => EventAction::cloud_enter_delete_mode(status),
+            Self::NeedConfirmation(NeedConfirmation::Move)          => EventAction::cut_paste(status),
+            Self::NeedConfirmation(NeedConfirmation::BulkAction)    => EventAction::bulk(status),
+            Self::NeedConfirmation(NeedConfirmation::EmptyTrash)    => EventAction::trash_empty(status),
+            Self::Nothing                                           => Ok(()),
+        }
+    }
+}
+
 /// What kind of content is displayed in the main window of this tab.
 /// Directory (all files of a directory), Tree (all files and children up to a certain depth),
 /// preview of a content (file, command output...) or fuzzy finder of file.
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Clone, Copy)]
 pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
@@ -450,5 +523,9 @@ impl Display {
 
     pub fn is_fuzzy(&self) -> bool {
         self.is(Self::Fuzzy)
+    }
+
+    pub fn is_directory(&self) -> bool {
+        self.is(Self::Directory)
     }
 }

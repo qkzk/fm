@@ -18,6 +18,10 @@ pub const SYNTECT_THEMES_PATH: &str = "~/.config/fm/syntect_themes/";
 pub const NORMAL_LOG_PATH: &str = "~/.config/fm/log/fm.log";
 /// Path to the action log file
 pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
+/// Path the temporary cloned repositories
+pub const REPOSITORIES_PATH: &str = "/tmp/fm/plugin/cloned_repositories";
+/// Path to the compiled libso plugins
+pub const PLUGIN_LIBSO_PATH: &str = "~/.local/share/fm/plugins";
 /// Path to the trash folder files
 pub const TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file
@@ -160,7 +164,7 @@ pub const SHELL_LINES: [&str; 13] = [
     "%f: the flagged files",
     "%e: the extension of the file",
     "%n: the filename only",
-    "%p: the full path of the current directory",
+    "%d: the full path of the current directory",
     "%t: execute the command in the same window",
     "%c: the current clipboard as a string",
 ];
@@ -250,8 +254,10 @@ pub const TRANSMISSION_SHOW: &str = "transmission-show";
 pub const ZOXIDE: &str = "zoxide";
 /// pdftoppm
 pub const PDFTOPPM: &str = "pdftoppm";
-/// pdinfo
+/// pdfinfo
 pub const PDFINFO: &str = "pdfinfo";
+/// pdftotext
+pub const PDFTOTEXT: &str = "pdftotext";
 /// readelf
 pub const READELF: &str = "readelf";
 /// default nerdfont icon used for directories.

@@ -8,7 +8,13 @@
 [docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.35
 [docrs]: https://docs.rs/fm-tui/0.1.35
 
+
+## CLI arguments 
+
+### fm help 
+
 ```
+$ fm --help
 FM : a file manager inspired by ranger and dired
 
 Config files   ~/.config/fm/
@@ -18,21 +24,69 @@ Documentation  https://github.com/qkzk/fm
 Usage: fm [OPTIONS]
 
 Options:
-  -p, --path <PATH>      Starting path. directory or file [default: .]
-  -s, --server <SERVER>  Nvim server [default: ]
-  -A, --all              Display all files (hidden)
-  -l, --log              Enable logging
-      --neovim           Started inside neovim terminal emulator
-      --keybinds         Print keybinds
-      --cloudconfig      Configure a google drive client
-      --clear-cache      Clear the video thumbnail cache
-  -h, --help             Print help
-  -V, --version          Print version
+  -p, --path <PATH>                    Starting path. directory or file [default: .]
+  -s, --server <SERVER>                Nvim server [default: ]
+  -A, --all                            Display all files (hidden)
+  -l, --log                            Enable logging
+      --neovim                         Started inside neovim terminal emulator
+      --input-socket <INPUT_SOCKET>    UNIX Socket file used to send messages to FM
+      --output-socket <OUTPUT_SOCKET>  UNIX Socket file used by fm to send messages
+  -h, --help                           Print help
+  -V, --version                        Print version
 ```
+
+### fmconfig help 
+
+```
+$ fmconfig --help
+Welcome to Fm configuration application.
+FM : a file manager inspired by ranger and dired
+
+Config files   ~/.config/fm/
+Documentation  https://github.com/qkzk/fm
+
+
+Usage: fmconfig [OPTIONS] [COMMAND]
+
+Commands:
+  plugin  Plugin management. fm plugin -h for more details
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --keybinds      Print keybinds
+      --cloudconfig   Configure a google drive client
+      --clear-cache   Clear the video thumbnail cache
+      --reset-config  Reset the config file
+  -h, --help          Print help
+  -V, --version       Print version
+```
+
+`fmconfig plugin --help` :
+
+```
+$ fmconfig plugin -h`
+Welcome to Fm configuration application.
+Plugin management. fm plugin -h for more details
+
+Usage: fmconfig plugin <COMMAND>
+
+Commands:
+  add      fmconfig plugin add <path_to_plugin.so>. Add a compiled plugin from its .so file
+  install  fmconfig plugin install <author/repo>. Install a plugin from github fmconfig plugin install <https://hostname/author/repo>. Install a plugin from `hostname` (gitlab, codeberg etc.)
+  remove   fmconfig plugin remove <name>. Remove a plugin by its name
+  list     fmconfig plugin list. List all installed plugins
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help
+```
+
+_fmconfig_ is still in early stages and may change a lot.
 
 ## Platform
 
-X11-Linux is the only supported platform. It may be usable on MacOS and Wayland but I can't be sure since I can't test them.
+X11-Linux is the only supported platform. It may be usable on MacOS or Wayland but I can't be sure since I can't test them.
+It should work over ssh or without a GUI on any linux platform.
 
 ## Video
 
@@ -87,7 +141,7 @@ Many ways to jump somewhere:
 
 ### File manipulation
 
-- Flag files with `space` (\*: flag all, v: reverse, u: unflag)
+- Flag files with `space` (`*`: flag all, `v`: reverse, `u`: unflag)
 - Copy / move / symlinks / delete / trash flagged files with c, p, s, x, X
 - Create files, directory, rename with n, d, r
 - Flag a bunch of file, change panel with TAB and move/copy them !
@@ -131,23 +185,74 @@ Most of this previewing is done externaly through shell commands. They require t
 
 Note: previewing a LARGE directory of videos may be really slow.
 
+### Plugin system for previews.
+
+You can install (with some help from `fmconfig`) previewer plugins. They should specify their extensions and return a Preview. The plugin itself is a .so file.
+
+fm ships with "bat_previewer" which relies on `bat` to generate highlighted previews. It must be installed by the user otherwise we use the default highlighted text previewer which is fine too. It's just a demo.
+
+### How to install a plugin ?
+
+3 ways.
+
+1. Edit your config and add this :
+
+  ```yaml 
+  # Plugins
+  # Plugins are external libs, written in rust. 
+  # ATM only previewers plugins are supported.
+  plugins:
+    # previewer plugins able the preview some extensions.
+    # give them a name (what ever you want) and the path to "libplugin_something.so".
+    # Under normal circonstances, the file should be in `crate_your_plugin/target/release/libcrate_your_plugin.so`
+    # If you only avec sources and nothing in target, try `cargo build --release` from the crate directory.
+    previewer:
+      'bat previewer': "/path/to/some/previewer/libbat_previewer.so"
+  ```
+
+2. Use `fmconfig plugin add <PATH>` where path leads to your libsomething.so file.
+
+  Your plugin must provide 3 functions descibed below:
+
+  - `name` which returns its name,
+  - `is_match` which takes a path and returns a boolean, set to true if your plugin can preview this file,
+  - `preview` which takes a path and returns a `Preview`.
+
+  See [bat_previewer](./plugins/bat_previewer/src/lib.rs) for more an example of a "simple" plugin.
+
+3. Install it directly from a git repository with :
+
+- `fmconfig plugin install qkzk/bat_previewer`
+- `fmconfig plugin install https://github.com/qkzk/bat_previewer`
+
+Replace the hostname, author and plugin name.
+
 ### Fuzzy finders
 
 - Ctrl-f : search in filenames and move there,
 - Ctrl-s : search for a line in file content and move there,
 - H : display a searchable help, search for a keybinding and execute the action.
 
-We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written in rust.
+We use [Nucleo](https://github.com/helix-editor/nucleo), a fuzzy matcher made for [Helix](https://helix-editor.com/) by the same author.
 
 ### Neovim filepicker
 
-When you open a file with i, it will send an event to Neovim and open it in a new buffer.
+1. From _outside_ of neovim. Window 1: neovim, Window 2: fm.
+  Open a file with `i` and it will open it in Neovim using its exposed RPC server.
 
-As long as Neovim is running, it should always work, even outside of neovim.
+  It's also possible to pass the RPC server address with `fm -s address`.
 
-The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
-environment variable set by neovim itself.
-Finally, it's also possible to pass the RPC server address with `fm -s address`.
+2. From _inside_ of neovim. Use the associated plugin [fm-picker.nvim](https://github.com/qkzk/fm-picker.nvim) which will use 2 sockets to help you file pick.
+
+### Incoming & outgoing sockets.
+
+You can specify an incoming socket to take control of fm and send it `GO <path>`, `KEY <key>` or `ACTION <action>` commands.
+
+You can specify an outgoing socket to implement a file picker yourself. Opening a file with <Enter> or deleting one will result in a message sent in the form of `OPEN <path>` or `DELETE <path>`.
+
+It's what is done in the fm-picker plugin.
+
+This API isn't stable yet and may change in a near future.
 
 ### cd on quit
 
@@ -179,15 +284,14 @@ end
 
 ### Archives
 
-- Decompress an archive by opening it (o, enter, right click)
+- Decompress an archive by opening it (o, enter, middle click)
 - Compress flagged files with C. Pick the desired algorithm from a menu.
 
 ### Custom binds
 
 You can bind any _unbound_ key to a shell command.
 
-- pipe & redirections (| > >> <) aren't supported !
-- the first word you type is the executable. Don't start your command with environment variables, it won't work.
+The command is executed in a new shell : `sh -c "<YOUR COMMAND>"`.
 
 Expansions :
 
@@ -247,7 +351,7 @@ Only developpers of fm should be concerned.
 
 ### More
 
-- Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
+- Copy a filename/filepath/file content to clipboard with Ctrl+n, Ctrl+p, Ctrl+a
 - Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
 - Drag and drop files (requires dragon-drop installed) with D
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
@@ -256,8 +360,9 @@ Only developpers of fm should be concerned.
 - Change permissions (chmod) with Alt+m or '+'. A nice menu will help you.
 - Mount a remote filesystem using sshfs with Alt-r.
 - Mount a MTP device with Alt-R.
+- Set temporary marks (erased on quit) with `Alt-"` (to save) and `"` to jump.
 
-Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
+Most of those features are inspired by ranger, dired and alternatives (Midnight commander, nnn, lf etc.).
 
 ## Default keybindings
 
@@ -376,7 +481,7 @@ Enter     :      Execute mode then NORMAL
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory,
+%d: the full path of the current directory,
 %t: execute the command in the same window,
 %c: the current clipboard as a string.
 Alt('u'):        /usr/bin/google-chrome-stable %s
@@ -393,7 +498,6 @@ You can configure :
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
 - **Custom actions**. You can bind any key to a shell command.
-  - don't use pipes or redirectons, they won't be parsed correctly
   - use an unset bind
   - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
   - See the [config](./config_files/fm/config.yaml) or an example.
@@ -431,6 +535,7 @@ Most of the openers and tui applications are configurable from config files. Som
 - [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
 - [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
 - [sshfs](https://github.com/libfuse/sshfs) to mount remote filesystem over SFTP.
+
 
 ## Contribution
 

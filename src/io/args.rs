@@ -20,19 +20,19 @@ pub struct Args {
     #[arg(short = 'l', long, default_value_t = false)]
     pub log: bool,
 
-    /// Started inside neovim terminal emulator
+    /// fm is started inside neovim terminal emulator
     #[arg(long, default_value_t = false)]
     pub neovim: bool,
 
-    /// Print keybinds
-    #[arg(long, default_value_t = false)]
-    pub keybinds: bool,
+    /// UNIX Socket file by fm to receive messages
+    #[arg(long)]
+    pub input_socket: Option<String>,
 
-    /// Configure a google drive client
-    #[arg(long, default_value_t = false)]
-    pub cloudconfig: bool,
+    /// UNIX Socket file used by fm to send messages
+    #[arg(long)]
+    pub output_socket: Option<String>,
 
-    /// Clear the video thumbnail cache
+    /// Disable images previewing
     #[arg(long, default_value_t = false)]
-    pub clear_cache: bool,
+    pub disable_images: bool,
 }

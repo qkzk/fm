@@ -20,7 +20,6 @@ use ratatui::{
     Frame, Terminal,
 };
 
-use crate::config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES};
 use crate::io::{read_last_log_line, DrawMenu, ImageAdapter};
 use crate::log_info;
 use crate::modes::{
@@ -33,6 +32,10 @@ use crate::modes::{
 use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
     modes::Users,
+};
+use crate::{
+    colored_skip_take,
+    config::{with_icon, with_icon_metadata, ColorG, Gradient, MATCHER, MENU_STYLES},
 };
 use crate::{common::path_to_string, modes::Icon};
 
@@ -128,7 +131,7 @@ impl FilesAttributes {
 struct FilesBuilder;
 
 impl FilesBuilder {
-    fn dual(status: &Status) -> (Files, Files) {
+    fn dual(status: &Status) -> (Files<'_>, Files<'_>) {
         let first_selected = status.focus.is_left();
         let menu_selected = !first_selected;
         let attributes_left = FilesAttributes::new(
@@ -146,7 +149,7 @@ impl FilesBuilder {
         (files_left, files_right)
     }
 
-    fn single(status: &Status) -> Files {
+    fn single(status: &Status) -> Files<'_> {
         let attributes_left =
             FilesAttributes::new(TabPosition::Left, true, status.tabs[0].need_menu_window());
         Files::new(status, 0, attributes_left)
@@ -357,7 +360,7 @@ impl<'a> FuzzyDisplay<'a> {
         });
     }
 
-    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line {
+    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line<'_> {
         Line::from(vec![
             Span::styled("  ", Style::default().fg(Color::Yellow)),
             Span::styled(
@@ -403,11 +406,19 @@ impl<'a> FuzzyDisplay<'a> {
                 );
                 let text = t.matcher_columns[0].to_string();
                 let highlights_usize = Self::highlights_indices(&mut indices);
+                let is_flagged = is_file
+                    && self
+                        .status
+                        .menu
+                        .flagged
+                        .contains(std::path::Path::new(&text));
+
                 let line = highlighted_text(
                     &text,
                     &highlights_usize,
                     index as u32 + top == fuzzy.index,
                     is_file,
+                    is_flagged,
                 );
                 let line_rect = Self::line_rect(rect, index);
                 line.render(line_rect, f.buffer_mut());
@@ -502,6 +513,7 @@ impl<'a> DirectoryDisplay<'a> {
     ) -> Line<'b> {
         let mut style = file.style();
         self.reverse_selected(index, &mut style);
+        self.color_searched(file, &mut style);
         let mut content = formater(file, group_owner_sizes);
 
         content.push(' ');
@@ -519,6 +531,16 @@ impl<'a> DirectoryDisplay<'a> {
     fn reverse_selected(&self, index: usize, style: &mut Style) {
         if index == self.tab.directory.index {
             style.add_modifier |= Modifier::REVERSED;
+        }
+    }
+
+    fn color_searched(&self, file: &FileInfo, style: &mut Style) {
+        if self.tab.search.is_match(&file.filename) {
+            style.fg = MENU_STYLES
+                .get()
+                .expect("Menu style should be set")
+                .palette_4
+                .fg;
         }
     }
 
@@ -673,9 +695,8 @@ impl<'a> TreeDisplay<'a> {
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, users)?;
         let mut style = fileinfo.style();
-        if line_builder.is_selected {
-            style.add_modifier |= Modifier::REVERSED;
-        }
+        Self::reverse_flagged(line_builder, &mut style);
+        Self::color_searched(status, &fileinfo, &mut style);
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
             Self::metadata(&fileinfo, formater, style),
@@ -683,6 +704,22 @@ impl<'a> TreeDisplay<'a> {
             Self::whitespaces(status, path, with_offset),
             Self::filename(line_builder, with_icon, style),
         ]))
+    }
+
+    fn reverse_flagged(line_builder: &TLine, style: &mut Style) {
+        if line_builder.is_selected {
+            style.add_modifier |= Modifier::REVERSED;
+        }
+    }
+
+    fn color_searched(status: &Status, file: &FileInfo, style: &mut Style) {
+        if status.current_tab().search.is_match(&file.filename) {
+            style.fg = MENU_STYLES
+                .get()
+                .expect("Menu style should be set")
+                .palette_4
+                .fg;
+        }
     }
 
     fn span_flagged_symbol<'b>(
@@ -705,7 +742,7 @@ impl<'a> TreeDisplay<'a> {
         Span::styled(formater(fileinfo, (6, 6)), style)
     }
 
-    fn prefix(line_builder: &TLine) -> Span {
+    fn prefix(line_builder: &TLine) -> Span<'_> {
         Span::raw(line_builder.prefix())
     }
 
@@ -760,7 +797,9 @@ impl<'a> PreviewDisplay<'a> {
             Preview::Binary(bin) => self.binary(f, bin, length, rect, window),
             Preview::Image(image) => self.image(image, rect, image_adapter),
             Preview::Tree(tree_preview) => self.tree_preview(f, tree_preview, window, rect),
-            Preview::Text(ansi_text) if matches!(ansi_text.kind, TextKind::CommandStdout) => {
+            Preview::Text(ansi_text)
+                if matches!(ansi_text.kind, TextKind::CommandStdout | TextKind::Plugin) =>
+            {
                 self.ansi_text(f, ansi_text, length, rect, window)
             }
             Preview::Text(text) => self.normal_text(f, text, length, rect, window),
@@ -1042,7 +1081,7 @@ impl<'a> Draw for Menu<'a> {
         }
         let mode = self.tab.menu_mode;
         self.cursor(f, rect);
-        MenuFirstLine::new(self.status).draw(f, rect);
+        MenuFirstLine::new(self.status, rect).draw(f, rect);
         self.menu_line(f, rect);
         self.content_per_mode(f, rect, mode);
         self.binds_per_mode(f, rect, mode);
@@ -1081,10 +1120,11 @@ impl<'a> Menu<'a> {
     ///
     /// may fail if we can't display on the terminal.
     fn cursor(&self, f: &mut Frame, rect: &Rect) {
-        let offset = self.tab.menu_mode.cursor_offset();
-        let index = self.status.menu.input.index() as u16;
-        let x = rect.x + offset + index;
         if self.tab.menu_mode.show_cursor() {
+            let offset = self.tab.menu_mode.cursor_offset();
+            let avail = rect.width.saturating_sub(offset + 1) as usize;
+            let cursor_index = self.status.menu.input.display_index(avail) as u16;
+            let x = rect.x + offset + cursor_index;
             f.set_cursor_position(Position::new(x, rect.y));
         }
     }
@@ -1112,20 +1152,13 @@ impl<'a> Menu<'a> {
         let input = self.status.menu.input.string();
         let (text, is_valid) = parse_input_permission(&input);
         let style = if is_valid { first } else { menu };
-        // let spans: Vec<_> = parse_input_permission(&input)
-        //     .iter()
-        //     .map(|(text, is_valid)| {
-        //         let style = if *is_valid { first } else { menu };
-        //         Span::styled(*text, style)
-        //     })
-        //     .collect();
         let p_rect = rect.offseted(11, 1);
         Line::styled(text.as_ref(), style).render(p_rect, f.buffer_mut());
     }
 
     fn menu_line_remote(&self, f: &mut Frame, rect: &Rect, first: Style) {
         let input = self.status.menu.input.string();
-        let current_path = path_to_string(&self.tab.current_path());
+        let current_path = path_to_string(&self.tab.current_directory_path());
 
         if let Some(remote) = Remote::from_input(input, &current_path) {
             let command = format!("{command:?}", command = remote.command());
@@ -1239,10 +1272,10 @@ impl<'a> Menu<'a> {
         let selectable = &self.status.menu.picker;
         selectable.draw_menu(f, rect, &self.status.menu.window);
         if let Some(desc) = &selectable.desc {
-            let p_rect = rect.offseted(2, 1);
+            let p_rect = rect.offseted(10, 0);
             Span::styled(
                 desc,
-                MENU_STYLES.get().expect("Menu colors should be set").second,
+                MENU_STYLES.get().expect("Menu colors should be set").first,
             )
             .render(p_rect, f.buffer_mut());
         }
@@ -1332,32 +1365,26 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_default(&self, f: &mut Frame, rect: &Rect) {
-        let text_content: Vec<_> = self
-            .status
+        self.status
             .menu
             .flagged
-            .content()
-            .iter()
-            .map(|p| p.to_string_lossy().to_string())
-            .collect();
-        Self::render_content(
-            &text_content,
-            f,
-            rect,
-            4,
-            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
-        );
+            .draw_menu(f, rect, &self.status.menu.window);
     }
 
     fn confirm_bulk(&self, f: &mut Frame, rect: &Rect) {
         let content = self.status.menu.bulk.format_confirmation();
-        Self::render_content(
-            &content,
-            f,
-            rect,
-            4,
-            2 + ContentWindow::WINDOW_MARGIN_TOP_U16,
-        );
+
+        let mut p_rect = rect.offseted(4, 3);
+        p_rect.height = p_rect.height.saturating_sub(2);
+        // let content = self.content();
+        let window = &self.status.menu.window;
+        use std::cmp::min;
+        let lines: Vec<_> = colored_skip_take!(content, window)
+            .map(|(index, item, style)| {
+                Line::styled(item, self.status.menu.bulk.style(index, &style))
+            })
+            .collect();
+        Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
     fn confirm_delete_cloud(&self, f: &mut Frame, rect: &Rect) {
@@ -1392,17 +1419,10 @@ impl<'a> Menu<'a> {
     }
 
     fn confirm_non_empty_trash(&self, f: &mut Frame, rect: &Rect) {
-        let content: Vec<_> = self
-            .status
+        self.status
             .menu
             .trash
-            .content()
-            .iter()
-            .map(|trashinfo| trashinfo.to_string())
-            .collect();
-        let mut p_rect = rect.offseted(4, 4);
-        p_rect.height = p_rect.height.saturating_sub(1);
-        Self::render_content(&content, f, &p_rect, 0, 0);
+            .draw_menu(f, rect, &self.status.menu.window);
     }
 
     fn content_line(f: &mut Frame, rect: &Rect, row: u16, text: &str, style: Style) {
@@ -1411,7 +1431,9 @@ impl<'a> Menu<'a> {
     }
 }
 
-struct MenuFirstLine {
+/// First line of every menu. This is where inputs are shown.
+/// For most of the menus, it's their name, some spaces and the input typed by the user.
+pub struct MenuFirstLine {
     content: Vec<String>,
 }
 
@@ -1428,15 +1450,18 @@ impl Draw for MenuFirstLine {
         )
         .map(|(text, style)| Span::styled(text, *style))
         .collect();
-        let p_rect = rect.offseted(2, 0);
+        let p_rect = rect.offseted(Self::LEFT_MARGIN, 0);
         Line::from(spans).render(p_rect, f.buffer_mut());
     }
 }
 
 impl MenuFirstLine {
-    fn new(status: &Status) -> Self {
+    /// Number of spaces between rect border and first char of the line.
+    pub const LEFT_MARGIN: u16 = 2;
+
+    fn new(status: &Status, rect: &Rect) -> Self {
         Self {
-            content: status.current_tab().menu_mode.line_display(status),
+            content: status.current_tab().menu_mode.line_display(status, rect),
         }
     }
 }
@@ -1742,6 +1767,10 @@ impl Display {
         self.term.clear().expect("Couldn't clear the terminal");
     }
 
+    /// Restore the terminal before leaving the application.
+    /// - disable raw mode, allowing for "normal" terminal behavior,
+    /// - leave alternate screens (switch back to the main screen).
+    /// - display the cursor
     pub fn restore_terminal(&mut self) -> Result<()> {
         disable_raw_mode()?;
         execute!(self.term.backend_mut(), LeaveAlternateScreen)?;

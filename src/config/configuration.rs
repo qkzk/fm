@@ -1,29 +1,24 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
+use clap::Parser;
 use ratatui::style::{Color, Style};
-use serde_yml::{from_reader, Value};
+use serde_yaml_ng::{from_reader, Value};
 
 use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
-use crate::config::{Bindings, ColorG};
+use crate::config::{make_default_config_files, Bindings, ColorG};
+use crate::io::Args;
+use crate::log_info;
 
 /// Holds every configurable aspect of the application.
 /// All styles are hardcoded then updated from optional values
 /// of the config file.
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
-}
-
-impl Default for Config {
-    /// Returns a default config with hardcoded values.
-    fn default() -> Self {
-        Self {
-            binds: Bindings::default(),
-        }
-    }
+    pub plugins: Vec<(String, String)>,
 }
 
 impl Config {
@@ -31,8 +26,40 @@ impl Config {
     fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
+        self.update_plugins(&yaml["plugins"]["previewer"]);
         Ok(())
     }
+
+    fn update_plugins(&mut self, yaml: &Value) {
+        let Some(mappings) = yaml.as_mapping() else {
+            return;
+        };
+        for (plugin_name, plugin_path) in mappings.iter() {
+            let Some(plugin_name) = plugin_name.as_str() else {
+                continue;
+            };
+            let Some(plugin_path) = plugin_path.as_str() else {
+                continue;
+            };
+            if path::Path::new(plugin_path).exists() {
+                self.plugins
+                    .push((plugin_name.to_owned(), plugin_path.to_owned()));
+            } else {
+                log_info!("{plugin_path} is specified in config file but doesn't exists.");
+            }
+        }
+        log_info!("found plugins: {plugins:#?}", plugins = self.plugins);
+    }
+}
+
+fn ensure_config_files_exists(path: &str) -> std::io::Result<()> {
+    let expanded_path = tilde(path);
+    let expanded_config_path = path::Path::new(expanded_path.as_ref());
+    if !expanded_config_path.exists() {
+        make_default_config_files()?;
+        log_info!("Created default config files.");
+    }
+    Ok(())
 }
 
 /// Returns a config with values from :
@@ -43,8 +70,9 @@ impl Config {
 ///
 /// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
+    ensure_config_files_exists(path)?;
     let mut config = Config::default();
-    let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+    let Ok(file) = File::open(&*tilde(path)) else {
         crate::log_info!("Couldn't read config file at {path}");
         return Ok(config);
     };
@@ -260,5 +288,45 @@ impl SyntectTheme {
         Ok(Self {
             name: name.to_string(),
         })
+    }
+}
+
+#[derive(Default, Debug)]
+pub enum Imagers {
+    #[default]
+    Disabled,
+    Ueberzug,
+    Inline,
+}
+
+/// Name of the syntect theme used.
+#[derive(Debug, Default)]
+pub struct PreferedImager {
+    pub imager: Imagers,
+}
+
+impl PreferedImager {
+    pub fn from_config(path: &str) -> Result<Self> {
+        if Args::parse().disable_images {
+            return Ok(Self::default());
+        }
+        let Ok(file) = File::open(path::Path::new(&tilde(path).to_string())) else {
+            crate::log_info!("Couldn't read config file at {path}");
+            return Ok(Self::default());
+        };
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return Ok(Self::default());
+        };
+        let Some(imager) = yaml["imager"].as_str() else {
+            return Ok(Self::default());
+        };
+        crate::log_info!("Config: found imager : {imager}");
+        let imager = match imager {
+            "Ueberzug" => Imagers::Ueberzug,
+            "Inline" => Imagers::Inline,
+            _ => Imagers::Disabled,
+        };
+
+        Ok(Self { imager })
     }
 }

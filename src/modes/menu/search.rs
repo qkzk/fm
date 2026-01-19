@@ -205,4 +205,9 @@ impl Search {
             .filter(|p| self.regex.is_match(p))
             .collect()
     }
+
+    #[inline]
+    pub fn is_match(&self, filename: &str) -> bool {
+        !self.is_empty() && self.regex.is_match(filename)
+    }
 }

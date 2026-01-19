@@ -486,7 +486,6 @@ impl Trash {
     }
 }
 
-impl_selectable!(Trash);
 impl_content!(Trash, Info);
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {
@@ -517,7 +516,7 @@ where
 }
 
 impl CowStr for Info {
-    fn cow_str(&self) -> Cow<str> {
+    fn cow_str(&self) -> Cow<'_, str> {
         self.to_string().into()
     }
 }
