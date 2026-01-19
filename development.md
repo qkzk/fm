@@ -1744,7 +1744,6 @@ Updated some dependencies to avoid yanked version of crates. Documentation shoul
 Once that's done, it's all. No not implement anything else
 
 
-## Current dev
 
 ### Version 0.2.1 : plugins
 
@@ -1967,6 +1966,13 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: remove useless clone while getting path of current selection
 - [x] FIX: reverse flags wasn't doing anything
 
+## Current dev
+
+### Summary 
+
+#### Bugfixes 
+
+### Changelog
 
 ## TODO
 
