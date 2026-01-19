@@ -50,12 +50,11 @@ pub enum PluginCommand {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum PluginSubCommand {
-    /// fmconfig plugin add <path_to_plugin.so>. Add a compiled plugin from its .so file
+    /// fmconfig plugin add path_to_plugin.so. Add a compiled plugin from its .so file
     Add { path: String },
-    /// fmconfig plugin install <author/repo>. Install a plugin from github
-    /// fmconfig plugin install <https://hostname/author/repo>. Install a plugin from `hostname` (gitlab, codeberg etc.)
+    /// fmconfig plugin install author/repo (instal from github) or fmconfig plugin install https://hostname/author/repo
     Install { url: String },
-    /// fmconfig plugin remove <name>. Remove a plugin by its name
+    /// fmconfig plugin remove name. Remove a plugin by its name
     Remove { name: String },
     /// fmconfig plugin list. List all installed plugins
     List,

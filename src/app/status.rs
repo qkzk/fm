@@ -559,7 +559,7 @@ impl Status {
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
     /// If the menu is a picker for input history, it will reenter the caller menu.
-    /// Example: Menu CD -> History of CDs <Esc> -> Menu CD
+    /// Example: Menu CD -> History of CDs `<Esc>` -> Menu CD
     pub fn reset_menu_mode(&mut self) -> Result<bool> {
         if self.current_tab().menu_mode.is_picker() {
             if let Some(PickerCaller::Menu(menu)) = self.menu.picker.caller {
@@ -1388,7 +1388,9 @@ impl Status {
 
     /// Resize the fuzzy finder according to given height
     pub fn fuzzy_resize(&mut self, height: usize) {
-        if let Some(fuzzy) = &mut self.fuzzy { fuzzy.resize(height) }
+        if let Some(fuzzy) = &mut self.fuzzy {
+            fuzzy.resize(height)
+        }
     }
 
     /// Replace the current input by the next result from history
@@ -2364,9 +2366,10 @@ impl Status {
 
     /// Parse and execute the received IPC message.
     /// IPC message can currently be of 3 forms:
-    /// GO <path> -> cd to this path and select the file.
-    /// KEY <key> -> act as if the key was pressed. <key> should be formated like in the config file.
-    /// ACTION <action> -> execute the action. Similar to :<action><Enter>. <action> should be formated like in the config file.
+    /// - `GO <path>` -> cd to this path and select the file.
+    /// - `KEY <key>` -> act as if the key was pressed. `<key>` should be formated like in the config file.
+    /// - `ACTION <action>` -> execute the action. Similar to `:<action><Enter>`. `<action>` should be formated like in the config file.
+    ///
     /// Other messages are ignored.
     /// Failed messages (path don't exists, wrongly formated key or action) are ignored silently.
     pub fn parse_ipc(&mut self, msg: String) -> Result<()> {

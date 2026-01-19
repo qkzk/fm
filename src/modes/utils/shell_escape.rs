@@ -3,7 +3,7 @@ use std::{borrow::Cow, ffi::OsStr};
 use anyhow::Result;
 
 /// Quote a string for shell insertion.
-/// It is required to create commands like "zsh -c nvim <path>" where <path> may contain any kind of byte.
+/// It is required to create commands like "zsh -c nvim path" where `<path>` may contain any kind of byte.
 /// We only have problems with `'`, `"` and `\'.
 /// Since it's the only usage, we don't really care about allocation.
 pub trait Quote<S> {
@@ -15,7 +15,7 @@ pub trait Quote<S> {
     /// # Errors
     ///
     /// It may fail if the string can't be read as an utf-8 string.
-    /// For the most common case (&str, Cow<str>, String) it's impossible.
+    /// For the most common case `(&str, Cow<str>, String)` it's impossible.
     fn quote(&self) -> Result<S>;
 }
 
