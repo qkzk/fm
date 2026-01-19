@@ -1761,7 +1761,7 @@ Once that's done, it's all. No not implement anything else
   - `Action <action>` will execute this action.
 
   Both `<key>` & `<action>` should be formated like in the config file.
-- .ape files are previewed as a music files with mediainfo
+- .ape files are previewed as music files with mediainfo
 - files with extension ending with _ or ~ are previewed normally. ranger and other file manager may append an '_' while copying, some image editor will append a ~ while editing the image. Thoses files should be previewed.
 - update zoxide when moving in a directory. Only works when logging is done. It may become configurable in a future version.
 - Confirmation menus (copy, move, delete, empty trash, bulk rename/create) are navigable : up, down, page up, page down, click, scroll wheel.
@@ -1781,6 +1781,7 @@ Once that's done, it's all. No not implement anything else
 - In tree display mode, % and § increases and decrease the depth. Watchout, it may be take some time to explore a large file tree. This setting is associated to tab and can't be saved in config file. 
 - In fuzzy finder for files (Ctrl+f), you can toggle flag on files with ctrl+space. Flagged files are shown in yellow
 - fuzzy finder for lines (Ctrl+s) will move the preview to the matched line
+- History of previous inputs. When logs are enabled, your inputs are saved and you can pick any of them. For example, open CD mode with Alt+g, then Alt+h will open the history and you can pick a previous input.
 
 ##### Bugfixes
 
@@ -1926,7 +1927,7 @@ Once that's done, it's all. No not implement anything else
   - [x] parse config, read it before init of display at src/app/displayer.rs
   - [x] set fallback previewers for all supported types
   - [x] arg
-- [ ] FEAT: history picker for previous input
+- [x] FEAT: history picker for previous input
   - [x] common entry point for entering a menu
   - [x] read picked & replace input
   - [x] alt+h in a menu (never used ?) opens the picker
