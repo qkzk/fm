@@ -7,19 +7,19 @@ const DEFAULT_CLI: &str = include_str!("../../config_files/fm/cli.yaml");
 const DEFAULT_OPENER: &str = include_str!("../../config_files/fm/opener.yaml");
 const DEFAULT_SESSION: &str = include_str!("../../config_files/fm/session.yaml");
 const DEFAULT_TUIS: &str = include_str!("../../config_files/fm/tuis.yaml");
-const DEFAULT_LOG_FM: &str = include_str!("../../config_files/fm/log/fm.log");
-const DEFAULT_LOG_ACTION_LOGGER: &str = include_str!("../../config_files/fm/log/action_logger.log");
-const DEFAULT_LOG_INPUT_HISTORY: &str = include_str!("../../config_files/fm/log/input_history.log");
 
-const DEFAULT_CONFIGS: [(&str, &str); 8] = [
+const DEFAULT_CONFIGS: [(&str, &str); 5] = [
     ("config.yaml", DEFAULT_CONFIG),
     ("cli.yaml", DEFAULT_CLI),
     ("opener.yaml", DEFAULT_OPENER),
     ("session.yaml", DEFAULT_SESSION),
     ("tuis.yaml", DEFAULT_TUIS),
-    ("log/fm.log", DEFAULT_LOG_FM),
-    ("log/action_logger.log", DEFAULT_LOG_ACTION_LOGGER),
-    ("log/input_history.log", DEFAULT_LOG_INPUT_HISTORY),
+];
+
+const LOG_FILES: [&str; 3] = [
+    "log/fm.log",
+    "log/action_logger.log",
+    "log/input_history.log",
 ];
 
 const TRASH_FOLDERS: [&str; 3] = [
@@ -37,6 +37,7 @@ const TRASH_FOLDERS: [&str; 3] = [
 pub fn make_default_config_files() -> Result<()> {
     create_config_folder()?;
     copy_default_config_files()?;
+    create_log_files()?;
     create_trash_folders()?;
     Ok(())
 }
@@ -53,6 +54,25 @@ fn ensure_config(path: &std::path::Path, contents: &str) -> Result<()> {
     if !path.exists() {
         std::fs::create_dir_all(path.parent().context("No parent")?)?;
         std::fs::write(path, contents)?;
+    }
+    Ok(())
+}
+
+fn create_log_files() -> Result<()> {
+    let dest = std::path::PathBuf::from(tilde(CONFIG_FOLDER).as_ref());
+
+    for rel_log_path in &LOG_FILES {
+        let mut path = dest.clone();
+        path.push(rel_log_path);
+        create_log_file(&path)?;
+    }
+    Ok(())
+}
+
+fn create_log_file(path: &std::path::Path) -> Result<()> {
+    if !path.exists() {
+        std::fs::create_dir_all(path.parent().context("No parent")?)?;
+        std::fs::File::create(path)?;
     }
     Ok(())
 }
