@@ -1663,7 +1663,7 @@ impl Display {
 
     /// True iff we need to display both panes
     fn use_dual_pane(status: &Status, width: u16) -> bool {
-        status.session.dual() && width > MIN_WIDTH_FOR_DUAL_PANE
+        status.session.dual() && width >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
     fn draw_dual(

@@ -632,7 +632,7 @@ impl Status {
         if couldnt_dual_but_want {
             self.set_dual_pane_if_wide_enough()?;
         }
-        if !self.wide_enough_for_dual() {
+        if !self.wide_enough_for_dual() || !self.session.dual() {
             self.select_left();
         }
         self.resize_all_windows(height)?;
@@ -1295,6 +1295,29 @@ impl Status {
             if let FuzzyKind::File = fuzzy.kind {
                 self.menu.flagged.toggle(Path::new(&pick));
                 self.fuzzy_navigate(FuzzyDirection::Down)?;
+            }
+        } else {
+            log_info!("Fuzzy had nothing to select from");
+        };
+        Ok(())
+    }
+
+    /// Open a file directly from the fuzzy finder.
+    /// Only works for fuzzy finder of file & fuzzy finder of lines.
+    pub fn fuzzy_open_file(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        if let Some(pick) = fuzzy.pick() {
+            match fuzzy.kind {
+                FuzzyKind::File => {
+                    self.open_single_file(Path::new(&pick))?;
+                }
+                FuzzyKind::Line => {
+                    let (path, _) = parse_line_output(&pick)?;
+                    self.open_single_file(&path)?;
+                }
+                _ => (),
             }
         } else {
             log_info!("Fuzzy had nothing to select from");

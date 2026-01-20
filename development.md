@@ -1968,11 +1968,19 @@ Once that's done, it's all. No not implement anything else
 
 ## Current dev
 
-### Summary 
+### Version 0.2.3
 
-#### Bugfixes 
+#### Summary 
 
-### Changelog
+- Fuzzy finder of file & fuzzy finder of line can open a file directly with ALt+Enter.
+
+##### Bugfixes 
+
+#### Changelog
+
+- [ ] BUG: dual, preview tree, open. resize but focus still on right
+  - [ ] more testing
+- [x] FEAT: open directly from fuzzy finder instead of selecting
 
 ## TODO
 
