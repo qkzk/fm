@@ -1980,12 +1980,12 @@ Once that's done, it's all. No not implement anything else
 
 - [ ] FEAT: common themes
   - [ ] load theme from folder 
-  - [ ] move colors to this folder
+  - [ ] replace colors by a setting
+  - [ ] move colors to this folder as default
   - [ ] config mover
   - [ ] themes
-    - [ ] blue
-    - [ ] catppuccin
     - [ ] default
+    - [ ] catppuccin
     - [ ] dracula
     - [ ] monochrome
     - [ ] nord
@@ -1993,6 +1993,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] solarized
     - [ ] solarized-dark
     - [ ] monokai
+    - [ ] tokyonight ?
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting

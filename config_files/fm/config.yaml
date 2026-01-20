@@ -23,6 +23,11 @@ syntect_theme: monokai
 # Inline : display images using iTerm2 images protocol (requires a compatible terminal emulator like Wezzterm)
 # Disabled (or anything else) : disable image previewing.
 imager: Ueberzug
+
+# Which color theme do you want to use ?
+# Themes are located in ./themes/
+# To select a theme, like `dracula.yml` use `theme: dracula` without the extension.
+theme: default
 # configurable colors
 
 # Colors for "non normal" files. The list is below.
@@ -34,6 +39,7 @@ imager: Ueberzug
 # Allowed Format for rgb color :
 #   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included. Example: `rgb(123, 10, 254)`
 #   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals. Example: `#750AFE`
+
 colors:
   # Gradient from start to stop for normal files.
   # the files are colored randomly according to their extension

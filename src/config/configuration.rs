@@ -19,6 +19,7 @@ pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
     pub plugins: Vec<(String, String)>,
+    pub theme: String,
 }
 
 impl Config {
