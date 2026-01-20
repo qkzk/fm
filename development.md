@@ -1968,7 +1968,7 @@ Once that's done, it's all. No not implement anything else
 
 ## Current dev
 
-### Version 0.2.3
+### Version 0.2.3 - Themes
 
 #### Summary 
 
@@ -1978,6 +1978,21 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog
 
+- [ ] FEAT: common themes
+  - [ ] load theme from folder 
+  - [ ] move colors to this folder
+  - [ ] config mover
+  - [ ] themes
+    - [ ] blue
+    - [ ] catppuccin
+    - [ ] default
+    - [ ] dracula
+    - [ ] monochrome
+    - [ ] nord
+    - [ ] pink
+    - [ ] solarized
+    - [ ] solarized-dark
+    - [ ] monokai
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting
@@ -1992,7 +2007,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
-- [ ] FEAT: common themes
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [ ] BUG: preview can stop and display "preview as empty". Can't reproduce
 - [ ] FEAT: allow settings in plugins & store them in config file
