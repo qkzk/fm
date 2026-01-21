@@ -28,57 +28,9 @@ imager: Ueberzug
 # Themes are located in ./themes/
 # To select a theme, like `dracula.yml` use `theme: dracula` without the extension.
 theme: default
-# configurable colors
 
-# Colors for "non normal" files. The list is below.
-# you can define an ANSI color or an rgb color for any kind of file except "normal" files.
-# colors for normal files are calculated on the fly from the "palette" values provided above.
-# List of allowed ANSI colors:
-#   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta
-#   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta
-# Allowed Format for rgb color :
-#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included. Example: `rgb(123, 10, 254)`
-#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals. Example: `#750AFE`
-
-colors:
-  # Gradient from start to stop for normal files.
-  # the files are colored randomly according to their extension
-  # ANSI colors won't be linked to their configured values but to the default ANSI values.
-  normal_start: rgb(187, 102, 255)
-  normal_stop: rgb(255, 102, 187)
-
-  # color for different filekinds
-  # here you can use ANSI values
-  # colors for folders / directory
-  directory: rgb(45, 250, 209)
-  # block device (hard drives...)
-  block: rgb(231, 100, 100)
-  # char devices (ttys, /dev/urandom etc.)
-  char: rgb(230, 189, 87)
-  # fifos
-  fifo: rgb(180, 255, 255)
-  # opened sockets
-  socket: rgb(231, 100, 100)
-  # valid symlinks
-  symlink: rgb(59, 204, 255)
-  # broken symlinks
-  broken: rgb(140, 140, 140)
-
-  # Colors for menus, headers, footers etc.
-  # The same values are accepted.
-  # first color
-  header_first: rgb(45, 250, 209)
-  # second color
-  header_second: rgb(230, 189, 87)
-  # selected tab border
-  selected_border: rgb(45, 250, 209)
-  # non selected tab border
-  inert_border: rgb(120, 120, 120)
-  # palette of 4 elements, used in menus (second window)
-  palette_1: rgb(45, 250, 209)
-  palette_2: rgb(230, 189, 87)
-  palette_3: rgb(230, 167, 255)
-  palette_4: rgb(59, 204, 255)
+# colors. After version 0.2.3, colors were moved to the theme.
+# If you want to keep your colors, just copy-paste the `color:` value and deindent everything.
 
 # keybindings
 #
