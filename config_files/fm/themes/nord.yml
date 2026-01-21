@@ -1,38 +1,38 @@
 # Gradient from start to stop for normal files.
 # the files are colored randomly according to their extension
 # ANSI colors won't be linked to their configured values but to the default ANSI values.
-normal_start: "#fd971f"
-normal_stop: "#e6db74"
+normal_start: "#8FBCBB"
+normal_stop: "#81A1C1"
 
 # color for different filekinds
 # here you can use ANSI values
 # colors for folders / directory
-directory: "#ae81ff"
+directory: "#D8DEE9"
 # block device (hard drives...)
-block: "#a6e22e"
+block: "#EBCB8B"
 # char devices (ttys, /dev/urandom etc.)
-char: "#c0c1b5"
+char: "#D08770"
 # fifos
-fifo: "#f92672"
+fifo: "#A3BE8C"
 # opened sockets
-socket: "#a6e22e"
+socket: "#5E81AC"
 # valid symlinks
-symlink: "#66d9ef"
+symlink: "#EBCB8B"
 # broken symlinks
-broken: "#919288"
+broken: "#4C566A"
 
 # Colors for menus, headers, footers etc.
 # The same values are accepted.
 # first color
-header_first: "#ae81ff"
+header_first: "#2e3440"
 # second color
-header_second: "#66d9ef"
+header_second: "#3B4252"
 # selected tab border
-selected_border: "#e6db74"
+selected_border: "#616e88"
 # non selected tab border
-inert_border: "#6e7066"
+inert_border: "#2e3440"
 # palette of 4 elements, used in menus (second window)
-palette_1: "#ae81ff"
-palette_2: "#66d9ef"
-palette_3: "#e6db74"
-palette_4: "#fd971f"
+palette_1: "#d8dee9"
+palette_2: "#e5e9f0"
+palette_3: "#eceff4"
+palette_4: "#e5e9f0"
