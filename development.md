@@ -1979,6 +1979,7 @@ Once that's done, it's all. No not implement anything else
 #### Changelog
 
 - [ ] FEAT: common themes
+  - [ ] simplify config loading, theme file should be read once 
   - [x] read `theme: value` from config
   - [x] load theme from folder 
   - [ ] create default theme from code if not exists when compiling
@@ -1994,7 +1995,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] solarized
     - [ ] solarized-dark
     - [ ] monokai
-    - [x] tokyonight ?
+    - [x] tokyonight - [moon](https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/colors/moon.lua)
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting
