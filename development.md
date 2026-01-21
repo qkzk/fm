@@ -1987,13 +1987,10 @@ Once that's done, it's all. No not implement anything else
   - [ ] themes
     - [x] default
     - [x] ansi
-    - [ ] catppuccin
-    - [ ] dracula
-    - [ ] monochrome
+    - [x] catppuccin
+    - [x] dracula
+    - [x] grey
     - [x] nord
-    - [ ] pink
-    - [ ] solarized
-    - [ ] solarized-dark
     - [x] monokai
     - [x] tokyonight - [moon](https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/colors/moon.lua)
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
