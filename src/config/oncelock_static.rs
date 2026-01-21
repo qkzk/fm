@@ -181,22 +181,22 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_file_styles(theme_path: &Path) -> Result<()> {
+fn set_file_styles(yaml: &Option<Value>) -> Result<()> {
     FILE_STYLES
-        .set(FileStyle::from_config(theme_path))
+        .set(FileStyle::from_config(yaml))
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_menu_styles(theme_path: &Path) -> Result<()> {
+fn set_menu_styles(yaml: &Option<Value>) -> Result<()> {
     MENU_STYLES
-        .set(MenuStyle::default().update(theme_path))
+        .set(MenuStyle::default().update(yaml))
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_normal_file_colorer(theme_path: &Path) -> Result<()> {
-    let (start_color, stop_color) = read_normal_file_colorer(theme_path);
+fn set_normal_file_colorer(yaml: &Option<Value>) -> Result<()> {
+    let (start_color, stop_color) = read_normal_file_colorer(yaml);
     ARRAY_GRADIENT
         .set(Gradient::new(start_color, stop_color, MAX_GRADIENT_NORMAL).as_array()?)
         .map_err(|_| anyhow!("Gradient shouldn't be set"))?;
@@ -259,29 +259,38 @@ pub fn set_configurable_static(
     plugins: Vec<(String, String)>,
     theme: String,
 ) -> Result<()> {
-    let theme_path = build_theme_path(theme);
-    log_info!(
-        "Theme path {theme}. Exists: {exists}",
-        theme = theme_path.display(),
-        exists = theme_path.exists()
-    );
+    let theme_yaml = read_theme(theme);
     set_start_folder(start_folder)?;
-    set_menu_styles(&theme_path)?;
-    set_file_styles(&theme_path)?;
-    set_normal_file_colorer(&theme_path)?;
+    set_menu_styles(&theme_yaml)?;
+    set_file_styles(&theme_yaml)?;
+    set_normal_file_colorer(&theme_yaml)?;
     set_icon_icon_with_metadata()?;
     set_syntect_theme()?;
     set_prefered_imager()?;
     set_previewer_plugins(plugins)
 }
 
-pub fn build_theme_path(theme: String) -> PathBuf {
+fn read_theme(theme: String) -> Option<Value> {
+    read_yaml_value(&build_theme_path(theme))
+}
+
+fn build_theme_path(theme: String) -> PathBuf {
     let config_folder = tilde(CONFIG_FOLDER);
     let mut theme_path = PathBuf::from(config_folder.as_ref());
     theme_path.push("themes");
     theme_path.push(theme);
     theme_path.set_extension("yml");
     theme_path
+}
+
+fn read_yaml_value(path: &Path) -> Option<Value> {
+    let Ok(file) = File::open(path) else {
+        return None;
+    };
+    let Ok(yaml) = from_reader::<File, Value>(file) else {
+        return None;
+    };
+    Some(yaml)
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)

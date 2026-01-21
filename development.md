@@ -1979,7 +1979,7 @@ Once that's done, it's all. No not implement anything else
 #### Changelog
 
 - [ ] FEAT: common themes
-  - [ ] simplify config loading, theme file should be read once 
+  - [x] simplify config loading, theme file should be read once 
   - [x] read `theme: value` from config
   - [x] load theme from folder 
   - [ ] create default theme from code if not exists when compiling

@@ -106,42 +106,21 @@ pub fn load_config(path: &str) -> Result<Config> {
 /// so we'll have to use default values.
 ///
 /// If we can't read those values, we'll return green and blue.
-pub fn read_normal_file_colorer(theme: &path::Path) -> (ColorG, ColorG) {
+pub fn read_normal_file_colorer(yaml: &Option<Value>) -> (ColorG, ColorG) {
     let default_pair = (ColorG::new(0, 255, 0), ColorG::new(0, 0, 255));
-    let Ok(file) = File::open(theme) else {
-        log_info!("Couldn't open {theme}", theme = theme.display());
-        return default_pair;
-    };
-    let Ok(yaml) = from_reader::<File, Value>(file) else {
-        log_info!("Couldn't read {theme}", theme = theme.display());
+    let Some(yaml) = yaml else {
         return default_pair;
     };
     let Some(start) = yaml["normal_start"].as_str() else {
-        log_info!(
-            "Couldn't find normal_start in  {theme}",
-            theme = theme.display()
-        );
         return default_pair;
     };
     let Some(stop) = yaml["normal_stop"].as_str() else {
-        log_info!(
-            "Couldn't find normal_stop in  {theme}",
-            theme = theme.display()
-        );
         return default_pair;
     };
     let Some(start_color) = ColorG::parse_any_color(start) else {
-        log_info!(
-            "Couldn't parse normal_start in  {theme}",
-            theme = theme.display()
-        );
         return default_pair;
     };
     let Some(stop_color) = ColorG::parse_any_color(stop) else {
-        log_info!(
-            "Couldn't parse colors/normal_stop in  {theme}",
-            theme = theme.display()
-        );
         return default_pair;
     };
     (start_color, stop_color)
@@ -202,19 +181,16 @@ impl FileStyle {
         update_style!(self.broken, yaml, "broken");
     }
 
-    fn update_from_config(&mut self, theme: &path::Path) {
-        let Ok(file) = File::open(theme) else {
+    fn update_from_config(&mut self, yaml: &Option<Value>) {
+        let Some(yaml) = yaml else {
             return;
         };
-        let Ok(yaml) = from_reader::<File, Value>(file) else {
-            return;
-        };
-        self.update_values(&yaml);
+        self.update_values(yaml);
     }
 
-    pub fn from_config(theme: &path::Path) -> Self {
+    pub fn from_config(yaml: &Option<Value>) -> Self {
         let mut style = Self::default();
-        style.update_from_config(theme);
+        style.update_from_config(yaml);
         style
     }
 }
@@ -253,20 +229,18 @@ impl Default for MenuStyle {
 }
 
 impl MenuStyle {
-    pub fn update(mut self, theme: &path::Path) -> Self {
-        if let Ok(file) = File::open(theme) {
-            if let Ok(yaml) = from_reader::<File, Value>(file) {
-                let menu_colors = &yaml;
-                update_style!(self.first, menu_colors, "header_first");
-                update_style!(self.second, menu_colors, "header_second");
-                update_style!(self.selected_border, menu_colors, "selected_border");
-                update_style!(self.inert_border, menu_colors, "inert_border");
-                update_style!(self.palette_1, menu_colors, "palette_1");
-                update_style!(self.palette_2, menu_colors, "palette_2");
-                update_style!(self.palette_3, menu_colors, "palette_3");
-                update_style!(self.palette_4, menu_colors, "palette_4");
-            }
+    pub fn update(mut self, yaml: &Option<Value>) -> Self {
+        if let Some(menu_colors) = yaml {
+            update_style!(self.first, menu_colors, "header_first");
+            update_style!(self.second, menu_colors, "header_second");
+            update_style!(self.selected_border, menu_colors, "selected_border");
+            update_style!(self.inert_border, menu_colors, "inert_border");
+            update_style!(self.palette_1, menu_colors, "palette_1");
+            update_style!(self.palette_2, menu_colors, "palette_2");
+            update_style!(self.palette_3, menu_colors, "palette_3");
+            update_style!(self.palette_4, menu_colors, "palette_4");
         }
+
         self
     }
 
