@@ -1984,7 +1984,6 @@ Once that's done, it's all. No not implement anything else
   - [x] load theme from folder 
   - [ ] create default theme from code if not exists when compiling
     - [ ] need testing.
-  - [ ] config mover
   - [ ] themes
     - [ ] default
     - [ ] catppuccin
@@ -1994,7 +1993,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] pink
     - [ ] solarized
     - [ ] solarized-dark
-    - [ ] monokai
+    - [x] monokai
     - [x] tokyonight - [moon](https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/colors/moon.lua)
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
