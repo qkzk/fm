@@ -27,7 +27,7 @@ imager: Ueberzug
 # Which color theme do you want to use ?
 # Themes are located in ./themes/
 # To select a theme, like `dracula.yml` use `theme: dracula` without the extension.
-theme: default
+theme: ansi
 
 # colors. After version 0.2.3, colors were moved to the theme.
 # If you want to keep your colors, just copy-paste the `color:` value and deindent everything.

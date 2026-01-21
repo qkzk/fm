@@ -1985,11 +1985,12 @@ Once that's done, it's all. No not implement anything else
   - [ ] create default theme from code if not exists when compiling
     - [ ] need testing.
   - [ ] themes
-    - [ ] default
+    - [x] default
+    - [x] ansi
     - [ ] catppuccin
     - [ ] dracula
     - [ ] monochrome
-    - [ ] nord
+    - [x] nord
     - [ ] pink
     - [ ] solarized
     - [ ] solarized-dark
