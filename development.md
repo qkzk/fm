@@ -1979,9 +1979,9 @@ Once that's done, it's all. No not implement anything else
 #### Changelog
 
 - [ ] FEAT: common themes
-  - [ ] load theme from folder 
-  - [ ] replace colors by a setting
-  - [ ] move colors to this folder as default
+  - [x] read `theme: value` from config
+  - [x] load theme from folder 
+  - [ ] create default theme from code if not exists when compiling
   - [ ] config mover
   - [ ] themes
     - [ ] default

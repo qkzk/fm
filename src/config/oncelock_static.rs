@@ -16,14 +16,14 @@ use syntect::{
     highlighting::{Theme, ThemeSet},
 };
 
-use crate::app::{build_plugins, PreviewerPlugin};
-use crate::config::{
-    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, PreferedImager,
-    SyntectTheme, MAX_GRADIENT_NORMAL,
-};
-
 use crate::{
+    app::{build_plugins, PreviewerPlugin},
+    common::CONFIG_FOLDER,
     common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH},
+    config::{
+        read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
+        PreferedImager, SyntectTheme, MAX_GRADIENT_NORMAL,
+    },
     log_info,
 };
 
@@ -181,22 +181,22 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_file_styles() -> Result<()> {
+fn set_file_styles(theme_path: &Path) -> Result<()> {
     FILE_STYLES
-        .set(FileStyle::from_config())
+        .set(FileStyle::from_config(theme_path))
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_menu_styles() -> Result<()> {
+fn set_menu_styles(theme_path: &Path) -> Result<()> {
     MENU_STYLES
-        .set(MenuStyle::default().update())
+        .set(MenuStyle::default().update(theme_path))
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_normal_file_colorer() -> Result<()> {
-    let (start_color, stop_color) = read_normal_file_colorer();
+fn set_normal_file_colorer(theme_path: &Path) -> Result<()> {
+    let (start_color, stop_color) = read_normal_file_colorer(theme_path);
     ARRAY_GRADIENT
         .set(Gradient::new(start_color, stop_color, MAX_GRADIENT_NORMAL).as_array()?)
         .map_err(|_| anyhow!("Gradient shouldn't be set"))?;
@@ -254,15 +254,34 @@ pub fn set_icon_icon_with_metadata() -> Result<()> {
 /// Set all the values which could be configured from config file or arguments staticly.
 /// It allows us to read those values globally without having to pass them through to every function.
 /// All values use a [`std::sync::OnceLock`] internally.
-pub fn set_configurable_static(start_folder: &str, plugins: Vec<(String, String)>) -> Result<()> {
+pub fn set_configurable_static(
+    start_folder: &str,
+    plugins: Vec<(String, String)>,
+    theme: String,
+) -> Result<()> {
+    let theme_path = build_theme_path(theme);
+    log_info!(
+        "Theme path {theme}. Exists: {exists}",
+        theme = theme_path.display(),
+        exists = theme_path.exists()
+    );
     set_start_folder(start_folder)?;
-    set_menu_styles()?;
-    set_file_styles()?;
-    set_normal_file_colorer()?;
+    set_menu_styles(&theme_path)?;
+    set_file_styles(&theme_path)?;
+    set_normal_file_colorer(&theme_path)?;
     set_icon_icon_with_metadata()?;
     set_syntect_theme()?;
     set_prefered_imager()?;
     set_previewer_plugins(plugins)
+}
+
+pub fn build_theme_path(theme: String) -> PathBuf {
+    let config_folder = tilde(CONFIG_FOLDER);
+    let mut theme_path = PathBuf::from(config_folder.as_ref());
+    theme_path.push("themes");
+    theme_path.push(theme);
+    theme_path.set_extension("yml");
+    theme_path
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)
