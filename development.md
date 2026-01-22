@@ -1993,6 +1993,19 @@ Once that's done, it's all. No not implement anything else
     - [x] monokai
     - [x] nord
     - [x] tokyonight
+- [ ] custom preview from external command
+  - [x] previewer.yml
+  - [x] format :
+    ```yml
+    name:
+      extensions:
+        - yml
+        - bla
+        - truc
+      command: "bat --color=always --style=numbers --theme=Nord %s"
+    ```
+  - [ ] load external previewers (before / after plugins ?)
+  - [ ] try, check status
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting
