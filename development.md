@@ -1996,7 +1996,7 @@ Once that's done, it's all. No not implement anything else
     - [x] monokai
     - [x] nord
     - [x] tokyonight
-  - [ ] rename to `.yaml` and
+  - [x] rename to `.yaml` and
 - [ ] custom preview from external command
   - [x] previewer.yml
   - [x] create default `previewer.yaml`

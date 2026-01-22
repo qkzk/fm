@@ -301,7 +301,7 @@ fn build_theme_path(theme: String) -> PathBuf {
     let mut theme_path = PathBuf::from(config_folder.as_ref());
     theme_path.push("themes");
     theme_path.push(theme);
-    theme_path.set_extension("yml");
+    theme_path.set_extension("yaml");
     theme_path
 }
 

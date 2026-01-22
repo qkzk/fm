@@ -8,7 +8,7 @@ const DEFAULT_OPENER: &str = include_str!("../../config_files/fm/opener.yaml");
 const DEFAULT_SESSION: &str = include_str!("../../config_files/fm/session.yaml");
 const DEFAULT_TUIS: &str = include_str!("../../config_files/fm/tuis.yaml");
 const DEFAULT_PREVIEWER: &str = include_str!("../../config_files/fm/previewer.yaml");
-const DEFAULT_THEME: &str = include_str!("../../config_files/fm/themes/default.yml");
+const DEFAULT_THEME: &str = include_str!("../../config_files/fm/themes/default.yaml");
 
 const DEFAULT_CONFIGS: [(&str, &str); 7] = [
     ("config.yaml", DEFAULT_CONFIG),
