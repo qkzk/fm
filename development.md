@@ -1999,7 +1999,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] rename to `.yaml` and
 - [ ] custom preview from external command
   - [x] previewer.yml
-  - [ ] create default `previewer.yaml`
+  - [x] create default `previewer.yaml`
   - [x] format :
     ```yml
     name:
