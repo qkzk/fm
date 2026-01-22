@@ -29,7 +29,7 @@ pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, ClickableString, Footer, Header, PreviewHeader};
 pub use internal_settings::InternalSettings;
 pub use previewer::{PreviewResponse, Previewer};
-pub use previewer_plugins::{build_plugins, try_build, PreviewerPlugin};
+pub use previewer_plugins::{build_previewer_plugins, try_build_plugin, PreviewerPlugin};
 pub use refresher::Refresher;
 pub use session::Session;
 pub use status::{Direction, Focus, Status, Window};

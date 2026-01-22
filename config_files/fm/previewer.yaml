@@ -1,0 +1,11 @@
+- name: mediainfo
+  extensions:
+      - "jpg"
+      - "png"
+  command: "mediainfo %s"
+
+- name: bat
+  extensions:
+      - "rs"
+      - "py"
+  command: "bat %s"

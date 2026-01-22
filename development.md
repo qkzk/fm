@@ -1973,6 +1973,8 @@ Once that's done, it's all. No not implement anything else
 #### Summary 
 
 - Fuzzy finder of file & fuzzy finder of line can open a file directly with ALt+Enter.
+- Themes. Set a theme in your config file like `default` or `tokyonight`. It refers to a file `~/.config/fm/themes/tokyonight.yml`. The settings haven't change. Colors from your current config won't be read.
+- Preview from a custom command. See `~/config/fm/previewer.yaml`. It will be matched first, _before_ plugins and internal configs.
 
 ##### Bugfixes 
 
@@ -1984,6 +1986,7 @@ Once that's done, it's all. No not implement anything else
   - [x] load theme from folder 
   - [ ] create default theme from code if not exists when compiling
     - [ ] need testing.
+  - [ ] fmconfig --them-from-config: copy user colors to a new file named `${USER}.yml`. Don't do it if file exists.
   - [x] themes
     - [x] default
     - [x] ansi
@@ -1993,8 +1996,10 @@ Once that's done, it's all. No not implement anything else
     - [x] monokai
     - [x] nord
     - [x] tokyonight
+  - [ ] rename to `.yaml` and
 - [ ] custom preview from external command
   - [x] previewer.yml
+  - [ ] create default `previewer.yaml`
   - [x] format :
     ```yml
     name:
@@ -2004,8 +2009,12 @@ Once that's done, it's all. No not implement anything else
         - truc
       command: "bat --color=always --style=numbers --theme=Nord %s"
     ```
-  - [ ] load external previewers (before / after plugins ?)
-  - [ ] try, check status
+  - [x] parse config
+  - [x] match against extensions..
+  - [x] preview
+  - [x] display filepath and not "bat"
+  - [x] ensure wrong config won't crash
+  - [ ] tests..
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting

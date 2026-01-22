@@ -12,23 +12,27 @@ use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, Style as SyntectStyle},
     parsing::{SyntaxReference, SyntaxSet},
 };
 
-use crate::app::try_build;
+use crate::app::try_build_plugin;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
     FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
     PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
-use crate::config::{get_prefered_imager, get_previewer_plugins, get_syntect_theme, Imagers};
+use crate::config::{
+    get_prefered_imager, get_previewer_command, get_previewer_plugins, get_syntect_theme, Imagers,
+};
 use crate::io::execute_and_capture_output_without_check;
+use crate::log_info;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
-    DisplayedImageBuilder, FileKind, FilterKind, TLine, Tree, TreeBuilder, TreeLines, Users,
+    DisplayedImageBuilder, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
 
 fn images_are_enabled() -> bool {
@@ -244,6 +248,9 @@ impl PreviewBuilder {
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
     pub fn build(self) -> Result<Preview> {
+        if let Some(preview) = self.command_preview() {
+            return Ok(preview);
+        }
         if let Some(preview) = self.plugin_preview() {
             return Ok(preview);
         }
@@ -252,7 +259,7 @@ impl PreviewBuilder {
 
     fn plugin_preview(&self) -> Option<Preview> {
         if let Some(plugins) = get_previewer_plugins() {
-            try_build(&self.path, plugins)
+            try_build_plugin(&self.path, plugins)
         } else {
             None
         }
@@ -444,11 +451,50 @@ impl PreviewBuilder {
 
     pub fn cli_info(output: &str, command: String) -> Preview {
         crate::log_info!("cli_info. command {command} - output\n{output}");
-        Preview::Text(Text::command_stdout(output, command))
+        Preview::Text(Text::command_stdout(
+            output,
+            command,
+            Arc::from(Path::new("")),
+        ))
     }
 
     pub fn plugin_text(text: String, name: &str, path: &Path) -> Preview {
         Preview::Text(Text::plugin(text, name, path))
+    }
+
+    fn command_preview(&self) -> Option<Preview> {
+        let extension = self.path.extension()?.to_string_lossy().to_string();
+        let commands = get_previewer_command()?;
+        log_info!("{extension} - {commands:?}");
+        for command in commands.iter() {
+            if command.extensions.contains(&extension) {
+                return command.preview(&self.path).ok();
+            }
+        }
+
+        None
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct PreviewerCommand {
+    name: String,
+    extensions: Vec<String>,
+    command: String,
+}
+
+impl PreviewerCommand {
+    fn preview(&self, path: &Path) -> Result<Preview> {
+        let command = self
+            .command
+            .replace("%s", &path.display().to_string().quote()?);
+        let args: Vec<_> = command.split_whitespace().collect();
+        Ok(Preview::Text(Text::from_command_output(
+            TextKind::Plugin,
+            args[0],
+            &args[1..],
+            Arc::from(path),
+        )?))
     }
 }
 
@@ -618,7 +664,12 @@ impl Text {
         })
     }
 
-    fn from_command_output(kind: TextKind, command: &str, args: &[&str]) -> Result<Self> {
+    fn from_command_output(
+        kind: TextKind,
+        command: &str,
+        args: &[&str],
+        filepath: Arc<Path>,
+    ) -> Result<Self> {
         let content: Vec<String> = execute_and_capture_output_without_check(command, args)?
             .lines()
             .map(|s| s.to_owned())
@@ -627,7 +678,7 @@ impl Text {
             title: command.to_owned(),
             kind,
             length: content.len(),
-            filepath: Arc::from(Path::new("")),
+            filepath,
             content,
         })
     }
@@ -637,11 +688,17 @@ impl Text {
             TextKind::Mediacontent,
             MEDIAINFO,
             &[path_to_string(&path).as_str()],
+            Arc::from(path),
         )
     }
 
     fn pdf_text(path: &Path) -> Result<Self> {
-        Self::from_command_output(TextKind::Pdf, PDFTOTEXT, &[path_to_string(&path).as_str()])
+        Self::from_command_output(
+            TextKind::Pdf,
+            PDFTOTEXT,
+            &[path_to_string(&path).as_str()],
+            Arc::from(path),
+        )
     }
 
     fn office_text(path: &Path) -> Result<Self> {
@@ -649,6 +706,7 @@ impl Text {
             TextKind::Office,
             LIBREOFFICE,
             &["--cat", path_to_string(&path).as_str()],
+            Arc::from(path),
         )
     }
 
@@ -674,7 +732,12 @@ impl Text {
     }
 
     fn sevenz(path: &Path) -> Result<Self> {
-        Self::from_command_output(TextKind::Sevenz, SEVENZ, &["l", &path_to_string(&path)])
+        Self::from_command_output(
+            TextKind::Sevenz,
+            SEVENZ,
+            &["l", &path_to_string(&path)],
+            Arc::from(path),
+        )
     }
 
     fn iso(path: &Path) -> Result<Self> {
@@ -682,6 +745,7 @@ impl Text {
             TextKind::Iso,
             ISOINFO,
             &["-l", "-i", &path_to_string(&path)],
+            Arc::from(path),
         )
     }
 
@@ -690,13 +754,15 @@ impl Text {
             TextKind::Torrent,
             TRANSMISSION_SHOW,
             &[&path_to_string(&path)],
+            Arc::from(path),
         )
     }
 
     /// New socket preview
     /// See `man ss` for a description of the arguments.
     fn socket(path: &Path) -> Result<Self> {
-        let mut preview = Self::from_command_output(TextKind::Socket, SS, &["-lpmepiT"])?;
+        let mut preview =
+            Self::from_command_output(TextKind::Socket, SS, &["-lpmepiT"], Arc::from(path))?;
         preview.content = preview
             .content
             .iter()
@@ -717,6 +783,7 @@ impl Text {
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
                 &path_to_string(&path),
             ],
+            Arc::from(path),
         )
     }
 
@@ -733,17 +800,18 @@ impl Text {
                 path_to_string(&path).as_str(),
                 "--no-pager",
             ],
+            Arc::from(path),
         )
     }
     /// Make a new previewed colored text.
-    pub fn command_stdout(output: &str, title: String) -> Self {
+    pub fn command_stdout(output: &str, title: String, filepath: Arc<Path>) -> Self {
         let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         let length = content.len();
         Self {
             title,
             kind: TextKind::CommandStdout,
             content,
-            filepath: Arc::from(Path::new("")),
+            filepath,
             length,
         }
     }

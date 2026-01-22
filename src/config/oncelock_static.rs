@@ -17,14 +17,14 @@ use syntect::{
 };
 
 use crate::{
-    app::{build_plugins, PreviewerPlugin},
-    common::CONFIG_FOLDER,
-    common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH},
+    app::{build_previewer_plugins, PreviewerPlugin},
+    common::{tilde, CONFIG_FOLDER, CONFIG_PATH, PREVIEWER_PATH, SYNTECT_THEMES_PATH},
     config::{
         read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
         PreferedImager, SyntectTheme, MAX_GRADIENT_NORMAL,
     },
     log_info,
+    modes::PreviewerCommand,
 };
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
@@ -57,7 +57,8 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
-static PLUGINS: OnceLock<Vec<(String, PreviewerPlugin)>> = OnceLock::new();
+static PREVIEWER_PLUGINS: OnceLock<Vec<(String, PreviewerPlugin)>> = OnceLock::new();
+static PREVIEWER_COMMANDS: OnceLock<Vec<PreviewerCommand>> = OnceLock::new();
 
 static PREFERED_IMAGER: OnceLock<PreferedImager> = OnceLock::new();
 
@@ -67,13 +68,32 @@ pub fn get_prefered_imager() -> Option<&'static PreferedImager> {
 
 /// Attach a map of name -> path to the `PLUGINS` static variable.
 pub fn set_previewer_plugins(plugins: Vec<(String, String)>) -> Result<()> {
-    let _ = PLUGINS.set(build_plugins(plugins));
+    let _ = PREVIEWER_PLUGINS.set(build_previewer_plugins(plugins));
     Ok(())
 }
 
 /// `PLUGINS` static map. Returns a map of name -> path.
 pub fn get_previewer_plugins() -> Option<&'static Vec<(String, PreviewerPlugin)>> {
-    PLUGINS.get()
+    PREVIEWER_PLUGINS.get()
+}
+
+fn parse_previewer_commands() -> Option<Vec<PreviewerCommand>> {
+    let file = std::fs::File::open(tilde(PREVIEWER_PATH).as_ref()).ok()?;
+    let commands: Vec<PreviewerCommand> = from_reader(file).ok()?;
+    log_info!("Previewer commands: {commands:?}");
+    Some(commands)
+}
+
+/// Attach a map of name -> path to the `PREVIEWER_COMMAND` static variable.
+pub fn set_previewer_command() -> Result<()> {
+    let commands = parse_previewer_commands().unwrap_or_default();
+    let _ = PREVIEWER_COMMANDS.set(commands);
+    Ok(())
+}
+
+/// `command` static map. Returns a map of name -> path.
+pub fn get_previewer_command() -> Option<&'static Vec<PreviewerCommand>> {
+    PREVIEWER_COMMANDS.get()
 }
 
 /// Reads the syntect_theme configuration value and tries to load if from configuration files.
@@ -267,7 +287,9 @@ pub fn set_configurable_static(
     set_icon_icon_with_metadata()?;
     set_syntect_theme()?;
     set_prefered_imager()?;
-    set_previewer_plugins(plugins)
+    set_previewer_plugins(plugins)?;
+    set_previewer_command()?;
+    Ok(())
 }
 
 fn read_theme(theme: String) -> Option<Value> {

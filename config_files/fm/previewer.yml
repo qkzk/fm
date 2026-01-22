@@ -1,5 +1,0 @@
-mediainfo:
-    extensions:
-        - "jpg"
-        - "png"
-    command: "mediainfo %s"

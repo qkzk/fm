@@ -10,6 +10,8 @@ pub const OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
 /// Filepath of the CLI configuration file
 pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
+/// Filepath of the previewer config file
+pub const PREVIEWER_PATH: &str = "~/.config/fm/previewer.yaml";
 /// Inputhistory
 pub const INPUT_HISTORY_PATH: &str = "~/.config/fm/log/input_history.log";
 /// Syntect theme paths

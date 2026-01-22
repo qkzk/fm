@@ -9,7 +9,7 @@ use libloading::{Library, Symbol};
 use crate::modes::{Preview, PreviewBuilder};
 
 /// Build an hashmap of name and preview builder from an hashmap of name and path.
-pub fn build_plugins(plugins: Vec<(String, String)>) -> Vec<(String, PreviewerPlugin)> {
+pub fn build_previewer_plugins(plugins: Vec<(String, String)>) -> Vec<(String, PreviewerPlugin)> {
     let mut loaded_plugins = vec![];
     for (name, path) in plugins.into_iter() {
         match load_plugin(path) {
@@ -64,7 +64,7 @@ unsafe fn get_previewer(
 }
 
 /// Preview the file if any loaded plugin is able to.
-pub fn try_build(path: &Path, plugins: &[(String, PreviewerPlugin)]) -> Option<Preview> {
+pub fn try_build_plugin(path: &Path, plugins: &[(String, PreviewerPlugin)]) -> Option<Preview> {
     let s_path = path.to_string_lossy().to_string();
     let candidate = CString::new(s_path).ok()?.into_raw();
     for (_, plugin) in plugins.iter() {
