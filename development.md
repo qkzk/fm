@@ -1990,9 +1990,9 @@ Once that's done, it's all. No not implement anything else
     - [x] catppuccin
     - [x] dracula
     - [x] grey
-    - [x] nord
     - [x] monokai
-    - [x] tokyonight - [moon](https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/colors/moon.lua)
+    - [x] nord
+    - [x] tokyonight
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting
