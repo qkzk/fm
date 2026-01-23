@@ -2024,7 +2024,7 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
-
+- [ ] FEAT: eml previewer with [eml-parser](https://crates.io/crates/eml-parser) or [mail-parser](https://crates.io/crates/mail-parser)
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
