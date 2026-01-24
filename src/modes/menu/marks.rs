@@ -165,6 +165,16 @@ impl Marks {
     fn format_mark(ch: char, path: &Path) -> String {
         format!("{ch}    {path}", path = path.display())
     }
+
+    pub fn char_for(&self, path: &Path) -> char {
+        for (c, p) in &self.content {
+            if p == path {
+                return *c;
+            }
+        }
+
+        ' '
+    }
 }
 
 type Pair = (char, PathBuf);

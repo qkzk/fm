@@ -467,7 +467,7 @@ impl<'a> DirectoryDisplay<'a> {
     /// metadata of the selected file.
     fn files(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
-        let p_rect = rect.offseted(2, 0);
+        let p_rect = rect.offseted(0, 0);
         let formater = Self::pick_formater(self.status.session.metadata(), p_rect.width);
         let with_icon = with_icon();
         let lines: Vec<_> = self
@@ -524,8 +524,30 @@ impl<'a> DirectoryDisplay<'a> {
 
         Line::from(vec![
             self.span_flagged_symbol(file, &mut style),
+            self.mark_span(file),
             Span::styled(content, style),
         ])
+    }
+
+    fn mark_span<'b>(&self, file: &FileInfo) -> Span<'b> {
+        if let Some(index) = self.status.menu.temp_marks.digit_for(&file.path) {
+            Span::styled(
+                index.to_string(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu style should be set")
+                    .palette_1,
+            )
+        } else {
+            let first_char = self.status.menu.marks.char_for(&file.path);
+            Span::styled(
+                String::from(first_char),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu style should be set")
+                    .palette_2,
+            )
+        }
     }
 
     fn reverse_selected(&self, index: usize, style: &mut Style) {

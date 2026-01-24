@@ -36,7 +36,7 @@ impl TempMarks {
 
     fn log_index_error(index: usize) {
         log_info!(
-            "index {index} is too big for a temp mark. Should be between 0 and {NB_TEMP_MARKS} exclusive", 
+            "index {index} is too big for a temp mark. Should be between 0 and {NB_TEMP_MARKS} excluded",
             NB_TEMP_MARKS=Self::NB_TEMP_MARKS
         );
     }
@@ -85,6 +85,17 @@ impl TempMarks {
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
+
+    pub fn digit_for(&self, path: &std::path::Path) -> Option<usize> {
+        for (index, opt_path) in self.content.iter().enumerate() {
+            if let Some(p) = opt_path {
+                if p == path {
+                    return Some(index);
+                }
+            }
+        }
+        None
     }
 }
 

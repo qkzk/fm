@@ -2024,13 +2024,16 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: searching `/` crash with free(): double free detected in tcache 2
     Nasty bug. Solved by cloning the sent path _for every plugin_ against it. The matching is done by taking ownership of a `CString` which can lead to double free.
 - [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
-  - [ ] display marks/temp marks directory/tree display mode
+  - [ ] display marks/temp marks 
+    - [x] directory 
+    - [x] tree display mode
   - [ ] marks & temp_marks refactor. Use same architecture in both.
   - [ ] common trait for marking 
   - [ ] BUG: ensure mark char is printable
   - [ ] method: path_is_marked(path) -> bool 
   - [ ] parent method from status called while moving a file 
   - [ ] update the marks
+- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 
 ## TODO
 
