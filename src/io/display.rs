@@ -524,13 +524,13 @@ impl<'a> DirectoryDisplay<'a> {
 
         Line::from(vec![
             self.span_flagged_symbol(file, &mut style),
-            self.mark_span(file),
+            Self::mark_span(self.status, file),
             Span::styled(content, style),
         ])
     }
 
-    fn mark_span<'b>(&self, file: &FileInfo) -> Span<'b> {
-        if let Some(index) = self.status.menu.temp_marks.digit_for(&file.path) {
+    fn mark_span<'b>(status: &Status, file: &FileInfo) -> Span<'b> {
+        if let Some(index) = status.menu.temp_marks.digit_for(&file.path) {
             Span::styled(
                 index.to_string(),
                 MENU_STYLES
@@ -539,7 +539,7 @@ impl<'a> DirectoryDisplay<'a> {
                     .palette_1,
             )
         } else {
-            let first_char = self.status.menu.marks.char_for(&file.path);
+            let first_char = status.menu.marks.char_for(&file.path);
             Span::styled(
                 String::from(first_char),
                 MENU_STYLES
@@ -681,7 +681,7 @@ impl<'a> TreeDisplay<'a> {
         f: &mut Frame,
         rect: &Rect,
     ) {
-        let p_rect = rect.offseted(1, 0);
+        let p_rect = rect.offseted(0, 0);
         let width = p_rect.width.saturating_sub(6);
         let formater = DirectoryDisplay::pick_formater(with_metadata, width);
         let with_icon = Self::use_icon(with_metadata);
@@ -721,6 +721,7 @@ impl<'a> TreeDisplay<'a> {
         Self::color_searched(status, &fileinfo, &mut style);
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
+            DirectoryDisplay::mark_span(status, &fileinfo),
             Self::metadata(&fileinfo, formater, style),
             Self::prefix(line_builder),
             Self::whitespaces(status, path, with_offset),
