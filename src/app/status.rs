@@ -2429,6 +2429,13 @@ impl Status {
         };
         Ok(())
     }
+
+    /// Update marks & temps marks from old path to new path.
+    /// Does nothing if the oldpath wasn't marked.
+    pub fn rename_marks(&mut self, old_path: &Path, new_path: &str) -> Result<()> {
+        self.menu.temp_marks.move_path(old_path, new_path);
+        self.menu.marks.move_path(old_path, new_path)
+    }
 }
 
 fn find_keybind_from_fuzzy(line: &str) -> Result<KeyEvent> {

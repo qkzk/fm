@@ -97,6 +97,13 @@ impl TempMarks {
         }
         None
     }
+
+    pub fn move_path(&mut self, old_path: &std::path::Path, new_path: &str) {
+        let Some(index) = self.digit_for(old_path) else {
+            return;
+        };
+        self.set_mark(index, PathBuf::from(new_path));
+    }
 }
 
 type Opb = Option<PathBuf>;

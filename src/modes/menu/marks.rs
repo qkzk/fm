@@ -93,7 +93,7 @@ Invalid first character in: {line}"
                 )
             },
             |ch| {
-                if ch == ':' || ch.is_control() {
+                if ch == ':' || ch == ' ' || ch.is_control() {
                     bail!(
                         "marks: parse line
 Invalid first characer in: {line}"
@@ -116,8 +116,8 @@ Invalid first characer in: {line}"
             log_line!("new mark - please use a printable symbol for mark");
             return Ok(());
         }
-        if ch == ':' {
-            log_line!("new mark - ':' can't be used as a mark");
+        if ch == ':' || ch == ' ' {
+            log_line!("new mark - '{ch}' can't be used as a mark");
             return Ok(());
         }
         if self.used_chars.contains(&ch) {
@@ -202,6 +202,15 @@ Invalid first characer in: {line}"
     /// Otherwise it's ' '
     pub fn char_for(&self, path: &Path) -> &char {
         self.paths_to_mark.get(path).unwrap_or(&' ')
+    }
+
+    pub fn move_path(&mut self, old_path: &Path, new_path: &str) -> Result<()> {
+        let ch = *self.char_for(old_path);
+        if ch == ' ' {
+            return Ok(());
+        }
+        self.update_mark(ch, Path::new(new_path));
+        self.save_marks()
     }
 }
 
