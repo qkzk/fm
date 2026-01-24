@@ -66,7 +66,7 @@ strfmt = "0.2.4"
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"
 syntect = { version = "5.2.0", features = ["dump-load"] }
-sysinfo = "0.38.0"
+sysinfo = { version = "0.38.0", features = ["linux-tmpfs", "linux-netdevs"] }
 tar = "0.4.38"
 tokio = { version = "1", features = ["full"] }
 unicode-segmentation = "1.11.0"

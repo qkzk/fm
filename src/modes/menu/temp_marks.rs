@@ -98,11 +98,11 @@ impl TempMarks {
         None
     }
 
-    pub fn move_path(&mut self, old_path: &std::path::Path, new_path: &str) {
+    pub fn move_path(&mut self, old_path: &std::path::Path, new_path: &std::path::Path) {
         let Some(index) = self.digit_for(old_path) else {
             return;
         };
-        self.set_mark(index, PathBuf::from(new_path));
+        self.set_mark(index, new_path.to_path_buf());
     }
 }
 

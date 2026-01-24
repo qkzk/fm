@@ -2032,7 +2032,8 @@ Once that's done, it's all. No not implement anything else
   - [x] FIX: ensure mark char is printable by preventing control char.
   - [ ] method: path_is_marked(path) -> bool 
   - [ ] parent method from status called while moving a file 
-  - [ ] update the marks
+  - [ ] update the marks. 
+    Difficult: can't update easily... we need a way for _complex_move_ to notify what happened
 - [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 
 ## TODO

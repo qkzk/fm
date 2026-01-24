@@ -204,12 +204,12 @@ Invalid first characer in: {line}"
         self.paths_to_mark.get(path).unwrap_or(&' ')
     }
 
-    pub fn move_path(&mut self, old_path: &Path, new_path: &str) -> Result<()> {
+    pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> Result<()> {
         let ch = *self.char_for(old_path);
         if ch == ' ' {
             return Ok(());
         }
-        self.update_mark(ch, Path::new(new_path));
+        self.update_mark(ch, new_path);
         self.save_marks()
     }
 }

@@ -1109,7 +1109,8 @@ impl Status {
                         "Moved {source} to {dest}",
                         source = source.display(),
                         dest = dest.display()
-                    )
+                    );
+                    self.rename_marks(source, dest)?;
                 }
                 Err(e) => {
                     log_info!("Error: {e:?}");
@@ -2432,9 +2433,12 @@ impl Status {
 
     /// Update marks & temps marks from old path to new path.
     /// Does nothing if the oldpath wasn't marked.
-    pub fn rename_marks(&mut self, old_path: &Path, new_path: &str) -> Result<()> {
-        self.menu.temp_marks.move_path(old_path, new_path);
-        self.menu.marks.move_path(old_path, new_path)
+    pub fn rename_marks<P>(&mut self, old_path: &Path, new_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        self.menu.temp_marks.move_path(old_path, new_path.as_ref());
+        self.menu.marks.move_path(old_path, new_path.as_ref())
     }
 }
 
