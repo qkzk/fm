@@ -66,8 +66,10 @@ unsafe fn get_previewer(
 /// Preview the file if any loaded plugin is able to.
 pub fn try_build_plugin(path: &Path, plugins: &[(String, PreviewerPlugin)]) -> Option<Preview> {
     let s_path = path.to_string_lossy().to_string();
-    let candidate = CString::new(s_path).ok()?.into_raw();
     for (_, plugin) in plugins.iter() {
+        // Cloning must be done HERE since the plugin matcher will take ownership of candidate with `CString::from_raw`.
+        // It leads to double free errors otherwise.
+        let candidate = CString::new(s_path.clone()).ok()?.into_raw();
         if unsafe { (plugin.is_match)(candidate) } {
             let c_path = CString::new(path.display().to_string()).ok()?.into_raw();
             let output = unsafe { plugin.get_output(c_path) }.ok()?;

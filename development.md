@@ -1978,6 +1978,8 @@ Once that's done, it's all. No not implement anything else
 
 ##### Bugfixes 
 
+- Solved a double free when multiple plugins are used.
+
 #### Changelog
 
 - [ ] FEAT: common themes
@@ -2018,13 +2020,23 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: dual, preview tree, open. resize but focus still on right
   - [ ] more testing
 - [x] FEAT: open directly from fuzzy finder instead of selecting
+- [x] PLUGIN: eml previewer with [eml-parser](https://crates.io/crates/eml-parser)
+- [x] FIX: searching `/` crash with free(): double free detected in tcache 2
+    Nasty bug. Solved by cloning the sent path _for every plugin_ against it. The matching is done by taking ownership of a `CString` which can lead to double free.
+- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [ ] display marks/temp marks directory/tree display mode
+  - [ ] marks & temp_marks refactor. Use same architecture in both.
+  - [ ] common trait for marking 
+  - [ ] BUG: ensure mark char is printable
+  - [ ] method: path_is_marked(path) -> bool 
+  - [ ] parent method from status called while moving a file 
+  - [ ] update the marks
 
 ## TODO
 
 ### Other ideas
 
 
-- [ ] FEAT: eml previewer with [eml-parser](https://crates.io/crates/eml-parser) or [mail-parser](https://crates.io/crates/mail-parser) - [nushell usage for eml-parser](https://github.com/nushell/nushell/blob/main/crates/nu_plugin_formats/src/from/eml.rs)
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
@@ -2042,14 +2054,6 @@ Once that's done, it's all. No not implement anything else
     - [ ] filename keep their color 
     - [ ] color per stat with sane defaults
     - [ ] make display::FileFormater return a vector
-- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
-  - [ ] display marks/temp marks directory/tree display mode
-  - [ ] marks & temp_marks refactor. Use same architecture in both.
-  - [ ] common trait for marking 
-  - [ ] BUG: ensure mark char is printable
-  - [ ] method: path_is_marked(path) -> bool 
-  - [ ] parent method from status called while moving a file 
-  - [ ] update the marks
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
