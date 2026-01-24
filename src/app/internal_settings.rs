@@ -103,7 +103,7 @@ impl InternalSettings {
     }
 
     pub fn disks(&mut self) -> &Disks {
-        self.disks.refresh_list();
+        self.disks.refresh(true);
         &self.disks
     }
 
