@@ -541,7 +541,7 @@ impl<'a> DirectoryDisplay<'a> {
         } else {
             let first_char = status.menu.marks.char_for(&file.path);
             Span::styled(
-                String::from(first_char),
+                String::from(*first_char),
                 MENU_STYLES
                     .get()
                     .expect("Menu style should be set")

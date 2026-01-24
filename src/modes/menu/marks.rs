@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
@@ -16,6 +16,7 @@ pub struct Marks {
     content: Vec<(char, PathBuf)>,
     pub index: usize,
     used_chars: BTreeSet<char>,
+    paths_to_mark: BTreeMap<PathBuf, char>,
 }
 
 impl Marks {
@@ -56,6 +57,14 @@ impl Marks {
         if must_save {
             log_info!("Wrong marks found, will save it again");
             let _ = self.save_marks();
+        }
+        self.save_paths_to_mark();
+    }
+
+    fn save_paths_to_mark(&mut self) {
+        self.paths_to_mark.clear();
+        for (c, p) in self.content.iter() {
+            self.paths_to_mark.insert(p.to_path_buf(), *c);
         }
     }
 
@@ -115,6 +124,7 @@ Invalid first characer in: {line}"
             self.update_mark(ch, path);
         } else {
             self.content.push((ch, path.to_path_buf()));
+            self.used_chars.insert(ch);
         }
 
         self.save_marks()?;
@@ -139,17 +149,28 @@ Invalid first characer in: {line}"
         if self.is_empty() {
             return Ok(());
         }
-        let (ch, path) = self.selected().context("no marks saved")?;
+        if self.index >= self.content.len() {
+            bail!(
+                "index of mark is {index} and len is {len}",
+                index = self.index,
+                len = self.content.len()
+            );
+        }
+
+        let (ch, path) = &self.content[self.index];
+        self.used_chars.remove(ch);
         log_line!("Removed marks {ch} -> {path}", path = path.display());
         self.content.remove(self.index);
         self.prev();
-        self.save_marks()
+        self.save_marks()?;
+        Ok(())
     }
 
     fn save_marks(&mut self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
         self.content.sort();
+        self.save_paths_to_mark();
         for (ch, path) in &self.content {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
@@ -176,14 +197,11 @@ Invalid first characer in: {line}"
         format!("{ch}    {path}", path = path.display())
     }
 
-    pub fn char_for(&self, path: &Path) -> char {
-        for (c, p) in &self.content {
-            if p == path {
-                return *c;
-            }
-        }
-
-        ' '
+    /// Returns the char for associated to a path.
+    /// For marked path, it's their mark,
+    /// Otherwise it's ' '
+    pub fn char_for(&self, path: &Path) -> &char {
+        self.paths_to_mark.get(path).unwrap_or(&' ')
     }
 }
 
