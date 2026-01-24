@@ -2029,7 +2029,7 @@ Once that's done, it's all. No not implement anything else
     - [x] tree display mode
   - [ ] marks & temp_marks refactor. Use same architecture in both.
   - [ ] common trait for marking 
-  - [ ] BUG: ensure mark char is printable
+  - [x] FIX: ensure mark char is printable by preventing control char.
   - [ ] method: path_is_marked(path) -> bool 
   - [ ] parent method from status called while moving a file 
   - [ ] update the marks

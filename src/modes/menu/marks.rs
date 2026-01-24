@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::common::{read_lines, tilde, MARKS_FILEPATH};
 use crate::io::DrawMenu;
@@ -78,12 +78,18 @@ impl Marks {
         }
         sp[0].chars().next().map_or_else(
             || {
-                Err(anyhow!(
+                bail!(
                     "marks: parse line
-                 Invalid first character in: {line}"
-                ))
+Invalid first character in: {line}"
+                )
             },
             |ch| {
+                if ch == ':' || ch.is_control() {
+                    bail!(
+                        "marks: parse line
+Invalid first characer in: {line}"
+                    )
+                }
                 let path = PathBuf::from(sp[1]);
                 Ok((ch, path))
             },
@@ -97,6 +103,10 @@ impl Marks {
     ///
     /// It may fail if writing to the marks file fails.
     pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
+        if ch.is_control() {
+            log_line!("new mark - please use a printable symbol for mark");
+            return Ok(());
+        }
         if ch == ':' {
             log_line!("new mark - ':' can't be used as a mark");
             return Ok(());
