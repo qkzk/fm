@@ -1973,7 +1973,7 @@ Once that's done, it's all. No not implement anything else
 #### Summary 
 
 - Fuzzy finder of file & fuzzy finder of line can open a file directly with ALt+Enter.
-- Themes. Set a theme in your config file like `default` or `tokyonight`. It refers to a file `~/.config/fm/themes/tokyonight.yml`. The settings haven't change. Colors from your current config won't be read.
+- Themes. Set a theme in your config file like `default` or `tokyonight`. It refers to a file `~/.config/fm/themes/tokyonight.yaml`. The settings haven't change. Colors from your current config won't be read.
 - Preview from a custom command. See `~/config/fm/previewer.yaml`. It will be matched first, _before_ plugins and internal configs.
 - Marks and temp marks are (should be ?) updated when a file is moved/renamed/copied/deleted. 
 
