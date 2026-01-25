@@ -1,6 +1,6 @@
 use crossterm::event::Event;
 
-use crate::event::ActionMap;
+use crate::{event::ActionMap, modes::DoneCopyMove};
 
 /// Internal and terminal events.
 /// Most of events are sent from the terminal emulator.
@@ -12,7 +12,7 @@ pub enum FmEvents {
     /// User has saved its filenames and we can rename/create them
     BulkExecute,
     /// The first file in file queue has been copied
-    FileCopied,
+    FileCopied(Vec<DoneCopyMove>),
     /// Event from the terminal itself (restart, resize, key, mouse etc.)
     Term(Event),
     /// Action sent directly to be dispatched and executed

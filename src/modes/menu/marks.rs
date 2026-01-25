@@ -120,6 +120,7 @@ Invalid first characer in: {line}"
             log_line!("new mark - '{ch}' can't be used as a mark");
             return Ok(());
         }
+        self.remove_path(path)?;
         if self.used_chars.contains(&ch) {
             self.update_mark(ch, path);
         } else {
@@ -204,12 +205,42 @@ Invalid first characer in: {line}"
         self.paths_to_mark.get(path).unwrap_or(&' ')
     }
 
+    /// Change mark path from `old_path` to `new_path` and write the marks to disk
     pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> Result<()> {
         let ch = *self.char_for(old_path);
         if ch == ' ' {
             return Ok(());
         }
         self.update_mark(ch, new_path);
+        self.save_marks()
+    }
+
+    /// Remove a path from marks. Does nothing if the path isn't marked.
+    /// If the path is marked, it's removed everywhere (paths_to_mark, content and used_ch).
+    /// The marks are then saved.
+    pub fn remove_path(&mut self, old_path: &Path) -> Result<()> {
+        let Some(ch) = self.paths_to_mark.remove(old_path) else {
+            return Ok(());
+        };
+        self.used_chars.remove(&ch);
+        let mut found = false;
+        for index in 0..self.content.len() {
+            let (used_ch, stored_path) = &self.content[index];
+            if used_ch == &ch && old_path == stored_path {
+                self.content.remove(index);
+                found = true;
+                if index <= self.index {
+                    self.index = self.index.saturating_sub(1);
+                }
+                break;
+            }
+        }
+        if !found {
+            bail!(
+                "Couldn't find {old_path} in marks",
+                old_path = old_path.display()
+            )
+        }
         self.save_marks()
     }
 }

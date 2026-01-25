@@ -215,17 +215,17 @@ impl MenuHolder {
     pub fn delete_flagged_files(&mut self) -> Result<()> {
         let nb = self.flagged.len();
         let output_socket = Args::parse().output_socket;
-        for pathbuf in self.flagged.content.iter() {
+        while let Some(pathbuf) = self.flagged.content.pop() {
             if pathbuf.is_dir() {
-                std::fs::remove_dir_all(pathbuf)?;
+                std::fs::remove_dir_all(&pathbuf)?;
             } else {
-                std::fs::remove_file(pathbuf)?;
+                std::fs::remove_file(&pathbuf)?;
             }
             if let Some(output_socket) = &output_socket {
-                nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(pathbuf))?;
+                nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(&pathbuf))?;
             }
+            self.delete_mark(&pathbuf)?;
         }
-        self.flagged.clear();
         log_line!("Deleted {nb} flagged files");
         Ok(())
     }
@@ -421,6 +421,12 @@ impl MenuHolder {
         self.input.replace(history_element.content());
         self.input_complete(tab)?;
         Ok(())
+    }
+
+    fn delete_mark(&mut self, old_path: &std::path::Path) -> Result<()> {
+        crate::log_info!("Remove mark {old_path:?}");
+        self.temp_marks.remove_path(old_path);
+        self.marks.remove_path(old_path)
     }
 
     impl_navigate_from_char!(shortcut_from_char, shortcut);

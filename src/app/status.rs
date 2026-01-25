@@ -1192,7 +1192,7 @@ impl Status {
             return Ok(());
         }
         // build dest path
-        let dest = self.current_tab().current_directory_path().to_path_buf();
+        let dest = self.current_tab().root_path().to_path_buf();
         let Some(dest_filename) = build_dest_path(pasted, &dest) else {
             return Ok(());
         };
@@ -1967,9 +1967,15 @@ impl Status {
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        if let (Some(paths), Some(create)) = self.menu.bulk.execute()? {
-            self.menu.flagged.update(paths);
-            self.menu.flagged.extend(create);
+        if let (Some(renamed), Some(created)) = self.menu.bulk.execute()? {
+            for (old_path, new_path) in &renamed {
+                log_info!("old_path {old_path:?} -> new_path {new_path:?}");
+                self.rename_marks(old_path, new_path)?;
+            }
+            self.menu
+                .flagged
+                .update(renamed.into_iter().map(|(_, p)| p).collect());
+            self.menu.flagged.extend(created);
         } else {
             self.menu.flagged.clear();
         };
@@ -2437,6 +2443,7 @@ impl Status {
     where
         P: AsRef<Path>,
     {
+        log_info!("{old_path:?} -> {new_path:?}", new_path = new_path.as_ref());
         self.menu.temp_marks.move_path(old_path, new_path.as_ref());
         self.menu.marks.move_path(old_path, new_path.as_ref())
     }

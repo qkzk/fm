@@ -43,6 +43,7 @@ impl TempMarks {
 
     /// Set the mark at given index to the given path.
     pub fn set_mark(&mut self, index: usize, path: PathBuf) {
+        self.remove_path(&path);
         if index >= Self::NB_TEMP_MARKS {
             Self::log_index_error(index);
             return;
@@ -103,6 +104,15 @@ impl TempMarks {
             return;
         };
         self.set_mark(index, new_path.to_path_buf());
+    }
+
+    pub fn remove_path(&mut self, old_path: &std::path::Path) {
+        for index in 0..Self::NB_TEMP_MARKS {
+            match &self.content[index] {
+                Some(path) if path == old_path => self.content[index] = None,
+                _ => (),
+            }
+        }
     }
 }
 

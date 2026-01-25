@@ -8,6 +8,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::Disk;
@@ -326,17 +327,25 @@ where
         ));
     };
     let new_path = old_parent.join(new_name);
+    if old_path.as_ref() == new_path {
+        log_info!(
+            "Path didn't change for {new_path}.",
+            new_path = new_path.display()
+        );
+        return Ok(new_path);
+    }
     if new_path.exists() {
-        return Err(anyhow!(
+        log_line!(
             "File already exists {new_path}",
             new_path = new_path.display()
-        ));
+        );
+        bail!(
+            "File already exists {new_path}",
+            new_path = new_path.display()
+        );
     }
     let Some(new_parent) = new_path.parent() else {
-        return Err(anyhow!(
-            "no parent for {new_path}",
-            new_path = new_path.display()
-        ));
+        bail!("no parent for {new_path}", new_path = new_path.display());
     };
 
     log_info!(

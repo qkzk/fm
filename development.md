@@ -1975,6 +1975,7 @@ Once that's done, it's all. No not implement anything else
 - Fuzzy finder of file & fuzzy finder of line can open a file directly with ALt+Enter.
 - Themes. Set a theme in your config file like `default` or `tokyonight`. It refers to a file `~/.config/fm/themes/tokyonight.yml`. The settings haven't change. Colors from your current config won't be read.
 - Preview from a custom command. See `~/config/fm/previewer.yaml`. It will be matched first, _before_ plugins and internal configs.
+- Marks and temp marks are (should be ?) updated when a file is moved/renamed/copied/deleted. 
 
 ##### Bugfixes 
 
@@ -2023,17 +2024,19 @@ Once that's done, it's all. No not implement anything else
 - [x] PLUGIN: eml previewer with [eml-parser](https://crates.io/crates/eml-parser)
 - [x] FIX: searching `/` crash with free(): double free detected in tcache 2
     Nasty bug. Solved by cloning the sent path _for every plugin_ against it. The matching is done by taking ownership of a `CString` which can lead to double free.
-- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
-  - [ ] display marks/temp marks 
+- [x] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [x] display marks/temp marks 
     - [x] directory 
     - [x] tree display mode
-  - [ ] marks & temp_marks refactor. Use same architecture in both.
-  - [ ] common trait for marking 
   - [x] FIX: ensure mark char is printable by preventing control char.
-  - [ ] method: path_is_marked(path) -> bool 
-  - [ ] parent method from status called while moving a file 
-  - [ ] update the marks. 
-    Difficult: can't update easily... we need a way for _complex_move_ to notify what happened
+  - [x] update the marks. 
+    - [x] rename basic
+    - [x] create a struct to save what was done to filetree : DoneCopyMove { copy_move, from, final_to }
+    - [x] send an event everytime a complex move is sent
+    - [x] don't pop from empty queue for copies
+    - [x] Logline the event
+    - [x] delete the file
+    - [x] ensure marks are unique per path. Can't have multiple path with same marks.
 - [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 
 ## TODO

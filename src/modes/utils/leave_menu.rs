@@ -54,7 +54,9 @@ impl LeaveMenu {
             }
             Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
             Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
-            Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => LeaveMenu::tempmark_upd(status),
+            Menu::Navigate(Navigate::TempMarks(MarkAction::New)) => {
+                LeaveMenu::tempmark_update(status)
+            }
             Menu::Navigate(Navigate::TempMarks(MarkAction::Jump)) => LeaveMenu::tempmark_jp(status),
             Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
             Menu::Navigate(Navigate::Mount) => LeaveMenu::go_to_mount(status),
@@ -126,10 +128,10 @@ impl LeaveMenu {
     /// Update the selected mark with the current path.
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
-    fn tempmark_upd(status: &mut Status) -> Result<()> {
+    fn tempmark_update(status: &mut Status) -> Result<()> {
         let index = status.menu.temp_marks.index;
         let len = status.current_tab().directory.content.len();
-        let new_path = &status.tabs[status.index].directory.path;
+        let new_path = &status.tabs[status.index].directory_of_selected()?;
         status
             .menu
             .temp_marks

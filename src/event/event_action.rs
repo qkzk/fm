@@ -16,9 +16,9 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, Content, ContentWindow,
-    Direction as FuzzyDirection, Display, FuzzyKind, Go, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview, PreviewBuilder,
-    ReEnterMenu, Search, Selectable, To,
+    Direction as FuzzyDirection, Display, DoneCopyMove, FuzzyKind, Go, InputCompleted, InputSimple,
+    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview,
+    PreviewBuilder, ReEnterMenu, Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -1754,9 +1754,9 @@ impl EventAction {
         status.bulk_execute()
     }
 
-    pub fn file_copied(status: &mut Status) -> Result<()> {
+    pub fn file_copied(status: &mut Status, done_copy_moves: Vec<DoneCopyMove>) -> Result<()> {
         log_info!(
-            "file copied - pool: {pool:?}",
+            "file copied - pool: {pool:?} - done_copy_moves: {done_copy_moves:?}",
             pool = status.internal_settings.copy_file_queue
         );
         status.internal_settings.copy_file_remove_head()?;
@@ -1764,6 +1764,12 @@ impl EventAction {
             status.internal_settings.unset_copy_progress()
         } else {
             status.copy_next_file_in_queue()?;
+        }
+        for done_copy_move in &done_copy_moves {
+            log_line!("{done_copy_move}");
+            if !done_copy_move.copy_move.is_copy() {
+                status.rename_marks(&done_copy_move.from, &done_copy_move.final_to)?;
+            }
         }
         Ok(())
     }

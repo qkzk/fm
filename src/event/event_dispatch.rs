@@ -38,7 +38,7 @@ impl EventDispatcher {
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
-            FmEvents::FileCopied => EventAction::file_copied(status),
+            FmEvents::FileCopied(done_copy_moves) => EventAction::file_copied(status, done_copy_moves),
             FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             FmEvents::Ipc(msg) => EventAction::parse_rpc(status, msg),
