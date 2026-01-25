@@ -15,10 +15,10 @@ use crate::io::{read_log, Args, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, Content, ContentWindow,
+    help_string, lsblk_and_udisksctl_installed, Content, ContentWindow,
     Direction as FuzzyDirection, Display, DoneCopyMove, FuzzyKind, Go, InputCompleted, InputSimple,
-    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview,
-    PreviewBuilder, ReEnterMenu, Search, Selectable, To,
+    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder, ReEnterMenu,
+    Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -1531,16 +1531,7 @@ impl EventAction {
             Self::toggle_flag(status)?;
         }
 
-        status.menu.trash.update()?;
-        let output_socket = Args::parse().output_socket;
-        for flagged in status.menu.flagged.content.iter() {
-            if status.menu.trash.trash(flagged).is_ok() {
-                if let Some(output_socket) = &output_socket {
-                    nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(flagged))?;
-                }
-            }
-        }
-        status.menu.flagged.clear();
+        status.menu.trash_and_inform()?;
         status.current_tab_mut().refresh_view()?;
         Ok(())
     }

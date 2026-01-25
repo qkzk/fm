@@ -2037,6 +2037,7 @@ Once that's done, it's all. No not implement anything else
     - [x] Logline the event
     - [x] delete the file
     - [x] ensure marks are unique per path. Can't have multiple path with same marks.
+    - [x] trashing a file remove its marks.
 - [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 
 ## TODO

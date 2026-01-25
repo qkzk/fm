@@ -9,7 +9,7 @@ use crate::io::DrawMenu;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Holds the marks created by the user.
-/// It's an ordered map between any char (except :) and a `PathBuf`.
+/// It's an ordered map between any char (except `:`, ` ` and control char) and a `PathBuf`.
 #[derive(Clone, Default)]
 pub struct Marks {
     save_path: PathBuf,

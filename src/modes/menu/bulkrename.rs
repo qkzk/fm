@@ -221,7 +221,7 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 /// of flagged files in current directory.
 /// Modifications of this file are watched in a separate thread.
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
-/// Renaming or creating is execute in bulk with `execute`.
+/// Renaming or creating is done in bulk with `execute`.
 #[derive(Default)]
 pub struct Bulk {
     bulk: Option<BulkExecutor>,

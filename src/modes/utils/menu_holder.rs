@@ -205,6 +205,28 @@ impl MenuHolder {
         self.trash.delete_permanently()
     }
 
+    /// Move all flagged files to the trash.
+    /// It will also send an IPC action "DELETE `flagged`" to nvim
+    /// It will also remove and associated mark.
+    pub fn trash_and_inform(&mut self) -> Result<()> {
+        self.trash.update()?;
+        let output_socket = Args::parse().output_socket;
+        while let Some(flagged) = self.flagged.content.pop() {
+            if self.trash_a_file(&flagged).is_ok() {
+                if let Some(output_socket) = &output_socket {
+                    nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(&flagged))?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Move the file to trash and remove its associated marks.
+    fn trash_a_file(&mut self, origin: &std::path::Path) -> Result<()> {
+        self.trash.trash(origin)?;
+        self.delete_mark(origin)
+    }
+
     /// Delete all the flagged files & directory recursively.
     /// If an output socket was provided at launch, it will inform the IPC server about those deletions.
     /// Clear the flagged files.
@@ -423,7 +445,7 @@ impl MenuHolder {
         Ok(())
     }
 
-    fn delete_mark(&mut self, old_path: &std::path::Path) -> Result<()> {
+    pub fn delete_mark(&mut self, old_path: &std::path::Path) -> Result<()> {
         crate::log_info!("Remove mark {old_path:?}");
         self.temp_marks.remove_path(old_path);
         self.marks.remove_path(old_path)
