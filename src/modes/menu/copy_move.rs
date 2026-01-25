@@ -205,7 +205,9 @@ where
 
 /// Deal with conflicting filenames during a copy or a move.
 struct ConflictHandler {
+    /// Is this a copy or a move ?
     copy_move: CopyMove,
+    /// Source path of files which are copied or moved.
     sources: Vec<PathBuf>,
     /// The destination of the files.
     /// If there's no conflicting filenames, it's their final destination
@@ -218,6 +220,7 @@ struct ConflictHandler {
     /// Defined to the final destination if there's a conflict.
     /// None otherwise.
     final_dest: Option<PathBuf>,
+    /// Store every move which were done by ConflictHandler
     done_copy_moves: Vec<DoneCopyMove>,
 }
 
@@ -338,6 +341,7 @@ impl ConflictHandler {
         Ok(std::mem::take(&mut self.done_copy_moves))
     }
 
+    /// Fill the vector of done action during this copy_move.
     fn build_non_conflict_copy_moves(&mut self) -> Result<()> {
         while let Some(from) = self.sources.pop() {
             let filename = from.file_name().context("Should have a filename")?;
@@ -363,6 +367,7 @@ impl ConflictHandler {
 }
 
 impl Drop for ConflictHandler {
+    /// To ensure the folder is deleted no matter what.
     fn drop(&mut self) {
         let _ = self.delete_temp_dest();
     }
