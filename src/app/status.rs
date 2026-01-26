@@ -632,7 +632,7 @@ impl Status {
         if couldnt_dual_but_want {
             self.set_dual_pane_if_wide_enough()?;
         }
-        if !self.wide_enough_for_dual() || !self.session.dual() {
+        if !self.use_dual() {
             self.select_left();
         }
         self.resize_all_windows(height)?;
