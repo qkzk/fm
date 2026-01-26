@@ -16,7 +16,7 @@ use ratatui::{
     prelude::*,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame, Terminal,
 };
 
@@ -1768,6 +1768,7 @@ impl Display {
         for i in 0..n {
             let bordered_block = Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .border_style(borders[i]);
             f.render_widget(bordered_block, wins[i]);
         }
