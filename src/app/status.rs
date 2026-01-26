@@ -632,7 +632,7 @@ impl Status {
         if couldnt_dual_but_want {
             self.set_dual_pane_if_wide_enough()?;
         }
-        if !self.wide_enough_for_dual() {
+        if !self.use_dual() {
             self.select_left();
         }
         self.resize_all_windows(height)?;
@@ -1109,7 +1109,8 @@ impl Status {
                         "Moved {source} to {dest}",
                         source = source.display(),
                         dest = dest.display()
-                    )
+                    );
+                    self.rename_marks(source, dest)?;
                 }
                 Err(e) => {
                     log_info!("Error: {e:?}");
@@ -1191,7 +1192,7 @@ impl Status {
             return Ok(());
         }
         // build dest path
-        let dest = self.current_tab().current_directory_path().to_path_buf();
+        let dest = self.current_tab().root_path().to_path_buf();
         let Some(dest_filename) = build_dest_path(pasted, &dest) else {
             return Ok(());
         };
@@ -1295,6 +1296,29 @@ impl Status {
             if let FuzzyKind::File = fuzzy.kind {
                 self.menu.flagged.toggle(Path::new(&pick));
                 self.fuzzy_navigate(FuzzyDirection::Down)?;
+            }
+        } else {
+            log_info!("Fuzzy had nothing to select from");
+        };
+        Ok(())
+    }
+
+    /// Open a file directly from the fuzzy finder.
+    /// Only works for fuzzy finder of file & fuzzy finder of lines.
+    pub fn fuzzy_open_file(&mut self) -> Result<()> {
+        let Some(fuzzy) = &self.fuzzy else {
+            bail!("Fuzzy should be set");
+        };
+        if let Some(pick) = fuzzy.pick() {
+            match fuzzy.kind {
+                FuzzyKind::File => {
+                    self.open_single_file(Path::new(&pick))?;
+                }
+                FuzzyKind::Line => {
+                    let (path, _) = parse_line_output(&pick)?;
+                    self.open_single_file(&path)?;
+                }
+                _ => (),
             }
         } else {
             log_info!("Fuzzy had nothing to select from");
@@ -1943,9 +1967,15 @@ impl Status {
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        if let (Some(paths), Some(create)) = self.menu.bulk.execute()? {
-            self.menu.flagged.update(paths);
-            self.menu.flagged.extend(create);
+        if let (Some(renamed), Some(created)) = self.menu.bulk.execute()? {
+            for (old_path, new_path) in &renamed {
+                log_info!("old_path {old_path:?} -> new_path {new_path:?}");
+                self.rename_marks(old_path, new_path)?;
+            }
+            self.menu
+                .flagged
+                .update(renamed.into_iter().map(|(_, p)| p).collect());
+            self.menu.flagged.extend(created);
         } else {
             self.menu.flagged.clear();
         };
@@ -2405,6 +2435,17 @@ impl Status {
             None => (),
         };
         Ok(())
+    }
+
+    /// Update marks & temps marks from old path to new path.
+    /// Does nothing if the oldpath wasn't marked.
+    pub fn rename_marks<P>(&mut self, old_path: &Path, new_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        log_info!("{old_path:?} -> {new_path:?}", new_path = new_path.as_ref());
+        self.menu.temp_marks.move_path(old_path, new_path.as_ref());
+        self.menu.marks.move_path(old_path, new_path.as_ref())
     }
 }
 

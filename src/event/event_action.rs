@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
-use clap::Parser;
 use indicatif::InMemoryTerm;
 
 use crate::app::{Direction, Focus, Status, Tab};
@@ -11,14 +10,14 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, Args, External};
+use crate::io::{read_log, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_udisksctl_installed, nvim_inform_ipc, Content, ContentWindow,
-    Direction as FuzzyDirection, Display, FuzzyKind, Go, InputCompleted, InputSimple, LeaveMenu,
-    MarkAction, Menu, Navigate, NeedConfirmation, NvimIPCAction, Preview, PreviewBuilder,
-    ReEnterMenu, Search, Selectable, To,
+    help_string, lsblk_and_udisksctl_installed, Content, ContentWindow,
+    Direction as FuzzyDirection, Display, DoneCopyMove, FuzzyKind, Go, InputCompleted, InputSimple,
+    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder, ReEnterMenu,
+    Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -1531,16 +1530,7 @@ impl EventAction {
             Self::toggle_flag(status)?;
         }
 
-        status.menu.trash.update()?;
-        let output_socket = Args::parse().output_socket;
-        for flagged in status.menu.flagged.content.iter() {
-            if status.menu.trash.trash(flagged).is_ok() {
-                if let Some(output_socket) = &output_socket {
-                    nvim_inform_ipc(output_socket, NvimIPCAction::DELETE(flagged))?;
-                }
-            }
-        }
-        status.menu.flagged.clear();
+        status.menu.trash_and_inform()?;
         status.current_tab_mut().refresh_view()?;
         Ok(())
     }
@@ -1754,9 +1744,9 @@ impl EventAction {
         status.bulk_execute()
     }
 
-    pub fn file_copied(status: &mut Status) -> Result<()> {
+    pub fn file_copied(status: &mut Status, done_copy_moves: Vec<DoneCopyMove>) -> Result<()> {
         log_info!(
-            "file copied - pool: {pool:?}",
+            "file copied - pool: {pool:?} - done_copy_moves: {done_copy_moves:?}",
             pool = status.internal_settings.copy_file_queue
         );
         status.internal_settings.copy_file_remove_head()?;
@@ -1764,6 +1754,12 @@ impl EventAction {
             status.internal_settings.unset_copy_progress()
         } else {
             status.copy_next_file_in_queue()?;
+        }
+        for done_copy_move in &done_copy_moves {
+            log_line!("{done_copy_move}");
+            if !done_copy_move.copy_move.is_copy() {
+                status.rename_marks(&done_copy_move.from, &done_copy_move.final_to)?;
+            }
         }
         Ok(())
     }

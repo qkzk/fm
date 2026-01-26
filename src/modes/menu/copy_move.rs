@@ -1,10 +1,10 @@
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 
@@ -13,6 +13,27 @@ use crate::event::FmEvents;
 use crate::io::execute;
 use crate::modes::human_size;
 use crate::{log_info, log_line};
+
+/// Store a copy or move.
+/// It will be send as an Fm Event to update the marks.
+#[derive(Default, Debug, Clone)]
+pub struct DoneCopyMove {
+    pub copy_move: CopyMove,
+    pub from: PathBuf,
+    pub final_to: PathBuf,
+}
+
+impl Display for DoneCopyMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{copy_move} from: {from} to: {to}",
+            copy_move = self.copy_move.preterit(),
+            from = self.from.display(),
+            to = self.final_to.display()
+        )
+    }
+}
 
 // Won't replace with ratatui component since it's less flexible
 /// Send the progress bar to event dispatcher, allowing its display
@@ -35,9 +56,10 @@ fn progress_bar_position(process_info: &fs_extra::TransitProcess) -> u64 {
 }
 
 /// Different kind of movement of files : copying or moving.
-#[derive(Debug)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum CopyMove {
     Copy,
+    #[default]
     Move,
 }
 
@@ -136,7 +158,7 @@ impl CopyMove {
 ///
 /// It also sends an event "file copied" once all the files are copied
 pub fn copy_move<P>(
-    copy_or_move: CopyMove,
+    copy_move: CopyMove,
     sources: Vec<PathBuf>,
     dest: P,
     width: u16,
@@ -146,14 +168,14 @@ pub fn copy_move<P>(
 where
     P: AsRef<std::path::Path>,
 {
-    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(width, height)?;
+    let (in_mem, progress_bar, options) = copy_move.setup_progress_bar(width, height)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&progress_bar, process_info)
     };
-    let conflict_handler = ConflictHandler::new(dest, &sources)?;
+    let mut conflict_handler = ConflictHandler::new(copy_move, &sources, dest)?;
 
     let _ = thread::spawn(move || {
-        let transfered_bytes = match copy_or_move.copier()(
+        let transfered_bytes = match copy_move.copier()(
             &sources,
             &conflict_handler.temp_dest,
             &options,
@@ -169,20 +191,24 @@ where
 
         fm_sender.send(FmEvents::Refresh).unwrap_or_default();
 
-        if let Err(e) = conflict_handler.solve_conflicts() {
-            log_info!("Conflict Handler error: {e}");
-        }
+        match conflict_handler.solve_conflicts() {
+            Ok(done_copy_moves) => fm_sender
+                .send(FmEvents::FileCopied(done_copy_moves))
+                .unwrap_or_default(),
+            Err(error) => log_info!("Conflict Handler error: {error}"),
+        };
 
-        copy_or_move.log_and_notify(&human_size(transfered_bytes));
-        if matches!(copy_or_move, CopyMove::Copy) {
-            fm_sender.send(FmEvents::FileCopied).unwrap_or_default();
-        }
+        copy_move.log_and_notify(&human_size(transfered_bytes));
     });
     Ok(in_mem)
 }
 
 /// Deal with conflicting filenames during a copy or a move.
 struct ConflictHandler {
+    /// Is this a copy or a move ?
+    copy_move: CopyMove,
+    /// Source path of files which are copied or moved.
+    sources: Vec<PathBuf>,
     /// The destination of the files.
     /// If there's no conflicting filenames, it's their final destination
     /// otherwise it's a temporary folder we'll create.
@@ -194,12 +220,14 @@ struct ConflictHandler {
     /// Defined to the final destination if there's a conflict.
     /// None otherwise.
     final_dest: Option<PathBuf>,
+    /// Store every move which were done by ConflictHandler
+    done_copy_moves: Vec<DoneCopyMove>,
 }
 
 impl ConflictHandler {
     /// Creates a new `ConflictHandler` instance.
     /// We check for conflict and create the temporary folder if needed.
-    fn new<P>(dest: P, sources: &[PathBuf]) -> Result<Self>
+    fn new<P>(copy_move: CopyMove, sources: &[PathBuf], dest: P) -> Result<Self>
     where
         P: AsRef<std::path::Path>,
     {
@@ -213,11 +241,16 @@ impl ConflictHandler {
             temp_dest = dest.as_ref().to_path_buf();
             final_dest = None;
         };
+        let done_copy_moves = vec![];
+        let sources = sources.to_vec();
 
         Ok(Self {
+            copy_move,
+            sources,
             temp_dest,
             has_conflict,
             final_dest,
+            done_copy_moves,
         })
     }
 
@@ -234,47 +267,49 @@ impl ConflictHandler {
         Ok(temp_dest)
     }
 
-    /// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
+    /// Move every file from `temp_dest` to `final_dest`.
     /// If the `final_dest` already contains a file with the same name,
     /// the moved file has enough `_` appended to its name to make it unique.
-    fn move_copied_files_to_dest(&self) -> Result<()> {
-        for file in std::fs::read_dir(&self.temp_dest).context("Unreachable folder")? {
-            let file = file.context("File don't exist")?;
-            self.move_single_file_to_dest(file)?;
+    fn move_copied_files_to_dest(&mut self) -> Result<()> {
+        while let Some(from) = self.sources.pop() {
+            let done_copy_move = self.move_single_file_to_dest(from)?;
+            self.done_copy_moves.push(done_copy_move);
         }
-        Ok(())
-    }
 
-    /// Delete the temporary folder used when copying files.
-    /// An error is returned if the temporary foldern isn't empty which
-    /// should always be the case.
-    fn delete_temp_dest(&self) -> Result<()> {
-        std::fs::remove_dir(&self.temp_dest)?;
+        if self.temp_dest.read_dir()?.next().is_some() {
+            bail!(
+                "temp_dest {temp_dest} should be empty.",
+                temp_dest = self.temp_dest.display()
+            )
+        }
         Ok(())
     }
 
     /// Move a single file to `final_dest`.
     /// If the file already exists in `final_dest` the moved one has enough '_' appended
     /// to its name to make it unique.
-    fn move_single_file_to_dest(&self, file: std::fs::DirEntry) -> Result<()> {
-        let mut file_name = file
-            .file_name()
-            .to_str()
-            .context("Couldn't cast the filename")?
-            .to_owned();
+    fn move_single_file_to_dest(&mut self, from: PathBuf) -> Result<DoneCopyMove> {
+        let filename = from.file_name().context("Should have a filename")?;
+        let mut filename = filename.to_string_lossy().to_string();
+        let mut temp_path = self.temp_dest.clone();
+        temp_path.push(&filename);
 
-        let mut final_dest = self
+        let mut final_to = self
             .final_dest
             .clone()
             .context("Final dest shouldn't be None")?;
-        final_dest.push(&file_name);
-        while final_dest.exists() {
-            final_dest.pop();
-            file_name.push('_');
-            final_dest.push(&file_name);
+        final_to.push(&filename);
+        while final_to.exists() {
+            final_to.pop();
+            filename.push('_');
+            final_to.push(&filename);
         }
-        std::fs::rename(file.path(), final_dest)?;
-        Ok(())
+        std::fs::rename(temp_path, &final_to)?;
+        Ok(DoneCopyMove {
+            copy_move: self.copy_move,
+            from,
+            final_to,
+        })
     }
 
     /// True iff `dest` contains any file with the same file name as one of `sources`.
@@ -296,16 +331,43 @@ impl ConflictHandler {
     /// Does nothing if there's no conflicting filenames during the copy/move.
     /// Move back every file, appending '_' to their name until the name is unique.
     /// Delete the temp folder.
-    fn solve_conflicts(&self) -> Result<()> {
+    fn solve_conflicts(&mut self) -> Result<Vec<DoneCopyMove>> {
         if self.has_conflict {
             self.move_copied_files_to_dest()?;
             self.delete_temp_dest()?;
+        } else {
+            self.build_non_conflict_copy_moves()?;
         }
+        Ok(std::mem::take(&mut self.done_copy_moves))
+    }
+
+    /// Fill the vector of done action during this copy_move.
+    fn build_non_conflict_copy_moves(&mut self) -> Result<()> {
+        while let Some(from) = self.sources.pop() {
+            let filename = from.file_name().context("Should have a filename")?;
+
+            let mut final_to = self.temp_dest.clone();
+            final_to.push(filename);
+            self.done_copy_moves.push(DoneCopyMove {
+                copy_move: self.copy_move,
+                from,
+                final_to,
+            })
+        }
+        Ok(())
+    }
+
+    /// Delete the temporary folder used when copying files.
+    /// An error is returned if the temporary foldern isn't empty which
+    /// should always be the case.
+    fn delete_temp_dest(&self) -> Result<()> {
+        std::fs::remove_dir(&self.temp_dest)?;
         Ok(())
     }
 }
 
 impl Drop for ConflictHandler {
+    /// To ensure the folder is deleted no matter what.
     fn drop(&mut self) {
         let _ = self.delete_temp_dest();
     }

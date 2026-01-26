@@ -1,21 +1,22 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::common::{read_lines, tilde, MARKS_FILEPATH};
 use crate::io::DrawMenu;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Holds the marks created by the user.
-/// It's an ordered map between any char (except :) and a `PathBuf`.
+/// It's an ordered map between any char (except `:`, ` ` and control char) and a `PathBuf`.
 #[derive(Clone, Default)]
 pub struct Marks {
     save_path: PathBuf,
     content: Vec<(char, PathBuf)>,
     pub index: usize,
     used_chars: BTreeSet<char>,
+    paths_to_mark: BTreeMap<PathBuf, char>,
 }
 
 impl Marks {
@@ -57,6 +58,14 @@ impl Marks {
             log_info!("Wrong marks found, will save it again");
             let _ = self.save_marks();
         }
+        self.save_paths_to_mark();
+    }
+
+    fn save_paths_to_mark(&mut self) {
+        self.paths_to_mark.clear();
+        for (c, p) in self.content.iter() {
+            self.paths_to_mark.insert(p.to_path_buf(), *c);
+        }
     }
 
     /// Returns an optional marks associated to a char bind.
@@ -78,12 +87,18 @@ impl Marks {
         }
         sp[0].chars().next().map_or_else(
             || {
-                Err(anyhow!(
+                bail!(
                     "marks: parse line
-                 Invalid first character in: {line}"
-                ))
+Invalid first character in: {line}"
+                )
             },
             |ch| {
+                if ch == ':' || ch == ' ' || ch.is_control() {
+                    bail!(
+                        "marks: parse line
+Invalid first characer in: {line}"
+                    )
+                }
                 let path = PathBuf::from(sp[1]);
                 Ok((ch, path))
             },
@@ -97,14 +112,20 @@ impl Marks {
     ///
     /// It may fail if writing to the marks file fails.
     pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
-        if ch == ':' {
-            log_line!("new mark - ':' can't be used as a mark");
+        if ch.is_control() {
+            log_line!("new mark - please use a printable symbol for mark");
             return Ok(());
         }
+        if ch == ':' || ch == ' ' {
+            log_line!("new mark - '{ch}' can't be used as a mark");
+            return Ok(());
+        }
+        self.remove_path(path)?;
         if self.used_chars.contains(&ch) {
             self.update_mark(ch, path);
         } else {
             self.content.push((ch, path.to_path_buf()));
+            self.used_chars.insert(ch);
         }
 
         self.save_marks()?;
@@ -129,17 +150,28 @@ impl Marks {
         if self.is_empty() {
             return Ok(());
         }
-        let (ch, path) = self.selected().context("no marks saved")?;
+        if self.index >= self.content.len() {
+            bail!(
+                "index of mark is {index} and len is {len}",
+                index = self.index,
+                len = self.content.len()
+            );
+        }
+
+        let (ch, path) = &self.content[self.index];
+        self.used_chars.remove(ch);
         log_line!("Removed marks {ch} -> {path}", path = path.display());
         self.content.remove(self.index);
         self.prev();
-        self.save_marks()
+        self.save_marks()?;
+        Ok(())
     }
 
     fn save_marks(&mut self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
         self.content.sort();
+        self.save_paths_to_mark();
         for (ch, path) in &self.content {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
@@ -164,6 +196,52 @@ impl Marks {
 
     fn format_mark(ch: char, path: &Path) -> String {
         format!("{ch}    {path}", path = path.display())
+    }
+
+    /// Returns the char for associated to a path.
+    /// For marked path, it's their mark,
+    /// Otherwise it's ' '
+    pub fn char_for(&self, path: &Path) -> &char {
+        self.paths_to_mark.get(path).unwrap_or(&' ')
+    }
+
+    /// Change mark path from `old_path` to `new_path` and write the marks to disk
+    pub fn move_path(&mut self, old_path: &Path, new_path: &Path) -> Result<()> {
+        let ch = *self.char_for(old_path);
+        if ch == ' ' {
+            return Ok(());
+        }
+        self.update_mark(ch, new_path);
+        self.save_marks()
+    }
+
+    /// Remove a path from marks. Does nothing if the path isn't marked.
+    /// If the path is marked, it's removed everywhere (paths_to_mark, content and used_ch).
+    /// The marks are then saved.
+    pub fn remove_path(&mut self, old_path: &Path) -> Result<()> {
+        let Some(ch) = self.paths_to_mark.remove(old_path) else {
+            return Ok(());
+        };
+        self.used_chars.remove(&ch);
+        let mut found = false;
+        for index in 0..self.content.len() {
+            let (used_ch, stored_path) = &self.content[index];
+            if used_ch == &ch && old_path == stored_path {
+                self.content.remove(index);
+                found = true;
+                if index <= self.index {
+                    self.index = self.index.saturating_sub(1);
+                }
+                break;
+            }
+        }
+        if !found {
+            bail!(
+                "Couldn't find {old_path} in marks",
+                old_path = old_path.display()
+            )
+        }
+        self.save_marks()
     }
 }
 

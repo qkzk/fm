@@ -38,7 +38,7 @@ impl EventDispatcher {
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
-            FmEvents::FileCopied => EventAction::file_copied(status),
+            FmEvents::FileCopied(done_copy_moves) => EventAction::file_copied(status, done_copy_moves),
             FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             FmEvents::Ipc(msg) => EventAction::parse_rpc(status, msg),
@@ -136,8 +136,12 @@ impl EventDispatcher {
 
     #[rustfmt::skip]
     fn fuzzy_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<bool> {
-        if let KeyEvent{code:KeyCode ::Char(' '),modifiers:KeyModifiers::CONTROL, kind:_,state:_} = key {
+        if let KeyEvent{code:KeyCode::Char(' '), modifiers: KeyModifiers::CONTROL, kind:_, state:_} = key {
             status.fuzzy_toggle_flag_selected()?;
+            return Ok(true);
+        }
+        if let KeyEvent{code:KeyCode::Enter, modifiers: KeyModifiers::ALT, kind:_, state:_} = key {
+            status.fuzzy_open_file()?;
             return Ok(true);
         }
         let KeyEvent {

@@ -1,0 +1,38 @@
+# Gradient from start to stop for normal files.
+# the files are colored randomly according to their extension
+# ANSI colors won't be linked to their configured values but to the default ANSI values.
+normal_start: "#fd971f"
+normal_stop: "#e6db74"
+
+# color for different filekinds
+# here you can use ANSI values
+# colors for folders / directory
+directory: "#ae81ff"
+# block device (hard drives...)
+block: "#a6e22e"
+# char devices (ttys, /dev/urandom etc.)
+char: "#c0c1b5"
+# fifos
+fifo: "#f92672"
+# opened sockets
+socket: "#a6e22e"
+# valid symlinks
+symlink: "#66d9ef"
+# broken symlinks
+broken: "#919288"
+
+# Colors for menus, headers, footers etc.
+# The same values are accepted.
+# first color
+header_first: "#ae81ff"
+# second color
+header_second: "#66d9ef"
+# selected tab border
+selected_border: "#e6db74"
+# non selected tab border
+inert_border: "#6e7066"
+# palette of 4 elements, used in menus (second window)
+palette_1: "#ae81ff"
+palette_2: "#66d9ef"
+palette_3: "#e6db74"
+palette_4: "#fd971f"

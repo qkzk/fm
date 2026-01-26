@@ -16,15 +16,15 @@ use syntect::{
     highlighting::{Theme, ThemeSet},
 };
 
-use crate::app::{build_plugins, PreviewerPlugin};
-use crate::config::{
-    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer, PreferedImager,
-    SyntectTheme, MAX_GRADIENT_NORMAL,
-};
-
 use crate::{
-    common::{tilde, CONFIG_PATH, SYNTECT_THEMES_PATH},
+    app::{build_previewer_plugins, PreviewerPlugin},
+    common::{tilde, CONFIG_FOLDER, CONFIG_PATH, PREVIEWER_PATH, SYNTECT_THEMES_PATH},
+    config::{
+        read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
+        PreferedImager, SyntectTheme, MAX_GRADIENT_NORMAL,
+    },
     log_info,
+    modes::PreviewerCommand,
 };
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
@@ -57,7 +57,8 @@ pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::ne
 /// Highlighting theme color used to preview code file
 static SYNTECT_THEME: OnceLock<Theme> = OnceLock::new();
 
-static PLUGINS: OnceLock<Vec<(String, PreviewerPlugin)>> = OnceLock::new();
+static PREVIEWER_PLUGINS: OnceLock<Vec<(String, PreviewerPlugin)>> = OnceLock::new();
+static PREVIEWER_COMMANDS: OnceLock<Vec<PreviewerCommand>> = OnceLock::new();
 
 static PREFERED_IMAGER: OnceLock<PreferedImager> = OnceLock::new();
 
@@ -67,13 +68,32 @@ pub fn get_prefered_imager() -> Option<&'static PreferedImager> {
 
 /// Attach a map of name -> path to the `PLUGINS` static variable.
 pub fn set_previewer_plugins(plugins: Vec<(String, String)>) -> Result<()> {
-    let _ = PLUGINS.set(build_plugins(plugins));
+    let _ = PREVIEWER_PLUGINS.set(build_previewer_plugins(plugins));
     Ok(())
 }
 
 /// `PLUGINS` static map. Returns a map of name -> path.
 pub fn get_previewer_plugins() -> Option<&'static Vec<(String, PreviewerPlugin)>> {
-    PLUGINS.get()
+    PREVIEWER_PLUGINS.get()
+}
+
+fn parse_previewer_commands() -> Option<Vec<PreviewerCommand>> {
+    let file = std::fs::File::open(tilde(PREVIEWER_PATH).as_ref()).ok()?;
+    let commands: Vec<PreviewerCommand> = from_reader(file).ok()?;
+    log_info!("Previewer commands: {commands:?}");
+    Some(commands)
+}
+
+/// Attach a map of name -> path to the `PREVIEWER_COMMAND` static variable.
+pub fn set_previewer_command() -> Result<()> {
+    let commands = parse_previewer_commands().unwrap_or_default();
+    let _ = PREVIEWER_COMMANDS.set(commands);
+    Ok(())
+}
+
+/// `command` static map. Returns a map of name -> path.
+pub fn get_previewer_command() -> Option<&'static Vec<PreviewerCommand>> {
+    PREVIEWER_COMMANDS.get()
 }
 
 /// Reads the syntect_theme configuration value and tries to load if from configuration files.
@@ -181,22 +201,22 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_file_styles() -> Result<()> {
+fn set_file_styles(yaml: &Option<Value>) -> Result<()> {
     FILE_STYLES
-        .set(FileStyle::from_config())
+        .set(FileStyle::from_config(yaml))
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_menu_styles() -> Result<()> {
+fn set_menu_styles(yaml: &Option<Value>) -> Result<()> {
     MENU_STYLES
-        .set(MenuStyle::default().update())
+        .set(MenuStyle::default().update(yaml))
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_normal_file_colorer() -> Result<()> {
-    let (start_color, stop_color) = read_normal_file_colorer();
+fn set_normal_file_colorer(yaml: &Option<Value>) -> Result<()> {
+    let (start_color, stop_color) = read_normal_file_colorer(yaml);
     ARRAY_GRADIENT
         .set(Gradient::new(start_color, stop_color, MAX_GRADIENT_NORMAL).as_array()?)
         .map_err(|_| anyhow!("Gradient shouldn't be set"))?;
@@ -254,15 +274,45 @@ pub fn set_icon_icon_with_metadata() -> Result<()> {
 /// Set all the values which could be configured from config file or arguments staticly.
 /// It allows us to read those values globally without having to pass them through to every function.
 /// All values use a [`std::sync::OnceLock`] internally.
-pub fn set_configurable_static(start_folder: &str, plugins: Vec<(String, String)>) -> Result<()> {
+pub fn set_configurable_static(
+    start_folder: &str,
+    plugins: Vec<(String, String)>,
+    theme: String,
+) -> Result<()> {
+    let theme_yaml = read_theme(theme);
     set_start_folder(start_folder)?;
-    set_menu_styles()?;
-    set_file_styles()?;
-    set_normal_file_colorer()?;
+    set_menu_styles(&theme_yaml)?;
+    set_file_styles(&theme_yaml)?;
+    set_normal_file_colorer(&theme_yaml)?;
     set_icon_icon_with_metadata()?;
     set_syntect_theme()?;
     set_prefered_imager()?;
-    set_previewer_plugins(plugins)
+    set_previewer_plugins(plugins)?;
+    set_previewer_command()?;
+    Ok(())
+}
+
+fn read_theme(theme: String) -> Option<Value> {
+    read_yaml_value(&build_theme_path(theme))
+}
+
+fn build_theme_path(theme: String) -> PathBuf {
+    let config_folder = tilde(CONFIG_FOLDER);
+    let mut theme_path = PathBuf::from(config_folder.as_ref());
+    theme_path.push("themes");
+    theme_path.push(theme);
+    theme_path.set_extension("yaml");
+    theme_path
+}
+
+fn read_yaml_value(path: &Path) -> Option<Value> {
+    let Ok(file) = File::open(path) else {
+        return None;
+    };
+    let Ok(yaml) = from_reader::<File, Value>(file) else {
+        return None;
+    };
+    Some(yaml)
 }
 
 /// Copied from [Helix](https://github.com/helix-editor/helix/blob/master/helix-core/src/fuzzy.rs)

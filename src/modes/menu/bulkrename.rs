@@ -11,6 +11,7 @@ use crate::event::FmEvents;
 use crate::{log_info, log_line};
 
 type OptionVecPathBuf = Option<Vec<PathBuf>>;
+type OptionVecPairPathBuf = Option<Vec<(PathBuf, PathBuf)>>;
 
 struct BulkExecutor {
     index: usize,
@@ -78,31 +79,31 @@ impl BulkExecutor {
         Ok(())
     }
 
-    fn execute(&self) -> Result<(OptionVecPathBuf, OptionVecPathBuf)> {
+    fn execute(&self) -> Result<(OptionVecPairPathBuf, OptionVecPathBuf)> {
         let paths = self.rename_create();
         self.del_temporary_file()?;
         paths
     }
 
-    fn rename_create(&self) -> Result<(OptionVecPathBuf, OptionVecPathBuf)> {
-        let renamed_paths = self.rename_all(&self.new_filenames)?;
+    fn rename_create(&self) -> Result<(OptionVecPairPathBuf, OptionVecPathBuf)> {
+        let updated_paths = self.rename_all(&self.new_filenames)?;
         let created_paths = self.create_all_files(&self.new_filenames)?;
-        Ok((renamed_paths, created_paths))
+        Ok((updated_paths, created_paths))
     }
 
-    fn rename_all(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
-        let mut paths = vec![];
-        for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            match rename_filename(path, filename) {
-                Ok(path) => paths.push(path),
+    fn rename_all(&self, new_filenames: &[String]) -> Result<OptionVecPairPathBuf> {
+        let mut updated_paths = vec![];
+        for (old_path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
+            match rename_filename(old_path, filename) {
+                Ok(new_path) => updated_paths.push((old_path.to_owned(), new_path)),
                 Err(error) => log_info!(
-                    "Error renaming {path} to {filename}. Error: {error:?}",
-                    path = path.display()
+                    "Error renaming {old_path} to {filename}. Error: {error:?}",
+                    old_path = old_path.display()
                 ),
             }
         }
-        log_line!("Bulk renamed {len} files", len = paths.len());
-        Ok(Some(paths))
+        log_line!("Bulk renamed {len} files", len = updated_paths.len());
+        Ok(Some(updated_paths))
     }
 
     fn create_all_files(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
@@ -220,7 +221,7 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 /// of flagged files in current directory.
 /// Modifications of this file are watched in a separate thread.
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
-/// Renaming or creating is execute in bulk with `execute`.
+/// Renaming or creating is done in bulk with `execute`.
 #[derive(Default)]
 pub struct Bulk {
     bulk: Option<BulkExecutor>,
@@ -253,7 +254,9 @@ impl Bulk {
     }
 
     pub fn watch_in_thread(&mut self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
-        if let Some(bulk) = &self.bulk { bulk.watch_modification_in_thread(fm_sender)? }
+        if let Some(bulk) = &self.bulk {
+            bulk.watch_modification_in_thread(fm_sender)?
+        }
         Ok(())
     }
 
@@ -290,7 +293,7 @@ impl Bulk {
     ///
     /// May fail if bulk is still set to None. It should never happen.
     /// May fail if the new file can't be created or the flagged file can't be renamed.
-    pub fn execute(&mut self) -> Result<(OptionVecPathBuf, OptionVecPathBuf)> {
+    pub fn execute(&mut self) -> Result<(OptionVecPairPathBuf, OptionVecPathBuf)> {
         let Some(bulk) = &mut self.bulk else {
             return Err(anyhow!("bulk shouldn't be None"));
         };

@@ -7,13 +7,17 @@ const DEFAULT_CLI: &str = include_str!("../../config_files/fm/cli.yaml");
 const DEFAULT_OPENER: &str = include_str!("../../config_files/fm/opener.yaml");
 const DEFAULT_SESSION: &str = include_str!("../../config_files/fm/session.yaml");
 const DEFAULT_TUIS: &str = include_str!("../../config_files/fm/tuis.yaml");
+const DEFAULT_PREVIEWER: &str = include_str!("../../config_files/fm/previewer.yaml");
+const DEFAULT_THEME: &str = include_str!("../../config_files/fm/themes/default.yaml");
 
-const DEFAULT_CONFIGS: [(&str, &str); 5] = [
+const DEFAULT_CONFIGS: [(&str, &str); 7] = [
     ("config.yaml", DEFAULT_CONFIG),
     ("cli.yaml", DEFAULT_CLI),
     ("opener.yaml", DEFAULT_OPENER),
     ("session.yaml", DEFAULT_SESSION),
     ("tuis.yaml", DEFAULT_TUIS),
+    ("previewer.yaml", DEFAULT_PREVIEWER),
+    ("themes/default.yaml", DEFAULT_THEME),
 ];
 
 const LOG_FILES: [&str; 3] = [

@@ -69,7 +69,8 @@ impl FM {
         let (mut config, start_folder) = Self::early_exit()?;
         log_info!("start folder: {start_folder}");
         let plugins = std::mem::take(&mut config.plugins);
-        set_configurable_static(&start_folder, plugins)?;
+        let theme = std::mem::take(&mut config.theme);
+        set_configurable_static(&start_folder, plugins, theme)?;
         Self::build(config)
     }
 

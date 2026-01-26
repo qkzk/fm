@@ -1744,7 +1744,6 @@ Updated some dependencies to avoid yanked version of crates. Documentation shoul
 Once that's done, it's all. No not implement anything else
 
 
-## Current dev
 
 ### Version 0.2.1 : plugins
 
@@ -1967,18 +1966,89 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: remove useless clone while getting path of current selection
 - [x] FIX: reverse flags wasn't doing anything
 
+## Current dev
+
+### Version 0.2.3 - Themes
+
+#### Summary 
+
+- Fuzzy finder of file & fuzzy finder of line can open a file directly with ALt+Enter.
+- Themes. Set a theme in your config file like `default` or `tokyonight`. It refers to a file `~/.config/fm/themes/tokyonight.yaml`. The settings haven't change. Colors from your current config won't be read.
+- Preview from a custom command. See `~/config/fm/previewer.yaml`. It will be matched first, _before_ plugins and internal configs.
+- Marks and temp marks are (should be ?) updated when a file is moved/renamed/copied/deleted. 
+- Rounded borders. Got tired of staring at block borders... Does anyone care ? :)
+
+##### Bugfixes 
+
+- Solved a double free when multiple plugins are used.
+- Focus could be lost after a resize
+
+#### Changelog
+
+- [x] FEAT: common themes
+  - [x] simplify config loading, theme file should be read once 
+  - [x] read `theme: value` from config
+  - [x] load theme from folder 
+  - [x] create default theme from code if not exists when compiling
+  - [x] themes
+    - [x] default
+    - [x] ansi
+    - [x] catppuccin
+    - [x] dracula
+    - [x] grey
+    - [x] monokai
+    - [x] nord
+    - [x] tokyonight
+  - [x] rename to `.yaml` and
+- [x] custom preview from external command
+  - [x] previewer.yml
+  - [x] create default `previewer.yaml`
+  - [x] format :
+    ```yml
+    name:
+      extensions:
+        - yml
+        - bla
+        - truc
+      command: "bat --color=always --style=numbers --theme=Nord %s"
+    ```
+  - [x] parse config
+  - [x] match against extensions..
+  - [x] preview
+  - [x] display filepath and not "bat"
+  - [x] ensure wrong config won't crash
+- [x] FIX: dual, preview tree, open. resize but focus still on right
+- [x] FEAT: open directly from fuzzy finder instead of selecting
+- [x] PLUGIN: eml previewer with [eml-parser](https://crates.io/crates/eml-parser)
+- [x] FIX: searching `/` crash with free(): double free detected in tcache 2
+    Nasty bug. Solved by cloning the sent path _for every plugin_ against it. The matching is done by taking ownership of a `CString` which can lead to double free.
+- [x] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
+  - [x] display marks/temp marks 
+    - [x] directory 
+    - [x] tree display mode
+  - [x] FIX: ensure mark char is printable by preventing control char.
+  - [x] update the marks. 
+    - [x] rename basic
+    - [x] create a struct to save what was done to filetree : DoneCopyMove { copy_move, from, final_to }
+    - [x] send an event everytime a complex move is sent
+    - [x] don't pop from empty queue for copies
+    - [x] Logline the event
+    - [x] delete the file
+    - [x] ensure marks are unique per path. Can't have multiple path with same marks.
+    - [x] trashing a file remove its marks.
 
 ## TODO
 
 ### Other ideas
 
 
-
+- [ ] FEAT: previewer image mode..
+- [ ] FEAT: sudo passwordless or with an app
+- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
 - [ ] FEAT: bg/fg. ctrl+z should send the application in background. Change tree folding etc.  See [superuser.com](https://superuser.com/a/1873140)
-- [ ] FEAT: common themes
 - [ ] FEAT PLUGIN: replace float term by something else ? see reddit
 - [ ] BUG: preview can stop and display "preview as empty". Can't reproduce
 - [ ] FEAT: allow settings in plugins & store them in config file
@@ -1992,14 +2062,6 @@ Once that's done, it's all. No not implement anything else
     - [ ] filename keep their color 
     - [ ] color per stat with sane defaults
     - [ ] make display::FileFormater return a vector
-- [ ] FEAT: marks / temp marks should be updated when their target is moved. marks[z] -> /a/b; mv /a/b /a/c; marsk[z] -> /a/c. Ranger does this automatically.
-  - [ ] display marks/temp marks directory/tree display mode
-  - [ ] marks & temp_marks refactor. Use same architecture in both.
-  - [ ] common trait for marking 
-  - [ ] BUG: ensure mark char is printable
-  - [ ] method: path_is_marked(path) -> bool 
-  - [ ] parent method from status called while moving a file 
-  - [ ] update the marks
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce

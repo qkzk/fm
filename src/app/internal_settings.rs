@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc::Sender, Arc};
 
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
 use ratatui::layout::Size;
@@ -103,7 +103,7 @@ impl InternalSettings {
     }
 
     pub fn disks(&mut self) -> &Disks {
-        self.disks.refresh_list();
+        self.disks.refresh(true);
         &self.disks
     }
 
@@ -129,7 +129,7 @@ impl InternalSettings {
 
     fn parse_nvim_address_from_ss_output() -> Result<String> {
         if !is_in_path(SS) {
-            return Err(anyhow!("{SS} isn't installed"));
+            bail!("{SS} isn't installed");
         }
         if let Ok(output) = execute_and_output(SS, ["-l"]) {
             let output = String::from_utf8(output.stdout).unwrap_or_default();
@@ -142,17 +142,15 @@ impl InternalSettings {
                 return Ok(content);
             }
         }
-        Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
+        bail!("Couldn't get nvim listen address from `ss` output")
     }
 
     /// Remove the top of the copy queue.
     pub fn copy_file_remove_head(&mut self) -> Result<()> {
-        if self.copy_file_queue.is_empty() {
-            Err(anyhow!("Copy File Pool is empty"))
-        } else {
+        if !self.copy_file_queue.is_empty() {
             self.copy_file_queue.remove(0);
-            Ok(())
         }
+        Ok(())
     }
 
     pub fn copy_next_file_in_queue(

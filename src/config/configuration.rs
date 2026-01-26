@@ -5,7 +5,7 @@ use clap::Parser;
 use ratatui::style::{Color, Style};
 use serde_yaml_ng::{from_reader, Value};
 
-use crate::common::{tilde, CONFIG_PATH, SYNTECT_DEFAULT_THEME};
+use crate::common::{tilde, SYNTECT_DEFAULT_THEME};
 use crate::config::{make_default_config_files, Bindings, ColorG};
 use crate::io::Args;
 use crate::log_info;
@@ -19,6 +19,7 @@ pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
     pub plugins: Vec<(String, String)>,
+    pub theme: String,
 }
 
 impl Config {
@@ -27,7 +28,17 @@ impl Config {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
         self.update_plugins(&yaml["plugins"]["previewer"]);
+        self.update_theme(&yaml["theme"]);
         Ok(())
+    }
+
+    fn update_theme(&mut self, yaml: &Value) {
+        if let Some(theme) = yaml.as_str() {
+            self.theme = theme.to_string();
+            log_info!("Found theme in config: {theme}");
+        } else {
+            log_info!("Couldn't find a theme in config.");
+        }
     }
 
     fn update_plugins(&mut self, yaml: &Value) {
@@ -95,18 +106,15 @@ pub fn load_config(path: &str) -> Result<Config> {
 /// so we'll have to use default values.
 ///
 /// If we can't read those values, we'll return green and blue.
-pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
+pub fn read_normal_file_colorer(yaml: &Option<Value>) -> (ColorG, ColorG) {
     let default_pair = (ColorG::new(0, 255, 0), ColorG::new(0, 0, 255));
-    let Ok(file) = File::open(tilde(CONFIG_PATH).as_ref()) else {
+    let Some(yaml) = yaml else {
         return default_pair;
     };
-    let Ok(yaml) = from_reader::<File, Value>(file) else {
+    let Some(start) = yaml["normal_start"].as_str() else {
         return default_pair;
     };
-    let Some(start) = yaml["colors"]["normal_start"].as_str() else {
-        return default_pair;
-    };
-    let Some(stop) = yaml["colors"]["normal_stop"].as_str() else {
+    let Some(stop) = yaml["normal_stop"].as_str() else {
         return default_pair;
     };
     let Some(start_color) = ColorG::parse_any_color(start) else {
@@ -173,19 +181,16 @@ impl FileStyle {
         update_style!(self.broken, yaml, "broken");
     }
 
-    fn update_from_config(&mut self) {
-        let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
+    fn update_from_config(&mut self, yaml: &Option<Value>) {
+        let Some(yaml) = yaml else {
             return;
         };
-        let Ok(yaml) = from_reader::<File, Value>(file) else {
-            return;
-        };
-        self.update_values(&yaml["colors"]);
+        self.update_values(yaml);
     }
 
-    pub fn from_config() -> Self {
+    pub fn from_config(yaml: &Option<Value>) -> Self {
         let mut style = Self::default();
-        style.update_from_config();
+        style.update_from_config(yaml);
         style
     }
 }
@@ -224,20 +229,18 @@ impl Default for MenuStyle {
 }
 
 impl MenuStyle {
-    pub fn update(mut self) -> Self {
-        if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml) = from_reader::<File, Value>(file) {
-                let menu_colors = &yaml["colors"];
-                update_style!(self.first, menu_colors, "header_first");
-                update_style!(self.second, menu_colors, "header_second");
-                update_style!(self.selected_border, menu_colors, "selected_border");
-                update_style!(self.inert_border, menu_colors, "inert_border");
-                update_style!(self.palette_1, menu_colors, "palette_1");
-                update_style!(self.palette_2, menu_colors, "palette_2");
-                update_style!(self.palette_3, menu_colors, "palette_3");
-                update_style!(self.palette_4, menu_colors, "palette_4");
-            }
+    pub fn update(mut self, yaml: &Option<Value>) -> Self {
+        if let Some(menu_colors) = yaml {
+            update_style!(self.first, menu_colors, "header_first");
+            update_style!(self.second, menu_colors, "header_second");
+            update_style!(self.selected_border, menu_colors, "selected_border");
+            update_style!(self.inert_border, menu_colors, "inert_border");
+            update_style!(self.palette_1, menu_colors, "palette_1");
+            update_style!(self.palette_2, menu_colors, "palette_2");
+            update_style!(self.palette_3, menu_colors, "palette_3");
+            update_style!(self.palette_4, menu_colors, "palette_4");
         }
+
         self
     }
 

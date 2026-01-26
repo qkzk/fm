@@ -1,4 +1,7 @@
-use std::{cmp::min, path::PathBuf};
+use std::{
+    cmp::min,
+    path::{Path, PathBuf},
+};
 
 use ratatui::{
     layout::Rect,
@@ -36,13 +39,14 @@ impl TempMarks {
 
     fn log_index_error(index: usize) {
         log_info!(
-            "index {index} is too big for a temp mark. Should be between 0 and {NB_TEMP_MARKS} exclusive", 
+            "index {index} is too big for a temp mark. Should be between 0 and {NB_TEMP_MARKS} excluded",
             NB_TEMP_MARKS=Self::NB_TEMP_MARKS
         );
     }
 
     /// Set the mark at given index to the given path.
     pub fn set_mark(&mut self, index: usize, path: PathBuf) {
+        self.remove_path(&path);
         if index >= Self::NB_TEMP_MARKS {
             Self::log_index_error(index);
             return;
@@ -85,6 +89,36 @@ impl TempMarks {
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
+    }
+
+    pub fn digit_for(&self, path: &Path) -> Option<usize> {
+        for (index, marked_path) in self.content.iter().enumerate() {
+            match marked_path {
+                Some(p) if p == path => return Some(index),
+                _ => (),
+            }
+        }
+        None
+    }
+
+    /// Update the temp mark associated to `old_path`.
+    /// Does nothing if `old_path` isn't associated to a temp mark.
+    pub fn move_path(&mut self, old_path: &Path, new_path: &Path) {
+        let Some(index) = self.digit_for(old_path) else {
+            return;
+        };
+        self.set_mark(index, new_path.to_path_buf());
+    }
+
+    /// Reset the temp mark associated to `old_path`.
+    /// Does nothing if no mark is set for `old_path`.
+    pub fn remove_path(&mut self, old_path: &Path) {
+        for index in 0..Self::NB_TEMP_MARKS {
+            match &self.content[index] {
+                Some(path) if path == old_path => self.content[index] = None,
+                _ => (),
+            }
+        }
     }
 }
 

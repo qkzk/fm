@@ -16,7 +16,7 @@ use ratatui::{
     prelude::*,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame, Terminal,
 };
 
@@ -467,7 +467,7 @@ impl<'a> DirectoryDisplay<'a> {
     /// metadata of the selected file.
     fn files(&self, f: &mut Frame, rect: &Rect) {
         let group_owner_sizes = self.group_owner_size();
-        let p_rect = rect.offseted(2, 0);
+        let p_rect = rect.offseted(0, 0);
         let formater = Self::pick_formater(self.status.session.metadata(), p_rect.width);
         let with_icon = with_icon();
         let lines: Vec<_> = self
@@ -524,8 +524,30 @@ impl<'a> DirectoryDisplay<'a> {
 
         Line::from(vec![
             self.span_flagged_symbol(file, &mut style),
+            Self::mark_span(self.status, file),
             Span::styled(content, style),
         ])
+    }
+
+    fn mark_span<'b>(status: &Status, file: &FileInfo) -> Span<'b> {
+        if let Some(index) = status.menu.temp_marks.digit_for(&file.path) {
+            Span::styled(
+                index.to_string(),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu style should be set")
+                    .palette_1,
+            )
+        } else {
+            let first_char = status.menu.marks.char_for(&file.path);
+            Span::styled(
+                String::from(*first_char),
+                MENU_STYLES
+                    .get()
+                    .expect("Menu style should be set")
+                    .palette_2,
+            )
+        }
     }
 
     fn reverse_selected(&self, index: usize, style: &mut Style) {
@@ -659,7 +681,7 @@ impl<'a> TreeDisplay<'a> {
         f: &mut Frame,
         rect: &Rect,
     ) {
-        let p_rect = rect.offseted(1, 0);
+        let p_rect = rect.offseted(0, 0);
         let width = p_rect.width.saturating_sub(6);
         let formater = DirectoryDisplay::pick_formater(with_metadata, width);
         let with_icon = Self::use_icon(with_metadata);
@@ -699,6 +721,7 @@ impl<'a> TreeDisplay<'a> {
         Self::color_searched(status, &fileinfo, &mut style);
         Ok(Line::from(vec![
             Self::span_flagged_symbol(status, path, &mut style),
+            DirectoryDisplay::mark_span(status, &fileinfo),
             Self::metadata(&fileinfo, formater, style),
             Self::prefix(line_builder),
             Self::whitespaces(status, path, with_offset),
@@ -1663,7 +1686,7 @@ impl Display {
 
     /// True iff we need to display both panes
     fn use_dual_pane(status: &Status, width: u16) -> bool {
-        status.session.dual() && width > MIN_WIDTH_FOR_DUAL_PANE
+        status.session.dual() && width >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
     fn draw_dual(
@@ -1745,6 +1768,7 @@ impl Display {
         for i in 0..n {
             let bordered_block = Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .border_style(borders[i]);
             f.render_widget(bordered_block, wins[i]);
         }
