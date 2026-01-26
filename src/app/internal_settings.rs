@@ -53,6 +53,7 @@ pub struct InternalSettings {
 }
 
 impl InternalSettings {
+    /// Creates a new instance. Some parameters (`nvim_server` and `inside_neovim`) are read from args.
     pub fn new(opener: Opener, size: Size, disks: Disks) -> Self {
         let args = Args::parse();
         let force_clear = false;
@@ -78,11 +79,13 @@ impl InternalSettings {
         }
     }
 
+    #[inline]
     /// Returns the size of the terminal (width, height)
     pub fn term_size(&self) -> Size {
         self.size
     }
 
+    /// Update the size from width & height.
     pub fn update_size(&mut self, width: u16, height: u16) {
         self.size = Size::from((width, height))
     }
@@ -94,23 +97,30 @@ impl InternalSettings {
         self.force_clear = true;
     }
 
+    /// Reset the clear flag.
+    /// Prevent the display from being completely reset for the next frame.
     pub fn reset_clear(&mut self) {
         self.force_clear = false;
     }
 
+    /// True iff some event required a complete refresh of the dispplay
     pub fn should_be_cleared(&self) -> bool {
         self.force_clear
     }
 
+    /// Refresh the disks -- removing non listed ones -- and returns a reference
     pub fn disks(&mut self) -> &Disks {
         self.disks.refresh(true);
         &self.disks
     }
 
+    /// Returns a vector of mount points.
+    /// Disks are refreshed first.
     pub fn mount_points_vec(&mut self) -> Vec<&Path> {
         self.disks().iter().map(|d| d.mount_point()).collect()
     }
 
+    /// Returns a set of mount points
     pub fn mount_points_set(&self) -> HashSet<&Path> {
         self.disks
             .list()
@@ -119,6 +129,12 @@ impl InternalSettings {
             .collect()
     }
 
+    /// Tries its best to update the neovim address.
+    /// 1. from the `$NVIM_LISTEN_ADDRESS` environment variable,
+    /// 2. from the opened socket read from ss.
+    ///
+    /// # Warning
+    /// If multiple neovim instances are opened at the same time, it will get the first one from the ss output.
     pub fn update_nvim_listen_address(&mut self) {
         if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
             self.nvim_server = nvim_listen_address;
@@ -153,13 +169,15 @@ impl InternalSettings {
         Ok(())
     }
 
+    /// Start the copy of the next file in copy file queue and register the progress in
+    /// the mock terminal used to create the display.
     pub fn copy_next_file_in_queue(
         &mut self,
         fm_sender: Arc<Sender<FmEvents>>,
         width: u16,
     ) -> Result<()> {
         let (sources, dest) = self.copy_file_queue[0].clone();
-        let Size { width: _, height } = self.term_size();
+        let height = self.term_size().height;
         let in_mem = copy_move(
             crate::modes::CopyMove::Copy,
             sources,
@@ -204,10 +222,18 @@ impl InternalSettings {
         self.clear_before_quit = true;
     }
 
+    /// True iff the terminal is disabled.
+    /// The state (`self.is_disabled`) is changed every time
+    /// a new shell is started replacing the normal window.
+    /// If true, the display shouldn't be drawn.
     pub fn is_disabled(&self) -> bool {
         self.is_disabled
     }
 
+    /// Open a new command which output will replace the current display.
+    /// Current progress of the application is locked as long as the command doesn't finish.
+    /// Firstly the display is disabled, then the command is ran.
+    /// Once the command ends... the display is reenabled again.
     pub fn open_in_window(&mut self, args: &[&str]) -> Result<()> {
         self.disable_display();
         External::open_command_in_window(args)?;
@@ -219,6 +245,10 @@ impl InternalSettings {
         matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }
 
+    /// Open a single file:
+    /// In neovim if this file should be,
+    /// or in a new shell in current terminal,
+    /// or in a new window.
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         if self.inside_neovim && self.should_this_file_be_opened_in_neovim(path) {
             self.update_nvim_listen_address();
@@ -238,6 +268,10 @@ impl InternalSettings {
         self.enable_display();
     }
 
+    /// Open all the flagged files.
+    /// We try to open all files in a single command if it's possible.
+    /// If all files should be opened in neovim, it will be.
+    /// Otherwise, they will be opened separetely.
     pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
         if self.inside_neovim && flagged.should_all_be_opened_in_neovim() {
             self.open_multiple_in_neovim(flagged.content());
@@ -284,6 +318,8 @@ impl InternalSettings {
         self.must_quit = true
     }
 
+    /// Format the progress of the current operation in copy file queue.
+    /// If nothing is being copied, it returns `None`
     pub fn format_copy_progress(&self) -> Option<String> {
         let Some(copy_progress) = &self.in_mem_progress else {
             return None;

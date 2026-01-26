@@ -1668,7 +1668,7 @@ impl Display {
         let full_rect = Rects::full_rect(width, height);
         let inside_border_rect = Rects::inside_border_rect(width, height);
         let borders = Self::borders(status);
-        if Self::use_dual_pane(status, width) {
+        if Self::use_dual_pane(status) {
             self.draw_dual(full_rect, inside_border_rect, borders, status);
         } else {
             self.draw_single(full_rect, inside_border_rect, borders, status);
@@ -1685,8 +1685,8 @@ impl Display {
     }
 
     /// True iff we need to display both panes
-    fn use_dual_pane(status: &Status, width: u16) -> bool {
-        status.session.dual() && width >= MIN_WIDTH_FOR_DUAL_PANE
+    fn use_dual_pane(status: &Status) -> bool {
+        status.use_dual()
     }
 
     fn draw_dual(

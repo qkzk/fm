@@ -492,11 +492,13 @@ impl Status {
     }
 
     /// Returns the size of the terminal (width, height)
-    pub fn term_size(&self) -> Size {
+    #[inline]
+    fn term_size(&self) -> Size {
         self.internal_settings.term_size()
     }
 
     /// Returns the width of the terminal window.
+    #[inline]
     pub fn term_width(&self) -> u16 {
         self.term_size().width
     }
@@ -639,6 +641,7 @@ impl Status {
         self.refresh_status()
     }
 
+    #[inline]
     fn wide_enough_for_dual(&self) -> bool {
         self.term_width() >= MIN_WIDTH_FOR_DUAL_PANE
     }
@@ -647,7 +650,8 @@ impl Status {
         !self.wide_enough_for_dual() && self.session.dual()
     }
 
-    fn use_dual(&self) -> bool {
+    #[inline]
+    pub fn use_dual(&self) -> bool {
         self.wide_enough_for_dual() && self.session.dual()
     }
 
