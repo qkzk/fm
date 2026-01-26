@@ -1983,13 +1983,11 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog
 
-- [ ] FEAT: common themes
+- [x] FEAT: common themes
   - [x] simplify config loading, theme file should be read once 
   - [x] read `theme: value` from config
   - [x] load theme from folder 
-  - [ ] create default theme from code if not exists when compiling
-    - [ ] need testing.
-  - [ ] fmconfig --them-from-config: copy user colors to a new file named `${USER}.yml`. Don't do it if file exists.
+  - [x] create default theme from code if not exists when compiling
   - [x] themes
     - [x] default
     - [x] ansi
@@ -2000,7 +1998,7 @@ Once that's done, it's all. No not implement anything else
     - [x] nord
     - [x] tokyonight
   - [x] rename to `.yaml` and
-- [ ] custom preview from external command
+- [x] custom preview from external command
   - [x] previewer.yml
   - [x] create default `previewer.yaml`
   - [x] format :
@@ -2017,9 +2015,7 @@ Once that's done, it's all. No not implement anything else
   - [x] preview
   - [x] display filepath and not "bat"
   - [x] ensure wrong config won't crash
-  - [ ] tests..
-- [ ] BUG: dual, preview tree, open. resize but focus still on right
-  - [ ] more testing
+- [x] FIX: dual, preview tree, open. resize but focus still on right
 - [x] FEAT: open directly from fuzzy finder instead of selecting
 - [x] PLUGIN: eml previewer with [eml-parser](https://crates.io/crates/eml-parser)
 - [x] FIX: searching `/` crash with free(): double free detected in tcache 2
