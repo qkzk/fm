@@ -2038,13 +2038,15 @@ Once that's done, it's all. No not implement anything else
     - [x] delete the file
     - [x] ensure marks are unique per path. Can't have multiple path with same marks.
     - [x] trashing a file remove its marks.
-- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 
 ## TODO
 
 ### Other ideas
 
 
+- [ ] FEAT: previewer image mode..
+- [ ] FEAT: sudo passwordless or with an app
+- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
