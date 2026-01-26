@@ -2032,14 +2032,21 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog 
 
+- [ ] FEAT: previewer image mode..
+  - [ ] ueberzug: just a call to ueberzug with correct arguments. It should be pluggable
+  - [ ] iterm2: ??? should be possible
+- [ ] FEAT: 
+  - [x] sudo command for passwordless. It already works. If the user has sudo rights without password (passwordless sudo), any password input will be validated and the command is ran
+  - [x] pkexec works already
+  - [ ] or with an app ???
+  - [ ] alternative to sudo ? sudo-rs doas
+- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
+
 ## TODO
 
 ### Other ideas
 
 
-- [ ] FEAT: previewer image mode..
-- [ ] FEAT: sudo passwordless or with an app
-- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
