@@ -62,6 +62,7 @@ static PREVIEWER_COMMANDS: OnceLock<Vec<PreviewerCommand>> = OnceLock::new();
 
 static PREFERED_IMAGER: OnceLock<PreferedImager> = OnceLock::new();
 
+/// The prefered method to display images set in config file
 pub fn get_prefered_imager() -> Option<&'static PreferedImager> {
     PREFERED_IMAGER.get()
 }
