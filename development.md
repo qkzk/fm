@@ -2056,6 +2056,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] or with an app ???
   - [ ] alternative to sudo ? sudo-rs doas
 - [x] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
+  - [x] ensure all ref to menu style are static
 
 ## TODO
 
