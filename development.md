@@ -2052,6 +2052,12 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: previewer image mode..
   - [ ] ueberzug: just a call to ueberzug with correct arguments. It should be pluggable
   - [ ] iterm2: ??? should be possible
+  - [ ] interface in config:
+    - build an image ? -> command
+    - path to built image with 
+  - [ ] read command from config 
+  - [ ] execute & build the real image 
+  - [ ] build a preview with DisplayedImage and attach it
 - [ ] FEAT: 
   - [x] sudo command for passwordless. It already works. If the user has sudo rights without password (passwordless sudo), any password input will be validated and the command is ran
   - [x] pkexec works already
@@ -2061,8 +2067,6 @@ Once that's done, it's all. No not implement anything else
   - [x] MENU_STYLE
   - [x] FILE_STYLE
   - [x] ensure all ref to menu style / file style are static
-  - [ ] build them and pass them both to display directly. static are now useless 
-  - [ ] do it for most of oncelock stuff
 - [x] FIX: commands could have a wrong CWD
 
 ## TODO
