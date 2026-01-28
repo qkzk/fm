@@ -1559,15 +1559,19 @@ impl Status {
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
-            Some(_) => self.internal_settings.open_single_file(path),
+            Some(_) => self
+                .internal_settings
+                .open_single_file(path, &self.tabs[self.index].directory_of_selected()?),
             None => Ok(()),
         }
     }
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.internal_settings
-            .open_flagged_files(&self.menu.flagged)
+        self.internal_settings.open_flagged_files(
+            &self.menu.flagged,
+            self.tabs[self.index].directory_of_selected()?,
+        )
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -1808,7 +1812,8 @@ impl Status {
         }
         let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         if executable == *SAME_WINDOW_TOKEN {
-            self.internal_settings.open_in_window(&params)?;
+            self.internal_settings
+                .open_in_window(&params, self.tabs[self.index].directory_of_selected()?)?;
             return Ok(true);
         }
         if !is_in_path(&executable) {

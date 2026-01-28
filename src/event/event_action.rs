@@ -669,7 +669,7 @@ impl EventAction {
         }
         set_current_dir(status.current_tab().current_directory_path())?;
         status.internal_settings.disable_display();
-        External::open_shell_in_window()?;
+        External::open_shell_in_window(status.current_tab().directory_of_selected()?)?;
         status.internal_settings.enable_display();
         Ok(())
     }

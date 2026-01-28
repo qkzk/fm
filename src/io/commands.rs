@@ -385,9 +385,13 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
 }
 
 /// Executes a command in a new shell.
-pub fn execute_in_shell(args: &[&str]) -> Result<bool> {
+pub fn execute_in_shell<P>(args: &[&str], path: P) -> Result<bool>
+where
+    P: AsRef<Path>,
+{
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let mut command = Command::new(&shell);
+    command.current_dir(path);
     if !args.is_empty() {
         command.arg("-c").args(args);
     }

@@ -10,12 +10,15 @@ use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info};
 /// Directly open a a TUI application
 /// The TUI application shares the same window as fm.
 /// If the user picked "shell", we use the environment variable `$SHELL` or `bash` if it's not set.
-pub fn open_tui_program(program: &str) -> Result<()> {
+pub fn open_tui_program<P>(program: &str, current_path: P) -> Result<()>
+where
+    P: AsRef<std::path::Path>,
+{
     if program == "shell" {
-        External::open_shell_in_window()
+        External::open_shell_in_window(current_path)
     } else if is_in_path(program) {
         log_info!("Tui menu execute {program}");
-        External::open_command_in_window(&[program])
+        External::open_command_in_window(&[program], current_path)
     } else {
         log_info!("Tui menu program {program} isn't in path");
         Ok(())
@@ -23,8 +26,8 @@ pub fn open_tui_program(program: &str) -> Result<()> {
 }
 
 impl Execute<()> for String {
-    fn execute(&self, _status: &Status) -> Result<()> {
-        open_tui_program(self)
+    fn execute(&self, status: &Status) -> Result<()> {
+        open_tui_program(self, status.current_tab().directory_of_selected()?)
     }
 }
 

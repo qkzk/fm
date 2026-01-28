@@ -234,9 +234,12 @@ impl InternalSettings {
     /// Current progress of the application is locked as long as the command doesn't finish.
     /// Firstly the display is disabled, then the command is ran.
     /// Once the command ends... the display is reenabled again.
-    pub fn open_in_window(&mut self, args: &[&str]) -> Result<()> {
+    pub fn open_in_window<P>(&mut self, args: &[&str], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        External::open_command_in_window(args)?;
+        External::open_command_in_window(args, current_path)?;
         self.enable_display();
         Ok(())
     }
@@ -249,22 +252,28 @@ impl InternalSettings {
     /// In neovim if this file should be,
     /// or in a new shell in current terminal,
     /// or in a new window.
-    pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
+    pub fn open_single_file<P>(&mut self, path: &Path, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         if self.inside_neovim && self.should_this_file_be_opened_in_neovim(path) {
             self.update_nvim_listen_address();
             open_in_current_neovim(path, &self.nvim_server);
             Ok(())
         } else if self.opener.use_term(path) {
-            self.open_single_in_window(path);
+            self.open_single_in_window(path, current_path);
             Ok(())
         } else {
             self.opener.open_single(path)
         }
     }
 
-    fn open_single_in_window(&mut self, path: &Path) {
+    fn open_single_in_window<P>(&mut self, path: &Path, current_path: P)
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        self.opener.open_in_window(path);
+        self.opener.open_in_window(path, current_path);
         self.enable_display();
     }
 
@@ -272,19 +281,25 @@ impl InternalSettings {
     /// We try to open all files in a single command if it's possible.
     /// If all files should be opened in neovim, it will be.
     /// Otherwise, they will be opened separetely.
-    pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
+    pub fn open_flagged_files<P>(&mut self, flagged: &Flagged, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         if self.inside_neovim && flagged.should_all_be_opened_in_neovim() {
             self.open_multiple_in_neovim(flagged.content());
             Ok(())
         } else {
-            self.open_multiple_outside(flagged.content())
+            self.open_multiple_outside(flagged.content(), current_path)
         }
     }
 
-    fn open_multiple_outside(&mut self, paths: &[PathBuf]) -> Result<()> {
+    fn open_multiple_outside<P>(&mut self, paths: &[PathBuf], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let openers = self.opener.regroup_per_opener(paths);
         if Self::all_files_opened_in_terminal(&openers) {
-            self.open_multiple_files_in_window(openers)
+            self.open_multiple_files_in_window(openers, current_path)
         } else {
             self.opener.open_multiple(openers)
         }
@@ -294,12 +309,16 @@ impl InternalSettings {
         openers.len() == 1 && openers.keys().next().expect("Can't be empty").use_term()
     }
 
-    fn open_multiple_files_in_window(
+    fn open_multiple_files_in_window<P>(
         &mut self,
         openers: HashMap<External, Vec<PathBuf>>,
-    ) -> Result<()> {
+        current_path: P,
+    ) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        self.opener.open_multiple_in_window(openers)?;
+        self.opener.open_multiple_in_window(openers, current_path)?;
         self.enable_display();
         Ok(())
     }

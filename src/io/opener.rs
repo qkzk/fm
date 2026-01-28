@@ -264,22 +264,31 @@ impl External {
         Ok(())
     }
 
-    fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
+    fn open_in_window<'a, P>(&'a self, path: &'a str, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let arg = format!(
             "{program} {path}",
             program = self.program(),
             path = path.quote()?
         );
-        Self::open_command_in_window(&[&arg])
+        Self::open_command_in_window(&[&arg], current_path)
     }
 
-    fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
+    fn open_multiple_in_window<P>(&self, paths: &[PathBuf], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let arg = paths
             .iter()
             .filter_map(|p| p.to_str().and_then(|s| s.quote().ok()))
             .collect::<Vec<_>>()
             .join(" ");
-        Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
+        Self::open_command_in_window(
+            &[&format!("{program} {arg}", program = self.program())],
+            current_path,
+        )
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
@@ -297,15 +306,21 @@ impl External {
     /// Clear the screen and renable raw mode.
     ///
     /// It's the responsability of the caller to ensure displayer doesn't try to override the display.
-    pub fn open_shell_in_window() -> Result<()> {
-        Self::open_command_in_window(&[])?;
+    pub fn open_shell_in_window<P>(current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        Self::open_command_in_window(&[], current_path)?;
         Ok(())
     }
 
-    pub fn open_command_in_window(args: &[&str]) -> Result<()> {
+    pub fn open_command_in_window<P>(args: &[&str], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         disable_raw_mode()?;
         execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
-        execute_in_shell(args)?;
+        execute_in_shell(args, current_path)?;
         enable_raw_mode()?;
         execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
         Ok(())
@@ -469,18 +484,28 @@ impl Opener {
             .collect()
     }
 
-    pub fn open_in_window(&self, path: &Path) {
+    pub fn open_in_window<P>(&self, path: &Path, current_path: P)
+    where
+        P: AsRef<Path>,
+    {
         let Some(Kind::External(external)) = self.kind(path) else {
             return;
         };
         if !external.use_term() {
             return;
         };
-        let _ = external.open_in_window(path.to_string_lossy().as_ref());
+        let _ = external.open_in_window(path.to_string_lossy().as_ref(), current_path);
     }
 
-    pub fn open_multiple_in_window(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+    pub fn open_multiple_in_window<P>(
+        &self,
+        openers: HashMap<External, Vec<PathBuf>>,
+        current_path: P,
+    ) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let (external, paths) = openers.iter().next().unwrap();
-        external.open_multiple_in_window(paths)
+        external.open_multiple_in_window(paths, current_path)
     }
 }

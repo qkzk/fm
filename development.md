@@ -2045,6 +2045,8 @@ Once that's done, it's all. No not implement anything else
 
 ##### Bugfixes
 
+- Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
+
 #### Changelog 
 
 - [ ] FEAT: previewer image mode..
@@ -2059,6 +2061,9 @@ Once that's done, it's all. No not implement anything else
   - [x] MENU_STYLE
   - [x] FILE_STYLE
   - [x] ensure all ref to menu style / file style are static
+  - [ ] build them and pass them both to display directly. static are now useless 
+  - [ ] do it for most of oncelock stuff
+- [x] FIX: commands could have a wrong CWD
 
 ## TODO
 
