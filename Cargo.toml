@@ -62,6 +62,7 @@ regex = "1.12.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
+rusqlite = "0.38.0"
 strfmt = "0.2.4"
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"

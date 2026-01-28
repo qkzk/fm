@@ -2068,6 +2068,10 @@ Once that's done, it's all. No not implement anything else
   - [x] FILE_STYLE
   - [x] ensure all ref to menu style / file style are static
 - [x] FIX: commands could have a wrong CWD
+- [ ] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
+  - [x] works, almost perfect display. Used chatgpt for alignment
+  - [ ] refactor
+  - [ ] remove useless `-` at the end of separator line
 
 ## TODO
 
@@ -2094,9 +2098,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
-- [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
-- [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] plugin system 
@@ -2111,7 +2113,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] stability aka 1.0
 - [ ] code clean
 - [ ] store 4 windows in display to modify instead of recreating
-- [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh

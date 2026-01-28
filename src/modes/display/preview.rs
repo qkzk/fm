@@ -12,6 +12,7 @@ use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
 use regex::Regex;
+use rusqlite::types::Value;
 use serde::{Deserialize, Serialize};
 use syntect::{
     easy::HighlightLines,
@@ -56,6 +57,7 @@ pub enum ExtensionKind {
     Office,
     Pdf,
     Sevenz,
+    Sqlite3,
     Svg,
     Torrent,
     Video,
@@ -95,6 +97,8 @@ impl ExtensionKind {
             => Self::Epub,
             "torrent"
             => Self::Torrent,
+             "db" | "db-shm" | "db-wal" | "sqlite" | "sqlite-shm" | "sqlite-wal" | "sqlite3" 
+            => Self::Sqlite3,
             _
             => Self::Default,
         }
@@ -153,6 +157,7 @@ impl std::fmt::Display for ExtensionKind {
             Self::Office    => "office",
             Self::Epub      => "epub",
             Self::Torrent   => "torrent",
+            Self::Sqlite3   => "sqlite3",
             Self::Default   => "default",
         };
         write!(f, "{}", repr)
@@ -322,6 +327,9 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
+            ExtensionKind::Sqlite3 => Ok(Preview::Text(
+                Text::sqlite3(&self.path).context("Preview: Couldn't read sqlite3")?,
+            )),
             _ if kind.is_image_kind() && kind.has_programs() && images_are_enabled() => {
                 Self::image(&self.path, kind)
             }
@@ -533,6 +541,7 @@ pub enum TextKind {
     Plugin,
     Sevenz,
     Socket,
+    Sqlite3,
     Torrent,
 }
 
@@ -556,6 +565,7 @@ impl TextKind {
             Self::Pdf => "a pdf",
             Self::Sevenz => "a 7z archive",
             Self::Socket => "a Socket file",
+            Self::Sqlite3 => "a Sqlite3 database file",
             Self::Torrent => "a torrent",
         }
     }
@@ -639,6 +649,88 @@ impl Text {
             kind: TextKind::Epub,
             length: content.len(),
             filepath: Arc::from(path),
+            content,
+        })
+    }
+
+    fn sqlite3(path: &Path) -> Result<Self> {
+        let conn = rusqlite::Connection::open(path)?;
+
+        let mut stmt = conn.prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        )?;
+
+        let tables: Vec<_> = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .flatten()
+            .collect();
+
+        let mut content = vec![
+            format!("Database has {nb} tables", nb = tables.len()),
+            "".to_string(),
+        ];
+        for table in tables {
+            let req_count = &format!("SELECT COUNT(*) FROM {table}");
+            let line_count: i64 = conn.query_row(req_count, [], |row| row.get(0))?;
+            let offset = line_count.saturating_sub(5) / 2;
+            let title_line = format!("Table: {table} - {line_count} rows");
+            let width = title_line.len();
+            content.push(title_line);
+            content.push("-".repeat(width));
+
+            let mut statement =
+                conn.prepare(&format!("SELECT * FROM {table} LIMIT 5 OFFSET {offset}",))?;
+            let column_count = statement.column_count();
+            let headers: Vec<_> = statement
+                .column_names()
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+
+            let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
+
+            let rows: Vec<Vec<String>> = statement
+                .query_map([], |row| {
+                    Ok((0..column_count)
+                        .flat_map(|index| row.get(index))
+                        .map(|v| value_to_string(&v))
+                        .collect::<Vec<_>>())
+                })?
+                .flatten()
+                .collect();
+
+            for record in &rows {
+                for (i, s) in record.iter().enumerate() {
+                    widths[i] = widths[i].max(s.len());
+                }
+            }
+
+            let mut header_line = String::new();
+            for (header, width) in headers.iter().zip(&widths) {
+                header_line.push_str(&format!("{header:width$} | "));
+            }
+            content.push(header_line);
+
+            let mut separator_line = String::new();
+            for width in &widths {
+                separator_line.push_str(&format!("{:-<width$}-|-", ""));
+            }
+            content.push(separator_line);
+
+            for row in rows {
+                let mut value_line = String::new();
+                for (value, width) in row.iter().zip(&widths) {
+                    value_line.push_str(&format!("{value:width$} | "));
+                }
+                content.push(value_line);
+            }
+            content.push("".to_string());
+        }
+        Ok(Self {
+            title: filename_from_path(path).context("No filename")?.to_owned(),
+            kind: TextKind::Sqlite3,
+            filepath: Arc::from(path),
+            length: content.len(),
             content,
         })
     }
@@ -822,6 +914,16 @@ impl Text {
 
     fn filepath(&self) -> Arc<Path> {
         self.filepath.clone()
+    }
+}
+
+fn value_to_string(v: &Value) -> String {
+    match v {
+        Value::Null => "NULL".into(),
+        Value::Integer(i) => i.to_string(),
+        Value::Real(f) => format!("{:.3}", f),
+        Value::Text(t) => t.to_owned(),
+        Value::Blob(b) => format!("<blob:{} bytes>", b.len()),
     }
 }
 
