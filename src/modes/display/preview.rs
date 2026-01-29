@@ -1169,20 +1169,20 @@ impl_take_skip!(BinaryContent, Line);
 impl_take_skip!(TreeLines, TLine);
 
 mod sqlite_previewer {
-    use rusqlite::types::Value;
+    use rusqlite::{types::Value, Connection, Result, Statement};
 
     /// Build a vector of line previewing a sqlite database.
-    pub fn build_content(path: &std::path::Path) -> rusqlite::Result<Vec<String>> {
-        let conn = rusqlite::Connection::open(path)?;
+    pub fn build_content(path: &std::path::Path) -> Result<Vec<String>> {
+        let conn = Connection::open(path)?;
         let tables = get_tables(&conn)?;
         let mut content = prepare_content(tables.len());
         for table in tables {
-            push_table_in_content(&conn, &mut content, table)?;
+            push_table_data_in_content(&conn, &mut content, table)?;
         }
         Ok(content)
     }
 
-    fn get_tables(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<String>> {
+    fn get_tables(conn: &Connection) -> Result<Vec<String>> {
         Ok(conn
             .prepare(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -1216,11 +1216,11 @@ mod sqlite_previewer {
         widths
     }
 
-    fn push_table_in_content(
-        conn: &rusqlite::Connection,
+    fn push_table_data_in_content(
+        conn: &Connection,
         content: &mut Vec<String>,
         table: String,
-    ) -> rusqlite::Result<()> {
+    ) -> Result<()> {
         let line_count = count_line(conn, &table)?;
         let offset = line_count.saturating_sub(5) / 2;
         content.append(&mut build_table_title(&table, line_count));
@@ -1237,7 +1237,7 @@ mod sqlite_previewer {
         Ok(())
     }
 
-    fn count_line(conn: &rusqlite::Connection, table: &str) -> rusqlite::Result<i64> {
+    fn count_line(conn: &Connection, table: &str) -> Result<i64> {
         let req_count = &format!("SELECT COUNT(*) FROM {table}");
         conn.query_row(req_count, [], |row| row.get(0))
     }
@@ -1249,14 +1249,14 @@ mod sqlite_previewer {
     }
 
     fn prepare_table_statement(
-        conn: &rusqlite::Connection,
+        conn: &Connection,
         table: String,
         offset: i64,
-    ) -> rusqlite::Result<rusqlite::Statement<'_>> {
+    ) -> Result<Statement<'_>> {
         conn.prepare(&format!("SELECT * FROM {table} LIMIT 5 OFFSET {offset}"))
     }
 
-    fn get_headers_from_statement(statement: &mut rusqlite::Statement<'_>) -> Vec<String> {
+    fn get_headers_from_statement(statement: &mut Statement<'_>) -> Vec<String> {
         statement
             .column_names()
             .iter()
@@ -1264,9 +1264,7 @@ mod sqlite_previewer {
             .collect()
     }
 
-    fn get_rows_from_statement(
-        statement: &mut rusqlite::Statement<'_>,
-    ) -> rusqlite::Result<Vec<Vec<String>>> {
+    fn get_rows_from_statement(statement: &mut Statement<'_>) -> Result<Vec<Vec<String>>> {
         let column_count = statement.column_count();
         Ok(statement
             .query_map([], |row| {
@@ -1287,6 +1285,7 @@ mod sqlite_previewer {
         header_line
     }
 
+    // TODO: there's 1 `-`  too much at the end.
     fn build_separator_line(widths: &[usize]) -> String {
         let mut separator_line = String::new();
         for width in widths {
