@@ -12,7 +12,6 @@ use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use ratatui::style::{Color, Modifier, Style};
 use regex::Regex;
-use rusqlite::types::Value;
 use serde::{Deserialize, Serialize};
 use syntect::{
     easy::HighlightLines,
@@ -654,78 +653,7 @@ impl Text {
     }
 
     fn sqlite3(path: &Path) -> Result<Self> {
-        let conn = rusqlite::Connection::open(path)?;
-
-        let mut stmt = conn.prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-        )?;
-
-        let tables: Vec<_> = stmt
-            .query_map([], |row| row.get::<_, String>(0))?
-            .flatten()
-            .collect();
-
-        let mut content = vec![
-            format!("Database has {nb} tables", nb = tables.len()),
-            "".to_string(),
-        ];
-        for table in tables {
-            let req_count = &format!("SELECT COUNT(*) FROM {table}");
-            let line_count: i64 = conn.query_row(req_count, [], |row| row.get(0))?;
-            let offset = line_count.saturating_sub(5) / 2;
-            let title_line = format!("Table: {table} - {line_count} rows");
-            let width = title_line.len();
-            content.push(title_line);
-            content.push("-".repeat(width));
-
-            let mut statement =
-                conn.prepare(&format!("SELECT * FROM {table} LIMIT 5 OFFSET {offset}",))?;
-            let column_count = statement.column_count();
-            let headers: Vec<_> = statement
-                .column_names()
-                .iter()
-                .map(|s| s.to_string())
-                .collect();
-
-            let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
-
-            let rows: Vec<Vec<String>> = statement
-                .query_map([], |row| {
-                    Ok((0..column_count)
-                        .flat_map(|index| row.get(index))
-                        .map(|v| value_to_string(&v))
-                        .collect::<Vec<_>>())
-                })?
-                .flatten()
-                .collect();
-
-            for record in &rows {
-                for (i, s) in record.iter().enumerate() {
-                    widths[i] = widths[i].max(s.len());
-                }
-            }
-
-            let mut header_line = String::new();
-            for (header, width) in headers.iter().zip(&widths) {
-                header_line.push_str(&format!("{header:width$} | "));
-            }
-            content.push(header_line);
-
-            let mut separator_line = String::new();
-            for width in &widths {
-                separator_line.push_str(&format!("{:-<width$}-|-", ""));
-            }
-            content.push(separator_line);
-
-            for row in rows {
-                let mut value_line = String::new();
-                for (value, width) in row.iter().zip(&widths) {
-                    value_line.push_str(&format!("{value:width$} | "));
-                }
-                content.push(value_line);
-            }
-            content.push("".to_string());
-        }
+        let content = sqlite_previewer::build_content(path)?;
         Ok(Self {
             title: filename_from_path(path).context("No filename")?.to_owned(),
             kind: TextKind::Sqlite3,
@@ -914,16 +842,6 @@ impl Text {
 
     fn filepath(&self) -> Arc<Path> {
         self.filepath.clone()
-    }
-}
-
-fn value_to_string(v: &Value) -> String {
-    match v {
-        Value::Null => "NULL".into(),
-        Value::Integer(i) => i.to_string(),
-        Value::Real(f) => format!("{:.3}", f),
-        Value::Text(t) => t.to_owned(),
-        Value::Blob(b) => format!("<blob:{} bytes>", b.len()),
     }
 }
 
@@ -1249,3 +1167,139 @@ impl_take_skip!(HLContent, VecSyntaxedString);
 impl_take_skip!(Text, String);
 impl_take_skip!(BinaryContent, Line);
 impl_take_skip!(TreeLines, TLine);
+
+mod sqlite_previewer {
+    use rusqlite::types::Value;
+
+    /// Build a vector of line previewing a sqlite database.
+    pub fn build_content(path: &std::path::Path) -> rusqlite::Result<Vec<String>> {
+        let conn = rusqlite::Connection::open(path)?;
+        let tables = get_tables(&conn)?;
+        let mut content = prepare_content(tables.len());
+        for table in tables {
+            push_table_in_content(&conn, &mut content, table)?;
+        }
+        Ok(content)
+    }
+
+    fn get_tables(conn: &rusqlite::Connection) -> rusqlite::Result<Vec<String>> {
+        Ok(conn
+            .prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+            )?
+            .query_map([], |row| row.get::<_, String>(0))?
+            .flatten()
+            .collect())
+    }
+
+    fn prepare_content(nb: usize) -> Vec<String> {
+        vec![format!("Database has {nb} tables"), "".to_string()]
+    }
+
+    fn value_to_string(v: &Value) -> String {
+        match v {
+            Value::Null => "NULL".into(),
+            Value::Integer(i) => i.to_string(),
+            Value::Real(f) => format!("{f:.3}"),
+            Value::Text(t) => t.to_owned(),
+            Value::Blob(b) => format!("<blob:{bytes} bytes>", bytes = b.len()),
+        }
+    }
+
+    fn calc_width(headers: &[String], rows: &[Vec<String>]) -> Vec<usize> {
+        let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
+        for record in rows {
+            for (i, s) in record.iter().enumerate() {
+                widths[i] = widths[i].max(s.len());
+            }
+        }
+        widths
+    }
+
+    fn push_table_in_content(
+        conn: &rusqlite::Connection,
+        content: &mut Vec<String>,
+        table: String,
+    ) -> rusqlite::Result<()> {
+        let line_count = count_line(conn, &table)?;
+        let offset = line_count.saturating_sub(5) / 2;
+        content.append(&mut build_table_title(&table, line_count));
+        let mut statement = prepare_table_statement(conn, table, offset)?;
+        let headers = get_headers_from_statement(&mut statement);
+        let rows = get_rows_from_statement(&mut statement)?;
+        let widths = calc_width(&headers, &rows);
+        content.push(build_header_line(&headers, &widths));
+        content.push(build_separator_line(&widths));
+        for row in rows {
+            content.push(build_value_line(&row, &widths));
+        }
+        content.push("".to_string());
+        Ok(())
+    }
+
+    fn count_line(conn: &rusqlite::Connection, table: &str) -> rusqlite::Result<i64> {
+        let req_count = &format!("SELECT COUNT(*) FROM {table}");
+        conn.query_row(req_count, [], |row| row.get(0))
+    }
+
+    fn build_table_title(table: &str, line_count: i64) -> Vec<String> {
+        let title_line = format!("Table: {table} - {line_count} rows");
+        let underline = "-".repeat(title_line.len());
+        vec![title_line, underline]
+    }
+
+    fn prepare_table_statement(
+        conn: &rusqlite::Connection,
+        table: String,
+        offset: i64,
+    ) -> rusqlite::Result<rusqlite::Statement<'_>> {
+        conn.prepare(&format!("SELECT * FROM {table} LIMIT 5 OFFSET {offset}"))
+    }
+
+    fn get_headers_from_statement(statement: &mut rusqlite::Statement<'_>) -> Vec<String> {
+        statement
+            .column_names()
+            .iter()
+            .map(|header| header.to_string())
+            .collect()
+    }
+
+    fn get_rows_from_statement(
+        statement: &mut rusqlite::Statement<'_>,
+    ) -> rusqlite::Result<Vec<Vec<String>>> {
+        let column_count = statement.column_count();
+        Ok(statement
+            .query_map([], |row| {
+                Ok((0..column_count)
+                    .flat_map(|index| row.get(index))
+                    .map(|v| value_to_string(&v))
+                    .collect::<Vec<_>>())
+            })?
+            .flatten()
+            .collect())
+    }
+
+    fn build_header_line(headers: &[String], widths: &[usize]) -> String {
+        let mut header_line = String::new();
+        for (header, width) in headers.iter().zip(widths) {
+            header_line.push_str(&format!("{header:width$} | "));
+        }
+        header_line
+    }
+
+    fn build_separator_line(widths: &[usize]) -> String {
+        let mut separator_line = String::new();
+        for width in widths {
+            separator_line.push_str(&format!("{:-<width$}-|-", ""));
+        }
+        separator_line
+    }
+
+    fn build_value_line(row: &[String], widths: &[usize]) -> String {
+        let mut value_line = String::new();
+        for (value, width) in row.iter().zip(widths) {
+            value_line.push_str(&format!("{value:width$} | "));
+        }
+        value_line
+    }
+}

@@ -2070,7 +2070,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: commands could have a wrong CWD
 - [ ] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
   - [x] works, almost perfect display. Used chatgpt for alignment
-  - [ ] refactor
+  - [x] refactor
   - [ ] remove useless `-` at the end of separator line
 
 ## TODO
