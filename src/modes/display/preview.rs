@@ -1169,7 +1169,7 @@ impl_take_skip!(BinaryContent, Line);
 impl_take_skip!(TreeLines, TLine);
 
 mod sqlite_previewer {
-    use rusqlite::{types::Value, Connection, Result, Statement};
+    use rusqlite::{types::Value, Connection, Result, Row, Statement};
 
     /// Build a vector of line previewing a sqlite database.
     pub fn build_content(path: &std::path::Path) -> Result<Vec<String>> {
@@ -1267,14 +1267,16 @@ mod sqlite_previewer {
     fn get_rows_from_statement(statement: &mut Statement<'_>) -> Result<Vec<Vec<String>>> {
         let column_count = statement.column_count();
         Ok(statement
-            .query_map([], |row| {
-                Ok((0..column_count)
-                    .flat_map(|index| row.get(index))
-                    .map(|v| value_to_string(&v))
-                    .collect::<Vec<_>>())
-            })?
+            .query_map([], |row| Ok(get_row_values(row, column_count)))?
             .flatten()
             .collect())
+    }
+
+    fn get_row_values(row: &Row<'_>, column_count: usize) -> Vec<String> {
+        (0..column_count)
+            .flat_map(|index| row.get(index))
+            .map(|v| value_to_string(&v))
+            .collect()
     }
 
     fn build_text_line(value: &[String], widths: &[usize]) -> String {
