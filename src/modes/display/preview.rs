@@ -1228,10 +1228,10 @@ mod sqlite_previewer {
         let headers = get_headers_from_statement(&mut statement);
         let rows = get_rows_from_statement(&mut statement)?;
         let widths = calc_width(&headers, &rows);
-        content.push(build_header_line(&headers, &widths));
+        content.push(build_text_line(&headers, &widths));
         content.push(build_separator_line(&widths));
         for row in rows {
-            content.push(build_value_line(&row, &widths));
+            content.push(build_text_line(&row, &widths));
         }
         content.push("".to_string());
         Ok(())
@@ -1277,12 +1277,12 @@ mod sqlite_previewer {
             .collect())
     }
 
-    fn build_header_line(headers: &[String], widths: &[usize]) -> String {
-        let mut header_line = String::new();
-        for (header, width) in headers.iter().zip(widths) {
-            header_line.push_str(&format!("{header:width$} | "));
+    fn build_text_line(value: &[String], widths: &[usize]) -> String {
+        let mut text = String::new();
+        for (value, width) in value.iter().zip(widths) {
+            text.push_str(&format!("{value:width$} | "));
         }
-        header_line
+        text
     }
 
     // TODO: there's 1 `-`  too much at the end.
@@ -1292,13 +1292,5 @@ mod sqlite_previewer {
             separator_line.push_str(&format!("{:-<width$}-|-", ""));
         }
         separator_line
-    }
-
-    fn build_value_line(row: &[String], widths: &[usize]) -> String {
-        let mut value_line = String::new();
-        for (value, width) in row.iter().zip(widths) {
-            value_line.push_str(&format!("{value:width$} | "));
-        }
-        value_line
     }
 }
