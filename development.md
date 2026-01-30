@@ -2044,7 +2044,8 @@ Once that's done, it's all. No not implement anything else
 #### Summary 
 
 - preview sqlite3 databases with a summary. Inspired by ranger.
-- opener allow arguments in their config
+- BREAKING. opener allow arguments in their config.
+  This isn't exactly a "breaking" change since your old config will still work... but if you use options, older versions of fm won't be able to excute your program.
 
 ##### Bugfixes
 
@@ -2144,7 +2145,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
-- [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] context switch
