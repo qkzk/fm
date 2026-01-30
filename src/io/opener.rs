@@ -295,8 +295,21 @@ impl External {
         if args.is_empty() {
             return Err(anyhow!("args shouldn't be empty"));
         }
-        let executable = args.remove(0);
+        let mut executable = args.remove(0);
+        if executable.contains(' ') {
+            Self::get_args(&mut executable, &mut args)?;
+        }
         execute(executable, &args)
+    }
+
+    fn get_args<'a>(executable: &mut &'a str, args: &mut Vec<&'a str>) -> Result<()> {
+        let mut sp = executable.split_whitespace();
+        let bla = sp.next().context("Shouldn't be empty")?;
+        let mut rest: Vec<_> = sp.collect();
+        rest.append(args);
+        *args = rest;
+        *executable = bla;
+        Ok(())
     }
 
     /// Open a new shell in current window.

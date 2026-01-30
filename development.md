@@ -2043,13 +2043,23 @@ Once that's done, it's all. No not implement anything else
 
 #### Summary 
 
+- preview sqlite3 databases with a summary. Inspired by ranger.
+
 ##### Bugfixes
 
 - Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
 
 #### Changelog 
 
+- [ ] Menu plugin 
+  - [ ] API:
+    Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent
+    - [ ] fm -> plugin : dispatch(event, status) {} - mut status or only status ?
+    - [ ] fm -> plugin : display(rect) -> Widget    OR fm -> plugin : display(f, rect) {}
 - [ ] FEAT: previewer image mode..
+  API:
+    - extend previewer plugins with a name & type. Either text or image or ? let fm handle the display.
+    - text returns a String, display returns Vec<String> with paths to images.
   - [ ] ueberzug: just a call to ueberzug with correct arguments. It should be pluggable
   - [ ] iterm2: ??? should be possible
   - [ ] interface in config:
@@ -2068,10 +2078,10 @@ Once that's done, it's all. No not implement anything else
   - [x] FILE_STYLE
   - [x] ensure all ref to menu style / file style are static
 - [x] FIX: commands could have a wrong CWD
-- [ ] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
+- [x] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
   - [x] works, almost perfect display. Used chatgpt for alignment
   - [x] refactor
-  - [ ] remove useless `-` at the end of separator line
+- [ ] FEAT: opener (external) should allow arguments in their config
 
 ## TODO
 
@@ -2127,7 +2137,6 @@ Once that's done, it's all. No not implement anything else
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
 - [ ] simplify status.confirm action & must leave
-- [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?
@@ -2137,15 +2146,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [ ] remote control
-
-  - [ ] listen to stdin (rcv etc.)
-    - [ ] follow change directory
-    - [ ] when called from a file buffer in nvim, open with this file selected
-  - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
-  - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
-  - https://neovim.io/doc/user/api.html
-
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
@@ -2153,8 +2153,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] update the animation
 
 - [ ] build option to force reset of config file, warn the user at first start
-- [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
-- [ ] allow pipe in execution
 
 - [ ] tests
 - [ ] remove references to local thing
