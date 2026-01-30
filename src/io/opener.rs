@@ -304,11 +304,11 @@ impl External {
 
     fn get_args<'a>(executable: &mut &'a str, args: &mut Vec<&'a str>) -> Result<()> {
         let mut sp = executable.split_whitespace();
-        let bla = sp.next().context("Shouldn't be empty")?;
+        let first_arg = sp.next().context("Shouldn't be empty")?;
         let mut rest: Vec<_> = sp.collect();
         rest.append(args);
         *args = rest;
-        *executable = bla;
+        *executable = first_arg;
         Ok(())
     }
 
