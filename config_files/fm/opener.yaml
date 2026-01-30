@@ -1,7 +1,9 @@
 # Here you can configure which application is used to open your files.
 # Each kind of files is matched by its extension.
 # Every kind is listed below. The opener should be in your `$PATH`.
-# The `use_term` boolean is set to true if the application requires to be 
+# You can use a full path or only the filename as long as it's in `$PATH`
+# You can specify some flags or options, they will be passed to the executable.
+# The `use_term` boolean is set to true if the application requires to be
 # run from the terminal, like `nvim`, false if it can be launched directly.
 # Let say you want to open text file with vscode, then:
 # text:

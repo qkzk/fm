@@ -2044,6 +2044,7 @@ Once that's done, it's all. No not implement anything else
 #### Summary 
 
 - preview sqlite3 databases with a summary. Inspired by ranger.
+- opener allow arguments in their config
 
 ##### Bugfixes
 
@@ -2081,7 +2082,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
   - [x] works, almost perfect display. Used chatgpt for alignment
   - [x] refactor
-- [ ] FEAT: opener (external) should allow arguments in their config
+- [x] FEAT: opener (external) should allow arguments in their config
 
 ## TODO
 

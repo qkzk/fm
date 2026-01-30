@@ -3,7 +3,7 @@ use std::fmt;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -228,7 +228,7 @@ impl Internal {
             Self::Zip => decompress_zip(path),
             Self::Xz => decompress_xz(path),
             Self::Gz => decompress_gz(path),
-            Self::NotSupported => Err(anyhow!("Can't be opened directly")),
+            Self::NotSupported => bail!("Can't be opened directly"),
         }
     }
 }
@@ -293,19 +293,30 @@ impl External {
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
         if args.is_empty() {
-            return Err(anyhow!("args shouldn't be empty"));
+            bail!("args shouldn't be empty");
         }
         let mut executable = args.remove(0);
         if executable.contains(' ') {
-            Self::get_args(&mut executable, &mut args)?;
+            Self::include_options_in_args(&mut executable, &mut args)?;
         }
         execute(executable, &args)
     }
 
-    fn get_args<'a>(executable: &mut &'a str, args: &mut Vec<&'a str>) -> Result<()> {
-        let mut sp = executable.split_whitespace();
-        let first_arg = sp.next().context("Shouldn't be empty")?;
-        let mut rest: Vec<_> = sp.collect();
+    /// Called when the command contains options, flags etc.
+    /// If the config `opener.yaml` contains a non terminal opener with option, we need to insert those options in
+    /// the command arguments.
+    /// This method will extract those arguments, update the executable with the part before the first whitespace and insert the options before the arguments.
+    /// Something like `viewnior --fullscreen` -> executable="viewnior", args=["--fullscreen", ..args].
+    ///
+    /// # Errors
+    /// Will fail if `executable` doesn't contain a ` `.
+    fn include_options_in_args<'a>(
+        executable: &mut &'a str,
+        args: &mut Vec<&'a str>,
+    ) -> Result<()> {
+        let mut split = executable.split_whitespace();
+        let first_arg = split.next().context("Shouldn't be empty")?;
+        let mut rest: Vec<_> = split.collect();
         rest.append(args);
         *args = rest;
         *executable = first_arg;
@@ -376,7 +387,7 @@ impl Kind {
 
     fn external_program(&self) -> Result<(&str, bool)> {
         let Self::External(External(program, use_term)) = self else {
-            return Err(anyhow!("not an external opener"));
+            bail!("not an external opener");
         };
         Ok((program, *use_term))
     }
@@ -457,7 +468,7 @@ impl Opener {
                 external.open(&[path.to_str().context("couldn't")?])
             }
             Some(Kind::Internal(internal)) => internal.open(path),
-            None => Err(anyhow!("{p} can't be opened", p = path.display())),
+            None => bail!("{p} can't be opened", p = path.display()),
         }
     }
 
