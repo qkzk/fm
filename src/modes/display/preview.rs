@@ -56,7 +56,6 @@ pub enum ExtensionKind {
     Office,
     Pdf,
     Sevenz,
-    Sqlite3,
     Svg,
     Torrent,
     Video,
@@ -96,8 +95,6 @@ impl ExtensionKind {
             => Self::Epub,
             "torrent"
             => Self::Torrent,
-             "db" | "db-shm" | "db-wal" | "sqlite" | "sqlite-shm" | "sqlite-wal" | "sqlite3" 
-            => Self::Sqlite3,
             _
             => Self::Default,
         }
@@ -156,7 +153,6 @@ impl std::fmt::Display for ExtensionKind {
             Self::Office    => "office",
             Self::Epub      => "epub",
             Self::Torrent   => "torrent",
-            Self::Sqlite3   => "sqlite3",
             Self::Default   => "default",
         };
         write!(f, "{}", repr)
@@ -326,9 +322,6 @@ impl PreviewBuilder {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            ExtensionKind::Sqlite3 => Ok(Preview::Text(
-                Text::sqlite3(&self.path).context("Preview: Couldn't read sqlite3")?,
-            )),
             _ if kind.is_image_kind() && kind.has_programs() && images_are_enabled() => {
                 Self::image(&self.path, kind)
             }
@@ -648,17 +641,6 @@ impl Text {
             kind: TextKind::Epub,
             length: content.len(),
             filepath: Arc::from(path),
-            content,
-        })
-    }
-
-    fn sqlite3(path: &Path) -> Result<Self> {
-        let content = sqlite_previewer::build_content(path)?;
-        Ok(Self {
-            title: filename_from_path(path).context("No filename")?.to_owned(),
-            kind: TextKind::Sqlite3,
-            filepath: Arc::from(path),
-            length: content.len(),
             content,
         })
     }
@@ -1167,132 +1149,3 @@ impl_take_skip!(HLContent, VecSyntaxedString);
 impl_take_skip!(Text, String);
 impl_take_skip!(BinaryContent, Line);
 impl_take_skip!(TreeLines, TLine);
-
-mod sqlite_previewer {
-    use rusqlite::{types::Value, Connection, Result, Row, Statement};
-
-    /// Build a vector of line previewing a sqlite database.
-    pub fn build_content(path: &std::path::Path) -> Result<Vec<String>> {
-        let conn = Connection::open(path)?;
-        let tables = get_tables(&conn)?;
-        let mut content = prepare_content(tables.len());
-        for table in tables {
-            push_table_data_in_content(&conn, &mut content, table)?;
-        }
-        Ok(content)
-    }
-
-    fn get_tables(conn: &Connection) -> Result<Vec<String>> {
-        Ok(conn
-            .prepare(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-            )?
-            .query_map([], |row| row.get::<_, String>(0))?
-            .flatten()
-            .collect())
-    }
-
-    fn prepare_content(nb: usize) -> Vec<String> {
-        vec![format!("Database has {nb} tables"), "".to_string()]
-    }
-
-    fn value_to_string(v: &Value) -> String {
-        match v {
-            Value::Null => "NULL".into(),
-            Value::Integer(i) => i.to_string(),
-            Value::Real(f) => format!("{f:.3}"),
-            Value::Text(t) => t.to_owned(),
-            Value::Blob(b) => format!("<blob:{bytes} bytes>", bytes = b.len()),
-        }
-    }
-
-    fn calc_width(headers: &[String], rows: &[Vec<String>]) -> Vec<usize> {
-        let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
-        for record in rows {
-            for (i, s) in record.iter().enumerate() {
-                widths[i] = widths[i].max(s.len());
-            }
-        }
-        widths
-    }
-
-    fn push_table_data_in_content(
-        conn: &Connection,
-        content: &mut Vec<String>,
-        table: String,
-    ) -> Result<()> {
-        let line_count = count_line(conn, &table)?;
-        let offset = line_count.saturating_sub(5) / 2;
-        content.append(&mut build_table_title(&table, line_count));
-        let mut statement = prepare_table_statement(conn, table, offset)?;
-        let headers = get_headers_from_statement(&mut statement);
-        let rows = get_rows_from_statement(&mut statement)?;
-        let widths = calc_width(&headers, &rows);
-        content.push(build_text_line(&headers, &widths));
-        content.push(build_separator_line(&widths));
-        for row in rows {
-            content.push(build_text_line(&row, &widths));
-        }
-        content.push("".to_string());
-        Ok(())
-    }
-
-    fn count_line(conn: &Connection, table: &str) -> Result<i64> {
-        let req_count = &format!("SELECT COUNT(*) FROM {table}");
-        conn.query_row(req_count, [], |row| row.get(0))
-    }
-
-    fn build_table_title(table: &str, line_count: i64) -> Vec<String> {
-        let title_line = format!("Table: {table} - {line_count} rows");
-        let underline = "-".repeat(title_line.len());
-        vec![title_line, underline]
-    }
-
-    fn prepare_table_statement(
-        conn: &Connection,
-        table: String,
-        offset: i64,
-    ) -> Result<Statement<'_>> {
-        conn.prepare(&format!("SELECT * FROM {table} LIMIT 5 OFFSET {offset}"))
-    }
-
-    fn get_headers_from_statement(statement: &mut Statement<'_>) -> Vec<String> {
-        statement
-            .column_names()
-            .iter()
-            .map(|header| header.to_string())
-            .collect()
-    }
-
-    fn get_rows_from_statement(statement: &mut Statement<'_>) -> Result<Vec<Vec<String>>> {
-        let column_count = statement.column_count();
-        Ok(statement
-            .query_map([], |row| Ok(get_row_values(row, column_count)))?
-            .flatten()
-            .collect())
-    }
-
-    fn get_row_values(row: &Row<'_>, column_count: usize) -> Vec<String> {
-        (0..column_count)
-            .flat_map(|index| row.get(index))
-            .map(|v| value_to_string(&v))
-            .collect()
-    }
-
-    fn build_text_line(value: &[String], widths: &[usize]) -> String {
-        let mut text = String::new();
-        for (value, width) in value.iter().zip(widths) {
-            text.push_str(&format!("{value:width$} | "));
-        }
-        text
-    }
-
-    // TODO: there's 1 `-`  too much at the end.
-    fn build_separator_line(widths: &[usize]) -> String {
-        let mut separator_line = String::new();
-        for width in widths {
-            separator_line.push_str(&format!("{:-<width$}-|-", ""));
-        }
-        separator_line
-    }
-}

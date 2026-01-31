@@ -2043,7 +2043,7 @@ Once that's done, it's all. No not implement anything else
 
 #### Summary 
 
-- preview sqlite3 databases with a summary. Inspired by ranger.
+- New plugin to preview sqlite3 databases with a summary. Inspired by ranger. [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - BREAKING. opener allow arguments in their config.
   This isn't exactly a "breaking" change since your old config will still work... but if you use options, older versions of fm won't be able to excute your program.
 
@@ -2083,6 +2083,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
   - [x] works, almost perfect display. Used chatgpt for alignment
   - [x] refactor
+  - [x] moved it to a new plugin [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - [x] FEAT: opener (external) should allow arguments in their config
 
 ## TODO
