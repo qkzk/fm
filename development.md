@@ -2059,22 +2059,16 @@ Once that's done, it's all. No not implement anything else
     - [ ] fm -> plugin : dispatch(event, status) {} - mut status or only status ?
     - [ ] fm -> plugin : display(rect) -> Widget    OR fm -> plugin : display(f, rect) {}
 - [ ] FEAT: previewer image mode..
-  API:
-    - extend previewer plugins with a name & type. Either text or image or ? let fm handle the display.
-    - text returns a String, display returns Vec<String> with paths to images.
-  - [ ] ueberzug: just a call to ueberzug with correct arguments. It should be pluggable
-  - [ ] iterm2: ??? should be possible
-  - [ ] interface in config:
-    - build an image ? -> command
-    - path to built image with 
-  - [ ] read command from config 
-  - [ ] execute & build the real image 
-  - [ ] build a preview with DisplayedImage and attach it
+  - [ ] minimal breaking change: kind: Image/Text, breaks all existing plugins
+  - [ ] no api change = don't break plugins. Parse the output and decide wether it's image or text based on output... 
+  - [ ] same interface for the rest. Returns a single string of paths, one per line, separated by special char. skip files with \n in absolute paths
+  - [ ] build an image preview from output
+  - [ ] plugin imager: do the same as another plugin. previewer returns paths as *c_char, separated by `'\n`.
 - [ ] FEAT: 
   - [x] sudo command for passwordless. It already works. If the user has sudo rights without password (passwordless sudo), any password input will be validated and the command is ran
   - [x] pkexec works already
-  - [ ] or with an app ???
-  - [ ] alternative to sudo ? sudo-rs doas
+  - [x] sudo-rs has same interface (sudo -s ..., sudo -k)
+  - [ ] doas has different interface
 - [x] IMP: display. Reduce the number of call static oncelock style
   - [x] MENU_STYLE
   - [x] FILE_STYLE
