@@ -463,14 +463,11 @@ impl EventAction {
 
     /// Open the file with configured opener or enter the directory.
     fn normal_enter_file(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        if tab.display_mode.is_tree() {
-            return EventAction::open_file(status);
-        };
+        let tab = &mut status.tabs[status.index];
         if tab.directory.is_empty() {
             return Ok(());
         }
-        if tab.directory.is_selected_dir()? {
+        if status.menu.flagged.is_empty() && tab.directory.is_selected_dir()? {
             tab.go_to_selected_dir()?;
             status.thumbnail_directory_video();
             Ok(())

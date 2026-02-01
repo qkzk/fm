@@ -2050,6 +2050,7 @@ Once that's done, it's all. No not implement anything else
 ##### Bugfixes
 
 - Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
+- Pressing enter whith multiple flagged files would do nothing if a directory was selected
 
 #### Changelog 
 
@@ -2079,7 +2080,7 @@ Once that's done, it's all. No not implement anything else
   - [x] refactor
   - [x] moved it to a new plugin [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - [x] FEAT: opener (external) should allow arguments in their config
-- [ ] BUG: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
+- [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
 
 ## TODO
 
