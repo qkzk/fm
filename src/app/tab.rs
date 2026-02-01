@@ -112,6 +112,7 @@ pub struct Tab {
     /// Saved path before entering "CD" mode.
     /// Used if the cd is canceled
     pub origin_path: Option<std::path::PathBuf>,
+    /// Is visual selection enabled ? Visual flag allows user to flag quickly by moving the selection.
     pub visual: bool,
 }
 
