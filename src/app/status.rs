@@ -21,7 +21,7 @@ use crate::app::{
 };
 use crate::common::{
     build_dest_path, current_username, disk_space, filename_from_path, is_in_path, is_sudo_command,
-    path_to_string, row_to_window_index, set_current_dir, tilde, MountPoint,
+    path_to_string, row_to_window_index, set_clipboard, set_current_dir, tilde, MountPoint,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::{ActionMap, FmEvents};
@@ -2473,6 +2473,26 @@ impl Status {
         if let Some(buffer) = &self.last_buffer {
             log_info!("{buffer:?}");
         }
+    }
+
+    pub fn copy_buffer_rect(&self) {
+        let Some(buffer) = &self.last_buffer else {
+            return;
+        };
+        let Some(rect) = &self.internal_settings.cursor.rect() else {
+            return;
+        };
+        let mut content = String::new();
+        for x in rect.x..rect.x + rect.width {
+            for y in rect.y..rect.y + rect.height {
+                let Some(cell) = buffer.cell((x, y)) else {
+                    continue;
+                };
+                content.push_str(cell.symbol());
+            }
+            content.push('\n')
+        }
+        set_clipboard(content);
     }
 }
 
