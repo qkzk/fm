@@ -4,7 +4,7 @@ use std::path;
 use anyhow::{Context, Result};
 use indicatif::InMemoryTerm;
 
-use crate::app::{Direction, Focus, Status, Tab};
+use crate::app::{CursorDirection, Direction, Focus, Status, Tab};
 use crate::common::{
     content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
@@ -72,6 +72,10 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.internal_settings.cursor.reset();
+            return Ok(());
+        }
         if status.focus.is_file() && status.current_tab().display_mode.is_preview() {
             status.leave_preview()?;
         }
@@ -925,6 +929,10 @@ impl EventAction {
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
     pub fn move_up(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.internal_settings.move_cursor(CursorDirection::Up);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::move_display_up(status)?;
         } else {
@@ -1043,6 +1051,10 @@ impl EventAction {
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
     pub fn move_down(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.internal_settings.move_cursor(CursorDirection::Down);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::move_display_down(status)?
         } else {
@@ -1077,6 +1089,10 @@ impl EventAction {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.internal_settings.move_cursor(CursorDirection::Left);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::file_move_left(status.current_tab_mut())?;
         } else {
@@ -1105,6 +1121,10 @@ impl EventAction {
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
     pub fn move_right(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.internal_settings.move_cursor(CursorDirection::Right);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::enter_file(status)
         } else {
@@ -1479,6 +1499,10 @@ impl EventAction {
     }
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active {
+            status.copy_buffer_rect();
+            return Ok(());
+        }
         if !status.focus.is_file() {
             return Ok(());
         }
@@ -1801,5 +1825,10 @@ impl EventAction {
     /// Parse and execute the received IPC message.
     pub fn parse_rpc(status: &mut Status, ipc_msg: String) -> Result<()> {
         status.parse_ipc(ipc_msg)
+    }
+
+    pub fn cursor(status: &mut Status) -> Result<()> {
+        status.cursor_toggle();
+        Ok(())
     }
 }

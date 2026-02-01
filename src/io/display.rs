@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use crossterm::{
+    cursor::SetCursorStyle,
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
@@ -1721,12 +1722,12 @@ impl Display {
         let full_rect = Rects::full_rect(width, height);
         let inside_border_rect = Rects::inside_border_rect(width, height);
         let borders = self.borders(status);
-        let frame = if Self::use_dual_pane(status) {
-            self.draw_dual(full_rect, inside_border_rect, borders, status)
+        let completed_frame = if Self::use_dual_pane(status) {
+            self.draw_dual(full_rect, inside_border_rect, borders, status)?
         } else {
-            self.draw_single(full_rect, inside_border_rect, borders, status)
+            self.draw_single(full_rect, inside_border_rect, borders, status)?
         };
-        Ok(frame?)
+        Ok(completed_frame)
     }
 
     /// Left File, Left Menu, Right File, Right Menu
@@ -1759,6 +1760,7 @@ impl Display {
         let inside_wins =
             Rects::dual_inside_rect(inside_border_rect, have_menu_left, have_menu_right);
         self.render_dual(
+            status,
             borders,
             bordered_wins,
             inside_wins,
@@ -1769,6 +1771,7 @@ impl Display {
 
     fn render_dual(
         &mut self,
+        status: &Status,
         borders: [Style; 4],
         bordered_wins: Vec<Rect>,
         inside_wins: Vec<Rect>,
@@ -1800,7 +1803,27 @@ impl Display {
             menus
                 .1
                 .draw(f, &inside_wins[5], self.menu_style, self.file_style);
+            Self::draw_selections(f, status);
         })
+    }
+
+    // TODO: for all crap in status.internal_settings.cursor.rect...
+    // f.buffer_mut().cell_mut((0, 0)).expect("outside").bg = Color::Red;
+    fn draw_selections(f: &mut Frame, status: &Status) {
+        if !status.internal_settings.cursor.is_active {
+            return;
+        }
+        if let Some(rect) = status.internal_settings.cursor.rect() {
+            f.buffer_mut()
+                .set_style(rect, Style::default().bg(Color::Blue));
+        }
+        if let Some(position) = status.internal_settings.cursor.cursor() {
+            f.set_cursor_position(position);
+            let _ = crossterm::execute!(io::stdout(), SetCursorStyle::SteadyBlock);
+            if let Some(cell) = f.buffer_mut().cell_mut(position) {
+                cell.modifier |= Modifier::SLOW_BLINK;
+            }
+        }
     }
 
     fn draw_single(

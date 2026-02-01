@@ -283,6 +283,7 @@ impl Bindings {
             (KeyEvent::new(KeyCode::Char('Z'),    KeyModifiers::SHIFT), ActionMap::TreeUnFoldAll),
 
             (KeyEvent::new(KeyCode::Char('a'),    KeyModifiers::NONE), ActionMap::ToggleHidden),
+            (KeyEvent::new(KeyCode::Char('b'),    KeyModifiers::NONE), ActionMap::Cursor),
             (KeyEvent::new(KeyCode::Char('c'),    KeyModifiers::NONE), ActionMap::CopyPaste),
             (KeyEvent::new(KeyCode::Char('d'),    KeyModifiers::NONE), ActionMap::NewDir),
             (KeyEvent::new(KeyCode::Char('e'),    KeyModifiers::NONE), ActionMap::Exec),

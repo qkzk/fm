@@ -5,7 +5,7 @@ use std::sync::{mpsc::Sender, Arc};
 use anyhow::{bail, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
-use ratatui::layout::Size;
+use ratatui::layout::{Position, Rect, Size};
 use sysinfo::Disks;
 
 use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
@@ -13,6 +13,88 @@ use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
+#[derive(Default, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum CursorDirection {
+    #[default]
+    Down,
+    Up,
+    Left,
+    Right,
+}
+
+#[derive(Default, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct Cursor {
+    pub is_active: bool,
+    pub is_selecting: bool,
+    cursor: Option<Position>,
+    rect: Option<Rect>,
+}
+
+impl Cursor {
+    pub fn has_rect(&self) -> bool {
+        self.rect.is_some()
+    }
+
+    /// Copy of the inner rect.
+    pub fn rect(&self) -> Option<Rect> {
+        self.rect
+    }
+
+    /// Position of the cursor if any
+    pub fn cursor(&self) -> Option<Position> {
+        self.cursor
+    }
+
+    pub fn new() -> Self {
+        Self {
+            is_active: true,
+            is_selecting: true,
+            cursor: Some(Position::new(40, 40)),
+            rect: Some(Rect::new(5, 30, 15, 10)),
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.is_active = false;
+        self.is_selecting = false;
+        self.cursor = None;
+        self.rect = None;
+    }
+
+    pub fn enter(&mut self) {
+        self.is_active = true;
+        self.cursor = Some(Position::ORIGIN);
+        self.rect = None;
+    }
+
+    pub fn toggle_selection(&mut self) {
+        if !self.is_active {
+            return;
+        }
+        self.is_selecting = !self.is_selecting;
+        if !self.is_selecting {
+            self.clear_selection();
+        }
+    }
+
+    fn clear_selection(&mut self) {
+        self.rect = Some(Rect::default());
+    }
+
+    pub fn move_to(&mut self, position: Position) {
+        if !self.is_active {
+            return;
+        }
+        self.cursor = Some(position);
+    }
+
+    pub fn extend_selection_to(&mut self, position: Position) {
+        let Some(rect) = self.rect else {
+            return;
+        };
+        self.rect = Some(rect.union(Rect::new(position.x, position.y, 1, 1)));
+    }
+}
 /// Internal settings of the status.
 ///
 /// Every setting which couldn't be attached elsewhere and is needed by the whole application.
@@ -50,6 +132,8 @@ pub struct InternalSettings {
     is_disabled: bool,
     /// true if the terminal should be cleared before exit. It's set to true when we reuse the window to start a new shell.
     pub clear_before_quit: bool,
+    /// kind of cursor mode enabled. Default is None (no selection), Rect
+    pub cursor: Cursor,
 }
 
 impl InternalSettings {
@@ -64,6 +148,7 @@ impl InternalSettings {
         let in_mem_progress = None;
         let is_disabled = false;
         let clear_before_quit = false;
+        let cursor = Cursor::new();
         Self {
             force_clear,
             must_quit,
@@ -76,6 +161,7 @@ impl InternalSettings {
             in_mem_progress,
             is_disabled,
             clear_before_quit,
+            cursor,
         }
     }
 
@@ -352,6 +438,33 @@ impl InternalSettings {
                 "{progress_bar}     -     1 of {nb}",
                 nb = nb_copy_left
             ))
+        }
+    }
+
+    pub fn move_cursor(&mut self, direction: CursorDirection) {
+        if let Some(position) = self.cursor.cursor {
+            let mut x = position.x;
+            let mut y = position.y;
+            match direction {
+                CursorDirection::Down => {
+                    y = y.saturating_add(1);
+                }
+                CursorDirection::Up => {
+                    y = y.saturating_sub(1);
+                }
+                CursorDirection::Left => {
+                    x = x.saturating_sub(1);
+                }
+                CursorDirection::Right => {
+                    x = x.saturating_add(1);
+                }
+            }
+            let Size { width, height } = self.term_size();
+            let new_pos = Position::new(x, y).clamp(Position::ORIGIN, Position::new(width, height));
+            self.cursor.cursor = Some(new_pos);
+            if self.cursor.is_selecting {
+                self.cursor.extend_selection_to(new_pos);
+            }
         }
     }
 }

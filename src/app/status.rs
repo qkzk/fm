@@ -2462,7 +2462,7 @@ impl Status {
     }
 
     pub fn wants_buffer(&self) -> bool {
-        true
+        self.internal_settings.cursor.is_active
     }
 
     pub fn set_buffer(&mut self, buffer: Buffer) {
@@ -2483,8 +2483,8 @@ impl Status {
             return;
         };
         let mut content = String::new();
-        for x in rect.x..rect.x + rect.width {
-            for y in rect.y..rect.y + rect.height {
+        for y in rect.y..rect.y + rect.height {
+            for x in rect.x..rect.x + rect.width {
                 let Some(cell) = buffer.cell((x, y)) else {
                     continue;
                 };
@@ -2493,6 +2493,14 @@ impl Status {
             content.push('\n')
         }
         set_clipboard(content);
+    }
+
+    pub fn cursor_toggle(&mut self) {
+        if self.internal_settings.cursor.is_active {
+            self.internal_settings.cursor.toggle_selection();
+        } else {
+            self.internal_settings.cursor.is_active = true;
+        }
     }
 }
 

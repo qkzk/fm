@@ -355,7 +355,7 @@ mod inner {
 
         fn make_raw_strings(status: &Status, tab: &Tab, disk_space: String) -> Result<Vec<String>> {
             Ok(vec![
-                Self::string_first_row_position(tab)?,
+                Self::string_first_row_position(status, tab)?,
                 Self::string_used_space(tab),
                 Self::string_disk_space(&disk_space),
                 Self::string_git_string(tab)?,
@@ -381,7 +381,14 @@ mod inner {
             padded_strings
         }
 
-        fn string_first_row_position(tab: &Tab) -> Result<String> {
+        fn string_first_row_position(status: &Status, tab: &Tab) -> Result<String> {
+            if status.internal_settings.cursor.is_active {
+                if status.internal_settings.cursor.is_selecting {
+                    return Ok("CURSOR /".to_owned());
+                } else {
+                    return Ok("CURSOR SELECTING".to_owned());
+                }
+            }
             let len: u16;
             let index: u16;
             if tab.display_mode.is_tree() {

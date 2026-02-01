@@ -2094,17 +2094,20 @@ Once that's done, it's all. No not implement anything else
     - [ ] bloc move (only up/down)
     - [ ] cusor_selection { pos: (x,y), selected: Rect(x, y, w, h)}
   - [ ] display
-    - [ ] render first then modify ? 
-    - [ ] blink cursor
-    - [ ] keep displaying the same frame (whose buffer is exported from status!)
-    - [ ] display cursor modifications with special style
-    - [ ] use same indicator as --VISUAL--
+    - [x] render first then modify ? 
+    - [x] change cursor
+    - [x] display cursor modifications with special style
+    - [x] footer indication
   - [ ] actions
-    - [ ] entering <???> <shift+v> <ctrl+v> a sub cursor mode (cursor, cursor line, cursor bloc)
+    - [ ] <b> enter <b> select <b> no select 
+    - [ ] select with shift+v
+    - [ ] set selection by moving around
     - [ ] copy (bind ?) <c> -> copy to clipboard with proper alignment
     - [ ] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
-    - [ ] quit fm <Q> -> still should be possible.
+    - [ ] quit fm <q> -> still should be possible.
     - [ ] bulkrename ?
+    - [ ] click move the cursor 
+    - [ ] selection creates a rect
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
     - [ ] quit ??? still should be possible to quit (at least)
