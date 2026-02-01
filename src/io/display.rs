@@ -456,13 +456,16 @@ impl<'a> FuzzyDisplay<'a> {
 struct DirectoryDisplay<'a> {
     status: &'a Status,
     tab: &'a Tab,
+    group_owner_sizes: (usize, usize),
 }
 
 impl<'a> DirectoryDisplay<'a> {
     fn new(files: &'a Files) -> Self {
+        let group_owner_sizes = Self::group_owner_size(files.status, files.tab);
         Self {
             status: files.status,
             tab: files.tab,
+            group_owner_sizes,
         }
     }
 
@@ -490,7 +493,6 @@ impl<'a> DirectoryDisplay<'a> {
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
     ) {
-        let group_owner_sizes = self.group_owner_size();
         let p_rect = rect.offseted(0, 0);
         let formater = Self::pick_formater(self.status.session.metadata(), p_rect.width);
         let with_icon = with_icon();
@@ -498,15 +500,7 @@ impl<'a> DirectoryDisplay<'a> {
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line(
-                    group_owner_sizes,
-                    index,
-                    file,
-                    &formater,
-                    with_icon,
-                    menu_style,
-                    file_style,
-                )
+                self.files_line(index, file, &formater, with_icon, menu_style, file_style)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -524,11 +518,11 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn group_owner_size(&self) -> (usize, usize) {
-        if self.status.session.metadata() {
+    fn group_owner_size(status: &Status, tab: &Tab) -> (usize, usize) {
+        if status.session.metadata() {
             (
-                self.tab.directory.group_column_width(),
-                self.tab.directory.owner_column_width(),
+                tab.directory.group_column_width(),
+                tab.directory.owner_column_width(),
             )
         } else {
             (0, 0)
@@ -537,7 +531,6 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn files_line<'b>(
         &self,
-        group_owner_sizes: (usize, usize),
         index: usize,
         file: &FileInfo,
         formater: &fn(&FileInfo, (usize, usize)) -> String,
@@ -548,7 +541,7 @@ impl<'a> DirectoryDisplay<'a> {
         let mut style = file.style(file_style);
         self.reverse_selected(index, &mut style);
         self.color_searched(file, &mut style, menu_style);
-        let mut content = formater(file, group_owner_sizes);
+        let mut content = formater(file, self.group_owner_sizes);
 
         content.push(' ');
         if with_icon {
