@@ -1774,6 +1774,7 @@ impl EventAction {
     pub fn visual(status: &mut Status) -> Result<()> {
         status.current_tab_mut().toggle_visual();
         status.toggle_flag_visual();
+        status.log_buffer();
 
         Ok(())
     }

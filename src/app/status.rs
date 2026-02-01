@@ -11,7 +11,7 @@ use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
 use parking_lot::lock_api::Mutex;
 use parking_lot::RawMutex;
-use ratatui::layout::Size;
+use ratatui::{buffer::Buffer, layout::Size};
 use sysinfo::Disks;
 use walkdir::WalkDir;
 
@@ -158,6 +158,8 @@ pub struct Status {
     pub previewer: Previewer,
     /// Preview manager
     pub thumbnail_manager: Option<ThumbnailManager>,
+    /// Last registered frame
+    pub last_buffer: Option<Buffer>,
 }
 
 impl Status {
@@ -209,6 +211,7 @@ impl Status {
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
         let thumbnail_manager = None;
+        let last_frame = None;
         Ok(Self {
             tabs,
             index,
@@ -221,6 +224,7 @@ impl Status {
             preview_receiver,
             previewer,
             thumbnail_manager,
+            last_buffer: last_frame,
         })
     }
 
@@ -1561,7 +1565,7 @@ impl Status {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
             Some(_) => self
                 .internal_settings
-                .open_single_file(path, &self.tabs[self.index].directory_of_selected()?),
+                .open_single_file(path, self.tabs[self.index].directory_of_selected()?),
             None => Ok(()),
         }
     }
@@ -2455,6 +2459,20 @@ impl Status {
         log_info!("{old_path:?} -> {new_path:?}", new_path = new_path.as_ref());
         self.menu.temp_marks.move_path(old_path, new_path.as_ref());
         self.menu.marks.move_path(old_path, new_path.as_ref())
+    }
+
+    pub fn wants_buffer(&self) -> bool {
+        true
+    }
+
+    pub fn set_buffer(&mut self, buffer: Buffer) {
+        self.last_buffer = Some(buffer);
+    }
+
+    pub fn log_buffer(&self) {
+        if let Some(buffer) = &self.last_buffer {
+            log_info!("{buffer:?}");
+        }
     }
 }
 

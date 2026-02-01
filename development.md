@@ -2081,6 +2081,33 @@ Once that's done, it's all. No not implement anything else
   - [x] moved it to a new plugin [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - [x] FEAT: opener (external) should allow arguments in their config
 - [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
+- [ ] FEAT: select text in bloc modes like vim: vertical, horizontal, line
+  - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
+  - [ ] export a buffer contionnaly 
+    - [x] find the last rendered buffer 
+    - [x] save it somewhere 
+    - [x] dump it to log
+    - [ ] create event to save - link it to the same action as entering cursor mode
+  - [ ] cursor mode ? give you access to cursor manipulation like nvim 
+    - [ ] normal move (up/down/left/right) previous line, next line
+    - [ ] line move (only up/down)
+    - [ ] bloc move (only up/down)
+    - [ ] cusor_selection { pos: (x,y), selected: Rect(x, y, w, h)}
+  - [ ] display
+    - [ ] render first then modify ? 
+    - [ ] blink cursor
+    - [ ] keep displaying the same frame (whose buffer is exported from status!)
+    - [ ] display cursor modifications with special style
+    - [ ] use same indicator as --VISUAL--
+  - [ ] actions
+    - [ ] entering <???> <shift+v> <ctrl+v> a sub cursor mode (cursor, cursor line, cursor bloc)
+    - [ ] copy (bind ?) <c> -> copy to clipboard with proper alignment
+    - [ ] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
+    - [ ] quit fm <Q> -> still should be possible.
+    - [ ] bulkrename ?
+  - [ ] problems
+    - [ ] resize ??? should we exit & redraw ? 
+    - [ ] quit ??? still should be possible to quit (at least)
 
 ## TODO
 

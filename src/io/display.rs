@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
@@ -17,7 +17,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
-    Frame, Terminal,
+    CompletedFrame, Frame, Terminal,
 };
 
 use crate::{
@@ -1714,7 +1714,7 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &MutexGuard<Status>) {
+    pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<CompletedFrame<'_>> {
         io::stdout().flush().expect("Couldn't flush the stdout");
         if status.should_tabs_images_be_cleared() {
             self.clear_images();
@@ -1723,16 +1723,17 @@ impl Display {
             self.term.clear().expect("Couldn't clear the terminal");
         }
         let Ok(Size { width, height }) = self.term.size() else {
-            return;
+            bail!("Can't get terminal size")
         };
         let full_rect = Rects::full_rect(width, height);
         let inside_border_rect = Rects::inside_border_rect(width, height);
         let borders = self.borders(status);
-        if Self::use_dual_pane(status) {
-            self.draw_dual(full_rect, inside_border_rect, borders, status);
+        let frame = if Self::use_dual_pane(status) {
+            self.draw_dual(full_rect, inside_border_rect, borders, status)
         } else {
-            self.draw_single(full_rect, inside_border_rect, borders, status);
+            self.draw_single(full_rect, inside_border_rect, borders, status)
         };
+        Ok(frame?)
     }
 
     /// Left File, Left Menu, Right File, Right Menu
@@ -1754,7 +1755,7 @@ impl Display {
         inside_border_rect: Rect,
         borders: [Style; 4],
         status: &Status,
-    ) {
+    ) -> std::io::Result<CompletedFrame<'_>> {
         let (file_left, file_right) = FilesBuilder::dual(status);
         let menu_left = Menu::new(status, 0);
         let menu_right = Menu::new(status, 1);
@@ -1770,7 +1771,7 @@ impl Display {
             inside_wins,
             (file_left, file_right),
             (menu_left, menu_right),
-        );
+        )
     }
 
     fn render_dual(
@@ -1780,8 +1781,8 @@ impl Display {
         inside_wins: Vec<Rect>,
         files: (Files, Files),
         menus: (Menu, Menu),
-    ) {
-        let _ = self.term.draw(|f| {
+    ) -> std::io::Result<CompletedFrame<'_>> {
+        self.term.draw(|f| {
             // 0 File Left | 3 File Right
             // 1 padding   | 4 padding
             // 2 Menu Left | 5 Menu Right
@@ -1806,7 +1807,7 @@ impl Display {
             menus
                 .1
                 .draw(f, &inside_wins[5], self.menu_style, self.file_style);
-        });
+        })
     }
 
     fn draw_single(
@@ -1815,7 +1816,7 @@ impl Display {
         inside_border_rect: Rect,
         borders: [Style; 4],
         status: &Status,
-    ) {
+    ) -> std::io::Result<CompletedFrame<'_>> {
         let file_left = FilesBuilder::single(status);
         let menu_left = Menu::new(status, 0);
         let need_menu = status.tabs[0].need_menu_window();
@@ -1831,8 +1832,8 @@ impl Display {
         inside_wins: Rc<[Rect]>,
         file_left: Files,
         menu_left: Menu,
-    ) {
-        let _ = self.term.draw(|f| {
+    ) -> std::io::Result<CompletedFrame<'_>> {
+        let completed_frame = self.term.draw(|f| {
             Self::draw_single_borders(borders, f, &bordered_wins);
             file_left.draw(
                 f,
@@ -1843,6 +1844,7 @@ impl Display {
             );
             menu_left.draw(f, &inside_wins[2], self.menu_style, self.file_style);
         });
+        completed_frame
     }
 
     fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {
