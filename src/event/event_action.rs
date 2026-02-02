@@ -344,6 +344,11 @@ impl EventAction {
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn copy_paste(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_selecting() {
+            status.copy_buffer_rect();
+            status.internal_settings.cursor.reset();
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::NeedConfirmation(NeedConfirmation::Copy)
@@ -1499,10 +1504,6 @@ impl EventAction {
     }
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active() {
-            status.copy_buffer_rect();
-            return Ok(());
-        }
         if !status.focus.is_file() {
             return Ok(());
         }

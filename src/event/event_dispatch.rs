@@ -5,7 +5,7 @@ use crossterm::event::{
 
 use crate::app::Status;
 use crate::config::Bindings;
-use crate::event::{EventAction, FmEvents};
+use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
     Direction as FuzzyDirection, Display, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
 };
@@ -38,7 +38,9 @@ impl EventDispatcher {
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
-            FmEvents::FileCopied(done_copy_moves) => EventAction::file_copied(status, done_copy_moves),
+            FmEvents::FileCopied(done_copy_moves) => {
+                EventAction::file_copied(status, done_copy_moves)
+            }
             FmEvents::UpdateTick => EventAction::check_preview_fuzzy_tick(status),
             FmEvents::Action(action) => action.matcher(status, &self.binds),
             FmEvents::Ipc(msg) => EventAction::parse_rpc(status, msg),
@@ -92,7 +94,12 @@ impl EventDispatcher {
     }
 
     fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+        if let Some(ActionMap::Cursor) = self.binds.get(&key) {
+            return EventAction::cursor(status);
+        }
+        if matches!(status.current_tab().display_mode, Display::Fuzzy)
+            && !status.internal_settings.cursor.is_active()
+        {
             if let Ok(success) = self.fuzzy_matcher(status, key) {
                 if success {
                     return Ok(());

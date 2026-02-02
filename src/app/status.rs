@@ -2471,8 +2471,9 @@ impl Status {
         self.menu.marks.move_path(old_path, new_path.as_ref())
     }
 
+    /// True iff the user is in cursor selecting mode.
     pub fn wants_buffer(&self) -> bool {
-        self.internal_settings.cursor.is_active()
+        self.internal_settings.cursor.is_selecting()
     }
 
     pub fn set_buffer(&mut self, buffer: Buffer) {
@@ -2487,6 +2488,8 @@ impl Status {
 
     pub fn copy_buffer_rect(&self) {
         let Some(buffer) = &self.last_buffer else {
+            log_info!("Tried to read last buffer but had nothing.");
+            log_line!("Couldn't copy the content...");
             return;
         };
         let Some(rect) = &self.internal_settings.cursor.rect() else {

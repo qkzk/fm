@@ -159,6 +159,7 @@ pub fn get_clipboard() -> Option<String> {
 /// Sets the clipboard content.
 pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
+    log_line!("copied content to clipboard.");
     let Ok(mut ctx) = ClipboardContext::new() else {
         return;
     };

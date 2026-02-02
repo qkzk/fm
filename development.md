@@ -2083,35 +2083,28 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
 - [ ] FEAT: select text in bloc modes like vim: vertical, horizontal, line
   - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
-  - [ ] export a buffer contionnaly 
+  - [x] export a buffer contionnaly 
     - [x] find the last rendered buffer 
     - [x] save it somewhere 
     - [x] dump it to log
-    - [ ] create event to save - link it to the same action as entering cursor mode
-  - [ ] cursor mode ? give you access to cursor manipulation like nvim 
-    - [ ] normal move (up/down/left/right) previous line, next line
-    - [ ] line move (only up/down)
-    - [ ] bloc move (only up/down)
-    - [ ] cusor_selection { pos: (x,y), selected: Rect(x, y, w, h)}
   - [ ] display
     - [x] render first then modify ? 
     - [x] change cursor
     - [x] display cursor modifications with special style
-    - [x] footer indication
+    - [ ] footer indication include real binds
   - [ ] actions
-    - [ ] <b> enter <b> select <b> no select 
-    - [ ] select with shift+v
-    - [ ] set selection by moving around
-    - [ ] copy (bind ?) <c> -> copy to clipboard with proper alignment
-    - [ ] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
-    - [ ] quit fm <q> -> still should be possible.
-    - [ ] bulkrename ?
+    - [x] Alt+a to enter end then toggle selection
+    - [x] set selection by moving around
+    - [x] copy (bind ?) <c> -> copy to clipboard with proper alignment
+    - [x] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
+    - [x] quit fm <q> -> still should be possible.
+    - [x] selection creates a rect
+    - [ ] disable other actions
     - [ ] click move the cursor 
-    - [ ] selection creates a rect
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
-    - [ ] quit ??? still should be possible to quit (at least)
-    - [ ] fuzzy > cursor, should be the contrary
+    - [x] quit ??? still should be possible to quit (at least)
+    - [x] cursort > fuzzy. entering cursor should always be possible
 
 ## TODO
 

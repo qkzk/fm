@@ -356,8 +356,8 @@ mod inner {
         fn make_raw_strings(status: &Status, tab: &Tab, disk_space: String) -> Result<Vec<String>> {
             Ok(vec![
                 Self::string_first_row_position(status, tab)?,
-                Self::string_used_space(tab),
-                Self::string_disk_space(&disk_space),
+                Self::string_used_space(status, tab),
+                Self::string_disk_space(status, &disk_space),
                 Self::string_git_string(tab)?,
                 Self::string_first_row_flags(status),
                 Self::string_sort_kind(tab),
@@ -385,7 +385,7 @@ mod inner {
             if status.internal_settings.cursor.is_selecting() {
                 return Ok("CURSOR SELECTING".to_owned());
             } else if status.internal_settings.cursor.is_active() {
-                return Ok("CURSOR /".to_owned());
+                return Ok("CURSOR MOVEMENT".to_owned());
             }
 
             let len: u16;
@@ -400,7 +400,10 @@ mod inner {
             Ok(format!(" {index} / {len} "))
         }
 
-        fn string_used_space(tab: &Tab) -> String {
+        fn string_used_space(status: &Status, tab: &Tab) -> String {
+            if status.internal_settings.cursor.is_active() {
+                return "ESC TO LEAVE CURSOR".to_owned();
+            }
             if tab.visual {
                 "VISUAL".to_owned()
             } else {
@@ -408,7 +411,10 @@ mod inner {
             }
         }
 
-        fn string_disk_space(disk_space: &str) -> String {
+        fn string_disk_space(status: &Status, disk_space: &str) -> String {
+            if status.internal_settings.cursor.is_selecting() {
+                return "c TO COPY SELECTION".to_owned();
+            }
             format!(" Avail: {disk_space} ")
         }
 
