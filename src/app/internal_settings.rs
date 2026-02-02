@@ -13,7 +13,36 @@ use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
-#[derive(Default, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Default, Clone, Copy)]
+pub enum CursorState {
+    #[default]
+    Inactive,
+    Movement,
+    Selection,
+}
+
+impl CursorState {
+    pub fn is_active(&self) -> bool {
+        !matches!(self, Self::Inactive)
+    }
+
+    pub fn is_selecting(&self) -> bool {
+        matches!(self, Self::Selection)
+    }
+
+    fn toggle_selection(&mut self) {
+        if !self.is_active() {
+            return;
+        }
+        if self.is_selecting() {
+            *self = Self::Movement;
+        } else {
+            *self = Self::Selection;
+        }
+    }
+}
+
+#[derive(Default, Clone, Copy)]
 pub enum CursorDirection {
     #[default]
     Down,
@@ -22,22 +51,26 @@ pub enum CursorDirection {
     Right,
 }
 
-#[derive(Default, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Default, Clone, Copy)]
 pub struct Cursor {
-    pub is_active: bool,
-    pub is_selecting: bool,
+    state: CursorState,
     cursor: Option<Position>,
+    origin: Option<Position>,
     rect: Option<Rect>,
 }
 
 impl Cursor {
-    pub fn has_rect(&self) -> bool {
-        self.rect.is_some()
-    }
-
     /// Copy of the inner rect.
     pub fn rect(&self) -> Option<Rect> {
         self.rect
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.state.is_active()
+    }
+
+    pub fn is_selecting(&self) -> bool {
+        self.state.is_selecting()
     }
 
     /// Position of the cursor if any
@@ -45,34 +78,33 @@ impl Cursor {
         self.cursor
     }
 
-    pub fn new() -> Self {
-        Self {
-            is_active: true,
-            is_selecting: true,
-            cursor: Some(Position::new(40, 40)),
-            rect: Some(Rect::new(5, 30, 15, 10)),
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn toggle(&mut self, position: Position) {
+        if self.state.is_active() {
+            self.toggle_selection();
+        } else {
+            self.start_selection(position);
         }
     }
 
-    pub fn reset(&mut self) {
-        self.is_active = false;
-        self.is_selecting = false;
-        self.cursor = None;
-        self.rect = None;
-    }
-
-    pub fn enter(&mut self) {
-        self.is_active = true;
-        self.cursor = Some(Position::ORIGIN);
+    fn start_selection(&mut self, position: Position) {
+        self.state = CursorState::Movement;
+        self.cursor = Some(position);
+        self.origin = Some(position);
         self.rect = None;
     }
 
     pub fn toggle_selection(&mut self) {
-        if !self.is_active {
+        if !self.state.is_active() {
             return;
         }
-        self.is_selecting = !self.is_selecting;
-        if !self.is_selecting {
+        self.state.toggle_selection();
+        if self.state.is_selecting() {
+            self.origin = self.cursor;
+        } else {
             self.clear_selection();
         }
     }
@@ -82,17 +114,28 @@ impl Cursor {
     }
 
     pub fn move_to(&mut self, position: Position) {
-        if !self.is_active {
+        if !self.state.is_active() {
             return;
         }
         self.cursor = Some(position);
     }
 
-    pub fn extend_selection_to(&mut self, position: Position) {
-        let Some(rect) = self.rect else {
+    fn extend_selection(&mut self) {
+        if !self.state.is_selecting() {
             return;
-        };
-        self.rect = Some(rect.union(Rect::new(position.x, position.y, 1, 1)));
+        }
+        let start = self.origin.expect("Should be set");
+        let end = self.cursor.expect("Should be set");
+        let x = start.x.min(end.x);
+        let y = start.y.min(end.y);
+        let width = u16::abs_diff(start.x, end.x);
+        let height = u16::abs_diff(start.y, end.y);
+        self.rect = Some(Rect {
+            x,
+            y,
+            width,
+            height,
+        })
     }
 }
 /// Internal settings of the status.
@@ -148,7 +191,7 @@ impl InternalSettings {
         let in_mem_progress = None;
         let is_disabled = false;
         let clear_before_quit = false;
-        let cursor = Cursor::new();
+        let cursor = Cursor::default();
         Self {
             force_clear,
             must_quit,
@@ -462,8 +505,8 @@ impl InternalSettings {
             let Size { width, height } = self.term_size();
             let new_pos = Position::new(x, y).clamp(Position::ORIGIN, Position::new(width, height));
             self.cursor.cursor = Some(new_pos);
-            if self.cursor.is_selecting {
-                self.cursor.extend_selection_to(new_pos);
+            if self.cursor.state.is_selecting() {
+                self.cursor.extend_selection();
             }
         }
     }

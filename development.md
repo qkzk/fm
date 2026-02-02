@@ -2111,6 +2111,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
     - [ ] quit ??? still should be possible to quit (at least)
+    - [ ] fuzzy > cursor, should be the contrary
 
 ## TODO
 

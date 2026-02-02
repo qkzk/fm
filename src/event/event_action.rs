@@ -72,7 +72,7 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.internal_settings.cursor.reset();
             return Ok(());
         }
@@ -929,7 +929,7 @@ impl EventAction {
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
     pub fn move_up(status: &mut Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.internal_settings.move_cursor(CursorDirection::Up);
             return Ok(());
         }
@@ -1051,7 +1051,7 @@ impl EventAction {
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
     pub fn move_down(status: &mut Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.internal_settings.move_cursor(CursorDirection::Down);
             return Ok(());
         }
@@ -1089,7 +1089,7 @@ impl EventAction {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.internal_settings.move_cursor(CursorDirection::Left);
             return Ok(());
         }
@@ -1121,7 +1121,7 @@ impl EventAction {
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
     pub fn move_right(status: &mut Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.internal_settings.move_cursor(CursorDirection::Right);
             return Ok(());
         }
@@ -1499,7 +1499,7 @@ impl EventAction {
     }
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
-        if status.internal_settings.cursor.is_active {
+        if status.internal_settings.cursor.is_active() {
             status.copy_buffer_rect();
             return Ok(());
         }

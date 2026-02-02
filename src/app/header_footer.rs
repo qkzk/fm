@@ -382,13 +382,12 @@ mod inner {
         }
 
         fn string_first_row_position(status: &Status, tab: &Tab) -> Result<String> {
-            if status.internal_settings.cursor.is_active {
-                if status.internal_settings.cursor.is_selecting {
-                    return Ok("CURSOR /".to_owned());
-                } else {
-                    return Ok("CURSOR SELECTING".to_owned());
-                }
+            if status.internal_settings.cursor.is_selecting() {
+                return Ok("CURSOR SELECTING".to_owned());
+            } else if status.internal_settings.cursor.is_active() {
+                return Ok("CURSOR /".to_owned());
             }
+
             let len: u16;
             let index: u16;
             if tab.display_mode.is_tree() {

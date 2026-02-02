@@ -9,9 +9,8 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
-use parking_lot::lock_api::Mutex;
-use parking_lot::RawMutex;
-use ratatui::{buffer::Buffer, layout::Size};
+use parking_lot::{lock_api::Mutex, RawMutex};
+use ratatui::{buffer::Buffer, layout::Position, layout::Size};
 use sysinfo::Disks;
 use walkdir::WalkDir;
 
@@ -308,6 +307,17 @@ impl Status {
             Window::Footer
         } else {
             Window::Files
+        }
+    }
+
+    #[rustfmt::skip]
+    fn cursor_position(&self) -> Position {
+        let Size { width, height } = self.internal_settings.term_size();
+        match self.focus {
+            Focus::LeftFile     => Position { x: width / 4      , y: height / 4 },
+            Focus::RightFile    => Position { x: 3 * (width / 4), y: height / 4 },
+            Focus::LeftMenu     => Position { x: width / 4      , y: 3 * (height / 4) + 1 },
+            Focus::RightMenu    => Position { x: 3 * (width / 4), y: 3 * (height / 4) + 1 },
         }
     }
 
@@ -2462,7 +2472,7 @@ impl Status {
     }
 
     pub fn wants_buffer(&self) -> bool {
-        self.internal_settings.cursor.is_active
+        self.internal_settings.cursor.is_active()
     }
 
     pub fn set_buffer(&mut self, buffer: Buffer) {
@@ -2496,11 +2506,7 @@ impl Status {
     }
 
     pub fn cursor_toggle(&mut self) {
-        if self.internal_settings.cursor.is_active {
-            self.internal_settings.cursor.toggle_selection();
-        } else {
-            self.internal_settings.cursor.is_active = true;
-        }
+        self.internal_settings.cursor.toggle(self.cursor_position())
     }
 }
 

@@ -1810,7 +1810,7 @@ impl Display {
     // TODO: for all crap in status.internal_settings.cursor.rect...
     // f.buffer_mut().cell_mut((0, 0)).expect("outside").bg = Color::Red;
     fn draw_selections(f: &mut Frame, status: &Status) {
-        if !status.internal_settings.cursor.is_active {
+        if !status.internal_settings.cursor.is_active() {
             return;
         }
         if let Some(rect) = status.internal_settings.cursor.rect() {

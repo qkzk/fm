@@ -18,8 +18,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::common::{CONFIG_FOLDER, ZOXIDE};
 use crate::config::IS_LOGGING;
 use crate::event::build_input_socket_filepath;
-use crate::io::execute_without_output;
-use crate::io::Extension;
+use crate::io::{execute_without_output, Extension};
 use crate::modes::{human_size, nvim_open, ContentWindow, Users};
 use crate::{log_info, log_line};
 
