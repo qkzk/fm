@@ -2105,6 +2105,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] resize ??? should we exit & redraw ? 
     - [x] quit ??? still should be possible to quit (at least)
     - [x] cursort > fuzzy. entering cursor should always be possible
+  - [ ] refactor and document
 
 ## TODO
 
