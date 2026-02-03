@@ -195,7 +195,7 @@ impl Status {
         };
         let disks = Disks::new_with_refreshed_list();
         let session = Session::new(size.width);
-        let internal_settings = InternalSettings::new(opener, size, disks);
+        let internal_settings = InternalSettings::new(opener, size, disks, binds);
         let menu = MenuHolder::new(start_dir, binds)?;
         let focus = Focus::default();
 

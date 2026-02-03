@@ -9,6 +9,7 @@ use ratatui::layout::{Position, Rect, Size};
 use sysinfo::Disks;
 
 use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
+use crate::config::Bindings;
 use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
@@ -51,15 +52,45 @@ pub enum CursorDirection {
     Right,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 pub struct Cursor {
     state: CursorState,
     cursor: Option<Position>,
     origin: Option<Position>,
     rect: Option<Rect>,
+    pub leave_bind: String,
+    pub enter_bind: String,
+    pub copy_bind: String,
 }
 
 impl Cursor {
+    fn new(binds: &Bindings) -> Self {
+        let reversed = binds.keybind_reversed();
+        let leave_bind = reversed
+            .get("ResetMode")
+            .map(|s| s.as_str())
+            .unwrap_or("")
+            .to_owned();
+        let enter_bind = reversed
+            .get("Cursor")
+            .map(|s| s.as_str())
+            .unwrap_or("")
+            .to_owned();
+        let copy_bind = reversed
+            .get("CopyPaste")
+            .map(|s| s.as_str())
+            .unwrap_or("")
+            .to_owned();
+        Self {
+            state: CursorState::default(),
+            cursor: None,
+            origin: None,
+            rect: None,
+            leave_bind,
+            enter_bind,
+            copy_bind,
+        }
+    }
     /// Copy of the inner rect.
     pub fn rect(&self) -> Option<Rect> {
         self.rect
@@ -181,7 +212,7 @@ pub struct InternalSettings {
 
 impl InternalSettings {
     /// Creates a new instance. Some parameters (`nvim_server` and `inside_neovim`) are read from args.
-    pub fn new(opener: Opener, size: Size, disks: Disks) -> Self {
+    pub fn new(opener: Opener, size: Size, disks: Disks, binds: &Bindings) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
@@ -191,7 +222,7 @@ impl InternalSettings {
         let in_mem_progress = None;
         let is_disabled = false;
         let clear_before_quit = false;
-        let cursor = Cursor::default();
+        let cursor = Cursor::new(binds);
         Self {
             force_clear,
             must_quit,

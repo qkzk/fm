@@ -358,7 +358,7 @@ mod inner {
                 Self::string_first_row_position(status, tab)?,
                 Self::string_used_space(status, tab),
                 Self::string_disk_space(status, &disk_space),
-                Self::string_git_string(tab)?,
+                Self::string_git_string(status, tab)?,
                 Self::string_first_row_flags(status),
                 Self::string_sort_kind(tab),
             ])
@@ -402,9 +402,11 @@ mod inner {
 
         fn string_used_space(status: &Status, tab: &Tab) -> String {
             if status.internal_settings.cursor.is_active() {
-                return "ESC TO LEAVE CURSOR".to_owned();
-            }
-            if tab.visual {
+                format!(
+                    "{bind} TO CHANGE ACTION",
+                    bind = status.internal_settings.cursor.enter_bind
+                )
+            } else if tab.visual {
                 "VISUAL".to_owned()
             } else {
                 format!(" {} ", tab.directory.used_space())
@@ -412,14 +414,30 @@ mod inner {
         }
 
         fn string_disk_space(status: &Status, disk_space: &str) -> String {
-            if status.internal_settings.cursor.is_selecting() {
-                return "c TO COPY SELECTION".to_owned();
+            if status.internal_settings.cursor.is_active() {
+                format!(
+                    "{bind} TO LEAVE CURSOR",
+                    bind = status.internal_settings.cursor.leave_bind
+                )
+            } else if status.internal_settings.cursor.is_selecting() {
+                format!(
+                    "{bind} TO COPY SELECTION",
+                    bind = status.internal_settings.cursor.copy_bind
+                )
+            } else {
+                format!(" Avail: {disk_space} ")
             }
-            format!(" Avail: {disk_space} ")
         }
 
-        fn string_git_string(tab: &Tab) -> Result<String> {
-            Ok(format!(" {} ", tab.directory.git_string()?))
+        fn string_git_string(status: &Status, tab: &Tab) -> Result<String> {
+            if status.internal_settings.cursor.is_selecting() {
+                Ok(format!(
+                    "{bind} TO COPY SELECTION",
+                    bind = status.internal_settings.cursor.copy_bind
+                ))
+            } else {
+                Ok(format!(" {} ", tab.directory.git_string()?))
+            }
         }
 
         fn string_sort_kind(tab: &Tab) -> String {
