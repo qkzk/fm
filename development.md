@@ -2100,7 +2100,8 @@ Once that's done, it's all. No not implement anything else
     - [x] quit fm <q> -> still should be possible.
     - [x] selection creates a rect
     - [x] mouse selection like copying text from terminal
-    - [ ] disable other actions
+    - [x] mouse click moves the cursor
+    - [x] disable other actions
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
     - [x] quit ??? still should be possible to quit (at least)

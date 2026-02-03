@@ -332,9 +332,14 @@ impl Status {
 
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        if self.internal_settings.cursor.is_active() {
+            let pos = Position { x: col, y: row };
+            self.internal_settings.cursor.move_cursor_to(pos);
+            self.internal_settings.cursor.move_origin_to(pos);
+            return Ok(());
+        }
         let window = self.set_focus_from_pos(row, col)?;
-        self.click_action_from_window(&window, row, col, binds)?;
-        Ok(())
+        self.click_action_from_window(&window, row, col, binds)
     }
 
     /// True iff user has clicked on a preview in second pane.
