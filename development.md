@@ -2091,7 +2091,7 @@ Once that's done, it's all. No not implement anything else
     - [x] render first then modify ? 
     - [x] change cursor
     - [x] display cursor modifications with special style
-    - [ ] footer indication include real binds
+    - [x] footer indication include real binds
   - [ ] actions
     - [x] Alt+a to enter end then toggle selection
     - [x] set selection by moving around
@@ -2100,7 +2100,7 @@ Once that's done, it's all. No not implement anything else
     - [x] quit fm <q> -> still should be possible.
     - [x] selection creates a rect
     - [ ] disable other actions
-    - [ ] click move the cursor 
+    - [ ] **mouse selection like copying text from terminal**
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
     - [x] quit ??? still should be possible to quit (at least)
