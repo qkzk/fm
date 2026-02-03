@@ -2082,17 +2082,11 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: opener (external) should allow arguments in their config
 - [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
 - [ ] FEAT: select text in bloc modes like vim: vertical, horizontal, line
-  - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
   - [x] export a buffer contionnaly 
     - [x] find the last rendered buffer 
     - [x] save it somewhere 
     - [x] dump it to log
-  - [ ] display
-    - [x] render first then modify ? 
-    - [x] change cursor
-    - [x] display cursor modifications with special style
-    - [x] footer indication include real binds
-  - [ ] actions
+  - [x] actions
     - [x] Alt+a to enter end then toggle selection
     - [x] set selection by moving around
     - [x] copy (bind ?) <c> -> copy to clipboard with proper alignment
@@ -2102,11 +2096,16 @@ Once that's done, it's all. No not implement anything else
     - [x] mouse selection like copying text from terminal
     - [x] mouse click moves the cursor
     - [x] disable other actions
-  - [ ] problems
-    - [ ] resize ??? should we exit & redraw ? 
-    - [x] quit ??? still should be possible to quit (at least)
-    - [x] cursort > fuzzy. entering cursor should always be possible
-  - [ ] refactor and document
+  - [ ] display
+    - [x] render first then modify ? 
+    - [x] change cursor
+    - [x] display cursor modifications with special style
+    - [x] footer indication include real binds
+    - [ ] pick a color which should always work... grey ? reverse every cell ?
+  - [x] document
+  - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
+  - [ ] problems ???
+  - [ ] refactor 
 
 ## TODO
 

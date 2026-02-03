@@ -5,7 +5,6 @@ use std::{
 
 use anyhow::{bail, Result};
 use crossterm::{
-    cursor::SetCursorStyle,
     execute,
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
@@ -1803,26 +1802,24 @@ impl Display {
             menus
                 .1
                 .draw(f, &inside_wins[5], self.menu_style, self.file_style);
-            Self::draw_selections(f, status);
+            if status.internal_settings.cursor.is_active() {
+                Self::draw_cursor_selections(f, status);
+            }
         })
     }
 
-    // TODO: for all crap in status.internal_settings.cursor.rect...
-    // f.buffer_mut().cell_mut((0, 0)).expect("outside").bg = Color::Red;
-    fn draw_selections(f: &mut Frame, status: &Status) {
-        if !status.internal_settings.cursor.is_active() {
-            return;
-        }
+    // TODO: this color should be configurable with sane default without breaking existing configs.
+
+    /// Display the cursor at its position
+    /// Color the selected text (if any) as gray background.
+    fn draw_cursor_selections(f: &mut Frame, status: &Status) {
         if let Some(rect) = status.internal_settings.cursor.rect() {
+            // NOTE: either this or reverse every cell of the selection with get_cell. Using a rect is simpler and should be quicker
             f.buffer_mut()
-                .set_style(rect, Style::default().bg(Color::Blue));
+                .set_style(rect, Style::default().bg(Color::Rgb(128, 128, 128)));
         }
         if let Some(position) = status.internal_settings.cursor.cursor() {
             f.set_cursor_position(position);
-            let _ = crossterm::execute!(io::stdout(), SetCursorStyle::SteadyBlock);
-            if let Some(cell) = f.buffer_mut().cell_mut(position) {
-                cell.modifier |= Modifier::SLOW_BLINK;
-            }
         }
     }
 
@@ -1838,18 +1835,26 @@ impl Display {
         let need_menu = status.tabs[0].need_menu_window();
         let bordered_wins = Rects::vertical_split_border(rect, need_menu);
         let inside_wins = Rects::vertical_split_inner(inside_border_rect, need_menu);
-        self.render_single(borders, bordered_wins, inside_wins, file_left, menu_left)
+        self.render_single(
+            status,
+            borders,
+            bordered_wins,
+            inside_wins,
+            file_left,
+            menu_left,
+        )
     }
 
     fn render_single(
         &mut self,
+        status: &Status,
         borders: [Style; 4],
         bordered_wins: Rc<[Rect]>,
         inside_wins: Rc<[Rect]>,
         file_left: Files,
         menu_left: Menu,
     ) -> std::io::Result<CompletedFrame<'_>> {
-        let completed_frame = self.term.draw(|f| {
+        self.term.draw(|f| {
             Self::draw_single_borders(borders, f, &bordered_wins);
             file_left.draw(
                 f,
@@ -1859,8 +1864,10 @@ impl Display {
                 self.file_style,
             );
             menu_left.draw(f, &inside_wins[2], self.menu_style, self.file_style);
-        });
-        completed_frame
+            if status.internal_settings.cursor.is_active() {
+                Self::draw_cursor_selections(f, status);
+            }
+        })
     }
 
     fn draw_n_borders(n: usize, borders: [Style; 4], f: &mut Frame, wins: &[Rect]) {

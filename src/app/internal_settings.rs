@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc::Sender, Arc};
 
 use anyhow::{bail, Result};
 use clap::Parser;
+use crossterm::cursor::SetCursorStyle;
 use indicatif::InMemoryTerm;
 use ratatui::layout::{Position, Rect, Size};
 use sysinfo::Disks;
@@ -14,8 +16,12 @@ use crate::event::FmEvents;
 use crate::io::{execute_and_output, Args, Extension, External, Opener};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
+/// Different states in which the cursor can be.
+/// - Inactive: the cursor isn't being used and it should be used,
+/// - Movement: the cursor can move but no selection is made,
+/// - selection: the cursor can move and the selection is udapted.
 #[derive(Default, Clone, Copy)]
-pub enum CursorState {
+enum CursorState {
     #[default]
     Inactive,
     Movement,
@@ -23,11 +29,11 @@ pub enum CursorState {
 }
 
 impl CursorState {
-    pub fn is_active(&self) -> bool {
+    fn is_active(&self) -> bool {
         !matches!(self, Self::Inactive)
     }
 
-    pub fn is_selecting(&self) -> bool {
+    fn is_selecting(&self) -> bool {
         matches!(self, Self::Selection)
     }
 
@@ -43,6 +49,7 @@ impl CursorState {
     }
 }
 
+/// Different direction in which the cursor can move.
 #[derive(Default, Clone, Copy)]
 pub enum CursorDirection {
     #[default]
@@ -52,19 +59,37 @@ pub enum CursorDirection {
     Right,
 }
 
+/// `Cursor` is used to select and copy or log text directly from fm output.
+/// Once the cursor is active, you can't move in the file tree or open menus etc.
+/// You can only :
+/// - toggle the selection state,
+/// - move the cursor with keys or mouse,
+/// - copy the selected chars (only while selecting)
+/// - leave the cursor and go back to normal usage of fm,
+/// - exit fm completely
+///
+/// It's a way to allow copying text without having to exit fm or open a new shell.
+///
+/// `Cursor` has a state (inactive, movement, selecting), knows its position and where it started its selection.
+/// We also store the associated binds to help the user.
 #[derive(Default, Clone)]
 pub struct Cursor {
     state: CursorState,
     cursor: Option<Position>,
     origin: Option<Position>,
     rect: Option<Rect>,
+    /// Are we dragging the cursor with the mouse ?
     pub is_dragging: bool,
+    /// What is the keybind associated to leave menu ?
     pub leave_bind: String,
+    /// What is the keybind associated to entering the cursor ? It's used to toggle selection state.
     pub enter_bind: String,
+    /// What is the bind associated to copy/paste. Used to copy the selection to clipboard and log it.
     pub copy_bind: String,
 }
 
 impl Cursor {
+    /// Creates a new cursor with binds read from keybinds.
     fn new(binds: &Bindings) -> Self {
         let reversed = binds.keybind_reversed();
         let leave_bind = reversed
@@ -93,15 +118,18 @@ impl Cursor {
             copy_bind,
         }
     }
+
     /// Copy of the inner rect.
     pub fn rect(&self) -> Option<Rect> {
         self.rect
     }
 
+    /// True iff the cursor is in active mode (either movement or selecting)
     pub fn is_active(&self) -> bool {
         self.state.is_active()
     }
 
+    /// True iff the cursor is selecting.
     pub fn is_selecting(&self) -> bool {
         self.state.is_selecting()
     }
@@ -111,25 +139,36 @@ impl Cursor {
         self.cursor
     }
 
+    /// Reset the cursor.
+    /// set state to inactive, erase cusrsor, origin & rect and set is_dragging to false.
     pub fn reset(&mut self) {
-        *self = Self::default();
+        self.state = CursorState::default();
+        self.cursor = None;
+        self.origin = None;
+        self.rect = None;
+        self.is_dragging = false;
     }
 
+    /// Set the state from inactive to movement or toggle between movement & selecting.
     pub fn toggle(&mut self, position: Position) {
         if self.state.is_active() {
             self.toggle_selection();
         } else {
-            self.start_selection(position);
+            self.start_cursor(position);
         }
     }
 
-    fn start_selection(&mut self, position: Position) {
+    /// Set default values for entering selection from this position.
+    fn start_cursor(&mut self, position: Position) {
+        let _ = crossterm::execute!(io::stdout(), SetCursorStyle::SteadyBlock);
         self.state = CursorState::Movement;
         self.cursor = Some(position);
         self.origin = Some(position);
         self.rect = None;
     }
 
+    /// Toggle between selecting & movement.
+    /// Does nothing if cursor isn't already active.
     pub fn toggle_selection(&mut self) {
         if !self.state.is_active() {
             return;
@@ -142,10 +181,13 @@ impl Cursor {
         }
     }
 
+    /// Clear the current selected rect.
     fn clear_selection(&mut self) {
-        self.rect = Some(Rect::default());
+        self.rect = None;
     }
 
+    /// Move the cursor to `position`
+    /// Does nothing if cursor isn't active.
     pub fn move_cursor_to(&mut self, position: Position) {
         if !self.state.is_active() {
             return;
@@ -153,6 +195,8 @@ impl Cursor {
         self.cursor = Some(position);
     }
 
+    /// Move the origin of selection to `position`
+    /// Does nothing if cursor isn't active.
     pub fn move_origin_to(&mut self, position: Position) {
         if !self.state.is_active() {
             return;
@@ -160,6 +204,8 @@ impl Cursor {
         self.origin = Some(position);
     }
 
+    /// Update the selection from origin to current position.
+    /// Does nothing if cursor isn't active.
     pub fn extend_selection(&mut self) {
         if !self.state.is_selecting() {
             return;
@@ -178,6 +224,10 @@ impl Cursor {
         })
     }
 
+    /// Used to allow selecting text with the mouse.
+    /// Either start selecting from previous position if we enter the "dragging" state
+    /// Move the cursor to the current mouse position.
+    /// Or extend selection.
     pub fn mouse_drag(&mut self, row: u16, col: u16) {
         let pos = Position::from((col, row));
         self.move_cursor_to(pos);
@@ -189,6 +239,7 @@ impl Cursor {
         }
     }
 
+    /// Stop dragging.
     pub fn stop_drag(&mut self) {
         self.is_dragging = false;
     }
