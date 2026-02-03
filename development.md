@@ -2099,8 +2099,8 @@ Once that's done, it's all. No not implement anything else
     - [x] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
     - [x] quit fm <q> -> still should be possible.
     - [x] selection creates a rect
+    - [x] mouse selection like copying text from terminal
     - [ ] disable other actions
-    - [ ] **mouse selection like copying text from terminal**
   - [ ] problems
     - [ ] resize ??? should we exit & redraw ? 
     - [x] quit ??? still should be possible to quit (at least)

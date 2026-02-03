@@ -77,6 +77,17 @@ impl EventDispatcher {
             MouseEventKind::ScrollDown => {
                 EventAction::wheel_down(status, mouse_event.row, mouse_event.column)
             }
+            MouseEventKind::Drag(MouseButton::Left)
+                if status.internal_settings.cursor.is_selecting() =>
+            {
+                EventAction::mouse_drag(status, mouse_event.row, mouse_event.column)
+            }
+            MouseEventKind::Up(MouseButton::Left)
+                if status.internal_settings.cursor.is_selecting()
+                    && status.internal_settings.cursor.is_dragging =>
+            {
+                EventAction::mouse_up(status, mouse_event.row, mouse_event.column)
+            }
             MouseEventKind::Down(MouseButton::Left) => {
                 EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }

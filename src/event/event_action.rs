@@ -1191,6 +1191,20 @@ impl EventAction {
         Ok(())
     }
 
+    /// A mouse drag when selecting with cursor extends the selection upto there.
+    pub fn mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        log_info!("mouse_drag col: {col}, row: {col}");
+        status.internal_settings.cursor.mouse_drag(row, col);
+        Ok(())
+    }
+
+    /// A mouse up when selecting & dragging with cursor ends the dragging.
+    pub fn mouse_up(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        log_info!("mouse_up col: {col}, row: {row} ");
+        status.internal_settings.cursor.stop_drag();
+        Ok(())
+    }
+
     /// Delete a char to the left in modes allowing edition.
     pub fn backspace(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {

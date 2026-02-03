@@ -58,6 +58,7 @@ pub struct Cursor {
     cursor: Option<Position>,
     origin: Option<Position>,
     rect: Option<Rect>,
+    pub is_dragging: bool,
     pub leave_bind: String,
     pub enter_bind: String,
     pub copy_bind: String,
@@ -86,6 +87,7 @@ impl Cursor {
             cursor: None,
             origin: None,
             rect: None,
+            is_dragging: false,
             leave_bind,
             enter_bind,
             copy_bind,
@@ -144,14 +146,21 @@ impl Cursor {
         self.rect = Some(Rect::default());
     }
 
-    pub fn move_to(&mut self, position: Position) {
+    pub fn move_cursor_to(&mut self, position: Position) {
         if !self.state.is_active() {
             return;
         }
         self.cursor = Some(position);
     }
 
-    fn extend_selection(&mut self) {
+    pub fn move_origin_to(&mut self, position: Position) {
+        if !self.state.is_active() {
+            return;
+        }
+        self.origin = Some(position);
+    }
+
+    pub fn extend_selection(&mut self) {
         if !self.state.is_selecting() {
             return;
         }
@@ -167,6 +176,21 @@ impl Cursor {
             width,
             height,
         })
+    }
+
+    pub fn mouse_drag(&mut self, row: u16, col: u16) {
+        let pos = Position::from((col, row));
+        self.move_cursor_to(pos);
+        if self.is_dragging {
+            self.extend_selection();
+        } else {
+            self.move_origin_to(pos);
+            self.is_dragging = true;
+        }
+    }
+
+    pub fn stop_drag(&mut self) {
+        self.is_dragging = false;
     }
 }
 /// Internal settings of the status.
