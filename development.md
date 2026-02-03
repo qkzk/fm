@@ -2105,6 +2105,7 @@ Once that's done, it's all. No not implement anything else
   - [x] document
   - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
   - [ ] problems ???
+    - [ ] behavior should be more consistent to mouse selection elsewhere...
   - [ ] refactor 
 
 ## TODO
