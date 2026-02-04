@@ -1808,8 +1808,6 @@ impl Display {
         })
     }
 
-    // TODO: this color should be configurable with sane default without breaking existing configs.
-
     /// Display the cursor at its position
     /// Color the selected text (if any) as gray background.
     fn draw_cursor_selections(f: &mut Frame, status: &Status) {

@@ -19,7 +19,7 @@ use crate::modes::{copy_move, extract_extension, Content, Flagged};
 /// Different states in which the cursor can be.
 /// - Inactive: the cursor isn't being used and it should be used,
 /// - Movement: the cursor can move but no selection is made,
-/// - selection: the cursor can move and the selection is udapted.
+/// - Selection: the cursor can move and the selection is udapted.
 #[derive(Default, Clone, Copy)]
 enum CursorState {
     #[default]
@@ -37,15 +37,23 @@ impl CursorState {
         matches!(self, Self::Selection)
     }
 
+    /// Transition machine:
+    /// Inactive -> does nothing;
+    /// Movement <-> Selection.
     fn toggle_selection(&mut self) {
-        if !self.is_active() {
-            return;
+        match self {
+            Self::Inactive => (),
+            Self::Movement => {
+                *self = Self::Selection;
+            }
+            Self::Selection => {
+                *self = Self::Movement;
+            }
         }
-        if self.is_selecting() {
-            *self = Self::Movement;
-        } else {
-            *self = Self::Selection;
-        }
+    }
+
+    fn set_active(&mut self) {
+        *self = Self::Movement;
     }
 }
 
@@ -92,21 +100,9 @@ impl Cursor {
     /// Creates a new cursor with binds read from keybinds.
     fn new(binds: &Bindings) -> Self {
         let reversed = binds.keybind_reversed();
-        let leave_bind = reversed
-            .get("ResetMode")
-            .map(|s| s.as_str())
-            .unwrap_or("")
-            .to_owned();
-        let enter_bind = reversed
-            .get("Cursor")
-            .map(|s| s.as_str())
-            .unwrap_or("")
-            .to_owned();
-        let copy_bind = reversed
-            .get("CopyPaste")
-            .map(|s| s.as_str())
-            .unwrap_or("")
-            .to_owned();
+        let leave_bind = reversed.get("ResetMode").cloned().unwrap_or_default();
+        let enter_bind = reversed.get("Cursor").cloned().unwrap_or_default();
+        let copy_bind = reversed.get("CopyPaste").cloned().unwrap_or_default();
         Self {
             state: CursorState::default(),
             cursor: None,
@@ -124,6 +120,11 @@ impl Cursor {
         self.rect
     }
 
+    /// Position of the cursor if any
+    pub fn cursor(&self) -> Option<Position> {
+        self.cursor
+    }
+
     /// True iff the cursor is in active mode (either movement or selecting)
     pub fn is_active(&self) -> bool {
         self.state.is_active()
@@ -132,11 +133,6 @@ impl Cursor {
     /// True iff the cursor is selecting.
     pub fn is_selecting(&self) -> bool {
         self.state.is_selecting()
-    }
-
-    /// Position of the cursor if any
-    pub fn cursor(&self) -> Option<Position> {
-        self.cursor
     }
 
     /// Reset the cursor.
@@ -159,9 +155,10 @@ impl Cursor {
     }
 
     /// Set default values for entering selection from this position.
+    /// Wattchout: it also changes the _TERMINAL_ cursor to "steady block".
     fn start_cursor(&mut self, position: Position) {
         let _ = crossterm::execute!(io::stdout(), SetCursorStyle::SteadyBlock);
-        self.state = CursorState::Movement;
+        self.state.set_active();
         self.cursor = Some(position);
         self.origin = Some(position);
         self.rect = None;
@@ -216,12 +213,7 @@ impl Cursor {
         let y = start.y.min(end.y);
         let width = u16::abs_diff(start.x, end.x) + 1;
         let height = u16::abs_diff(start.y, end.y) + 1;
-        self.rect = Some(Rect {
-            x,
-            y,
-            width,
-            height,
-        })
+        self.rect = Some(Rect::new(x, y, width, height));
     }
 
     /// Used to allow selecting text with the mouse.
@@ -281,7 +273,7 @@ pub struct InternalSettings {
     is_disabled: bool,
     /// true if the terminal should be cleared before exit. It's set to true when we reuse the window to start a new shell.
     pub clear_before_quit: bool,
-    /// kind of cursor mode enabled. Default is None (no selection), Rect
+    /// Cesor movement and selection. Responsible of recording what is selected by the user.
     pub cursor: Cursor,
 }
 
