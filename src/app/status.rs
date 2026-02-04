@@ -314,10 +314,10 @@ impl Status {
     fn cursor_position(&self) -> Position {
         let Size { width, height } = self.internal_settings.term_size();
         match self.focus {
-            Focus::LeftFile     => Position { x: width / 4      , y: height / 4 },
-            Focus::RightFile    => Position { x: 3 * (width / 4), y: height / 4 },
-            Focus::LeftMenu     => Position { x: width / 4      , y: 3 * (height / 4) + 1 },
-            Focus::RightMenu    => Position { x: 3 * (width / 4), y: 3 * (height / 4) + 1 },
+            Focus::LeftFile     => Position::new(     width / 4 ,      height / 4),
+            Focus::RightFile    => Position::new(3 * (width / 4),      height / 4),
+            Focus::LeftMenu     => Position::new(     width / 4 , 3 * (height / 4) + 1),
+            Focus::RightMenu    => Position::new(3 * (width / 4), 3 * (height / 4) + 1),
         }
     }
 
