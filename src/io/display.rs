@@ -1814,9 +1814,15 @@ impl Display {
     /// Color the selected text (if any) as gray background.
     fn draw_cursor_selections(f: &mut Frame, status: &Status) {
         if let Some(rect) = status.internal_settings.cursor.rect() {
-            // NOTE: either this or reverse every cell of the selection with get_cell. Using a rect is simpler and should be quicker
-            f.buffer_mut()
-                .set_style(rect, Style::default().bg(Color::Rgb(128, 128, 128)));
+            let buffer = f.buffer_mut();
+            for y in rect.y..rect.y + rect.height {
+                for x in rect.x..rect.x + rect.width {
+                    let Some(cell) = buffer.cell_mut(Position::new(x, y)) else {
+                        continue;
+                    };
+                    cell.modifier |= Modifier::REVERSED;
+                }
+            }
         }
         if let Some(position) = status.internal_settings.cursor.cursor() {
             f.set_cursor_position(position);
