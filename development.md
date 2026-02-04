@@ -2101,7 +2101,7 @@ Once that's done, it's all. No not implement anything else
     - [x] change cursor
     - [x] display cursor modifications with special style
     - [x] footer indication include real binds
-    - [ ] pick a color which should always work... grey ? reverse every cell ?
+    - [x] reverse selected cells.
   - [x] document
   - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
   - [ ] problems ???
