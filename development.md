@@ -2096,7 +2096,7 @@ Once that's done, it's all. No not implement anything else
     - [x] mouse selection like copying text from terminal
     - [x] mouse click moves the cursor
     - [x] disable other actions
-  - [ ] display
+  - [x] display
     - [x] render first then modify ? 
     - [x] change cursor
     - [x] display cursor modifications with special style
@@ -2105,7 +2105,7 @@ Once that's done, it's all. No not implement anything else
   - [x] document
   - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
   - [ ] problems ???
-    - [ ] behavior should be more consistent to mouse selection elsewhere...
+    - [ ] BUG: dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
   - [ ] refactor 
 
 ## TODO
