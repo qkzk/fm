@@ -214,8 +214,8 @@ impl Cursor {
         let end = self.cursor.expect("Should be set");
         let x = start.x.min(end.x);
         let y = start.y.min(end.y);
-        let width = u16::abs_diff(start.x, end.x);
-        let height = u16::abs_diff(start.y, end.y);
+        let width = u16::abs_diff(start.x, end.x) + 1;
+        let height = u16::abs_diff(start.y, end.y) + 1;
         self.rect = Some(Rect {
             x,
             y,
