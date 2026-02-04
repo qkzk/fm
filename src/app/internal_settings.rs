@@ -221,7 +221,7 @@ impl Cursor {
     /// Move the cursor to the current mouse position.
     /// Or extend selection.
     pub fn mouse_drag(&mut self, row: u16, col: u16) {
-        let pos = Position::from((col, row));
+        let pos = Position::new(col, row);
         self.move_cursor_to(pos);
         if self.is_dragging {
             self.extend_selection();
