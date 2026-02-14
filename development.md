@@ -2046,6 +2046,7 @@ Once that's done, it's all. No not implement anything else
 - New plugin to preview sqlite3 databases with a summary. Inspired by ranger. [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - BREAKING. opener allow arguments in their config.
   This isn't exactly a "breaking" change since your old config will still work... but if you use options, older versions of fm won't be able to excute your program.
+- Support for chafa as an image displayer. Set chafa in your config and ensure it's installed.
 
 ##### Bugfixes
 
@@ -2107,7 +2108,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] problems ???
     - [ ] BUG: dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
   - [ ] refactor 
-- [ ] FEAT: use chafa as alternative 
+- [x] FEAT: use chafa as alternative image displayer
 
 ## TODO
 
