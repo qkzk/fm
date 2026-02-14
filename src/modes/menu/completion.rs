@@ -44,7 +44,7 @@ impl CursorOffset for InputCompleted {
 
 impl Leave for InputCompleted {
     fn must_refresh(&self) -> bool {
-        true
+        !matches!(self, Self::Search)
     }
 
     fn must_reset_mode(&self) -> bool {

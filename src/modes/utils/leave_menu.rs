@@ -70,7 +70,7 @@ impl LeaveMenu {
                 LeaveMenu::exec(status)?;
                 return Ok(());
             }
-            Menu::InputCompleted(InputCompleted::Search) => Ok(()),
+            Menu::InputCompleted(InputCompleted::Search) => LeaveMenu::search(status),
             Menu::InputCompleted(InputCompleted::Cd) => LeaveMenu::cd(status),
             Menu::InputCompleted(InputCompleted::Action) => LeaveMenu::action(status),
             // To avoid mistakes, the default answer is No. We do nothing here.
@@ -314,6 +314,17 @@ impl LeaveMenu {
         let len = status.current_tab().directory.content.len();
         status.current_tab_mut().window.reset(len);
         status.update_second_pane_for_preview()
+    }
+
+    fn search(status: &mut Status) -> Result<()> {
+        // TODO: remove comments. ATM it's still half the window and it's okay...
+        let top = status.current_tab_mut().window.top;
+        log_info!(
+            "leave search window {window:?}",
+            window = status.current_tab().window
+        );
+        status.current_tab_mut().window.scroll_to(top);
+        Ok(())
     }
 
     /// Move to the selected shortcut.
