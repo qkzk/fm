@@ -110,7 +110,8 @@ pub fn command_with_path<S: AsRef<std::ffi::OsStr> + fmt::Debug, P: AsRef<Path>>
 /// Wait for termination and return either :
 /// `Ok(stdout)` if the status code is 0
 /// an Error otherwise
-/// Branch stdin and stderr to /dev/null
+/// Branch stdin /dev/null
+/// Log stderr if non empty.
 pub fn execute_and_capture_output_with_path<
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<Path>,
