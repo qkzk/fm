@@ -2107,6 +2107,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] problems ???
     - [ ] BUG: dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
   - [ ] refactor 
+- [ ] FEAT: use chafa as alternative 
 
 ## TODO
 

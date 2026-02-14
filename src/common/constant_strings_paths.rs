@@ -206,6 +206,8 @@ pub const TRASH_CONFIRM_LINE: &str =
     "Up, Down: navigation - Enter: restore the selected file - x: delete permanently - ";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
+/// chafa executable
+pub const CHAFA: &str = "chafa";
 /// ueberzug (used to preview images, videos & fonts)
 pub const UEBERZUG: &str = "ueberzug";
 /// fontimage (used to preview fonts)

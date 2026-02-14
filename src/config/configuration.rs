@@ -300,6 +300,7 @@ pub enum Imagers {
     Disabled,
     Ueberzug,
     Inline,
+    Chafa,
 }
 
 /// Name of the syntect theme used.
@@ -327,6 +328,7 @@ impl PreferedImager {
         let imager = match imager {
             "Ueberzug" => Imagers::Ueberzug,
             "Inline" => Imagers::Inline,
+            "Chafa" => Imagers::Chafa,
             _ => Imagers::Disabled,
         };
 

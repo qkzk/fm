@@ -12,6 +12,7 @@
 //! - [`opener::Opener`] and other structs of this file are used to open files. The opener are configurable in the config files.
 
 mod args;
+mod chafa;
 mod commands;
 mod display;
 mod draw_menu;
@@ -26,6 +27,7 @@ mod plugin_management;
 mod ueberzug;
 
 pub use args::Args;
+pub use chafa::*;
 pub use commands::*;
 pub use display::{Display, MenuFirstLine, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;
