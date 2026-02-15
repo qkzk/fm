@@ -2052,6 +2052,7 @@ Once that's done, it's all. No not implement anything else
 
 - Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
 - Pressing enter whith multiple flagged files would do nothing if a directory was selected
+- Some files should start a scrolling but werent detected as outside window
 
 #### Changelog 
 
