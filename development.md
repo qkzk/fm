@@ -2109,7 +2109,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] BUG: dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
   - [ ] refactor 
 - [x] FEAT: use chafa as alternative image displayer
-- [ ] BUG: searching doesn't move the window
+- [x] FIX: scrolling for files at bottom should be started earlier
 
 ## TODO
 
