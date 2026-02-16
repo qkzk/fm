@@ -2111,6 +2111,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor 
 - [x] FEAT: use chafa as alternative image displayer
 - [x] FIX: scrolling for files at bottom should be started earlier
+- [ ] FEAT: improve google drive with token refresh ala gcal
 
 ## TODO
 
