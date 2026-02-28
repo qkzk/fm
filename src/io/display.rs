@@ -548,6 +548,9 @@ impl<'a> DirectoryDisplay<'a> {
             content.push_str(file.icon());
         }
         content.push_str(&file.filename);
+        if file.is_symlink() {
+            file.expand_symlink(&mut content);
+        }
 
         Line::from(vec![
             self.span_flagged_symbol(file, &mut style, menu_style),

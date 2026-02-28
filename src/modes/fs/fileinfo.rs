@@ -259,17 +259,26 @@ impl FileInfo {
         let mut repr = self.format_base(owner_col_width, group_col_width);
         repr.push(' ');
         repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
+        if let FileKind::SymbolicLink(_) = self.file_kind {
+            self.expand_symlink(&mut repr);
+        }
         repr
     }
 
-    fn expand_symlink(&self, repr: &mut String) {
-        if let FileKind::SymbolicLink(_) = self.file_kind {
-            match std::fs::read_link(&self.path) {
-                Ok(dest) if dest.exists() => {
-                    repr.push_str(&format!(" -> {dest}", dest = dest.display()))
-                }
-                _ => repr.push_str("  broken link"),
+    /// Append the destination link to the content.
+    /// If the link is broken, it appends "broken link"
+    ///
+    /// # Warning
+    ///
+    /// This method assumes the current file to be a _symlink_ and shouldn't be called otherwise.
+    /// It's the responsability of the **caller** to ensure it's not called for other file kinds.
+    pub fn expand_symlink(&self, repr: &mut String) {
+        match std::fs::read_link(&self.path) {
+            Ok(dest) if dest.exists() => {
+                repr.push_str(&format!(" -> {dest}", dest = dest.display()))
+            }
+            _ => {
+                repr.push_str("  broken link");
             }
         }
     }
@@ -330,6 +339,10 @@ impl FileInfo {
 
     pub fn is_dir(&self) -> bool {
         matches!(self.file_kind, FileKind::Directory)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        matches!(self.file_kind, FileKind::SymbolicLink(_))
     }
 
     /// True iff the parent of the file is root.
