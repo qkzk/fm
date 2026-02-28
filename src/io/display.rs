@@ -1371,8 +1371,9 @@ impl<'a> Menu<'a> {
     }
 
     fn context(&self, f: &mut Frame, rect: &Rect, menu_style: &'static MenuStyle) {
-        self.context_selectable(f, rect);
-        self.context_more_infos(f, rect, menu_style)
+        let moved_rect_up = rect.offset(Offset { x: 0, y: -1 });
+        self.context_selectable(f, &moved_rect_up);
+        self.context_more_infos(f, &moved_rect_up, menu_style)
     }
 
     fn context_selectable(&self, f: &mut Frame, rect: &Rect) {

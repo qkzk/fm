@@ -95,13 +95,13 @@ impl FileKind<Valid> {
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size: ",
-            Self::Socket            => "Size: ",
-            Self::Directory         => "Elements:",
-            Self::NormalFile        => "Size: ",
+            Self::Fifo              => "Size:       ",
+            Self::Socket            => "Size:       ",
+            Self::Directory         => "Elements:   ",
+            Self::NormalFile        => "Size:       ",
             Self::CharDevice        => "Major,Minor:",
             Self::BlockDevice       => "Major,Minor:",
-            Self::SymbolicLink(_)   => "Size: ",
+            Self::SymbolicLink(_)   => "Size:       ",
         }
     }
 
