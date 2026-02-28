@@ -2114,8 +2114,10 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: improve google drive with token refresh ala gcal
   - [ ] the refresh seems to be done in sign [sign](/home/quentin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opendal-0.49.2/src/services/gdrive/core.rs)
   - [ ] check for a change in refresh token and save it ?
-- [ ] FEAT: all links should display where they point
 - [ ] FEAT: following links should allow user to cd to the destination, not open "follow" the link. [See](https://unix.stackexchange.com/questions/79539/cd-to-directory-of-a-symbolically-linked-file)
+- [x] FIX: crash when creating an already existant symlink
+- [x] FEAT: display symlink expanded path
+- [x] FEAT: display filepath & symlink expansion in context
 
 ## TODO
 
