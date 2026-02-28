@@ -1571,6 +1571,14 @@ impl Status {
             .current_tab()
             .selected_path()
             .context("No selected path")?;
+        if path.is_symlink() {
+            let Ok(expanded_path) = std::fs::read_link(&path) else {
+                return Ok(());
+            };
+            if expanded_path.is_dir() {
+                return self.current_tab_mut().cd(&expanded_path);
+            }
+        }
         self.open_single_file(&path)
     }
 
