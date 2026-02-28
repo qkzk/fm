@@ -394,12 +394,24 @@ impl EventAction {
                 .file_name()
                 .context("event symlink: File not found")?;
             let link = status.current_tab().directory_of_selected()?.join(filename);
-            std::os::unix::fs::symlink(original_file, &link)?;
-            log_line!(
-                "Symlink {link} links to {original_file}",
-                original_file = original_file.display(),
-                link = link.display()
-            );
+            match std::os::unix::fs::symlink(original_file, &link) {
+                Ok(()) => {
+                    log_line!(
+                        "Created symlink {link} links to {original_file}",
+                        original_file = original_file.display(),
+                        link = link.display()
+                    );
+                    log_info!(
+                        "Created symlink {link} links to {original_file}",
+                        original_file = original_file.display(),
+                        link = link.display()
+                    )
+                }
+                Err(error) => {
+                    log_line!("Couldn't create symlink {error:?}");
+                    log_info!("Couldn't create symlink {error:?}");
+                }
+            }
         }
         status.clear_flags_and_reset_view()
     }
