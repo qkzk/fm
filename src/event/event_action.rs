@@ -1143,6 +1143,10 @@ impl EventAction {
             return Ok(());
         }
         if status.focus.is_file() {
+            let file = status.current_tab().current_file()?;
+            if file.is_dir() {
+                return status.current_tab_mut().cd(&file.path);
+            }
             Self::enter_file(status)
         } else {
             let tab: &mut Tab = status.current_tab_mut();
