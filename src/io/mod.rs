@@ -10,10 +10,12 @@
 //! - `log` contains a few functions to setup, read & write to logs. They're used everywhere in the application for debugging (obviously) but also to display what the last action did.
 //! - [`opendal::OpendalContainer`] is the central struct dealing the google drive files, once the connection is established.
 //! - [`opener::Opener`] and other structs of this file are used to open files. The opener are configurable in the config files.
+//! - [`cursor_text::Cursor`] is used to copy displayed content to the clipboard.
 
 mod args;
 mod chafa;
 mod commands;
+mod cursor_text;
 mod display;
 mod draw_menu;
 mod git;
@@ -29,6 +31,7 @@ mod ueberzug;
 pub use args::Args;
 pub use chafa::*;
 pub use commands::*;
+pub use cursor_text::*;
 pub use display::{Display, MenuFirstLine, Offseted, MIN_WIDTH_FOR_DUAL_PANE};
 pub use draw_menu::*;
 pub use git::{git, git_root};

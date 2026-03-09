@@ -27,7 +27,7 @@ mod thumbnailer;
 pub use application::FM;
 pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, ClickableString, Footer, Header, PreviewHeader};
-pub use internal_settings::{CursorDirection, InternalSettings};
+pub use internal_settings::InternalSettings;
 pub use previewer::{PreviewResponse, Previewer};
 pub use previewer_plugins::{build_previewer_plugins, try_build_plugin, PreviewerPlugin};
 pub use refresher::Refresher;

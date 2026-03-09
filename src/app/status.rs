@@ -20,7 +20,7 @@ use crate::app::{
 };
 use crate::common::{
     build_dest_path, current_username, disk_space, filename_from_path, is_in_path, is_sudo_command,
-    path_to_string, row_to_window_index, set_clipboard, set_current_dir, tilde, MountPoint,
+    path_to_string, row_to_window_index, set_current_dir, tilde, MountPoint,
 };
 use crate::config::{from_keyname, Bindings, START_FOLDER};
 use crate::event::{ActionMap, FmEvents};
@@ -157,8 +157,6 @@ pub struct Status {
     pub previewer: Previewer,
     /// Preview manager
     pub thumbnail_manager: Option<ThumbnailManager>,
-    /// Last registered frame
-    pub last_buffer: Option<Buffer>,
 }
 
 impl Status {
@@ -210,7 +208,6 @@ impl Status {
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
         let thumbnail_manager = None;
-        let last_frame = None;
         Ok(Self {
             tabs,
             index,
@@ -223,7 +220,6 @@ impl Status {
             preview_receiver,
             previewer,
             thumbnail_manager,
-            last_buffer: last_frame,
         })
     }
 
@@ -2489,38 +2485,17 @@ impl Status {
         self.internal_settings.cursor.is_selecting()
     }
 
+    /// Store the buffer of displayed cells by ratatui in memory
     pub fn set_buffer(&mut self, buffer: Buffer) {
-        self.last_buffer = Some(buffer);
+        self.internal_settings.last_buffer = Some(buffer);
     }
 
-    pub fn log_buffer(&self) {
-        if let Some(buffer) = &self.last_buffer {
-            log_info!("{buffer:?}");
-        }
-    }
-
+    /// Copy the rect buffer of text in the clipboard.
     pub fn copy_buffer_rect(&self) {
-        let Some(buffer) = &self.last_buffer else {
-            log_info!("Tried to read last buffer but had nothing.");
-            log_line!("Couldn't copy the content...");
-            return;
-        };
-        let Some(rect) = &self.internal_settings.cursor.rect() else {
-            return;
-        };
-        let mut content = String::new();
-        for y in rect.y..rect.y + rect.height {
-            for x in rect.x..rect.x + rect.width {
-                let Some(cell) = buffer.cell((x, y)) else {
-                    continue;
-                };
-                content.push_str(cell.symbol());
-            }
-            content.push('\n')
-        }
-        set_clipboard(content);
+        self.internal_settings.copy_buffer_rect()
     }
 
+    /// Enter or exit the cursor mode.
     pub fn cursor_toggle(&mut self) {
         self.internal_settings.cursor.toggle(self.cursor_position())
     }

@@ -4,13 +4,13 @@ use std::path;
 use anyhow::{Context, Result};
 use indicatif::InMemoryTerm;
 
-use crate::app::{CursorDirection, Direction, Focus, Status, Tab};
+use crate::app::{Direction, Focus, Status, Tab};
 use crate::common::{
     content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, External};
+use crate::io::{read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -1829,7 +1829,6 @@ impl EventAction {
     pub fn visual(status: &mut Status) -> Result<()> {
         status.current_tab_mut().toggle_visual();
         status.toggle_flag_visual();
-        status.log_buffer();
 
         Ok(())
     }

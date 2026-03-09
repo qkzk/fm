@@ -2108,9 +2108,10 @@ Once that's done, it's all. No not implement anything else
     - [x] reverse selected cells.
   - [x] document
   - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
+    - [ ] for testing it may be awesome
   - [ ] problems ???
     - [x] WONTDO: The shape of the pointer is misleading. A I-beam shape would be more appropriate .dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
-  - [ ] refactor 
+  - [x] refactor 
 - [x] FEAT: use chafa as alternative image displayer
 - [x] FIX: scrolling for files at bottom should be started earlier
 - [ ] FEAT: improve google drive with token refresh ala gcal
