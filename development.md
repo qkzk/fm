@@ -2058,22 +2058,11 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog 
 
-- [ ] Menu plugin 
-  - [ ] API:
-    Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent
-    - [ ] fm -> plugin : dispatch(event, status) {} - mut status or only status ?
-    - [ ] fm -> plugin : display(rect) -> Widget    OR fm -> plugin : display(f, rect) {}
-- [ ] FEAT: previewer image mode..
-  - [ ] minimal breaking change: kind: Image/Text, breaks all existing plugins
-  - [ ] no api change = don't break plugins. Parse the output and decide wether it's image or text based on output... 
-  - [ ] same interface for the rest. Returns a single string of paths, one per line, separated by special char. skip files with \n in absolute paths
-  - [ ] build an image preview from output
-  - [ ] plugin imager: do the same as another plugin. previewer returns paths as *c_char, separated by `'\n`.
-- [ ] FEAT: 
+- [x] FEAT: 
   - [x] sudo command for passwordless. It already works. If the user has sudo rights without password (passwordless sudo), any password input will be validated and the command is ran
   - [x] pkexec works already
   - [x] sudo-rs has same interface (sudo -s ..., sudo -k)
-  - [ ] doas has different interface
+  - [x] WONTDO: doas has different interface
 - [x] IMP: display. Reduce the number of call static oncelock style
   - [x] MENU_STYLE
   - [x] FILE_STYLE
@@ -2085,7 +2074,7 @@ Once that's done, it's all. No not implement anything else
   - [x] moved it to a new plugin [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
 - [x] FEAT: opener (external) should allow arguments in their config
 - [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
-- [ ] FEAT: select text in bloc modes like vim: vertical, horizontal, line
+- [x] FEAT: select text in bloc modes like vim: vertical, horizontal, line
   - [x] export a buffer contionnaly 
     - [x] find the last rendered buffer 
     - [x] save it somewhere 
@@ -2107,9 +2096,7 @@ Once that's done, it's all. No not implement anything else
     - [x] footer indication include real binds
     - [x] reverse selected cells.
   - [x] document
-  - [ ] it's more a text editor feature than a file manager feature. Do I want that ? 
-    - [ ] for testing it may be awesome
-  - [ ] problems ???
+  - [x] problems ???
     - [x] WONTDO: The shape of the pointer is misleading. A I-beam shape would be more appropriate .dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
   - [x] refactor 
 - [x] FEAT: use chafa as alternative image displayer
@@ -2118,6 +2105,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] the refresh seems to be done in sign [sign](/home/quentin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opendal-0.49.2/src/services/gdrive/core.rs)
   - [ ] check for a change in refresh token and save it ?
   - [ ] refresh token should works 6 months as long as the project isn't "testing" in gcp
+  - [ ] test a few more days...
 - [x] FEAT: pressing <o> on a symlink to a dir, enters the _resolved_ link (the path it links to)
 - [x] FIX: crash when creating an already existant symlink
 - [x] FEAT: display symlink expanded path
@@ -2129,6 +2117,17 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
+- [ ] Menu plugin 
+  - [ ] API:
+    Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent
+    - [ ] fm -> plugin : dispatch(event, status) {} - mut status or only status ?
+    - [ ] fm -> plugin : display(rect) -> Widget    OR fm -> plugin : display(f, rect) {}
+- [ ] FEAT: previewer image mode..
+  - [ ] minimal breaking change: kind: Image/Text, breaks all existing plugins
+  - [ ] no api change = don't break plugins. Parse the output and decide wether it's image or text based on output... 
+  - [ ] same interface for the rest. Returns a single string of paths, one per line, separated by special char. skip files with \n in absolute paths
+  - [ ] build an image preview from output
+  - [ ] plugin imager: do the same as another plugin. previewer returns paths as *c_char, separated by `'\n`.
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
