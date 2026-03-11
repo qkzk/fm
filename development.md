@@ -2112,6 +2112,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: display filepath & symlink expansion in context
 - [x] FEAT: pressing <right> on a directory while some files are flagged are selected enters the directory anyway
 - [x] FIX: can't dragon-drop multiple files. Sometimes doesn't work at all. See qs9:~/Downloads/trucworkx.xls
+- [ ] FEAT: shell expansion for "%f | %s" ? In ranger, dragon-drop is able to select multiple files...
 
 ## TODO
 
