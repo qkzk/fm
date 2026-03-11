@@ -2111,6 +2111,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: display symlink expanded path
 - [x] FEAT: display filepath & symlink expansion in context
 - [x] FEAT: pressing <right> on a directory while some files are flagged are selected enters the directory anyway
+- [ ] BUG: can't dragon-drop multiple files. Sometimes doesn't work at all. See qs9:~/Downloads/trucworkx.xls
 
 ## TODO
 
