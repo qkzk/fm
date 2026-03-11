@@ -2049,6 +2049,7 @@ Once that's done, it's all. No not implement anything else
 - Support for chafa as an image displayer. Set chafa in your config and ensure it's installed.
 - Symbolic links destination shawn next to their filepath.
 - Either follow the symbolic destination to a folder with <right> or enter the real path with <o>
+- New shell expansion usable in config, cli-config or shell command: %x expands to the flagged files or the selection if no file is flagged.
 
 ##### Bugfixes
 
@@ -2112,7 +2113,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: display filepath & symlink expansion in context
 - [x] FEAT: pressing <right> on a directory while some files are flagged are selected enters the directory anyway
 - [x] FIX: can't dragon-drop multiple files. Sometimes doesn't work at all. See qs9:~/Downloads/trucworkx.xls
-- [ ] FEAT: shell expansion for "%f | %s" ? In ranger, dragon-drop is able to select multiple files...
+- [x] FEAT: New shell expansion %x: flagged or selected if none.
 
 ## TODO
 
