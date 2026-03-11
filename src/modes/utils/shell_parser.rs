@@ -295,7 +295,7 @@ fn build_sudo_args(args: Vec<String>) -> Vec<String> {
 }
 
 fn build_normal_args(args: Vec<String>) -> Vec<String> {
-    vec!["sh".to_owned(), "-c".to_owned(), args.join("")]
+    vec!["sh".to_owned(), "-c".to_owned(), args.join(" ")]
 }
 // fn test_shell_parser(status: &Status) {
 //     let commands = vec![
