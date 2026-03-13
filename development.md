@@ -2114,6 +2114,9 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: pressing <right> on a directory while some files are flagged are selected enters the directory anyway
 - [x] FIX: can't dragon-drop multiple files. Sometimes doesn't work at all. See qs9:~/Downloads/trucworkx.xls
 - [x] FEAT: New shell expansion %x: flagged or selected if none.
+- [ ] FEAT: csv previewer
+  - [x] can't use column since it needs to know the separator and ; sep produces wrong output 
+  - [ ] find delimer by trying, if nothing found, use bat for colouring
 
 ## TODO
 
