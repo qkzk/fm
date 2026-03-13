@@ -2116,7 +2116,9 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: New shell expansion %x: flagged or selected if none.
 - [ ] FEAT: csv previewer
   - [x] can't use column since it needs to know the separator and ; sep produces wrong output 
-  - [ ] find delimer by trying, if nothing found, use bat for colouring
+  - [ ] remove & count ?
+  - [ ] count nb per line ? 
+  - [ ] if nothing found, use bat for colouring
 
 ## TODO
 
