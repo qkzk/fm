@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
+use fs_extra::file::read_to_string;
 use ratatui::style::{Color, Modifier, Style};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -22,8 +23,8 @@ use syntect::{
 use crate::app::try_build_plugin;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
-    FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM,
-    PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
+    COLUMN, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO,
+    PDFTOPPM, PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
 };
 use crate::config::{
     get_prefered_imager, get_previewer_command, get_previewer_plugins, get_syntect_theme, Imagers,
@@ -48,6 +49,7 @@ fn images_are_enabled() -> bool {
 pub enum ExtensionKind {
     Archive,
     Audio,
+    Csv,
     Epub,
     Font,
     Image,
@@ -71,6 +73,8 @@ impl ExtensionKind {
         match ext {
             "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "gz" | "zst" | "deb" | "rpm"
             => Self::Archive,
+            "csv"
+            => Self::Csv,
             "7z" | "7za"
             => Self::Sevenz,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
@@ -104,6 +108,7 @@ impl ExtensionKind {
     fn has_programs(&self) -> bool {
         match self {
             Self::Archive   => is_in_path(BSDTAR),
+            Self::Csv       => is_in_path(COLUMN),
             Self::Epub      => is_in_path(PANDOC),
             Self::Iso       => is_in_path(ISOINFO),
             Self::Notebook  => is_in_path(JUPYTER),
@@ -141,6 +146,7 @@ impl std::fmt::Display for ExtensionKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let repr = match self {
             Self::Archive   => "archive",
+            Self::Csv       => "csv",
             Self::Image     => "image",
             Self::Audio     => "audio",
             Self::Video     => "video",
@@ -306,6 +312,7 @@ impl PreviewBuilder {
             ExtensionKind::Archive if kind.has_programs() => {
                 Ok(Preview::Text(Text::archive(&self.path, &extension)?))
             }
+            ExtensionKind::Csv if kind.has_programs() => Ok(Preview::Text(Text::csv(&self.path)?)),
             ExtensionKind::Sevenz if kind.has_programs() => {
                 Ok(Preview::Text(Text::sevenz(&self.path)?))
             }
@@ -493,7 +500,7 @@ impl PreviewerCommand {
             TextKind::Plugin,
             args[0],
             &args[1..],
-            Arc::from(path),
+            path,
         )?))
     }
 }
@@ -521,6 +528,7 @@ pub enum TextKind {
     Archive,
     Blockdevice,
     CommandStdout,
+    Csv,
     Elf,
     Epub,
     FifoChardevice,
@@ -543,6 +551,7 @@ impl TextKind {
         match self {
             Self::TEXTFILE => "a textfile",
             Self::Archive => "an archive",
+            Self::Csv => "a CSV file",
             Self::Blockdevice => "a Blockdevice file",
             Self::CommandStdout => "a command stdout",
             Self::Elf => "an elf file",
@@ -670,7 +679,7 @@ impl Text {
         kind: TextKind,
         command: &str,
         args: &[&str],
-        filepath: Arc<Path>,
+        filepath: &Path,
     ) -> Result<Self> {
         let content: Vec<String> = execute_and_capture_output_without_check(command, args)?
             .lines()
@@ -680,7 +689,7 @@ impl Text {
             title: command.to_owned(),
             kind,
             length: content.len(),
-            filepath,
+            filepath: filepath.into(),
             content,
         })
     }
@@ -690,7 +699,7 @@ impl Text {
             TextKind::Mediacontent,
             MEDIAINFO,
             &[path_to_string(&path).as_str()],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -699,7 +708,7 @@ impl Text {
             TextKind::Pdf,
             PDFTOTEXT,
             &[path_to_string(&path).as_str()],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -708,7 +717,7 @@ impl Text {
             TextKind::Office,
             LIBREOFFICE,
             &["--cat", path_to_string(&path).as_str()],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -733,12 +742,45 @@ impl Text {
         })
     }
 
+    fn csv(path: &Path) -> Result<Self> {
+        let Ok(delimiter) = Self::snif_csv_delimiter(path) else {
+            return Self::from_file(path);
+        };
+        Self::from_command_output(
+            TextKind::Csv,
+            COLUMN,
+            &[
+                &format!("-s{delimiter}"),
+                "-t",
+                path_to_string(&path).as_str(),
+            ],
+            path,
+        )
+    }
+
+    const CSV_DELIMITERS: [char; 5] = [',', ';', '\t', ' ', ':'];
+
+    fn snif_csv_delimiter(path: &Path) -> Result<char> {
+        let content = read_to_string(path)?;
+        let mut pairs = vec![];
+        for delimiter in Self::CSV_DELIMITERS {
+            let count = content.replace(delimiter, "").len();
+            pairs.push((delimiter, count));
+        }
+        let res = pairs
+            .iter()
+            .min_by_key(|(_, count)| *count)
+            .context("Can't be empty")?
+            .0;
+        Ok(res)
+    }
+
     fn sevenz(path: &Path) -> Result<Self> {
         Self::from_command_output(
             TextKind::Sevenz,
             SEVENZ,
             &["l", &path_to_string(&path)],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -747,7 +789,7 @@ impl Text {
             TextKind::Iso,
             ISOINFO,
             &["-l", "-i", &path_to_string(&path)],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -756,15 +798,14 @@ impl Text {
             TextKind::Torrent,
             TRANSMISSION_SHOW,
             &[&path_to_string(&path)],
-            Arc::from(path),
+            path,
         )
     }
 
     /// New socket preview
     /// See `man ss` for a description of the arguments.
     fn socket(path: &Path) -> Result<Self> {
-        let mut preview =
-            Self::from_command_output(TextKind::Socket, SS, &["-lpmepiT"], Arc::from(path))?;
+        let mut preview = Self::from_command_output(TextKind::Socket, SS, &["-lpmepiT"], path)?;
         preview.content = preview
             .content
             .iter()
@@ -785,7 +826,7 @@ impl Text {
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
                 &path_to_string(&path),
             ],
-            Arc::from(path),
+            path,
         )
     }
 
@@ -802,7 +843,7 @@ impl Text {
                 path_to_string(&path).as_str(),
                 "--no-pager",
             ],
-            Arc::from(path),
+            path,
         )
     }
     /// Make a new previewed colored text.

@@ -244,6 +244,8 @@ pub const UDEVADM: &str = "udevadm";
 pub const NVIM: &str = "nvim";
 /// bsdtar executable, used to display common archive content
 pub const BSDTAR: &str = "bsdtar";
+/// column executable, used to format csv files
+pub const COLUMN: &str = "column";
 /// 7z executable, used to display 7z archive content
 pub const SEVENZ: &str = "7z";
 /// libreoffice executable
