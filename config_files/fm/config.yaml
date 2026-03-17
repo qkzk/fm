@@ -126,7 +126,7 @@ custom:
   # open the selected file with chrome
   "shift-u": "/usr/bin/google-chrome-stable %s"
   # drag & drop the selected file to a GUI application
-  "shift-d": "/usr/bin/dragon-drop %x"
+  "shift-d": "/usr/bin/dragon-drop -a %x"
 
 # Plugins
 # Plugins are external libs, written in rust.

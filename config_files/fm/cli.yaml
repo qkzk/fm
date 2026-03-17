@@ -20,7 +20,7 @@
 #     command: "dragon-drop %x"
 #
 drag_and_drop:
-  command: "dragon-drop %x"
+  command: "dragon-drop -a %x"
 set_wallpaper:
   command: "nitrogen --set-zoom-fill --save %s"
 man_page:
