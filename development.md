@@ -2119,6 +2119,9 @@ Once that's done, it's all. No not implement anything else
   - [x] can't use column since it needs to know the separator and ; sep produces wrong output 
   - [x] remove & count
   - [x] use default if it fails
+- [ ] Remove metadata from pictures & whatever. In Windows Explorer, right-click the file and click Properties > Details > Remove Properties and Personal Information... 
+  - [ ] exif [read/write crate](https://crates.io/crates/little_exif)
+  - [ ] API ?
 
 ## TODO
 
