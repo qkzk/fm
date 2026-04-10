@@ -2051,6 +2051,7 @@ Once that's done, it's all. No not implement anything else
 - Either follow the symbolic destination to a folder with <right> or enter the real path with <o>
 - New shell expansion usable in config, cli-config or shell command: %x expands to the flagged files or the selection if no file is flagged.
 - Preview CSV files with columns. Tries to determine the delimiter by counting occurrences of the delimiter character.
+- Clear all exif data with a new command line instruction
 
 ##### Bugfixes
 
@@ -2119,9 +2120,8 @@ Once that's done, it's all. No not implement anything else
   - [x] can't use column since it needs to know the separator and ; sep produces wrong output 
   - [x] remove & count
   - [x] use default if it fails
-- [ ] Remove metadata from pictures & whatever. In Windows Explorer, right-click the file and click Properties > Details > Remove Properties and Personal Information... 
-  - [ ] exif [read/write crate](https://crates.io/crates/little_exif)
-  - [ ] API ?
+- [x] Remove metadata from pictures & whatever. In Windows Explorer, right-click the file and click Properties > Details > Remove Properties and Personal Information... 
+  - [x] `exiftool -r -ALL= --overwrite_original %f`
 
 ## TODO
 

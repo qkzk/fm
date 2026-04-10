@@ -23,6 +23,7 @@ pub const SAME_WINDOW_TOKEN: &str = "%t";
 /// %n is converted into a `Filename`
 /// %t is converted into a `$TERM` + custom flag.
 /// %c is converted into a `Clipboard content`.
+/// %x is converted into a `Selected or Flagged`.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
