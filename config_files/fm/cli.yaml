@@ -38,4 +38,4 @@ media_tags:
 diff_2_files:
   command: "diff %f"
 clear_exif:
-  command: "exiftool -r -ALL= -overwrite_original %s"
+  command: "exiftool -r -ALL= -overwrite_original %x"
