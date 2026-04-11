@@ -2051,13 +2051,13 @@ Once that's done, it's all. No not implement anything else
 - Either follow the symbolic destination to a folder with <right> or enter the real path with <o>
 - New shell expansion usable in config, cli-config or shell command: %x expands to the flagged files or the selection if no file is flagged.
 - Preview CSV files with columns. Tries to determine the delimiter by counting occurrences of the delimiter character.
-- Clear all exif data with a new command line instruction
 
 ##### Bugfixes
 
 - Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
 - Pressing enter whith multiple flagged files would do nothing if a directory was selected
 - Some files should start a scrolling but werent detected as outside window
+- Some tar.xz archives can be opened with "xarchiver" but not with fm. Log an error message for the moment.
 
 #### Changelog 
 
@@ -2122,12 +2122,14 @@ Once that's done, it's all. No not implement anything else
   - [x] use default if it fails
 - [x] Remove metadata from pictures & whatever. In Windows Explorer, right-click the file and click Properties > Details > Remove Properties and Personal Information... 
   - [x] `exiftool -r -ALL= --overwrite_original %f`
+- [x] FIX: some would archives crash the when decompressing - log the error and prevent the crash.
 
 ## TODO
 
 ### Other ideas
 
 
+- [ ] FEAT: open all tar.xz archive. Example kindle jailbreak update hotfix
 - [ ] Menu plugin 
   - [ ] API:
     Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent

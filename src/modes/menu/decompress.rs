@@ -86,7 +86,16 @@ pub fn decompress_xz(source: &Path) -> Result<()> {
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    archive.unpack(parent)?;
+    if let Err(error) = archive.unpack(parent) {
+        log_info!(
+            "Couldn't unpack the archive {source}\n{error:?}",
+            source = source.display()
+        );
+        log_line!(
+            "Couldn't unpack the archive {source}",
+            source = source.display()
+        );
+    }
 
     Ok(())
 }
