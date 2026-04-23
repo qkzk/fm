@@ -1,8 +1,9 @@
-use std::{fs::File, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 use anyhow::{Context, Result};
-use flate2::read::{GzDecoder, ZlibDecoder};
+use flate2::read::{DeflateDecoder, GzDecoder, MultiGzDecoder, ZlibDecoder};
 use tar::Archive;
+use xz2::read::XzDecoder;
 
 use crate::common::{is_in_path, path_to_string, BSDTAR, SEVENZ};
 use crate::io::{execute_and_output, execute_without_output};
@@ -74,28 +75,53 @@ pub fn decompress_7z(source: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Decompress a zlib compressed file into its parent directory.
+/// Decompress an xz compressed file into its parent directory.
 ///
 /// # Errors
 ///
 /// It may fail if the file can't be opened.
 pub fn decompress_xz(source: &Path) -> Result<()> {
-    let tar_xz = File::open(source)?;
-    let tar = ZlibDecoder::new(tar_xz);
-    let mut archive = Archive::new(tar);
+    let file_tar_xz = File::open(source)?;
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    if let Err(error) = archive.unpack(parent) {
-        log_info!(
-            "Couldn't unpack the archive {source}\n{error:?}",
-            source = source.display()
-        );
-        log_line!(
-            "Couldn't unpack the archive {source}",
-            source = source.display()
-        );
+    let mut xz_decoder = XzDecoder::new(&file_tar_xz);
+    let mut tar_data = Vec::new();
+    if xz_decoder.read_to_end(&mut tar_data).is_ok() {
+        let mut archive = Archive::new(&tar_data[..]);
+        archive.unpack(parent)?;
+        return Ok(());
     }
+    if decompress_gz(source).is_ok() {
+        return Ok(());
+    }
+    let mut archive_no_compression = Archive::new(&file_tar_xz);
+    if archive_no_compression.unpack(parent).is_ok() {
+        return Ok(());
+    }
+    let tar_zlib = ZlibDecoder::new(&file_tar_xz);
+    let mut archive_zlib = Archive::new(tar_zlib);
+    if archive_zlib.unpack(parent).is_ok() {
+        return Ok(());
+    }
+    let tar_multigz = MultiGzDecoder::new(&file_tar_xz);
+    let mut archive_multigz = Archive::new(tar_multigz);
+    if archive_multigz.unpack(parent).is_ok() {
+        return Ok(());
+    }
+    let tar_deflate = DeflateDecoder::new(&file_tar_xz);
+    let mut archive_deflate = Archive::new(tar_deflate);
+    if archive_deflate.unpack(parent).is_ok() {
+        return Ok(());
+    }
+    log_info!(
+        "Couldn't unpack the archive {source}",
+        source = source.display()
+    );
+    log_line!(
+        "Couldn't unpack the archive {source}",
+        source = source.display()
+    );
 
     Ok(())
 }
