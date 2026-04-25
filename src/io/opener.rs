@@ -20,9 +20,7 @@ use crate::common::{
 };
 use crate::io::{execute, execute_in_shell};
 use crate::log_info;
-use crate::modes::{
-    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension, Quote,
-};
+use crate::modes::{decompress_7z, decompress_xz_gz, decompress_zip, extract_extension, Quote};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -226,8 +224,8 @@ impl Internal {
         match self {
             Self::Sevenz => decompress_7z(path),
             Self::Zip => decompress_zip(path),
-            Self::Xz => decompress_xz(path),
-            Self::Gz => decompress_gz(path),
+            Self::Xz => decompress_xz_gz(path),
+            Self::Gz => decompress_xz_gz(path),
             Self::NotSupported => bail!("Can't be opened directly"),
         }
     }

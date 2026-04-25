@@ -27,23 +27,6 @@ pub fn decompress_zip(source: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Decompress a gz compressed file into its parent directory.
-///
-/// # Errors
-///
-/// It may fail if the file can't be opened.
-pub fn decompress_gz(source: &Path) -> Result<()> {
-    let tar_gz = File::open(source)?;
-    let tar = GzDecoder::new(tar_gz);
-    let mut archive = Archive::new(tar);
-    let parent = source
-        .parent()
-        .context("decompress: source should have a parent")?;
-    archive.unpack(parent)?;
-
-    Ok(())
-}
-
 /// Decompress a 7z compressed file into its parent directory.
 ///
 /// # Errors
@@ -75,55 +58,45 @@ pub fn decompress_7z(source: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Decompress an xz compressed file into its parent directory.
+type Reader<'a> = &'a [fn(File) -> Box<dyn Read>];
+
+/// Decompress an xz or gz compressed file into its parent directory.
 ///
 /// # Errors
 ///
 /// It may fail if the file can't be opened.
-pub fn decompress_xz(source: &Path) -> Result<()> {
-    let file_tar_xz = File::open(source)?;
+pub fn decompress_xz_gz(source: &Path) -> Result<()> {
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    let mut xz_decoder = XzDecoder::new(&file_tar_xz);
-    let mut tar_data = Vec::new();
-    if xz_decoder.read_to_end(&mut tar_data).is_ok() {
-        let mut archive = Archive::new(&tar_data[..]);
-        archive.unpack(parent)?;
-        return Ok(());
+
+    let strategies: Reader = &[
+        |f| Box::new(XzDecoder::new(f)),
+        |f| Box::new(GzDecoder::new(f)),
+        |f| Box::new(ZlibDecoder::new(f)),
+        |f| Box::new(DeflateDecoder::new(f)),
+        |f| Box::new(MultiGzDecoder::new(f)),
+        |f| Box::new(f),
+    ];
+
+    for make_reader in strategies {
+        let file = File::open(source)?;
+        let reader = make_reader(file);
+
+        if try_unpack(reader, parent) {
+            return Ok(());
+        }
     }
-    if decompress_gz(source).is_ok() {
-        return Ok(());
-    }
-    let mut archive_no_compression = Archive::new(&file_tar_xz);
-    if archive_no_compression.unpack(parent).is_ok() {
-        return Ok(());
-    }
-    let tar_zlib = ZlibDecoder::new(&file_tar_xz);
-    let mut archive_zlib = Archive::new(tar_zlib);
-    if archive_zlib.unpack(parent).is_ok() {
-        return Ok(());
-    }
-    let tar_multigz = MultiGzDecoder::new(&file_tar_xz);
-    let mut archive_multigz = Archive::new(tar_multigz);
-    if archive_multigz.unpack(parent).is_ok() {
-        return Ok(());
-    }
-    let tar_deflate = DeflateDecoder::new(&file_tar_xz);
-    let mut archive_deflate = Archive::new(tar_deflate);
-    if archive_deflate.unpack(parent).is_ok() {
-        return Ok(());
-    }
-    log_info!(
-        "Couldn't unpack the archive {source}",
-        source = source.display()
-    );
-    log_line!(
-        "Couldn't unpack the archive {source}",
-        source = source.display()
-    );
+
+    log_info!("Couldn't unpack the archive {}", source.display());
+    log_line!("Couldn't unpack the archive {}", source.display());
 
     Ok(())
+}
+
+fn try_unpack<R: Read>(reader: R, dst: &Path) -> bool {
+    let mut archive = Archive::new(reader);
+    archive.unpack(dst).is_ok()
 }
 
 /// List files contained in a ZIP file.

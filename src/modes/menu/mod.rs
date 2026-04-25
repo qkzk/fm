@@ -33,7 +33,7 @@ pub use compress::Compresser;
 pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove, DoneCopyMove};
 pub use decompress::{
-    decompress_7z, decompress_gz, decompress_xz, decompress_zip, list_files_tar, list_files_zip,
+    decompress_7z, decompress_xz_gz, decompress_zip, list_files_tar, list_files_zip,
 };
 pub use filter::FilterKind;
 pub use flagged::Flagged;
