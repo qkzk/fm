@@ -2058,6 +2058,7 @@ Once that's done, it's all. No not implement anything else
 - Pressing enter whith multiple flagged files would do nothing if a directory was selected
 - Some files should start a scrolling but werent detected as outside window
 - Some tar.xz archives can be opened with "xarchiver" but not with fm because the extension is wrong. Try every method and log an error if everything fail.
+- Compress a directory and all its children. Don't flag anything, select the parent dir and compress
 
 #### Changelog 
 
@@ -2124,6 +2125,7 @@ Once that's done, it's all. No not implement anything else
   - [x] `exiftool -r -ALL= --overwrite_original %f`
 - [x] FIX: some would archives crash the when decompressing - log the error and prevent the crash.
 - [x] FIX: open all tar.xz archive. Some tar.xz files aren't compressed by xz but with gz instead. Why ? I don't know. Try every method of decompression for those files.
+- [x] FIX: can't compress a whole directory easily
 
 ## TODO
 

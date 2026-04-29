@@ -941,9 +941,10 @@ impl Status {
         }
     }
 
-    fn flagged_or_selected_relative_to(&self, here: &Path) -> Vec<PathBuf> {
+    fn flagged_or_selected_files_relative_to(&self, here: &Path) -> Vec<PathBuf> {
         self.flagged_or_selected()
             .iter()
+            .filter(|p| !p.is_dir())
             .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
             .filter(|f| !f.starts_with(".."))
             .collect()
@@ -987,6 +988,19 @@ impl Status {
                 .content
                 .iter()
                 .for_each(|file| self.menu.flagged.toggle(&file.path));
+        }
+    }
+
+    /// Flag a directory and all its children recursively.
+    pub fn flag_all_children_of_dir(&mut self, path: PathBuf) {
+        if !path.is_dir() {
+            return;
+        }
+        for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+            let p = entry.path();
+            if !p.is_dir() {
+                self.menu.flagged.push(p.to_path_buf());
+            }
         }
     }
 
@@ -2183,17 +2197,36 @@ impl Status {
     }
 
     /// Compress the flagged files into an archive.
+    /// Is nothing is flagged :
+    /// - If the selection is a file, it's compressed,
+    /// - if the selection is a directory, all its children are recursively compressed.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(&mut self) -> Result<()> {
+        if self.menu.flagged.is_empty() {
+            let sel = self
+                .current_tab()
+                .selected_path()
+                .context("can't be empty")?;
+
+            let dir = if sel.is_dir() {
+                sel.as_ref()
+            } else {
+                self.menu.flagged.toggle(sel.as_ref());
+                sel.parent().context("no parent")?
+            };
+
+            self.flag_all_children_of_dir(dir.to_path_buf());
+        }
         let here = &self.current_tab().directory.path;
         set_current_dir(here)?;
-        let files_with_relative_paths = self.flagged_or_selected_relative_to(here);
+        let files_with_relative_paths = self.flagged_or_selected_files_relative_to(here);
         if files_with_relative_paths.is_empty() {
             return Ok(());
         }
+        log_info!("{nb} files", nb = files_with_relative_paths.len());
         match self
             .menu
             .compression
