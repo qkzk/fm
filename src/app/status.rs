@@ -2197,9 +2197,10 @@ impl Status {
     }
 
     /// Compress the flagged files into an archive.
-    /// Is nothing is flagged :
+    /// If nothing is flagged :
     /// - If the selection is a file, it's compressed,
     /// - if the selection is a directory, all its children are recursively compressed.
+    ///
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
@@ -2226,13 +2227,16 @@ impl Status {
         if files_with_relative_paths.is_empty() {
             return Ok(());
         }
-        log_info!("{nb} files", nb = files_with_relative_paths.len());
+        let nb_files = files_with_relative_paths.len();
         match self
             .menu
             .compression
             .compress(files_with_relative_paths, here)
         {
-            Ok(()) => (),
+            Ok(()) => {
+                log_info!("{nb_files} files compressed");
+                log_line!("{nb_files} files compressed");
+            }
             Err(error) => log_info!("Error compressing files. Error: {error}"),
         }
         Ok(())
