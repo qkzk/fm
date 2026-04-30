@@ -2051,6 +2051,7 @@ Once that's done, it's all. No not implement anything else
 - Either follow the symbolic destination to a folder with <right> or enter the real path with <o>
 - New shell expansion usable in config, cli-config or shell command: %x expands to the flagged files or the selection if no file is flagged.
 - Preview CSV files with columns. Tries to determine the delimiter by counting occurrences of the delimiter character.
+- Text selection within fm. Use Alt+a to enter text selection mode. Move the cursor and press Alt+a again to start selecting. Every rendered text is copied to clipboard.
 
 ##### Bugfixes
 
@@ -2132,6 +2133,8 @@ Once that's done, it's all. No not implement anything else
 ### Other ideas
 
 
+- [ ] IMP: Coloring should be simpler and allow colouring of single elements
+- [ ] IMP: Configuration shouldn't require 10 files 
 - [ ] Menu plugin 
   - [ ] API:
     Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent
