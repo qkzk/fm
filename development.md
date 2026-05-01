@@ -2037,7 +2037,6 @@ Once that's done, it's all. No not implement anything else
     - [x] ensure marks are unique per path. Can't have multiple path with same marks.
     - [x] trashing a file remove its marks.
 
-## Current dev
 
 ### Version 0.2.4 
 
@@ -2128,12 +2127,17 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: open all tar.xz archive. Some tar.xz files aren't compressed by xz but with gz instead. Why ? I don't know. Try every method of decompression for those files.
 - [x] FIX: can't compress a whole directory easily
 
+## Current dev
+
+### Version 0.2.5 - colouring for every displayed cell ?
+
 ## TODO
+
+- [ ] FEAT: color every cell & refactor
+- [ ] FEAT: preview xournal files
 
 ### Other ideas
 
-- [ ] FEAT: preview xournal files
-- [ ] IMP: Coloring should be simpler and allow colouring of single elements
 - [ ] IMP: Configuration shouldn't require 10 files 
 - [ ] Menu plugin 
   - [ ] API:
