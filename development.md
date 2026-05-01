@@ -2106,11 +2106,11 @@ Once that's done, it's all. No not implement anything else
   - [x] refactor 
 - [x] FEAT: use chafa as alternative image displayer
 - [x] FIX: scrolling for files at bottom should be started earlier
-- [ ] FEAT: improve google drive with token refresh ala gcal
-  - [ ] the refresh seems to be done in sign [sign](/home/quentin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opendal-0.49.2/src/services/gdrive/core.rs)
-  - [ ] check for a change in refresh token and save it ?
-  - [ ] refresh token should works 6 months as long as the project isn't "testing" in gcp
-  - [ ] test a few more days...
+- [x] FEAT: improve google drive with token refresh ala gcal
+  - [x] the refresh seems to be done in sign [sign](/home/quentin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opendal-0.49.2/src/services/gdrive/core.rs)
+  - [x] check for a change in refresh token and save it ?
+  - [x] refresh token should works 6 months as long as the project isn't "testing" in gcp
+  - [x] test a few more days...
 - [x] FEAT: pressing <o> on a symlink to a dir, enters the _resolved_ link (the path it links to)
 - [x] FIX: crash when creating an already existant symlink
 - [x] FEAT: display symlink expanded path
