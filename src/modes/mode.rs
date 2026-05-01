@@ -438,6 +438,7 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
+/// Re entering action after you used an history picker.
 pub trait ReEnterMenu {
     fn reenter(&self, status: &mut Status) -> Result<()>;
 }

@@ -3,7 +3,7 @@ use std::fmt;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -20,9 +20,7 @@ use crate::common::{
 };
 use crate::io::{execute, execute_in_shell};
 use crate::log_info;
-use crate::modes::{
-    decompress_7z, decompress_gz, decompress_xz, decompress_zip, extract_extension, Quote,
-};
+use crate::modes::{decompress_7z, decompress_xz_gz, decompress_zip, extract_extension, Quote};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -226,9 +224,9 @@ impl Internal {
         match self {
             Self::Sevenz => decompress_7z(path),
             Self::Zip => decompress_zip(path),
-            Self::Xz => decompress_xz(path),
-            Self::Gz => decompress_gz(path),
-            Self::NotSupported => Err(anyhow!("Can't be opened directly")),
+            Self::Xz => decompress_xz_gz(path),
+            Self::Gz => decompress_xz_gz(path),
+            Self::NotSupported => bail!("Can't be opened directly"),
         }
     }
 }
@@ -264,30 +262,63 @@ impl External {
         Ok(())
     }
 
-    fn open_in_window<'a>(&'a self, path: &'a str) -> Result<()> {
+    fn open_in_window<'a, P>(&'a self, path: &'a str, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let arg = format!(
             "{program} {path}",
             program = self.program(),
             path = path.quote()?
         );
-        Self::open_command_in_window(&[&arg])
+        Self::open_command_in_window(&[&arg], current_path)
     }
 
-    fn open_multiple_in_window(&self, paths: &[PathBuf]) -> Result<()> {
+    fn open_multiple_in_window<P>(&self, paths: &[PathBuf], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let arg = paths
             .iter()
             .filter_map(|p| p.to_str().and_then(|s| s.quote().ok()))
             .collect::<Vec<_>>()
             .join(" ");
-        Self::open_command_in_window(&[&format!("{program} {arg}", program = self.program())])
+        Self::open_command_in_window(
+            &[&format!("{program} {arg}", program = self.program())],
+            current_path,
+        )
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
         if args.is_empty() {
-            return Err(anyhow!("args shouldn't be empty"));
+            bail!("args shouldn't be empty");
         }
-        let executable = args.remove(0);
+        let mut executable = args.remove(0);
+        if executable.contains(' ') {
+            Self::include_options_in_args(&mut executable, &mut args)?;
+        }
         execute(executable, &args)
+    }
+
+    /// Called when the command contains options, flags etc.
+    /// If the config `opener.yaml` contains a non terminal opener with option, we need to insert those options in
+    /// the command arguments.
+    /// This method will extract those arguments, update the executable with the part before the first whitespace and insert the options before the arguments.
+    /// Something like `viewnior --fullscreen` -> executable="viewnior", args=["--fullscreen", ..args].
+    ///
+    /// # Errors
+    /// Will fail if `executable` doesn't contain a ` `.
+    fn include_options_in_args<'a>(
+        executable: &mut &'a str,
+        args: &mut Vec<&'a str>,
+    ) -> Result<()> {
+        let mut split = executable.split_whitespace();
+        let first_arg = split.next().context("Shouldn't be empty")?;
+        let mut rest: Vec<_> = split.collect();
+        rest.append(args);
+        *args = rest;
+        *executable = first_arg;
+        Ok(())
     }
 
     /// Open a new shell in current window.
@@ -297,15 +328,21 @@ impl External {
     /// Clear the screen and renable raw mode.
     ///
     /// It's the responsability of the caller to ensure displayer doesn't try to override the display.
-    pub fn open_shell_in_window() -> Result<()> {
-        Self::open_command_in_window(&[])?;
+    pub fn open_shell_in_window<P>(current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        Self::open_command_in_window(&[], current_path)?;
         Ok(())
     }
 
-    pub fn open_command_in_window(args: &[&str]) -> Result<()> {
+    pub fn open_command_in_window<P>(args: &[&str], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         disable_raw_mode()?;
         execute!(stdout(), DisableMouseCapture, Clear(ClearType::All))?;
-        execute_in_shell(args)?;
+        execute_in_shell(args, current_path)?;
         enable_raw_mode()?;
         execute!(std::io::stdout(), EnableMouseCapture, Clear(ClearType::All))?;
         Ok(())
@@ -348,7 +385,7 @@ impl Kind {
 
     fn external_program(&self) -> Result<(&str, bool)> {
         let Self::External(External(program, use_term)) = self else {
-            return Err(anyhow!("not an external opener"));
+            bail!("not an external opener");
         };
         Ok((program, *use_term))
     }
@@ -429,7 +466,7 @@ impl Opener {
                 external.open(&[path.to_str().context("couldn't")?])
             }
             Some(Kind::Internal(internal)) => internal.open(path),
-            None => Err(anyhow!("{p} can't be opened", p = path.display())),
+            None => bail!("{p} can't be opened", p = path.display()),
         }
     }
 
@@ -469,18 +506,28 @@ impl Opener {
             .collect()
     }
 
-    pub fn open_in_window(&self, path: &Path) {
+    pub fn open_in_window<P>(&self, path: &Path, current_path: P)
+    where
+        P: AsRef<Path>,
+    {
         let Some(Kind::External(external)) = self.kind(path) else {
             return;
         };
         if !external.use_term() {
             return;
         };
-        let _ = external.open_in_window(path.to_string_lossy().as_ref());
+        let _ = external.open_in_window(path.to_string_lossy().as_ref(), current_path);
     }
 
-    pub fn open_multiple_in_window(&self, openers: HashMap<External, Vec<PathBuf>>) -> Result<()> {
+    pub fn open_multiple_in_window<P>(
+        &self,
+        openers: HashMap<External, Vec<PathBuf>>,
+        current_path: P,
+    ) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let (external, paths) = openers.iter().next().unwrap();
-        external.open_multiple_in_window(paths)
+        external.open_multiple_in_window(paths, current_path)
     }
 }

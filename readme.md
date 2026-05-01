@@ -139,6 +139,8 @@ Many ways to jump somewhere:
 - Alt+j: by jumping to a flagged file,
 - ': by creating your own marks and jumping to them
 
+If you have [zoxide](https://github.com/ajeetdsouza/zoxide), every "cd" updates your zoxide database. It allows you to use some shortcut inside fm.
+
 ### File manipulation
 
 - Flag files with `space` (`*`: flag all, `v`: reverse, `u`: unflag)
@@ -361,6 +363,8 @@ Only developpers of fm should be concerned.
 - Mount a remote filesystem using sshfs with Alt-r.
 - Mount a MTP device with Alt-R.
 - Set temporary marks (erased on quit) with `Alt-"` (to save) and `"` to jump.
+- Explore mounts, eject removables usb, decrypt & mount luks encrypted devices etc. with `Alt-e`
+- Copy rendered text to clipboard with `Alt-a`, move your cursor, `Alt-a` again and then `Ctrl-c`&
 
 Most of those features are inspired by ranger, dired and alternatives (Midnight commander, nnn, lf etc.).
 
@@ -510,10 +514,10 @@ You can configure :
 - **TUI applications**. Some classic TUI applications like htop, glances, btop, lazygit are already there.
   Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
   not a CLI application like bat.
-- **Colors** of files.
+- **Theming**. You can configure every visible color and create your own themes.
+  ANSI colors, rgb or hex values are supported.
   Non standard files (directory, char devices, block devices, symlinks, sockets, fifo) have their own configurable colors.
-  You can use ansi colors or rgb values.
-  Standard files are colored by their extension and you can use any gradient between two colors
+  Standard files are colored by their extension and you can use any gradient between two colors.
   Every extension has its own random color.
 
 ## External dependencies
@@ -526,15 +530,28 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
 - [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
 - [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. You can display images within WezTerm directly with the help of iterm2's Inline Image Protocol
+- [chafa](https://hpjansson.org/chafa/) another way to display images within fm. Used when ueberzug isn't installed and your terminal isn't compatible with iterm2's Inline Image Protocol.
+- [ffmpeg](https://www.ffmpeg.org/) is used to preview videos by creating a video thumbnal
+- [udisksctl](https://github.com/storaged-project/udisks/tree/master) is used to mount devices
+- [gio](https://docs.gtk.org/gio/) is used to mount removable devices
+- [udevadm](https://systemd.io/) is used to get information about fifo file
+- [bdstar](https://www.libarchive.org/) used to display common archive content
+- [column](https://www.kernel.org/pub/linux/utils/util-linux/) is used to align text properly in csv previews
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
-- [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
+- [ss](https://git.kernel.org/pub/scm/network/iproute2/iproute2.git) used to display info about socket files
+- [jupyter](ttps://jupyter.org/) preview jupyter notebooks by converting them to markdown
 - [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
 - [libreoffice](https://www.libreoffice.org) preview OpenOffice & MS-office documents
 - [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
 - [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
-- [sshfs](https://github.com/libfuse/sshfs) to mount remote filesystem over SFTP.
+- [pdftotext](https://github.com/jalan/pdftotext) used to extract text from pdf file
+- [sshfs](https://github.com/libfuse/sshfs) to mount remote filesystem over SFTP
+- [exiftool](https://exiftool.org/) to remove exif metadata from image files
+- [lazygit](https://github.com/jesseduffield/lazygit) is used to manage git repos within fm
+- [ncdu](https://github.com/rofl0r/ncdu) see what diretories are using your disk space
+- [readelf](https://github.com/ghosind/readelf) used to preview executable files
 
 
 ## Contribution

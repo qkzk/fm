@@ -121,7 +121,7 @@ impl ContentWindow {
     /// too close from the border.
     /// User shouldn't be able to reach the last elements
     fn is_index_outside_window(&self, index: usize) -> bool {
-        index < self.top || index >= self.bottom
+        index < self.top || index + Self::FOOTER_ROWS >= self.bottom
     }
 
     pub fn is_row_in_header(row: u16) -> bool {

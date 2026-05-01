@@ -119,6 +119,14 @@ impl OpendalKind {
     }
 }
 
+/// Returns a vector of cloud token names read from config folder.
+///
+/// Every "could config" file is named `cloud_something.yaml`, this function extracts the
+/// "something" part.
+///
+/// # Errors
+///
+/// May fail if we can't read the config folder (fm should have crashed already).
 pub fn get_cloud_token_names() -> Result<Vec<String>> {
     Ok(std::fs::read_dir(path_to_config_folder()?)?
         .filter_map(|e| e.ok())

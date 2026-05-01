@@ -9,9 +9,8 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use crossterm::event::{Event, KeyEvent};
 use opendal::EntryMode;
-use parking_lot::lock_api::Mutex;
-use parking_lot::RawMutex;
-use ratatui::layout::Size;
+use parking_lot::{lock_api::Mutex, RawMutex};
+use ratatui::{buffer::Buffer, layout::Position, layout::Size};
 use sysinfo::Disks;
 use walkdir::WalkDir;
 
@@ -194,7 +193,7 @@ impl Status {
         };
         let disks = Disks::new_with_refreshed_list();
         let session = Session::new(size.width);
-        let internal_settings = InternalSettings::new(opener, size, disks);
+        let internal_settings = InternalSettings::new(opener, size, disks, binds);
         let menu = MenuHolder::new(start_dir, binds)?;
         let focus = Focus::default();
 
@@ -307,6 +306,17 @@ impl Status {
         }
     }
 
+    #[rustfmt::skip]
+    fn cursor_position(&self) -> Position {
+        let Size { width, height } = self.internal_settings.term_size();
+        match self.focus {
+            Focus::LeftFile     => Position::new(     width / 4 ,      height / 4),
+            Focus::RightFile    => Position::new(3 * (width / 4),      height / 4),
+            Focus::LeftMenu     => Position::new(     width / 4 , 3 * (height / 4) + 1),
+            Focus::RightMenu    => Position::new(3 * (width / 4), 3 * (height / 4) + 1),
+        }
+    }
+
     /// Set focus from a mouse coordinates.
     /// When a mouse event occurs, focus is given to the window where it happened.
     pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
@@ -318,9 +328,14 @@ impl Status {
 
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        if self.internal_settings.cursor.is_active() {
+            let pos = Position { x: col, y: row };
+            self.internal_settings.cursor.move_cursor_to(pos);
+            self.internal_settings.cursor.move_origin_to(pos);
+            return Ok(());
+        }
         let window = self.set_focus_from_pos(row, col)?;
-        self.click_action_from_window(&window, row, col, binds)?;
-        Ok(())
+        self.click_action_from_window(&window, row, col, binds)
     }
 
     /// True iff user has clicked on a preview in second pane.
@@ -492,11 +507,13 @@ impl Status {
     }
 
     /// Returns the size of the terminal (width, height)
-    pub fn term_size(&self) -> Size {
+    #[inline]
+    fn term_size(&self) -> Size {
         self.internal_settings.term_size()
     }
 
     /// Returns the width of the terminal window.
+    #[inline]
     pub fn term_width(&self) -> u16 {
         self.term_size().width
     }
@@ -639,6 +656,7 @@ impl Status {
         self.refresh_status()
     }
 
+    #[inline]
     fn wide_enough_for_dual(&self) -> bool {
         self.term_width() >= MIN_WIDTH_FOR_DUAL_PANE
     }
@@ -647,7 +665,8 @@ impl Status {
         !self.wide_enough_for_dual() && self.session.dual()
     }
 
-    fn use_dual(&self) -> bool {
+    #[inline]
+    pub fn use_dual(&self) -> bool {
         self.wide_enough_for_dual() && self.session.dual()
     }
 
@@ -922,9 +941,10 @@ impl Status {
         }
     }
 
-    fn flagged_or_selected_relative_to(&self, here: &Path) -> Vec<PathBuf> {
+    fn flagged_or_selected_files_relative_to(&self, here: &Path) -> Vec<PathBuf> {
         self.flagged_or_selected()
             .iter()
+            .filter(|p| !p.is_dir())
             .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
             .filter(|f| !f.starts_with(".."))
             .collect()
@@ -968,6 +988,19 @@ impl Status {
                 .content
                 .iter()
                 .for_each(|file| self.menu.flagged.toggle(&file.path));
+        }
+    }
+
+    /// Flag a directory and all its children recursively.
+    pub fn flag_all_children_of_dir(&mut self, path: PathBuf) {
+        if !path.is_dir() {
+            return;
+        }
+        for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+            let p = entry.path();
+            if !p.is_dir() {
+                self.menu.flagged.push(p.to_path_buf());
+            }
         }
     }
 
@@ -1548,6 +1581,14 @@ impl Status {
             .current_tab()
             .selected_path()
             .context("No selected path")?;
+        if path.is_symlink() {
+            let Ok(expanded_path) = std::fs::read_link(&path) else {
+                return Ok(());
+            };
+            if expanded_path.is_dir() {
+                return self.current_tab_mut().cd(&expanded_path);
+            }
+        }
         self.open_single_file(&path)
     }
 
@@ -1555,15 +1596,19 @@ impl Status {
     pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => self.mount_iso_drive(),
-            Some(_) => self.internal_settings.open_single_file(path),
+            Some(_) => self
+                .internal_settings
+                .open_single_file(path, self.tabs[self.index].directory_of_selected()?),
             None => Ok(()),
         }
     }
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.internal_settings
-            .open_flagged_files(&self.menu.flagged)
+        self.internal_settings.open_flagged_files(
+            &self.menu.flagged,
+            self.tabs[self.index].directory_of_selected()?,
+        )
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -1804,7 +1849,8 @@ impl Status {
         }
         let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         if executable == *SAME_WINDOW_TOKEN {
-            self.internal_settings.open_in_window(&params)?;
+            self.internal_settings
+                .open_in_window(&params, self.tabs[self.index].directory_of_selected()?)?;
             return Ok(true);
         }
         if !is_in_path(&executable) {
@@ -2151,23 +2197,46 @@ impl Status {
     }
 
     /// Compress the flagged files into an archive.
+    /// If nothing is flagged :
+    /// - If the selection is a file, it's compressed,
+    /// - if the selection is a directory, all its children are recursively compressed.
+    ///
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(&mut self) -> Result<()> {
+        if self.menu.flagged.is_empty() {
+            let sel = self
+                .current_tab()
+                .selected_path()
+                .context("can't be empty")?;
+
+            let dir = if sel.is_dir() {
+                sel.as_ref()
+            } else {
+                self.menu.flagged.toggle(sel.as_ref());
+                sel.parent().context("no parent")?
+            };
+
+            self.flag_all_children_of_dir(dir.to_path_buf());
+        }
         let here = &self.current_tab().directory.path;
         set_current_dir(here)?;
-        let files_with_relative_paths = self.flagged_or_selected_relative_to(here);
+        let files_with_relative_paths = self.flagged_or_selected_files_relative_to(here);
         if files_with_relative_paths.is_empty() {
             return Ok(());
         }
+        let nb_files = files_with_relative_paths.len();
         match self
             .menu
             .compression
             .compress(files_with_relative_paths, here)
         {
-            Ok(()) => (),
+            Ok(()) => {
+                log_info!("{nb_files} files compressed");
+                log_line!("{nb_files} files compressed");
+            }
             Err(error) => log_info!("Error compressing files. Error: {error}"),
         }
         Ok(())
@@ -2446,6 +2515,26 @@ impl Status {
         log_info!("{old_path:?} -> {new_path:?}", new_path = new_path.as_ref());
         self.menu.temp_marks.move_path(old_path, new_path.as_ref());
         self.menu.marks.move_path(old_path, new_path.as_ref())
+    }
+
+    /// True iff the user is in cursor selecting mode.
+    pub fn wants_buffer(&self) -> bool {
+        self.internal_settings.cursor.is_selecting()
+    }
+
+    /// Store the buffer of displayed cells by ratatui in memory
+    pub fn set_buffer(&mut self, buffer: Buffer) {
+        self.internal_settings.last_buffer = Some(buffer);
+    }
+
+    /// Copy the rect buffer of text in the clipboard.
+    pub fn copy_buffer_rect(&self) {
+        self.internal_settings.copy_buffer_rect()
+    }
+
+    /// Enter or exit the cursor mode.
+    pub fn cursor_toggle(&mut self) {
+        self.internal_settings.cursor.toggle(self.cursor_position())
     }
 }
 

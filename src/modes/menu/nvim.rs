@@ -57,6 +57,8 @@ fn nvim_remote_send_open(server_address: &str, filepath: &std::path::Path) -> Re
     Ok(())
 }
 
+/// What kind of actions can we send to nvim ?
+/// Currently only opening a buffer or closing it.
 #[non_exhaustive]
 pub enum NvimIPCAction<'a, P>
 where
@@ -66,6 +68,8 @@ where
     DELETE(&'a P),
 }
 
+/// Called when something is done on a buffer which may infer with nvim.
+/// It will send an event to nvim which is read by fm-picker.
 pub fn nvim_inform_ipc<P>(output_socket: &str, action: NvimIPCAction<P>) -> Result<()>
 where
     P: AsRef<std::path::Path>,

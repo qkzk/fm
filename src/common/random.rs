@@ -22,6 +22,7 @@ fn random_numbers() -> impl Iterator<Item = u32> {
     })
 }
 
+/// Pseudorandom for ascii alphabetic char
 pub fn random_alpha_chars() -> impl Iterator<Item = char> {
     random_numbers()
         .map(|r| (r & 255) as u8 as char)

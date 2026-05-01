@@ -44,7 +44,7 @@ impl Quote<String> for &OsStr {
 }
 
 fn must_quote(byte: u8) -> bool {
-    matches!(byte, b' ' | b'\'' | b'"')
+    matches!(byte, b' ' | b'\'' | b'"' | b'(' | b')')
 }
 
 /// Quote a path to insert it into a shell command if need be.

@@ -68,6 +68,7 @@ pub fn write_to_stream(stream: &mut UnixStream, data: String) -> Result<()> {
     Ok(())
 }
 
+/// Remove a socket file and log it.
 pub fn remove_socket(socket_path: &str) {
     std::fs::remove_file(socket_path).expect("Couldn't delete socket file");
     crate::log_info!("Deleted socket {socket_path}");

@@ -18,8 +18,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::common::{CONFIG_FOLDER, ZOXIDE};
 use crate::config::IS_LOGGING;
 use crate::event::build_input_socket_filepath;
-use crate::io::execute_without_output;
-use crate::io::Extension;
+use crate::io::{execute_without_output, Extension};
 use crate::modes::{human_size, nvim_open, ContentWindow, Users};
 use crate::{log_info, log_line};
 
@@ -160,6 +159,7 @@ pub fn get_clipboard() -> Option<String> {
 /// Sets the clipboard content.
 pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
+    log_line!("copied content to clipboard.");
     let Ok(mut ctx) = ClipboardContext::new() else {
         return;
     };

@@ -42,7 +42,12 @@ impl Displayer {
                 }
                 let mut status = status.lock();
                 if !status.internal_settings.is_disabled() {
-                    display.display_all(&status);
+                    let frame = display.display_all(&status);
+                    if status.wants_buffer() {
+                        if let Ok(frame) = frame {
+                            status.set_buffer(frame.buffer.clone())
+                        }
+                    }
                 }
                 if status.should_tabs_images_be_cleared() {
                     status.set_tabs_images_cleared();

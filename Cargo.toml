@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
@@ -67,11 +67,12 @@ strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"
 syntect = { version = "5.2.0", features = ["dump-load"] }
 sysinfo = { version = "0.38.0", features = ["linux-tmpfs", "linux-netdevs"] }
-tar = "0.4.38"
+tar = "0.4.45"
 tokio = { version = "1", features = ["full"] }
 unicode-segmentation = "1.11.0"
 url = "2.5.8"
 url-escape = "0.1.1"
 vte = "0.13.0"
 walkdir = "2.5.0"
-zip = "=4.2.0"
+xz2 = "0.1.7"
+zip = "8.5.1"

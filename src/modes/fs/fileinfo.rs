@@ -8,7 +8,7 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use ratatui::style::Style;
 
-use crate::config::{extension_color, FILE_STYLES};
+use crate::config::{extension_color, FileStyle};
 use crate::modes::{human_size, permission_mode_to_str, ToPath, Users};
 
 type Valid = bool;
@@ -95,13 +95,13 @@ impl FileKind<Valid> {
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size: ",
-            Self::Socket            => "Size: ",
-            Self::Directory         => "Elements:",
-            Self::NormalFile        => "Size: ",
+            Self::Fifo              => "Size:       ",
+            Self::Socket            => "Size:       ",
+            Self::Directory         => "Elements:   ",
+            Self::NormalFile        => "Size:       ",
             Self::CharDevice        => "Major,Minor:",
             Self::BlockDevice       => "Major,Minor:",
-            Self::SymbolicLink(_)   => "Size: ",
+            Self::SymbolicLink(_)   => "Size:       ",
         }
     }
 
@@ -259,17 +259,26 @@ impl FileInfo {
         let mut repr = self.format_base(owner_col_width, group_col_width);
         repr.push(' ');
         repr.push_str(&self.filename);
-        self.expand_symlink(&mut repr);
+        if let FileKind::SymbolicLink(_) = self.file_kind {
+            self.expand_symlink(&mut repr);
+        }
         repr
     }
 
-    fn expand_symlink(&self, repr: &mut String) {
-        if let FileKind::SymbolicLink(_) = self.file_kind {
-            match std::fs::read_link(&self.path) {
-                Ok(dest) if dest.exists() => {
-                    repr.push_str(&format!(" -> {dest}", dest = dest.display()))
-                }
-                _ => repr.push_str("  broken link"),
+    /// Append the destination link to the content.
+    /// If the link is broken, it appends "broken link"
+    ///
+    /// # Warning
+    ///
+    /// This method assumes the current file to be a _symlink_ and shouldn't be called otherwise.
+    /// It's the responsability of the **caller** to ensure it's not called for other file kinds.
+    pub fn expand_symlink(&self, repr: &mut String) {
+        match std::fs::read_link(&self.path) {
+            Ok(dest) if dest.exists() => {
+                repr.push_str(&format!(" -> {dest}", dest = dest.display()))
+            }
+            _ => {
+                repr.push_str("  broken link");
             }
         }
     }
@@ -332,6 +341,10 @@ impl FileInfo {
         matches!(self.file_kind, FileKind::Directory)
     }
 
+    pub fn is_symlink(&self) -> bool {
+        matches!(self.file_kind, FileKind::SymbolicLink(_))
+    }
+
     /// True iff the parent of the file is root.
     /// It's also true for the root folder itself.
     fn is_root_or_parent_is_root(&self) -> bool {
@@ -364,11 +377,10 @@ impl FileInfo {
     }
 
     #[inline]
-    pub fn style(&self) -> Style {
+    pub fn style(&self, styles: &'static FileStyle) -> Style {
         if matches!(self.file_kind, FileKind::NormalFile) {
             return extension_color(&self.extension).into();
         }
-        let styles = FILE_STYLES.get().expect("Colors should be set");
         match self.file_kind {
             FileKind::Directory => styles.directory,
             FileKind::BlockDevice => styles.block,

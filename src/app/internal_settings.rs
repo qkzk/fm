@@ -5,12 +5,17 @@ use std::sync::{mpsc::Sender, Arc};
 use anyhow::{bail, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Size;
 use sysinfo::Disks;
 
-use crate::common::{is_in_path, open_in_current_neovim, NVIM, SS};
+use crate::common::{is_in_path, open_in_current_neovim, set_clipboard, NVIM, SS};
+use crate::config::Bindings;
 use crate::event::FmEvents;
-use crate::io::{execute_and_output, Args, Extension, External, Opener};
+use crate::io::{
+    execute_and_output, read_rect_from_buffer, Args, Cursor, CursorDirection, Extension, External,
+    Opener,
+};
 use crate::modes::{copy_move, extract_extension, Content, Flagged};
 
 /// Internal settings of the status.
@@ -50,10 +55,15 @@ pub struct InternalSettings {
     is_disabled: bool,
     /// true if the terminal should be cleared before exit. It's set to true when we reuse the window to start a new shell.
     pub clear_before_quit: bool,
+    /// Cesor movement and selection. Responsible of recording what is selected by the user.
+    pub cursor: Cursor,
+    /// Last registered frame
+    pub last_buffer: Option<Buffer>,
 }
 
 impl InternalSettings {
-    pub fn new(opener: Opener, size: Size, disks: Disks) -> Self {
+    /// Creates a new instance. Some parameters (`nvim_server` and `inside_neovim`) are read from args.
+    pub fn new(opener: Opener, size: Size, disks: Disks, binds: &Bindings) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
@@ -63,6 +73,8 @@ impl InternalSettings {
         let in_mem_progress = None;
         let is_disabled = false;
         let clear_before_quit = false;
+        let cursor = Cursor::new(binds);
+        let last_buffer = None;
         Self {
             force_clear,
             must_quit,
@@ -75,14 +87,18 @@ impl InternalSettings {
             in_mem_progress,
             is_disabled,
             clear_before_quit,
+            cursor,
+            last_buffer,
         }
     }
 
+    #[inline]
     /// Returns the size of the terminal (width, height)
     pub fn term_size(&self) -> Size {
         self.size
     }
 
+    /// Update the size from width & height.
     pub fn update_size(&mut self, width: u16, height: u16) {
         self.size = Size::from((width, height))
     }
@@ -94,23 +110,30 @@ impl InternalSettings {
         self.force_clear = true;
     }
 
+    /// Reset the clear flag.
+    /// Prevent the display from being completely reset for the next frame.
     pub fn reset_clear(&mut self) {
         self.force_clear = false;
     }
 
+    /// True iff some event required a complete refresh of the dispplay
     pub fn should_be_cleared(&self) -> bool {
         self.force_clear
     }
 
+    /// Refresh the disks -- removing non listed ones -- and returns a reference
     pub fn disks(&mut self) -> &Disks {
         self.disks.refresh(true);
         &self.disks
     }
 
+    /// Returns a vector of mount points.
+    /// Disks are refreshed first.
     pub fn mount_points_vec(&mut self) -> Vec<&Path> {
         self.disks().iter().map(|d| d.mount_point()).collect()
     }
 
+    /// Returns a set of mount points
     pub fn mount_points_set(&self) -> HashSet<&Path> {
         self.disks
             .list()
@@ -119,6 +142,12 @@ impl InternalSettings {
             .collect()
     }
 
+    /// Tries its best to update the neovim address.
+    /// 1. from the `$NVIM_LISTEN_ADDRESS` environment variable,
+    /// 2. from the opened socket read from ss.
+    ///
+    /// # Warning
+    /// If multiple neovim instances are opened at the same time, it will get the first one from the ss output.
     pub fn update_nvim_listen_address(&mut self) {
         if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
             self.nvim_server = nvim_listen_address;
@@ -153,13 +182,15 @@ impl InternalSettings {
         Ok(())
     }
 
+    /// Start the copy of the next file in copy file queue and register the progress in
+    /// the mock terminal used to create the display.
     pub fn copy_next_file_in_queue(
         &mut self,
         fm_sender: Arc<Sender<FmEvents>>,
         width: u16,
     ) -> Result<()> {
         let (sources, dest) = self.copy_file_queue[0].clone();
-        let Size { width: _, height } = self.term_size();
+        let height = self.term_size().height;
         let in_mem = copy_move(
             crate::modes::CopyMove::Copy,
             sources,
@@ -204,13 +235,24 @@ impl InternalSettings {
         self.clear_before_quit = true;
     }
 
+    /// True iff the terminal is disabled.
+    /// The state (`self.is_disabled`) is changed every time
+    /// a new shell is started replacing the normal window.
+    /// If true, the display shouldn't be drawn.
     pub fn is_disabled(&self) -> bool {
         self.is_disabled
     }
 
-    pub fn open_in_window(&mut self, args: &[&str]) -> Result<()> {
+    /// Open a new command which output will replace the current display.
+    /// Current progress of the application is locked as long as the command doesn't finish.
+    /// Firstly the display is disabled, then the command is ran.
+    /// Once the command ends... the display is reenabled again.
+    pub fn open_in_window<P>(&mut self, args: &[&str], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        External::open_command_in_window(args)?;
+        External::open_command_in_window(args, current_path)?;
         self.enable_display();
         Ok(())
     }
@@ -219,38 +261,58 @@ impl InternalSettings {
         matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }
 
-    pub fn open_single_file(&mut self, path: &Path) -> Result<()> {
+    /// Open a single file:
+    /// In neovim if this file should be,
+    /// or in a new shell in current terminal,
+    /// or in a new window.
+    pub fn open_single_file<P>(&mut self, path: &Path, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         if self.inside_neovim && self.should_this_file_be_opened_in_neovim(path) {
             self.update_nvim_listen_address();
             open_in_current_neovim(path, &self.nvim_server);
             Ok(())
         } else if self.opener.use_term(path) {
-            self.open_single_in_window(path);
+            self.open_single_in_window(path, current_path);
             Ok(())
         } else {
             self.opener.open_single(path)
         }
     }
 
-    fn open_single_in_window(&mut self, path: &Path) {
+    fn open_single_in_window<P>(&mut self, path: &Path, current_path: P)
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        self.opener.open_in_window(path);
+        self.opener.open_in_window(path, current_path);
         self.enable_display();
     }
 
-    pub fn open_flagged_files(&mut self, flagged: &Flagged) -> Result<()> {
+    /// Open all the flagged files.
+    /// We try to open all files in a single command if it's possible.
+    /// If all files should be opened in neovim, it will be.
+    /// Otherwise, they will be opened separetely.
+    pub fn open_flagged_files<P>(&mut self, flagged: &Flagged, current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         if self.inside_neovim && flagged.should_all_be_opened_in_neovim() {
             self.open_multiple_in_neovim(flagged.content());
             Ok(())
         } else {
-            self.open_multiple_outside(flagged.content())
+            self.open_multiple_outside(flagged.content(), current_path)
         }
     }
 
-    fn open_multiple_outside(&mut self, paths: &[PathBuf]) -> Result<()> {
+    fn open_multiple_outside<P>(&mut self, paths: &[PathBuf], current_path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         let openers = self.opener.regroup_per_opener(paths);
         if Self::all_files_opened_in_terminal(&openers) {
-            self.open_multiple_files_in_window(openers)
+            self.open_multiple_files_in_window(openers, current_path)
         } else {
             self.opener.open_multiple(openers)
         }
@@ -260,12 +322,16 @@ impl InternalSettings {
         openers.len() == 1 && openers.keys().next().expect("Can't be empty").use_term()
     }
 
-    fn open_multiple_files_in_window(
+    fn open_multiple_files_in_window<P>(
         &mut self,
         openers: HashMap<External, Vec<PathBuf>>,
-    ) -> Result<()> {
+        current_path: P,
+    ) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
         self.disable_display();
-        self.opener.open_multiple_in_window(openers)?;
+        self.opener.open_multiple_in_window(openers, current_path)?;
         self.enable_display();
         Ok(())
     }
@@ -284,6 +350,8 @@ impl InternalSettings {
         self.must_quit = true
     }
 
+    /// Format the progress of the current operation in copy file queue.
+    /// If nothing is being copied, it returns `None`
     pub fn format_copy_progress(&self) -> Option<String> {
         let Some(copy_progress) = &self.in_mem_progress else {
             return None;
@@ -298,5 +366,29 @@ impl InternalSettings {
                 nb = nb_copy_left
             ))
         }
+    }
+
+    /// Move the cursor in given direction, up, down, left or right.
+    /// Cursor is clamped to the the screen and can't move outside.
+    /// Extends the selection if the cursor is active.
+    pub fn move_cursor(&mut self, direction: CursorDirection) {
+        self.cursor.move_cursor(direction, self.term_size());
+        if self.cursor.is_selecting() {
+            self.cursor.extend_selection();
+        }
+    }
+
+    /// Copy the rect buffer of text in the clipboard.
+    pub fn copy_buffer_rect(&self) {
+        let Some(buffer) = &self.last_buffer else {
+            crate::log_info!("Tried to read last buffer but had nothing.");
+            crate::log_line!("Couldn't copy the content...");
+            return;
+        };
+        let Some(rect) = &self.cursor.rect() else {
+            return;
+        };
+        let content = read_rect_from_buffer(rect, buffer);
+        set_clipboard(content);
     }
 }

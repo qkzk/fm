@@ -63,9 +63,10 @@ impl<'a> MoreInfos<'a> {
     }
 
     /// Informations about the file as an array of strings.
-    pub fn to_lines(&self) -> [String; 7] {
+    pub fn to_lines(&self) -> [String; 8] {
         let mut times = self.system_times();
         [
+            self.file_path(),
             self.owner_group(),
             self.perms(),
             self.size_inode(),
@@ -74,6 +75,14 @@ impl<'a> MoreInfos<'a> {
             std::mem::take(&mut times[2]),
             self.kind_opener(),
         ]
+    }
+
+    fn file_path(&self) -> String {
+        let mut ret = format!("Filepath:    {path}", path = self.file_info.path.display());
+        if self.file_info.is_symlink() {
+            self.file_info.expand_symlink(&mut ret);
+        }
+        ret
     }
 
     fn owner_group(&self) -> String {

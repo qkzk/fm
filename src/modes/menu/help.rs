@@ -14,6 +14,7 @@ const CUSTOM_HELP: &str = "
 %d: the full path of the current directory,
 %t: execute the command in the same window,
 %c: the current clipboard as a string.
+%x: flagged or selected file if none.
 ";
 
 /// Creates the help `String` from keybindings.

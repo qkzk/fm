@@ -363,9 +363,9 @@ impl LeaveMenu {
 
     /// Open a menu with most common actions
     fn context(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let command = status.menu.context.matcher().to_owned();
+        let action = status.menu.context.matcher().to_owned();
         EventAction::reset_mode(status)?;
-        command.matcher(status, binds)
+        action.matcher(status, binds)
     }
 
     /// Execute the selected action.

@@ -206,6 +206,8 @@ pub const TRASH_CONFIRM_LINE: &str =
     "Up, Down: navigation - Enter: restore the selected file - x: delete permanently - ";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
+/// chafa executable
+pub const CHAFA: &str = "chafa";
 /// ueberzug (used to preview images, videos & fonts)
 pub const UEBERZUG: &str = "ueberzug";
 /// fontimage (used to preview fonts)
@@ -242,6 +244,8 @@ pub const UDEVADM: &str = "udevadm";
 pub const NVIM: &str = "nvim";
 /// bsdtar executable, used to display common archive content
 pub const BSDTAR: &str = "bsdtar";
+/// column executable, used to format csv files
+pub const COLUMN: &str = "column";
 /// 7z executable, used to display 7z archive content
 pub const SEVENZ: &str = "7z";
 /// libreoffice executable

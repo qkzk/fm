@@ -1,8 +1,9 @@
-use std::{fs::File, path::Path};
+use std::{fs::File, io::Read, path::Path};
 
 use anyhow::{Context, Result};
-use flate2::read::{GzDecoder, ZlibDecoder};
+use flate2::read::{DeflateDecoder, GzDecoder, MultiGzDecoder, ZlibDecoder};
 use tar::Archive;
+use xz2::read::XzDecoder;
 
 use crate::common::{is_in_path, path_to_string, BSDTAR, SEVENZ};
 use crate::io::{execute_and_output, execute_without_output};
@@ -22,23 +23,6 @@ pub fn decompress_zip(source: &Path) -> Result<()> {
         .parent()
         .context("decompress: source should have a parent")?;
     zip.extract(parent)?;
-
-    Ok(())
-}
-
-/// Decompress a gz compressed file into its parent directory.
-///
-/// # Errors
-///
-/// It may fail if the file can't be opened.
-pub fn decompress_gz(source: &Path) -> Result<()> {
-    let tar_gz = File::open(source)?;
-    let tar = GzDecoder::new(tar_gz);
-    let mut archive = Archive::new(tar);
-    let parent = source
-        .parent()
-        .context("decompress: source should have a parent")?;
-    archive.unpack(parent)?;
 
     Ok(())
 }
@@ -74,21 +58,45 @@ pub fn decompress_7z(source: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Decompress a zlib compressed file into its parent directory.
+type Reader<'a> = &'a [fn(File) -> Box<dyn Read>];
+
+/// Decompress an xz or gz compressed file into its parent directory.
 ///
 /// # Errors
 ///
 /// It may fail if the file can't be opened.
-pub fn decompress_xz(source: &Path) -> Result<()> {
-    let tar_xz = File::open(source)?;
-    let tar = ZlibDecoder::new(tar_xz);
-    let mut archive = Archive::new(tar);
+pub fn decompress_xz_gz(source: &Path) -> Result<()> {
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    archive.unpack(parent)?;
+
+    let strategies: Reader = &[
+        |f| Box::new(XzDecoder::new(f)),
+        |f| Box::new(GzDecoder::new(f)),
+        |f| Box::new(ZlibDecoder::new(f)),
+        |f| Box::new(DeflateDecoder::new(f)),
+        |f| Box::new(MultiGzDecoder::new(f)),
+        |f| Box::new(f),
+    ];
+
+    for make_reader in strategies {
+        let file = File::open(source)?;
+        let reader = make_reader(file);
+
+        if try_unpack(reader, parent) {
+            return Ok(());
+        }
+    }
+
+    log_info!("Couldn't unpack the archive {}", source.display());
+    log_line!("Couldn't unpack the archive {}", source.display());
 
     Ok(())
+}
+
+fn try_unpack<R: Read>(reader: R, dst: &Path) -> bool {
+    let mut archive = Archive::new(reader);
+    archive.unpack(dst).is_ok()
 }
 
 /// List files contained in a ZIP file.

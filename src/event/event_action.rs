@@ -10,7 +10,7 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, External};
+use crate::io::{read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -72,6 +72,10 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            status.internal_settings.cursor.reset();
+            return Ok(());
+        }
         if status.focus.is_file() && status.current_tab().display_mode.is_preview() {
             status.leave_preview()?;
         }
@@ -340,6 +344,11 @@ impl EventAction {
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn copy_paste(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_selecting() {
+            status.copy_buffer_rect();
+            status.internal_settings.cursor.reset();
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::NeedConfirmation(NeedConfirmation::Copy)
@@ -385,12 +394,24 @@ impl EventAction {
                 .file_name()
                 .context("event symlink: File not found")?;
             let link = status.current_tab().directory_of_selected()?.join(filename);
-            std::os::unix::fs::symlink(original_file, &link)?;
-            log_line!(
-                "Symlink {link} links to {original_file}",
-                original_file = original_file.display(),
-                link = link.display()
-            );
+            match std::os::unix::fs::symlink(original_file, &link) {
+                Ok(()) => {
+                    log_line!(
+                        "Created symlink {link} links to {original_file}",
+                        original_file = original_file.display(),
+                        link = link.display()
+                    );
+                    log_info!(
+                        "Created symlink {link} links to {original_file}",
+                        original_file = original_file.display(),
+                        link = link.display()
+                    )
+                }
+                Err(error) => {
+                    log_line!("Couldn't create symlink {error:?}");
+                    log_info!("Couldn't create symlink {error:?}");
+                }
+            }
         }
         status.clear_flags_and_reset_view()
     }
@@ -463,14 +484,11 @@ impl EventAction {
 
     /// Open the file with configured opener or enter the directory.
     fn normal_enter_file(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        if tab.display_mode.is_tree() {
-            return EventAction::open_file(status);
-        };
+        let tab = &mut status.tabs[status.index];
         if tab.directory.is_empty() {
             return Ok(());
         }
-        if tab.directory.is_selected_dir()? {
+        if status.menu.flagged.is_empty() && tab.directory.is_selected_dir()? {
             tab.go_to_selected_dir()?;
             status.thumbnail_directory_video();
             Ok(())
@@ -669,7 +687,7 @@ impl EventAction {
         }
         set_current_dir(status.current_tab().current_directory_path())?;
         status.internal_settings.disable_display();
-        External::open_shell_in_window()?;
+        External::open_shell_in_window(status.current_tab().directory_of_selected()?)?;
         status.internal_settings.enable_display();
         Ok(())
     }
@@ -928,6 +946,10 @@ impl EventAction {
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
     pub fn move_up(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            status.internal_settings.move_cursor(CursorDirection::Up);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::move_display_up(status)?;
         } else {
@@ -1046,6 +1068,10 @@ impl EventAction {
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
     pub fn move_down(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            status.internal_settings.move_cursor(CursorDirection::Down);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::move_display_down(status)?
         } else {
@@ -1080,6 +1106,10 @@ impl EventAction {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            status.internal_settings.move_cursor(CursorDirection::Left);
+            return Ok(());
+        }
         if status.focus.is_file() {
             Self::file_move_left(status.current_tab_mut())?;
         } else {
@@ -1108,7 +1138,15 @@ impl EventAction {
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
     pub fn move_right(status: &mut Status) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            status.internal_settings.move_cursor(CursorDirection::Right);
+            return Ok(());
+        }
         if status.focus.is_file() {
+            let file = status.current_tab().current_file()?;
+            if file.is_dir() {
+                return status.current_tab_mut().cd(&file.path);
+            }
             Self::enter_file(status)
         } else {
             let tab: &mut Tab = status.current_tab_mut();
@@ -1166,6 +1204,20 @@ impl EventAction {
                 LeaveMenu::leave_menu(status, binds)?;
             }
         };
+        Ok(())
+    }
+
+    /// A mouse drag when selecting with cursor extends the selection upto there.
+    pub fn mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        log_info!("mouse_drag col: {col}, row: {col}");
+        status.internal_settings.cursor.mouse_drag(row, col);
+        Ok(())
+    }
+
+    /// A mouse up when selecting & dragging with cursor ends the dragging.
+    pub fn mouse_up(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        log_info!("mouse_up col: {col}, row: {row} ");
+        status.internal_settings.cursor.stop_drag();
         Ok(())
     }
 
@@ -1803,5 +1855,10 @@ impl EventAction {
     /// Parse and execute the received IPC message.
     pub fn parse_rpc(status: &mut Status, ipc_msg: String) -> Result<()> {
         status.parse_ipc(ipc_msg)
+    }
+
+    pub fn cursor(status: &mut Status) -> Result<()> {
+        status.cursor_toggle();
+        Ok(())
     }
 }

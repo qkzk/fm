@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 
 use crate::app::Status;
 use crate::common::{get_clipboard, path_to_string};
-use crate::modes::Quote;
+use crate::modes::{Quote, Selectable};
 use crate::{log_info, log_line};
 
 /// Token used while parsing a command to execute it using the current window.
@@ -23,6 +23,7 @@ pub const SAME_WINDOW_TOKEN: &str = "%t";
 /// %n is converted into a `Filename`
 /// %t is converted into a `$TERM` + custom flag.
 /// %c is converted into a `Clipboard content`.
+/// %x is converted into a `Selected or Flagged`.
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
@@ -60,6 +61,7 @@ enum FmExpansion {
     Flagged,
     Term,
     Clipboard,
+    SelectedOrFlagged,
     Invalid,
 }
 
@@ -73,6 +75,7 @@ impl FmExpansion {
             'f' => Self::Flagged,
             't' => Self::Term,
             'c' => Self::Clipboard,
+            'x' => Self::SelectedOrFlagged,
             _ => Self::Invalid,
         }
     }
@@ -80,13 +83,14 @@ impl FmExpansion {
     fn parse(&self, status: &Status) -> Result<Vec<String>> {
         match self {
             Self::Invalid => bail!("Invalid Fm Expansion"),
-            Self::Term => Self::term(status),
+            Self::Term => Self::term(),
             Self::Selected => Self::selected(status),
             Self::Flagged => Self::flagged(status),
             Self::SelectedPath => Self::path(status),
             Self::SelectedFilename => Self::filename(status),
             Self::Clipboard => Self::clipboard(),
             Self::Extension => Self::extension(status),
+            Self::SelectedOrFlagged => Self::selected_or_flagged(status),
         }
     }
 
@@ -129,7 +133,7 @@ impl FmExpansion {
             .collect())
     }
 
-    fn term(_status: &Status) -> Result<Vec<String>> {
+    fn term() -> Result<Vec<String>> {
         Ok(vec![SAME_WINDOW_TOKEN.to_owned()])
     }
 
@@ -138,6 +142,14 @@ impl FmExpansion {
             bail!("Couldn't read the clipboard");
         };
         Ok(clipboard.split_whitespace().map(|s| s.to_owned()).collect())
+    }
+
+    fn selected_or_flagged(status: &Status) -> Result<Vec<String>> {
+        if status.menu.flagged.is_empty() {
+            Self::selected(status)
+        } else {
+            Self::flagged(status)
+        }
     }
 }
 
@@ -284,7 +296,7 @@ fn build_sudo_args(args: Vec<String>) -> Vec<String> {
 }
 
 fn build_normal_args(args: Vec<String>) -> Vec<String> {
-    vec!["sh".to_owned(), "-c".to_owned(), args.join("")]
+    vec!["sh".to_owned(), "-c".to_owned(), args.join(" ")]
 }
 // fn test_shell_parser(status: &Status) {
 //     let commands = vec![

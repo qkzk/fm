@@ -110,7 +110,8 @@ pub fn command_with_path<S: AsRef<std::ffi::OsStr> + fmt::Debug, P: AsRef<Path>>
 /// Wait for termination and return either :
 /// `Ok(stdout)` if the status code is 0
 /// an Error otherwise
-/// Branch stdin and stderr to /dev/null
+/// Branch stdin /dev/null
+/// Log stderr if non empty.
 pub fn execute_and_capture_output_with_path<
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<Path>,
@@ -385,9 +386,13 @@ pub fn build_tokio_greper() -> Option<TokioCommand> {
 }
 
 /// Executes a command in a new shell.
-pub fn execute_in_shell(args: &[&str]) -> Result<bool> {
+pub fn execute_in_shell<P>(args: &[&str], path: P) -> Result<bool>
+where
+    P: AsRef<Path>,
+{
     let shell = env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
     let mut command = Command::new(&shell);
+    command.current_dir(path);
     if !args.is_empty() {
         command.arg("-c").args(args);
     }

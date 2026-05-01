@@ -86,6 +86,7 @@ impl Session {
         session_bool
     }
 
+    #[inline]
     pub fn dual(&self) -> bool {
         self.dual
     }

@@ -1966,9 +1966,8 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: remove useless clone while getting path of current selection
 - [x] FIX: reverse flags wasn't doing anything
 
-## Current dev
 
-### Version 0.2.3 - Themes
+### Version 0.2.3 : themes 
 
 #### Summary 
 
@@ -1982,6 +1981,7 @@ Once that's done, it's all. No not implement anything else
 
 - Solved a double free when multiple plugins are used.
 - Focus could be lost after a resize
+
 
 #### Changelog
 
@@ -2037,14 +2037,115 @@ Once that's done, it's all. No not implement anything else
     - [x] ensure marks are unique per path. Can't have multiple path with same marks.
     - [x] trashing a file remove its marks.
 
+## Current dev
+
+### Version 0.2.4 
+
+#### Summary 
+
+- New plugin to preview sqlite3 databases with a summary. Inspired by ranger. [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
+- BREAKING. opener allow arguments in their config.
+  This isn't exactly a "breaking" change since your old config will still work... but if you use options, older versions of fm won't be able to execute your program.
+- Support for chafa as an image displayer. Set chafa in your config and ensure it's installed.
+- Symbolic links destination shawn next to their filepath.
+- Either follow the symbolic destination to a folder with <right> or enter the real path with <o>
+- New shell expansion usable in config, cli-config or shell command: %x expands to the flagged files or the selection if no file is flagged.
+- Preview CSV files with columns. Tries to determine the delimiter by counting occurrences of the delimiter character.
+- Text selection within fm. Use Alt+a to enter text selection mode. Move the cursor and press Alt+a again to start selecting. Every rendered text is copied to clipboard.
+
+##### Bugfixes
+
+- Fixed a bug where CWD wasn't updated when opening a command. Ensure clicked commands and TUI applications are executed with an updated CWD.
+- Pressing enter whith multiple flagged files would do nothing if a directory was selected
+- Some files should start a scrolling but werent detected as outside window
+- Some tar.xz archives can be opened with "xarchiver" but not with fm because the extension is wrong. Try every method and log an error if everything fail.
+- Compress a directory and all its children. Don't flag anything, select the parent dir and compress
+
+#### Changelog 
+
+- [x] FEAT: 
+  - [x] sudo command for passwordless. It already works. If the user has sudo rights without password (passwordless sudo), any password input will be validated and the command is ran
+  - [x] pkexec works already
+  - [x] sudo-rs has same interface (sudo -s ..., sudo -k)
+  - [x] WONTDO: doas has different interface
+- [x] IMP: display. Reduce the number of call static oncelock style
+  - [x] MENU_STYLE
+  - [x] FILE_STYLE
+  - [x] ensure all ref to menu style / file style are static
+- [x] FIX: commands could have a wrong CWD
+- [x] FEAT: sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
+  - [x] works, almost perfect display. Used chatgpt for alignment
+  - [x] refactor
+  - [x] moved it to a new plugin [sqlite previewer](https://github.com/qkzk/sqlite_previewer_fm)
+- [x] FEAT: opener (external) should allow arguments in their config
+- [x] FIX: flag a directory with *, ENTER should open all files. Does nothing. But `o` opens all the files.
+- [x] FEAT: select text in bloc modes like vim: vertical, horizontal, line
+  - [x] export a buffer contionnaly 
+    - [x] find the last rendered buffer 
+    - [x] save it somewhere 
+    - [x] dump it to log
+  - [x] actions
+    - [x] Alt+a to enter end then toggle selection
+    - [x] set selection by moving around
+    - [x] copy (bind ?) <c> -> copy to clipboard with proper alignment
+    - [x] exit cursor mode <esc> -> should reset some flags & force a redraw to remove artifacts
+    - [x] quit fm <q> -> still should be possible.
+    - [x] selection creates a rect
+    - [x] mouse selection like copying text from terminal
+    - [x] mouse click moves the cursor
+    - [x] disable other actions
+  - [x] display
+    - [x] render first then modify ? 
+    - [x] change cursor
+    - [x] display cursor modifications with special style
+    - [x] footer indication include real binds
+    - [x] reverse selected cells.
+  - [x] document
+  - [x] problems ???
+    - [x] WONTDO: The shape of the pointer is misleading. A I-beam shape would be more appropriate .dragging if off by one. Behavior should be more consistent to mouse selection elsewhere...
+  - [x] refactor 
+- [x] FEAT: use chafa as alternative image displayer
+- [x] FIX: scrolling for files at bottom should be started earlier
+- [x] FEAT: improve google drive with token refresh ala gcal
+  - [x] the refresh seems to be done in sign [sign](/home/quentin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/opendal-0.49.2/src/services/gdrive/core.rs)
+  - [x] check for a change in refresh token and save it ?
+  - [x] refresh token should works 6 months as long as the project isn't "testing" in gcp
+  - [x] test a few more days...
+- [x] FEAT: pressing <o> on a symlink to a dir, enters the _resolved_ link (the path it links to)
+- [x] FIX: crash when creating an already existant symlink
+- [x] FEAT: display symlink expanded path
+- [x] FEAT: display filepath & symlink expansion in context
+- [x] FEAT: pressing <right> on a directory while some files are flagged are selected enters the directory anyway
+- [x] FIX: can't dragon-drop multiple files. Sometimes doesn't work at all. See qs9:~/Downloads/trucworkx.xls
+- [x] FEAT: New shell expansion %x: flagged or selected if none.
+- [x] FEAT: csv previewer
+  - [x] can't use column since it needs to know the separator and ; sep produces wrong output 
+  - [x] remove & count
+  - [x] use default if it fails
+- [x] Remove metadata from pictures & whatever. In Windows Explorer, right-click the file and click Properties > Details > Remove Properties and Personal Information... 
+  - [x] `exiftool -r -ALL= --overwrite_original %f`
+- [x] FIX: some would archives crash the when decompressing - log the error and prevent the crash.
+- [x] FIX: open all tar.xz archive. Some tar.xz files aren't compressed by xz but with gz instead. Why ? I don't know. Try every method of decompression for those files.
+- [x] FIX: can't compress a whole directory easily
+
 ## TODO
 
 ### Other ideas
 
-
+- [ ] FEAT: preview xournal files
+- [ ] IMP: Coloring should be simpler and allow colouring of single elements
+- [ ] IMP: Configuration shouldn't require 10 files 
+- [ ] Menu plugin 
+  - [ ] API:
+    Won't work because of sending status. Requires to change A LOT to migrate to abi_stable or equivalent
+    - [ ] fm -> plugin : dispatch(event, status) {} - mut status or only status ?
+    - [ ] fm -> plugin : display(rect) -> Widget    OR fm -> plugin : display(f, rect) {}
 - [ ] FEAT: previewer image mode..
-- [ ] FEAT: sudo passwordless or with an app
-- [ ] IMP: display. Reduce the number of call to MENU_STYLE.get() by getting it once and passing a reference
+  - [ ] minimal breaking change: kind: Image/Text, breaks all existing plugins
+  - [ ] no api change = don't break plugins. Parse the output and decide wether it's image or text based on output... 
+  - [ ] same interface for the rest. Returns a single string of paths, one per line, separated by special char. skip files with \n in absolute paths
+  - [ ] build an image preview from output
+  - [ ] plugin imager: do the same as another plugin. previewer returns paths as *c_char, separated by `'\n`.
 - [ ] BUG: big tree moved down and selection is out of screen once again
 - [ ] BUG: double quote & antislash doesn't work for ueberzug since there's already escaping. Can't solve easily
 - [ ] FEAT: improve copy/mv etc. with ideas from [bmcr](https://github.com/Bengerthelorf/bcmr)
@@ -2065,9 +2166,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] IMP: menu modes & display modes are annying. Display modes aren't that numerous but there's too much menu modes and too little factorisation.
   Should I switch to a state machine ?
 - [ ] BUG: filter by name in tree don't seem to work. Can't reproduce
-- [ ] FEAT: navigable history of every kind of command. input mode : ctrl + h (?) : open history for this kind with fuzzy, select and input
 - [ ] IMP: should filenames with spaces be surronded with quotes like ls / eza ?
-- [ ] completion should work like blink in nvim: 1st is nothing, down next & move, down next & move... cycle back
 - [ ] Merge "need confirmation" into navigate ?
 - [ ] IMP: paths in command should always be OSString. use PathBuf::to_oss_string or whatever whenever it's possible.
 - [ ] plugin system 
@@ -2082,7 +2181,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] stability aka 1.0
 - [ ] code clean
 - [ ] store 4 windows in display to modify instead of recreating
-- [ ] sqlite preview [like ranger](https://github.com/ranger/ranger/pull/2216/files)
 - [ ] scan status for menu actions which could be moved elsewhere
 - [ ] document every public function / method. Done for struct, enum & macros.
   ```sh
@@ -2097,25 +2195,14 @@ Once that's done, it's all. No not implement anything else
   - require to rewrite everything just to avoid testing depth myself.
     Little to gain except for speed, it _should_ be much faster
 - [ ] simplify status.confirm action & must leave
-- [ ] opener (external) should allow arguments in their config
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] should small windows be used in menus ?
 - [ ] google drive should be a display ?
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
-- [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [ ] remote control
-
-  - [ ] listen to stdin (rcv etc.)
-    - [ ] follow change directory
-    - [ ] when called from a file buffer in nvim, open with this file selected
-  - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
-  - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
-  - https://neovim.io/doc/user/api.html
-
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
@@ -2123,8 +2210,6 @@ Once that's done, it's all. No not implement anything else
 - [ ] update the animation
 
 - [ ] build option to force reset of config file, warn the user at first start
-- [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
-- [ ] allow pipe in execution
 
 - [ ] tests
 - [ ] remove references to local thing

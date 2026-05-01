@@ -5,7 +5,7 @@ use crossterm::event::{
 
 use crate::app::Status;
 use crate::config::Bindings;
-use crate::event::{EventAction, FmEvents};
+use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
     Direction as FuzzyDirection, Display, InputSimple, LeaveMenu, MarkAction, Menu, Navigate,
 };
@@ -28,14 +28,13 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
+    #[rustfmt::skip]
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
             FmEvents::Term(Event::Paste(pasted)) => EventAction::paste(status, pasted),
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
             FmEvents::Term(Event::Mouse(mouse)) => self.match_mouse_event(status, mouse),
-            FmEvents::Term(Event::Resize(width, height)) => {
-                EventAction::resize(status, width, height)
-            }
+            FmEvents::Term(Event::Resize(width, height)) => EventAction::resize(status, width, height),
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied(done_copy_moves) => EventAction::file_copied(status, done_copy_moves),
@@ -47,6 +46,9 @@ impl EventDispatcher {
     }
 
     fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        if status.internal_settings.cursor.is_active() {
+            return self.cursor_key_matcher(status, key);
+        }
         match key {
             KeyEvent {
                 code: KeyCode::Char(c),
@@ -75,6 +77,17 @@ impl EventDispatcher {
             MouseEventKind::ScrollDown => {
                 EventAction::wheel_down(status, mouse_event.row, mouse_event.column)
             }
+            MouseEventKind::Drag(MouseButton::Left)
+                if status.internal_settings.cursor.is_selecting() =>
+            {
+                EventAction::mouse_drag(status, mouse_event.row, mouse_event.column)
+            }
+            MouseEventKind::Up(MouseButton::Left)
+                if status.internal_settings.cursor.is_selecting()
+                    && status.internal_settings.cursor.is_dragging =>
+            {
+                EventAction::mouse_up(status, mouse_event.row, mouse_event.column)
+            }
             MouseEventKind::Down(MouseButton::Left) => {
                 EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.column)
             }
@@ -91,8 +104,33 @@ impl EventDispatcher {
         }
     }
 
+    /// Ensure only a few actions can be executed from keyboard while in curso selection.
+    /// - Leave the mode, same key as leave menu,
+    /// - Toggle the cursor state, same key as entering cursor selection,
+    /// - Quit fm, same key as quit
+    /// - Move left, right, up, down. Same keys as moving.
+    fn cursor_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
+        let Some(action) = self.binds.get(&key) else {
+            return Ok(());
+        };
+        match action {
+            ActionMap::CopyPaste => EventAction::copy_paste(status),
+            ActionMap::Cursor => EventAction::cursor(status),
+            ActionMap::Quit => EventAction::quit(status),
+            ActionMap::ResetMode => EventAction::reset_mode(status),
+            ActionMap::MoveLeft => EventAction::move_left(status),
+            ActionMap::MoveRight => EventAction::move_right(status),
+            ActionMap::MoveUp => EventAction::move_up(status),
+            ActionMap::MoveDown => EventAction::move_down(status),
+            _ => Ok(()),
+        }
+    }
+
     fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+        if let Some(ActionMap::Cursor) = self.binds.get(&key) {
+            return EventAction::cursor(status);
+        }
+        if status.current_tab().display_mode.is_fuzzy() {
             if let Ok(success) = self.fuzzy_matcher(status, key) {
                 if success {
                     return Ok(());

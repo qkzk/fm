@@ -3,9 +3,9 @@ use std::env::var;
 use anyhow::Result;
 use ratatui::layout::Rect;
 
-use crate::common::{is_in_path, UEBERZUG};
+use crate::common::{is_in_path, CHAFA, UEBERZUG};
 use crate::config::{get_prefered_imager, Imagers};
-use crate::io::{user_has_x11, InlineImage, Ueberzug};
+use crate::io::{user_has_x11, Chafa, InlineImage, Ueberzug};
 use crate::log_info;
 use crate::modes::DisplayedImage;
 
@@ -26,6 +26,7 @@ pub enum ImageAdapter {
     Unable,
     Ueberzug(Ueberzug),
     InlineImage(InlineImage),
+    Chafa(Chafa),
 }
 
 impl ImageAdapter {
@@ -52,6 +53,7 @@ impl ImageAdapter {
                 }
                 Self::try_ueberzug()
             }
+            Imagers::Chafa => Self::try_chafa(),
             Imagers::Ueberzug => Self::try_ueberzug(),
         }
     }
@@ -60,6 +62,16 @@ impl ImageAdapter {
         if is_in_path(UEBERZUG) && user_has_x11() {
             log_info!("detected ueberzug");
             Self::Ueberzug(Ueberzug::default())
+        } else {
+            log_info!("unable to display image");
+            Self::Unable
+        }
+    }
+
+    fn try_chafa() -> Self {
+        if is_in_path(CHAFA) {
+            log_info!("detected chafa");
+            Self::Chafa(Chafa::default())
         } else {
             log_info!("unable to display image");
             Self::Unable
@@ -83,6 +95,7 @@ impl ImageDisplayer for ImageAdapter {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.draw(image, rect),
             Self::InlineImage(inline_image) => inline_image.draw(image, rect),
+            Self::Chafa(chafa) => chafa.draw(image, rect),
         }
     }
 
@@ -91,6 +104,7 @@ impl ImageDisplayer for ImageAdapter {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.clear(image),
             Self::InlineImage(inline_image) => inline_image.clear(image),
+            Self::Chafa(chafa) => chafa.clear(image),
         }
     }
 
@@ -99,6 +113,7 @@ impl ImageDisplayer for ImageAdapter {
             Self::Unable => Ok(()),
             Self::Ueberzug(ueberzug) => ueberzug.clear_all(),
             Self::InlineImage(inline_image) => inline_image.clear_all(),
+            Self::Chafa(chafa) => chafa.clear_all(),
         }
     }
 }
