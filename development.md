@@ -2132,7 +2132,7 @@ Once that's done, it's all. No not implement anything else
 
 ### Other ideas
 
-
+- [ ] FEAT: preview xournal files
 - [ ] IMP: Coloring should be simpler and allow colouring of single elements
 - [ ] IMP: Configuration shouldn't require 10 files 
 - [ ] Menu plugin 

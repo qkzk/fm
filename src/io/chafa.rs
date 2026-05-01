@@ -41,7 +41,7 @@ pub struct Chafa {
 }
 
 impl ImageDisplayer for Chafa {
-    /// Draws the image to the terminal using [chafa(https://hpjansson.org/chafa/).
+    /// Draws the image to the terminal using [chafa](<https://hpjansson.org/chafa/>).
     ///
     /// The drawing is done using the first method supported by the terminal (iterm2, kitty, sixel or symbols).
     /// It requires a string to be "written" to the terminal itself.

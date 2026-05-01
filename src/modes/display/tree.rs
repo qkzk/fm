@@ -130,6 +130,9 @@ impl Depth for Arc<Path> {
     }
 }
 
+/// Used to build trees.
+///
+/// It's configured with the builder pattern.
 pub struct TreeBuilder<'a> {
     root_path: Arc<Path>,
     users: &'a Users,

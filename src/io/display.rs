@@ -39,6 +39,7 @@ use crate::{
     },
 };
 
+/// Common trait used to offset something by x & y.
 pub trait Offseted {
     fn offseted(&self, x: u16, y: u16) -> Self;
 }

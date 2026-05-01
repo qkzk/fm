@@ -178,6 +178,8 @@ pub enum MountAction {
     UMOUNT,
 }
 
+/// What kind of fs networks do fm support ?
+/// Currently only NFS & CIFS.
 #[derive(Debug)]
 pub enum NetworkKind {
     NFS,

@@ -483,6 +483,8 @@ impl PreviewBuilder {
     }
 }
 
+/// Holds info about a command used to preview.
+/// Its name, which extension it may preview and the full command.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PreviewerCommand {
     name: String,

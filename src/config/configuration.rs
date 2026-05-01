@@ -294,6 +294,7 @@ impl SyntectTheme {
     }
 }
 
+/// Different imagers used to preview "visual" files.
 #[derive(Default, Debug)]
 pub enum Imagers {
     #[default]
