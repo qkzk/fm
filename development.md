@@ -2139,7 +2139,7 @@ Once that's done, it's all. No not implement anything else
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
-- [ ] FEAT: preview xournal files
+- [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
 - [ ] BUG: tab doesn't use whole space
 
 ### Other ideas
