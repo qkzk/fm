@@ -1,11 +1,15 @@
-use std::{fs::File, io::Read, path::Path};
+use std::{
+    fs::File,
+    io::{copy, Read},
+    path::Path,
+};
 
 use anyhow::{Context, Result};
 use flate2::read::{DeflateDecoder, GzDecoder, MultiGzDecoder, ZlibDecoder};
 use tar::Archive;
 use xz2::read::XzDecoder;
 
-use crate::common::{is_in_path, path_to_string, BSDTAR, SEVENZ};
+use crate::common::{filename_from_path, is_in_path, path_to_string, BSDTAR, SEVENZ};
 use crate::io::{execute_and_output, execute_without_output};
 use crate::{log_info, log_line};
 
@@ -66,6 +70,11 @@ type Reader<'a> = &'a [fn(File) -> Box<dyn Read>];
 ///
 /// It may fail if the file can't be opened.
 pub fn decompress_xz_gz(source: &Path) -> Result<()> {
+    let extension = source
+        .extension()
+        .context("Source should have an extension")?
+        .to_string_lossy();
+    let source_is_archive = filename_from_path(source)?.ends_with(&format!(".tar.{extension}"));
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
@@ -81,10 +90,19 @@ pub fn decompress_xz_gz(source: &Path) -> Result<()> {
 
     for make_reader in strategies {
         let file = File::open(source)?;
-        let reader = make_reader(file);
-
-        if try_unpack(reader, parent) {
-            return Ok(());
+        let mut reader = make_reader(file);
+        if source_is_archive {
+            if try_unpack(reader, parent) {
+                return Ok(());
+            }
+        } else {
+            let mut dest = source.to_path_buf();
+            dest.set_extension("");
+            if let Ok(mut file) = File::create(dest) {
+                if copy(&mut reader, &mut file).is_ok() {
+                    return Ok(());
+                }
+            }
         }
     }
 

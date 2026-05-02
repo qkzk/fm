@@ -2131,10 +2131,16 @@ Once that's done, it's all. No not implement anything else
 
 ### Version 0.2.5 - colouring for every displayed cell ?
 
+## Summary 
+
+- Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
+
 ## TODO
 
+- [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
 - [ ] FEAT: preview xournal files
+- [ ] BUG: tab doesn't use whole space
 
 ### Other ideas
 
