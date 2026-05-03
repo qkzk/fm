@@ -2139,6 +2139,10 @@ Once that's done, it's all. No not implement anything else
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
+  - [ ] option to pick kind of colourer (per extension or eza like)
+  - [ ] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
+  - [ ] responsive sizing...
+  - [ ] refactor the whole display
 - [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
 - [ ] BUG: tab doesn't use whole space
 

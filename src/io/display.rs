@@ -15,7 +15,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
     prelude::*,
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::{Line, Span, ToSpan},
     widgets::{Block, BorderType, Borders, Paragraph},
     CompletedFrame, Frame, Terminal,
 };
@@ -32,10 +32,10 @@ use crate::{
     log_info,
     modes::{
         highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
-        ContentWindow, CursorOffset, Display as DisplayMode, DisplayedImage, FileInfo, FuzzyFinder,
-        HLContent, Icon, Input, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate,
-        NeedConfirmation, Preview, Remote, SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum,
-        Text, TextKind, Trash, Tree,
+        ContentWindow, CursorOffset, Display as DisplayMode, DisplayedImage, FileInfo, FileKind,
+        FuzzyFinder, HLContent, Icon, Input, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos,
+        Navigate, NeedConfirmation, Preview, Remote, SecondLine, Selectable, TLine, TakeSkip,
+        TakeSkipEnum, Text, TextKind, Trash, Tree,
     },
 };
 
@@ -530,6 +530,31 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
+    fn files_line2<'b>(
+        &self,
+        index: usize,
+        file: &FileInfo,
+        formater: &fn(&FileInfo, (usize, usize)) -> String,
+        with_icon: bool,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+    ) -> Line<'b> {
+        let mut style = file.style(file_style);
+        self.reverse_selected(index, &mut style);
+
+        let mut v = vec![
+            self.span_flagged_symbol(file, &mut style, menu_style),
+            Self::mark_span(self.status, file, menu_style),
+        ];
+        v.append(&mut self.file_remade_name_to_change(
+            file,
+            index,
+            with_icon,
+            self.group_owner_sizes,
+        ));
+        Line::from(v)
+    }
+
     fn files_line<'b>(
         &self,
         index: usize,
@@ -567,6 +592,79 @@ impl<'a> DirectoryDisplay<'a> {
             let first_char = status.menu.marks.char_for(&file.path);
             Span::styled(String::from(*first_char), menu_style.palette_2)
         }
+    }
+
+    fn file_remade_name_to_change<'b>(
+        &self,
+        file: &FileInfo,
+        index: usize,
+        with_icon: bool,
+        group_owner_size: (usize, usize),
+    ) -> Vec<Span<'b>> {
+        let selected_modifier = if index == self.tab.directory.index {
+            Modifier::REVERSED
+        } else {
+            Modifier::empty()
+        };
+        let (owner_col_width, group_col_width) = group_owner_size;
+        let owner = format!(" {owner:.owner_col_width$} ", owner = file.owner,);
+        let group = format!("{group:.group_col_width$} ", group = file.group,);
+        let permissions = file
+            .permissions()
+            .unwrap_or_else(|_| std::sync::Arc::from("?????????"))
+            .to_string();
+        let icon = if with_icon { file.icon() } else { "" }.to_string();
+        let mut spans = vec![
+            Span::styled(
+                file.dir_symbol().to_string(),
+                Style::default()
+                    .fg(Color::Red)
+                    .add_modifier(selected_modifier),
+            ),
+            Span::styled(permissions, Style::default().fg(Color::Blue))
+                .add_modifier(selected_modifier),
+            ' '.to_span().add_modifier(selected_modifier),
+            Span::styled(
+                file.size_column.to_string(),
+                Style::default().fg(Color::LightRed),
+            )
+            .add_modifier(selected_modifier),
+            Span::styled(owner, Style::default().fg(Color::LightBlue))
+                .add_modifier(selected_modifier),
+            Span::styled(group, Style::default().fg(Color::Magenta))
+                .add_modifier(selected_modifier),
+            Span::styled(
+                file.system_time.to_string(),
+                Style::default().fg(Color::Blue),
+            )
+            .add_modifier(selected_modifier),
+            ' '.to_span().add_modifier(selected_modifier),
+            Span::styled(icon, Style::default().fg(Color::LightYellow))
+                .add_modifier(selected_modifier),
+            Span::styled(
+                file.filename.to_string(),
+                Style::default().fg(Color::LightCyan),
+            )
+            .add_modifier(selected_modifier),
+        ];
+        if let FileKind::SymbolicLink(_) = file.file_kind {
+            let sl = match std::fs::read_link(&file.path) {
+                Ok(dest) if dest.exists() => Span::styled(
+                    format!(" -> {dest}", dest = dest.display()),
+                    Style::default().fg(Color::Yellow),
+                )
+                .add_modifier(selected_modifier),
+                _ => Span::styled(
+                    "  broken link",
+                    Style::default()
+                        .fg(Color::Gray)
+                        .add_modifier(Modifier::ITALIC),
+                )
+                .add_modifier(selected_modifier),
+            };
+            spans.push(sl);
+        };
+        spans
     }
 
     fn reverse_selected(&self, index: usize, style: &mut Style) {
