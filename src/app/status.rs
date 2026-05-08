@@ -276,7 +276,7 @@ impl Status {
 
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
-        if self.session.dual() {
+        if self.use_dual() {
             if col < self.term_width() / 2 {
                 self.select_left();
             } else {
@@ -665,6 +665,7 @@ impl Status {
         !self.wide_enough_for_dual() && self.session.dual()
     }
 
+    /// True iff two tabs are displayed.
     #[inline]
     pub fn use_dual(&self) -> bool {
         self.wide_enough_for_dual() && self.session.dual()

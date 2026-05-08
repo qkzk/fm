@@ -2145,6 +2145,9 @@ Once that's done, it's all. No not implement anything else
   - [ ] refactor the whole display
 - [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
 - [ ] BUG: tab doesn't use whole space
+- [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
+  Needs more testing
+  
 
 ### Other ideas
 
