@@ -495,13 +495,14 @@ impl<'a> DirectoryDisplay<'a> {
         file_style: &'static FileStyle,
     ) {
         let p_rect = rect.offseted(0, 0);
-        let formater = Self::pick_formater(self.status.session.metadata(), p_rect.width);
+        let format_kind = FormatKind::from_flags(self.status.session.metadata(), p_rect.width);
+        let formater = format_kind.formater();
         let with_icon = with_icon();
         let lines: Vec<_> = self
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line(index, file, &formater, with_icon, menu_style, file_style)
+                self.files_line2(index, file, &formater, with_icon, menu_style, file_style)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -509,14 +510,7 @@ impl<'a> DirectoryDisplay<'a> {
 
     fn pick_formater(with_metadata: bool, width: u16) -> Formater {
         let kind = FormatKind::from_flags(with_metadata, width);
-
-        match kind {
-            FormatKind::Metadata => FileFormater::metadata,
-            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
-            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
-            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
-            FormatKind::Simple => FileFormater::simple,
-        }
+        kind.formater()
     }
 
     fn group_owner_size(status: &Status, tab: &Tab) -> (usize, usize) {
@@ -530,11 +524,11 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn files_line2<'b>(
+    fn files_line<'b>(
         &self,
         index: usize,
         file: &FileInfo,
-        formater: &fn(&FileInfo, (usize, usize)) -> String,
+        format_kind: &FormatKind,
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
@@ -546,16 +540,18 @@ impl<'a> DirectoryDisplay<'a> {
             self.span_flagged_symbol(file, &mut style, menu_style),
             Self::mark_span(self.status, file, menu_style),
         ];
-        v.append(&mut self.file_remade_name_to_change(
-            file,
-            index,
-            with_icon,
-            self.group_owner_sizes,
-        ));
-        Line::from(v)
+        v.append(&mut self.file_remade_name_to_change(format_kind, file, with_icon, file_style));
+        let mut line = Line::from(v);
+        if index == self.tab.directory.index {
+            line = line.add_modifier(Modifier::REVERSED);
+        }
+        if self.status.menu.flagged.contains(&file.path) {
+            line = line.add_modifier(Modifier::BOLD);
+        }
+        line
     }
 
-    fn files_line<'b>(
+    fn files_line2<'b>(
         &self,
         index: usize,
         file: &FileInfo,
@@ -594,73 +590,105 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
+    const RWX_COLORS: [Color; 9] = [
+        Color::Yellow,
+        Color::Red,
+        Color::Blue,
+        Color::Yellow,
+        Color::Red,
+        Color::Blue,
+        Color::Yellow,
+        Color::Red,
+        Color::Blue,
+    ];
+
     fn file_remade_name_to_change<'b>(
         &self,
+        format_kind: &FormatKind,
         file: &FileInfo,
-        index: usize,
         with_icon: bool,
-        group_owner_size: (usize, usize),
+        file_style: &'static FileStyle,
     ) -> Vec<Span<'b>> {
-        let selected_modifier = if index == self.tab.directory.index {
-            Modifier::REVERSED
-        } else {
-            Modifier::empty()
-        };
-        let (owner_col_width, group_col_width) = group_owner_size;
-        let owner = format!(" {owner:.owner_col_width$} ", owner = file.owner,);
-        let group = format!("{group:.group_col_width$} ", group = file.group,);
-        let permissions = file
-            .permissions()
-            .unwrap_or_else(|_| std::sync::Arc::from("?????????"))
-            .to_string();
+        let (owner_col_width, group_col_width) = self.group_owner_sizes;
+        let owner = format!("{owner:.owner_col_width$}", owner = file.owner,);
+        let group = format!("{group:.group_col_width$}", group = file.group,);
+        let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
         let icon = if with_icon { file.icon() } else { "" }.to_string();
-        let mut spans = vec![
-            Span::styled(
+        let mut spans = vec![];
+
+        if format_kind.has_permissions() {
+            spans.push(Span::styled(
                 file.dir_symbol().to_string(),
-                Style::default()
-                    .fg(Color::Red)
-                    .add_modifier(selected_modifier),
+                file.style(file_style),
+            ));
+            for (permission, color) in permissions.iter().zip(Self::RWX_COLORS) {
+                spans.push(Span::styled(
+                    *permission,
+                    Style::default().fg(if permission != &"-" {
+                        color
+                    } else {
+                        Color::Gray
+                    }),
+                ));
+            }
+        }
+
+        if format_kind.has_medatada() {
+            spans.append(&mut vec![
+                ' '.to_span().fg(Color::Blue),
+                Span::styled(
+                    file.size_column.to_string(),
+                    Style::default().fg(Color::LightRed),
+                ),
+            ])
+        }
+
+        if format_kind.has_owner() {
+            spans.push(Span::styled(
+                format!(" {owner:<owner_col_width$} "),
+                Style::default().fg(Color::LightBlue),
+            ));
+        }
+
+        if format_kind.has_group() {
+            spans.push(Span::styled(
+                format!("{group:<group_col_width$} "),
+                Style::default().fg(Color::Magenta),
+            ))
+        }
+
+        if format_kind.has_medatada() {
+            spans.append(&mut vec![
+                Span::styled(
+                    file.system_time.to_string(),
+                    Style::default().fg(Color::Blue),
+                ),
+                ' '.to_span().fg(Color::Blue),
+            ]);
+        }
+
+        spans.append(&mut vec![
+            Span::styled(icon, Style::default().fg(Color::LightYellow)),
+            Span::styled(file.filename.to_string(), file.style(file_style)).add_modifier(
+                if file.is_dir() {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                },
             ),
-            Span::styled(permissions, Style::default().fg(Color::Blue))
-                .add_modifier(selected_modifier),
-            ' '.to_span().add_modifier(selected_modifier),
-            Span::styled(
-                file.size_column.to_string(),
-                Style::default().fg(Color::LightRed),
-            )
-            .add_modifier(selected_modifier),
-            Span::styled(owner, Style::default().fg(Color::LightBlue))
-                .add_modifier(selected_modifier),
-            Span::styled(group, Style::default().fg(Color::Magenta))
-                .add_modifier(selected_modifier),
-            Span::styled(
-                file.system_time.to_string(),
-                Style::default().fg(Color::Blue),
-            )
-            .add_modifier(selected_modifier),
-            ' '.to_span().add_modifier(selected_modifier),
-            Span::styled(icon, Style::default().fg(Color::LightYellow))
-                .add_modifier(selected_modifier),
-            Span::styled(
-                file.filename.to_string(),
-                Style::default().fg(Color::LightCyan),
-            )
-            .add_modifier(selected_modifier),
-        ];
+        ]);
         if let FileKind::SymbolicLink(_) = file.file_kind {
             let sl = match std::fs::read_link(&file.path) {
                 Ok(dest) if dest.exists() => Span::styled(
                     format!(" -> {dest}", dest = dest.display()),
                     Style::default().fg(Color::Yellow),
-                )
-                .add_modifier(selected_modifier),
+                ),
                 _ => Span::styled(
                     "  broken link",
                     Style::default()
                         .fg(Color::Gray)
                         .add_modifier(Modifier::ITALIC),
-                )
-                .add_modifier(selected_modifier),
+                ),
             };
             spans.push(sl);
         };
@@ -752,6 +780,35 @@ impl FormatKind {
             (true, _,     _,    true,    _)     => Self::MetadataNoPermissions,
             (true, _,     _,    _,    true)     => Self::MetadataNoOwner,
             _ => Self::Simple,
+        }
+    }
+
+    fn has_group(&self) -> bool {
+        matches!(&self, Self::Metadata)
+    }
+
+    fn has_permissions(&self) -> bool {
+        matches!(&self, Self::Metadata | Self::MetadataNoGroup)
+    }
+
+    fn has_owner(&self) -> bool {
+        matches!(
+            &self,
+            Self::Metadata | Self::MetadataNoGroup | Self::MetadataNoPermissions
+        )
+    }
+
+    fn has_medatada(&self) -> bool {
+        !matches!(&self, Self::Simple)
+    }
+
+    fn formater(&self) -> Formater {
+        match self {
+            FormatKind::Metadata => FileFormater::metadata,
+            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
+            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
+            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
+            FormatKind::Simple => FileFormater::simple,
         }
     }
 }

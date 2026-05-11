@@ -9,7 +9,7 @@ use chrono::DateTime;
 use ratatui::style::Style;
 
 use crate::config::{extension_color, FileStyle};
-use crate::modes::{human_size, permission_mode_to_str, ToPath, Users};
+use crate::modes::{human_size, permission_mode_to_str, permission_mode_to_strings, ToPath, Users};
 
 type Valid = bool;
 
@@ -239,6 +239,10 @@ impl FileInfo {
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
         Ok(permission_mode_to_str(self.metadata()?.mode()))
+    }
+
+    pub fn permissions_strings(&self) -> Result<[&'static str; 9]> {
+        Ok(permission_mode_to_strings(self.metadata()?.mode()))
     }
 
     /// A formated filename where the "kind" of file

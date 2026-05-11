@@ -248,6 +248,7 @@ fn extract_setgid_flag(special: u32) -> bool {
 fn extract_sticky_flag(special: u32) -> bool {
     special.to_bool()
 }
+
 /// Reads the permission and converts them into a string.
 pub fn permission_mode_to_str(mode: u32) -> Arc<str> {
     let mode = mode & 0o7777;
@@ -272,6 +273,42 @@ pub fn permission_mode_to_str(mode: u32) -> Arc<str> {
     let s_g = convert_octal_mode(group_strs, (normal_mode >> 3) & 7);
     let s_a = convert_octal_mode(sticky_strs, normal_mode & 7);
     Arc::from([s_o, s_g, s_a].join(""))
+}
+
+#[rustfmt::skip]
+const BITS: [u32; 9] = [
+        0o400, 0o200, 0o100,
+        0o040, 0o020, 0o010,
+        0o004, 0o002, 0o001,
+    ];
+
+const CHARS: [&str; 9] = ["r", "w", "x", "r", "w", "x", "r", "w", "x"];
+
+pub fn permission_mode_to_strings(mode: u32) -> [&'static str; 9] {
+    let mut repr = ["-"; 9];
+
+    for i in 0..9 {
+        if mode & BITS[i] != 0 {
+            repr[i] = CHARS[i];
+        }
+    }
+
+    // setuid
+    if mode & 0o4000 != 0 {
+        repr[2] = if mode & 0o100 != 0 { "s" } else { "S" };
+    }
+
+    // setgid
+    if mode & 0o2000 != 0 {
+        repr[5] = if mode & 0o010 != 0 { "s" } else { "S" };
+    }
+
+    // sticky
+    if mode & 0o1000 != 0 {
+        repr[8] = if mode & 0o001 != 0 { "t" } else { "T" };
+    }
+
+    repr
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`

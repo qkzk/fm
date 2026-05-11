@@ -45,7 +45,10 @@ pub use mount::*;
 pub use node_creation::NodeCreation;
 pub use nvim::{nvim_inform_ipc, nvim_open, NvimIPCAction};
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
-pub use permissions::{parse_input_permission, permission_mode_to_str, Permissions, MAX_FILE_MODE};
+pub use permissions::{
+    parse_input_permission, permission_mode_to_str, permission_mode_to_strings, Permissions,
+    MAX_FILE_MODE,
+};
 pub use picker::*;
 pub use regex::{regex_flagger, CaseDependantRegex};
 pub use remote::Remote;

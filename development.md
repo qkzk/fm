@@ -2139,18 +2139,23 @@ Once that's done, it's all. No not implement anything else
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
-  - [ ] option to pick kind of colourer (per extension or eza like)
-  - [ ] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
-  - [ ] responsive sizing...
-  - [ ] refactor the whole display
-- [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
+  - [ ] format 
+    - [x] per item simple 
+    - [ ] per item configurable
+  - [ ] options
+    - [ ] option to pick kind of colourer (per extension or eza like)
+    - [ ] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
+    - [ ] responsive sizing...
+    - [ ] refactor the whole display
+    - [ ] include in theming with sane defaults allowing backward compatibiliy
 - [ ] BUG: tab doesn't use whole space
 - [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
-  Needs more testing
+    - [ ] Needs more testing
   
 
 ### Other ideas
 
+- [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
 - [ ] IMP: Configuration shouldn't require 10 files 
 - [ ] Menu plugin 
   - [ ] API:
