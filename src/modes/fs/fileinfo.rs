@@ -108,6 +108,14 @@ impl FileKind<Valid> {
     pub fn is_normal_file(&self) -> bool {
         matches!(self, Self::NormalFile)
     }
+
+    pub fn is_dir(&self) -> bool {
+        matches!(self, FileKind::Directory)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        matches!(self, FileKind::SymbolicLink(_))
+    }
 }
 
 /// Different kind of display for the size column.
@@ -342,11 +350,11 @@ impl FileInfo {
     }
 
     pub fn is_dir(&self) -> bool {
-        matches!(self.file_kind, FileKind::Directory)
+        self.file_kind.is_dir()
     }
 
     pub fn is_symlink(&self) -> bool {
-        matches!(self.file_kind, FileKind::SymbolicLink(_))
+        self.file_kind.is_symlink()
     }
 
     /// True iff the parent of the file is root.
