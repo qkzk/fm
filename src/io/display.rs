@@ -686,26 +686,34 @@ impl<'a> DirectoryDisplay<'a> {
                     Style::default().fg(menu_style.palette_4.fg.unwrap()),
                 ))
             }
-            let range = self
+            let mat = self
                 .tab
                 .search
                 .match_find(&file.filename)
-                .expect("A matched regex should'nt be None")
-                .range();
+                .expect("A matched regex should'nt be None");
+            let range = mat.range();
             let filename = file.filename.to_string();
             let before: String = filename.graphemes(false).take(range.start).collect();
-            let mat: String = filename
-                .graphemes(false)
-                .skip(range.start)
-                .take(range.end)
-                .collect();
+            let inner = mat.as_str().to_string();
             let after: String = filename.graphemes(false).skip(range.end).collect();
-            spans.push(Span::styled(before, style));
-            spans.push(Span::styled(
-                mat,
-                Style::default().fg(menu_style.palette_4.fg.unwrap()),
-            ));
-            spans.push(Span::styled(after, style));
+            spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            }));
+            spans.push(
+                Span::styled(inner, Style::default().fg(menu_style.palette_4.fg.unwrap()))
+                    .add_modifier(if file.is_dir() {
+                        Modifier::BOLD
+                    } else {
+                        Modifier::empty()
+                    }),
+            );
+            spans.push(Span::styled(after, style).add_modifier(if file.is_dir() {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            }));
         } else {
             if with_icon {
                 spans.push(Span::styled(file.icon(), style))
