@@ -211,6 +211,15 @@ pub struct MenuStyle {
     pub palette_2: Style,
     pub palette_3: Style,
     pub palette_4: Style,
+
+    pub permission_read: Style,
+    pub permission_write: Style,
+    pub permission_execute: Style,
+    pub permission_no_right: Style,
+    pub metadata_size: Style,
+    pub metadata_owner: Style,
+    pub metadata_group: Style,
+    pub metadata_modified: Style,
 }
 
 impl Default for MenuStyle {
@@ -224,6 +233,15 @@ impl Default for MenuStyle {
             palette_2: Color::Rgb(230, 189, 87).into(),
             palette_3: Color::Rgb(230, 167, 255).into(),
             palette_4: Color::Rgb(59, 204, 255).into(),
+
+            permission_read: Color::Rgb(45, 250, 209).into(),
+            permission_write: Color::Rgb(45, 250, 209).into(),
+            permission_execute: Color::Rgb(45, 250, 209).into(),
+            permission_no_right: Color::Rgb(45, 250, 209).into(),
+            metadata_size: Color::Rgb(45, 250, 209).into(),
+            metadata_owner: Color::Rgb(45, 250, 209).into(),
+            metadata_group: Color::Rgb(45, 250, 209).into(),
+            metadata_modified: Color::Rgb(45, 250, 209).into(),
         }
     }
 }
@@ -239,6 +257,14 @@ impl MenuStyle {
             update_style!(self.palette_2, menu_colors, "palette_2");
             update_style!(self.palette_3, menu_colors, "palette_3");
             update_style!(self.palette_4, menu_colors, "palette_4");
+            update_style!(self.permission_read, menu_colors, "permission_read");
+            update_style!(self.permission_write, menu_colors, "permission_write");
+            update_style!(self.permission_execute, menu_colors, "permission_execute");
+            update_style!(self.permission_no_right, menu_colors, "permission_no_right");
+            update_style!(self.metadata_size, menu_colors, "metadata_size");
+            update_style!(self.metadata_owner, menu_colors, "metadata_owner");
+            update_style!(self.metadata_group, menu_colors, "metadata_group");
+            update_style!(self.metadata_modified, menu_colors, "metadata_modified");
         }
 
         self

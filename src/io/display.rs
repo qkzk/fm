@@ -19,7 +19,6 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
     CompletedFrame, Frame, Terminal,
 };
-use serde_yaml_ng::with;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
@@ -157,6 +156,7 @@ impl<'a> Files<'a> {
         image_adapter: &mut ImageAdapter,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_colors: &[Color; 9],
     ) {
         let use_log_line = self.use_log_line();
         let rects = Rects::files(rect, use_log_line);
@@ -183,6 +183,7 @@ impl<'a> Files<'a> {
             image_adapter,
             menu_style,
             file_style,
+            rwx_colors,
         );
         if use_log_line {
             self.log_line(f, &rects[3], menu_style);
@@ -269,10 +270,11 @@ impl<'a> Files<'a> {
         image_adapter: &mut ImageAdapter,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) {
         match &self.tab.display_mode {
             DisplayMode::Directory => {
-                DirectoryDisplay::new(self).draw(f, content_rect, menu_style, file_style)
+                DirectoryDisplay::new(self).draw(f, content_rect, menu_style, file_style, rwx_color)
             }
             DisplayMode::Tree => {
                 TreeDisplay::new(self).draw(f, content_rect, menu_style, file_style)
@@ -478,8 +480,9 @@ impl<'a> DirectoryDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) {
-        self.files(f, rect, menu_style, file_style)
+        self.files(f, rect, menu_style, file_style, rwx_color)
     }
 
     /// Displays the current directory content, one line per item like in
@@ -495,6 +498,7 @@ impl<'a> DirectoryDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) {
         let p_rect = rect.offseted(0, 0);
         let format_kind = FormatKind::from_flags(self.status.session.metadata(), p_rect.width);
@@ -504,7 +508,15 @@ impl<'a> DirectoryDisplay<'a> {
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line2(index, file, &format_kind, with_icon, menu_style, file_style)
+                self.files_line2(
+                    index,
+                    file,
+                    &format_kind,
+                    with_icon,
+                    menu_style,
+                    file_style,
+                    rwx_color,
+                )
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -534,6 +546,7 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) -> Line<'b> {
         let mut style = file.style(file_style);
         self.reverse_selected(index, &mut style);
@@ -573,6 +586,7 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) -> Line<'b> {
         let mut style = file.style(file_style);
         self.reverse_selected(index, &mut style);
@@ -582,12 +596,14 @@ impl<'a> DirectoryDisplay<'a> {
             self.span_flagged_symbol(file, &mut style, menu_style),
             Self::mark_span(self.status, file, menu_style),
         ];
+
         spans.append(&mut self.file_remade_name_to_change(
             format_kind,
             file,
             with_icon,
             menu_style,
             file_style,
+            rwx_color,
         ));
         let mut line = Line::from(spans);
         if index == self.tab.directory.index {
@@ -599,18 +615,6 @@ impl<'a> DirectoryDisplay<'a> {
         line
     }
 
-    const RWX_COLORS: [Color; 9] = [
-        Color::Yellow,
-        Color::Red,
-        Color::Blue,
-        Color::Yellow,
-        Color::Red,
-        Color::Blue,
-        Color::Yellow,
-        Color::Red,
-        Color::Blue,
-    ];
-
     fn file_remade_name_to_change<'b>(
         &self,
         format_kind: &FormatKind,
@@ -618,6 +622,7 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
 
@@ -627,13 +632,13 @@ impl<'a> DirectoryDisplay<'a> {
                 file.dir_symbol().to_string(),
                 file.style(file_style),
             ));
-            for (permission, color) in permissions.iter().zip(Self::RWX_COLORS) {
+            for (permission, color) in permissions.iter().zip(rwx_color) {
                 spans.push(Span::styled(
                     *permission,
                     Style::default().fg(if permission != &"-" {
-                        color
+                        *color
                     } else {
-                        Color::Gray
+                        menu_style.permission_no_right.fg.unwrap()
                     }),
                 ));
             }
@@ -644,7 +649,7 @@ impl<'a> DirectoryDisplay<'a> {
                 ' '.to_span().fg(Color::Blue),
                 Span::styled(
                     file.size_column.to_string(),
-                    Style::default().fg(Color::LightRed),
+                    Style::default().fg(menu_style.metadata_size.fg.unwrap()),
                 ),
             ])
         }
@@ -654,7 +659,7 @@ impl<'a> DirectoryDisplay<'a> {
             let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
             spans.push(Span::styled(
                 format!(" {owner:<owner_col_width$} "),
-                Style::default().fg(Color::LightBlue),
+                Style::default().fg(menu_style.metadata_owner.fg.unwrap()),
             ));
         }
 
@@ -663,7 +668,7 @@ impl<'a> DirectoryDisplay<'a> {
             let group = format!("{group:.group_col_width$}", group = file.group);
             spans.push(Span::styled(
                 format!("{group:<group_col_width$} "),
-                Style::default().fg(Color::Magenta),
+                Style::default().fg(menu_style.metadata_group.fg.unwrap()),
             ))
         }
 
@@ -671,7 +676,7 @@ impl<'a> DirectoryDisplay<'a> {
             spans.append(&mut vec![
                 Span::styled(
                     file.system_time.to_string(),
-                    Style::default().fg(Color::Blue),
+                    Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
                 ),
                 ' '.to_span().fg(Color::Blue),
             ]);
@@ -1883,6 +1888,8 @@ pub struct Display {
     menu_style: &'static MenuStyle,
     /// A static reference to the file style set by the user in config
     file_style: &'static FileStyle,
+    /// Colors for rwxr--r--
+    rwx_colors: [Color; 9],
 }
 
 impl Display {
@@ -1892,11 +1899,50 @@ impl Display {
         let image_adapter = ImageAdapter::detect();
         let menu_style = MENU_STYLES.get().expect("Menu style should be set");
         let file_style = FILE_STYLES.get().expect("FIle style should be set");
+        let rwx_colors: [Color; 9] = [
+            menu_style
+                .permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            menu_style
+                .permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+        ];
         Self {
             term,
             image_adapter,
             menu_style,
             file_style,
+            rwx_colors,
         }
     }
 
@@ -1998,6 +2044,7 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
+                &self.rwx_colors,
             );
             menus
                 .0
@@ -2008,6 +2055,7 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
+                &self.rwx_colors,
             );
             menus
                 .1
@@ -2076,6 +2124,7 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
+                &self.rwx_colors,
             );
             menu_left.draw(f, &inside_wins[2], self.menu_style, self.file_style);
             if status.internal_settings.cursor.is_active() {
