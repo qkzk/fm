@@ -277,7 +277,7 @@ impl<'a> Files<'a> {
                 DirectoryDisplay::new(self).draw(f, content_rect, menu_style, file_style, rwx_color)
             }
             DisplayMode::Tree => {
-                TreeDisplay::new(self).draw(f, content_rect, menu_style, file_style)
+                TreeDisplay::new(self).draw(f, content_rect, menu_style, file_style, rwx_color)
             }
             DisplayMode::Preview => PreviewDisplay::new(self, menu_style, file_style).draw(
                 f,
@@ -624,27 +624,14 @@ impl<'a> DirectoryDisplay<'a> {
         file_style: &'static FileStyle,
         rwx_color: &[Color; 9],
     ) -> Vec<Span<'b>> {
-        let mut spans = vec![];
-
-        if format_kind.has_permissions() {
-            spans.append(&mut self.permissions(file, menu_style, file_style, rwx_color));
-        }
-
-        if format_kind.has_medatada() {
-            spans.append(&mut self.size(file, menu_style))
-        }
-
-        if format_kind.has_owner() {
-            spans.push(self.owner(file, menu_style));
-        }
-
-        if format_kind.has_group() {
-            spans.push(self.group(file, menu_style));
-        }
-
-        if format_kind.has_medatada() {
-            spans.append(&mut self.modified(file, menu_style));
-        }
+        let mut spans = Self::metadata(
+            format_kind,
+            file,
+            menu_style,
+            file_style,
+            rwx_color,
+            self.group_owner_sizes,
+        );
 
         let style = file.style(file_style);
         if self.tab.search.is_match(&file.filename) {
@@ -660,8 +647,42 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
+    fn metadata<'b>(
+        format_kind: &FormatKind,
+        file: &FileInfo,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
+        group_owner_size: (usize, usize),
+    ) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+
+        if format_kind.has_permissions() {
+            spans.append(&mut Self::permissions(
+                file, menu_style, file_style, rwx_color,
+            ));
+        }
+
+        if format_kind.has_medatada() {
+            spans.append(&mut Self::size(file, menu_style))
+        }
+
+        if format_kind.has_owner() {
+            spans.push(Self::owner(file, menu_style, group_owner_size.0));
+        }
+
+        if format_kind.has_group() {
+            spans.push(Self::group(file, menu_style, group_owner_size.1));
+        }
+
+        if format_kind.has_medatada() {
+            spans.append(&mut Self::modified(file, menu_style));
+        }
+
+        spans
+    }
+
     fn permissions<'b>(
-        &self,
         file: &FileInfo,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
@@ -686,7 +707,7 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
-    fn size<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
+    fn size<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
         vec![
             ' '.to_span().fg(Color::Blue),
             Span::styled(
@@ -696,8 +717,11 @@ impl<'a> DirectoryDisplay<'a> {
         ]
     }
 
-    fn owner<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
-        let owner_col_width = self.group_owner_sizes.0;
+    fn owner<'b>(
+        file: &FileInfo,
+        menu_style: &'static MenuStyle,
+        owner_col_width: usize,
+    ) -> Span<'b> {
         let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
         Span::styled(
             format!(" {owner:<owner_col_width$} "),
@@ -705,8 +729,11 @@ impl<'a> DirectoryDisplay<'a> {
         )
     }
 
-    fn group<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
-        let group_col_width = self.group_owner_sizes.1;
+    fn group<'b>(
+        file: &FileInfo,
+        menu_style: &'static MenuStyle,
+        group_col_width: usize,
+    ) -> Span<'b> {
         let group = format!("{group:.group_col_width$}", group = file.group);
         Span::styled(
             format!("{group:<group_col_width$} "),
@@ -714,7 +741,7 @@ impl<'a> DirectoryDisplay<'a> {
         )
     }
 
-    fn modified<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
+    fn modified<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
         vec![
             Span::styled(
                 file.system_time.to_string(),
@@ -936,8 +963,9 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) {
-        self.tree(f, rect, menu_style, file_style)
+        self.tree(f, rect, menu_style, file_style, rwx_color)
     }
 
     fn tree(
@@ -946,6 +974,7 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) {
         let paragraph = Self::tree_paragraph(
             self.status,
@@ -955,6 +984,7 @@ impl<'a> TreeDisplay<'a> {
             rect,
             menu_style,
             file_style,
+            rwx_color,
         );
         Self::render(paragraph, f, rect)
     }
@@ -971,10 +1001,12 @@ impl<'a> TreeDisplay<'a> {
         rect: &'b Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) -> Paragraph<'b> {
         let p_rect = rect.offseted(0, 0);
         let width = p_rect.width.saturating_sub(6);
-        let formater = DirectoryDisplay::pick_formater(with_metadata, width);
+        let format_kind = FormatKind::from_flags(status.session.metadata(), width);
+
         let with_icon = Self::use_icon(with_metadata);
         Paragraph::new(
             tree.lines_enum_skip_take(window)
@@ -983,10 +1015,11 @@ impl<'a> TreeDisplay<'a> {
                         status,
                         index == 0,
                         line_builder,
-                        &formater,
+                        &format_kind,
                         with_icon,
                         menu_style,
                         file_style,
+                        rwx_color,
                     )
                     .ok()
                 })
@@ -1002,27 +1035,42 @@ impl<'a> TreeDisplay<'a> {
         status: &Status,
         with_offset: bool,
         line_builder: &'b TLine,
-        formater: &Formater,
+        format_kind: &FormatKind,
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
     ) -> Result<Line<'b>> {
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, &status.tabs[0].users)?;
         let mut style = fileinfo.style(file_style);
-        Self::reverse_flagged(line_builder, &mut style);
+        Self::reverse_selected(line_builder, &mut style);
         Self::color_searched(status, &fileinfo, &mut style, menu_style);
-        Ok(Line::from(vec![
+        let mut spans = vec![
             Self::span_flagged_symbol(status, path, &mut style, menu_style),
             DirectoryDisplay::mark_span(status, &fileinfo, menu_style),
-            Self::metadata(&fileinfo, formater, style),
+        ];
+        spans.append(&mut Self::metadata(
+            format_kind,
+            &fileinfo,
+            menu_style,
+            file_style,
+            rwx_color,
+            (6, 6),
+        ));
+        spans.append(&mut vec![
             Self::prefix(line_builder),
             Self::whitespaces(status, path, with_offset),
             Self::filename(line_builder, with_icon, style),
-        ]))
+        ]);
+        let mut line = Line::from(spans);
+        if line_builder.is_selected {
+            line = line.add_modifier(Modifier::REVERSED);
+        }
+        Ok(line)
     }
 
-    fn reverse_flagged(line_builder: &TLine, style: &mut Style) {
+    fn reverse_selected(line_builder: &TLine, style: &mut Style) {
         if line_builder.is_selected {
             style.add_modifier |= Modifier::REVERSED;
         }
@@ -1053,8 +1101,23 @@ impl<'a> TreeDisplay<'a> {
         }
     }
 
-    fn metadata<'b>(fileinfo: &FileInfo, formater: &Formater, style: Style) -> Span<'b> {
-        Span::styled(formater(fileinfo, (6, 6)), style)
+    fn metadata<'b>(
+        format_kind: &FormatKind,
+        file: &FileInfo,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
+        group_owner_col_width: (usize, usize),
+    ) -> Vec<Span<'b>> {
+        DirectoryDisplay::metadata(
+            format_kind,
+            file,
+            menu_style,
+            file_style,
+            rwx_color,
+            group_owner_col_width,
+        )
+        // Span::styled(formater(fileinfo, (6, 6)), style)
     }
 
     fn prefix(line_builder: &TLine) -> Span<'_> {
@@ -1254,6 +1317,7 @@ impl<'a> PreviewDisplay<'a> {
             rect,
             self.menu_style,
             self.file_style,
+            &[Color::LightYellow; 9],
         );
         TreeDisplay::render(paragraph, f, rect)
     }
