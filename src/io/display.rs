@@ -19,6 +19,8 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
     CompletedFrame, Frame, Terminal,
 };
+use serde_yaml_ng::with;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     app::{ClickableLine, Footer, Header, PreviewHeader, Status, Tab},
@@ -502,7 +504,7 @@ impl<'a> DirectoryDisplay<'a> {
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line2(index, file, &formater, with_icon, menu_style, file_style)
+                self.files_line2(index, file, &format_kind, with_icon, menu_style, file_style)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -525,33 +527,6 @@ impl<'a> DirectoryDisplay<'a> {
     }
 
     fn files_line<'b>(
-        &self,
-        index: usize,
-        file: &FileInfo,
-        format_kind: &FormatKind,
-        with_icon: bool,
-        menu_style: &'static MenuStyle,
-        file_style: &'static FileStyle,
-    ) -> Line<'b> {
-        let mut style = file.style(file_style);
-        self.reverse_selected(index, &mut style);
-
-        let mut v = vec![
-            self.span_flagged_symbol(file, &mut style, menu_style),
-            Self::mark_span(self.status, file, menu_style),
-        ];
-        v.append(&mut self.file_remade_name_to_change(format_kind, file, with_icon, file_style));
-        let mut line = Line::from(v);
-        if index == self.tab.directory.index {
-            line = line.add_modifier(Modifier::REVERSED);
-        }
-        if self.status.menu.flagged.contains(&file.path) {
-            line = line.add_modifier(Modifier::BOLD);
-        }
-        line
-    }
-
-    fn files_line2<'b>(
         &self,
         index: usize,
         file: &FileInfo,
@@ -590,6 +565,40 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
+    fn files_line2<'b>(
+        &self,
+        index: usize,
+        file: &FileInfo,
+        format_kind: &FormatKind,
+        with_icon: bool,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+    ) -> Line<'b> {
+        let mut style = file.style(file_style);
+        self.reverse_selected(index, &mut style);
+        self.color_searched(file, &mut style, menu_style);
+
+        let mut spans = vec![
+            self.span_flagged_symbol(file, &mut style, menu_style),
+            Self::mark_span(self.status, file, menu_style),
+        ];
+        spans.append(&mut self.file_remade_name_to_change(
+            format_kind,
+            file,
+            with_icon,
+            menu_style,
+            file_style,
+        ));
+        let mut line = Line::from(spans);
+        if index == self.tab.directory.index {
+            line = line.add_modifier(Modifier::REVERSED);
+        }
+        if self.status.menu.flagged.contains(&file.path) {
+            line = line.add_modifier(Modifier::BOLD);
+        }
+        line
+    }
+
     const RWX_COLORS: [Color; 9] = [
         Color::Yellow,
         Color::Red,
@@ -607,16 +616,13 @@ impl<'a> DirectoryDisplay<'a> {
         format_kind: &FormatKind,
         file: &FileInfo,
         with_icon: bool,
+        menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
     ) -> Vec<Span<'b>> {
-        let (owner_col_width, group_col_width) = self.group_owner_sizes;
-        let owner = format!("{owner:.owner_col_width$}", owner = file.owner,);
-        let group = format!("{group:.group_col_width$}", group = file.group,);
-        let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
-        let icon = if with_icon { file.icon() } else { "" }.to_string();
         let mut spans = vec![];
 
         if format_kind.has_permissions() {
+            let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
             spans.push(Span::styled(
                 file.dir_symbol().to_string(),
                 file.style(file_style),
@@ -644,6 +650,8 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if format_kind.has_owner() {
+            let owner_col_width = self.group_owner_sizes.0;
+            let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
             spans.push(Span::styled(
                 format!(" {owner:<owner_col_width$} "),
                 Style::default().fg(Color::LightBlue),
@@ -651,6 +659,8 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if format_kind.has_group() {
+            let group_col_width = self.group_owner_sizes.1;
+            let group = format!("{group:.group_col_width$}", group = file.group);
             spans.push(Span::styled(
                 format!("{group:<group_col_width$} "),
                 Style::default().fg(Color::Magenta),
@@ -667,16 +677,48 @@ impl<'a> DirectoryDisplay<'a> {
             ]);
         }
 
-        spans.append(&mut vec![
-            Span::styled(icon, Style::default().fg(Color::LightYellow)),
-            Span::styled(file.filename.to_string(), file.style(file_style)).add_modifier(
+        let style = file.style(file_style);
+
+        if self.tab.search.is_match(&file.filename) {
+            if with_icon {
+                spans.push(Span::styled(
+                    file.icon(),
+                    Style::default().fg(menu_style.palette_4.fg.unwrap()),
+                ))
+            }
+            let range = self
+                .tab
+                .search
+                .match_find(&file.filename)
+                .expect("A matched regex should'nt be None")
+                .range();
+            let filename = file.filename.to_string();
+            let before: String = filename.graphemes(false).take(range.start).collect();
+            let mat: String = filename
+                .graphemes(false)
+                .skip(range.start)
+                .take(range.end)
+                .collect();
+            let after: String = filename.graphemes(false).skip(range.end).collect();
+            spans.push(Span::styled(before, style));
+            spans.push(Span::styled(
+                mat,
+                Style::default().fg(menu_style.palette_4.fg.unwrap()),
+            ));
+            spans.push(Span::styled(after, style));
+        } else {
+            if with_icon {
+                spans.push(Span::styled(file.icon(), style))
+            }
+            spans.push(Span::styled(file.filename.to_string(), style).add_modifier(
                 if file.is_dir() {
                     Modifier::BOLD
                 } else {
                     Modifier::empty()
                 },
-            ),
-        ]);
+            ));
+        }
+
         if let FileKind::SymbolicLink(_) = file.file_kind {
             let sl = match std::fs::read_link(&file.path) {
                 Ok(dest) if dest.exists() => Span::styled(
