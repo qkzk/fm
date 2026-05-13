@@ -627,127 +627,176 @@ impl<'a> DirectoryDisplay<'a> {
         let mut spans = vec![];
 
         if format_kind.has_permissions() {
-            let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
-            spans.push(Span::styled(
-                file.dir_symbol().to_string(),
-                file.style(file_style),
-            ));
-            for (permission, color) in permissions.iter().zip(rwx_color) {
-                spans.push(Span::styled(
-                    *permission,
-                    Style::default().fg(if permission != &"-" {
-                        *color
-                    } else {
-                        menu_style.permission_no_right.fg.unwrap()
-                    }),
-                ));
-            }
+            spans.append(&mut self.permissions(file, menu_style, file_style, rwx_color));
         }
 
         if format_kind.has_medatada() {
-            spans.append(&mut vec![
-                ' '.to_span().fg(Color::Blue),
-                Span::styled(
-                    file.size_column.to_string(),
-                    Style::default().fg(menu_style.metadata_size.fg.unwrap()),
-                ),
-            ])
+            spans.append(&mut self.size(file, menu_style))
         }
 
         if format_kind.has_owner() {
-            let owner_col_width = self.group_owner_sizes.0;
-            let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
-            spans.push(Span::styled(
-                format!(" {owner:<owner_col_width$} "),
-                Style::default().fg(menu_style.metadata_owner.fg.unwrap()),
-            ));
+            spans.push(self.owner(file, menu_style));
         }
 
         if format_kind.has_group() {
-            let group_col_width = self.group_owner_sizes.1;
-            let group = format!("{group:.group_col_width$}", group = file.group);
-            spans.push(Span::styled(
-                format!("{group:<group_col_width$} "),
-                Style::default().fg(menu_style.metadata_group.fg.unwrap()),
-            ))
+            spans.push(self.group(file, menu_style));
         }
 
         if format_kind.has_medatada() {
-            spans.append(&mut vec![
-                Span::styled(
-                    file.system_time.to_string(),
-                    Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
-                ),
-                ' '.to_span().fg(Color::Blue),
-            ]);
+            spans.append(&mut self.modified(file, menu_style));
         }
 
         let style = file.style(file_style);
-
         if self.tab.search.is_match(&file.filename) {
-            if with_icon {
-                spans.push(Span::styled(
-                    file.icon(),
-                    Style::default().fg(menu_style.palette_4.fg.unwrap()),
-                ))
-            }
-            let mat = self
-                .tab
-                .search
-                .match_find(&file.filename)
-                .expect("A matched regex should'nt be None");
-            let range = mat.range();
-            let filename = file.filename.to_string();
-            let before: String = filename.graphemes(false).take(range.start).collect();
-            let inner = mat.as_str().to_string();
-            let after: String = filename.graphemes(false).skip(range.end).collect();
-            spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
-                Modifier::BOLD
-            } else {
-                Modifier::empty()
-            }));
-            spans.push(
-                Span::styled(inner, Style::default().fg(menu_style.palette_4.fg.unwrap()))
-                    .add_modifier(if file.is_dir() {
-                        Modifier::BOLD
-                    } else {
-                        Modifier::empty()
-                    }),
-            );
-            spans.push(Span::styled(after, style).add_modifier(if file.is_dir() {
-                Modifier::BOLD
-            } else {
-                Modifier::empty()
-            }));
+            spans.append(&mut self.search(file, with_icon, style, menu_style));
         } else {
-            if with_icon {
-                spans.push(Span::styled(file.icon(), style))
-            }
-            spans.push(Span::styled(file.filename.to_string(), style).add_modifier(
-                if file.is_dir() {
+            spans.append(&mut self.not_search(file, with_icon, style));
+        }
+
+        if file.is_symlink() {
+            spans.push(self.symbolic_link(file));
+        };
+
+        spans
+    }
+
+    fn permissions<'b>(
+        &self,
+        file: &FileInfo,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+        rwx_color: &[Color; 9],
+    ) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+        let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
+        spans.push(Span::styled(
+            file.dir_symbol().to_string(),
+            file.style(file_style),
+        ));
+        for (permission, color) in permissions.iter().zip(rwx_color) {
+            spans.push(Span::styled(
+                *permission,
+                Style::default().fg(if permission != &"-" {
+                    *color
+                } else {
+                    menu_style.permission_no_right.fg.unwrap()
+                }),
+            ));
+        }
+        spans
+    }
+
+    fn size<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
+        vec![
+            ' '.to_span().fg(Color::Blue),
+            Span::styled(
+                file.size_column.to_string(),
+                Style::default().fg(menu_style.metadata_size.fg.unwrap()),
+            ),
+        ]
+    }
+
+    fn owner<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
+        let owner_col_width = self.group_owner_sizes.0;
+        let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
+        Span::styled(
+            format!(" {owner:<owner_col_width$} "),
+            Style::default().fg(menu_style.metadata_owner.fg.unwrap()),
+        )
+    }
+
+    fn group<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
+        let group_col_width = self.group_owner_sizes.1;
+        let group = format!("{group:.group_col_width$}", group = file.group);
+        Span::styled(
+            format!("{group:<group_col_width$} "),
+            Style::default().fg(menu_style.metadata_group.fg.unwrap()),
+        )
+    }
+
+    fn modified<'b>(&self, file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
+        vec![
+            Span::styled(
+                file.system_time.to_string(),
+                Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
+            ),
+            ' '.to_span().fg(Color::Blue),
+        ]
+    }
+
+    fn search<'b>(
+        &self,
+        file: &FileInfo,
+        with_icon: bool,
+        style: Style,
+        menu_style: &'static MenuStyle,
+    ) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+        if with_icon {
+            spans.push(Span::styled(
+                file.icon(),
+                Style::default().fg(menu_style.palette_4.fg.unwrap()),
+            ))
+        }
+        let mat = self
+            .tab
+            .search
+            .match_find(&file.filename)
+            .expect("A matched regex should'nt be None");
+        let range = mat.range();
+        let filename = file.filename.to_string();
+        let before: String = filename.graphemes(false).take(range.start).collect();
+        let inner = mat.as_str().to_string();
+        let after: String = filename.graphemes(false).skip(range.end).collect();
+        spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
+            Modifier::BOLD
+        } else {
+            Modifier::empty()
+        }));
+        spans.push(
+            Span::styled(inner, Style::default().fg(menu_style.palette_4.fg.unwrap()))
+                .add_modifier(if file.is_dir() {
                     Modifier::BOLD
                 } else {
                     Modifier::empty()
-                },
-            ));
-        }
-
-        if let FileKind::SymbolicLink(_) = file.file_kind {
-            let sl = match std::fs::read_link(&file.path) {
-                Ok(dest) if dest.exists() => Span::styled(
-                    format!(" -> {dest}", dest = dest.display()),
-                    Style::default().fg(Color::Yellow),
-                ),
-                _ => Span::styled(
-                    "  broken link",
-                    Style::default()
-                        .fg(Color::Gray)
-                        .add_modifier(Modifier::ITALIC),
-                ),
-            };
-            spans.push(sl);
-        };
+                }),
+        );
+        spans.push(Span::styled(after, style).add_modifier(if file.is_dir() {
+            Modifier::BOLD
+        } else {
+            Modifier::empty()
+        }));
         spans
+    }
+
+    fn not_search<'b>(&self, file: &FileInfo, with_icon: bool, style: Style) -> Vec<Span<'b>> {
+        let mut spans = vec![];
+        if with_icon {
+            spans.push(Span::styled(file.icon(), style))
+        }
+        spans.push(
+            Span::styled(file.filename.to_string(), style).add_modifier(if file.is_dir() {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            }),
+        );
+        spans
+    }
+
+    fn symbolic_link<'b>(&self, file: &FileInfo) -> Span<'b> {
+        match std::fs::read_link(&file.path) {
+            Ok(dest) if dest.exists() => Span::styled(
+                format!(" -> {dest}", dest = dest.display()),
+                Style::default().fg(Color::Yellow),
+            ),
+            _ => Span::styled(
+                "  broken link",
+                Style::default()
+                    .fg(Color::Gray)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+        }
     }
 
     fn reverse_selected(&self, index: usize, style: &mut Style) {
