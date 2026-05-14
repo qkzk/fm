@@ -284,6 +284,39 @@ impl MenuStyle {
     pub const fn palette_size(&self) -> usize {
         self.palette().len()
     }
+
+    #[inline]
+    pub const fn rwx_colors(&self) -> [Color; 9] {
+        [
+            self.permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_read
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_write
+                .fg
+                .expect("Menu style fg can't be None."),
+            self.permission_execute
+                .fg
+                .expect("Menu style fg can't be None."),
+        ]
+    }
 }
 
 /// Name of the syntect theme used.

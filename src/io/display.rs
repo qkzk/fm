@@ -33,10 +33,10 @@ use crate::{
     log_info,
     modes::{
         highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
-        ContentWindow, CursorOffset, Display as DisplayMode, DisplayedImage, FileInfo, FileKind,
-        FuzzyFinder, HLContent, Icon, Input, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos,
-        Navigate, NeedConfirmation, Preview, Remote, SecondLine, Selectable, TLine, TakeSkip,
-        TakeSkipEnum, Text, TextKind, Trash, Tree,
+        ContentWindow, CursorOffset, Display as DisplayMode, DisplayedImage, FileInfo, FuzzyFinder,
+        HLContent, Icon, Input, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate,
+        NeedConfirmation, Preview, Remote, SecondLine, Selectable, TLine, TakeSkip, TakeSkipEnum,
+        Text, TextKind, Trash, Tree,
     },
 };
 
@@ -156,7 +156,6 @@ impl<'a> Files<'a> {
         image_adapter: &mut ImageAdapter,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_colors: &[Color; 9],
     ) {
         let use_log_line = self.use_log_line();
         let rects = Rects::files(rect, use_log_line);
@@ -183,7 +182,6 @@ impl<'a> Files<'a> {
             image_adapter,
             menu_style,
             file_style,
-            rwx_colors,
         );
         if use_log_line {
             self.log_line(f, &rects[3], menu_style);
@@ -270,14 +268,13 @@ impl<'a> Files<'a> {
         image_adapter: &mut ImageAdapter,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) {
         match &self.tab.display_mode {
             DisplayMode::Directory => {
-                DirectoryDisplay::new(self).draw(f, content_rect, menu_style, file_style, rwx_color)
+                DirectoryDisplay::new(self).draw(f, content_rect, menu_style, file_style)
             }
             DisplayMode::Tree => {
-                TreeDisplay::new(self).draw(f, content_rect, menu_style, file_style, rwx_color)
+                TreeDisplay::new(self).draw(f, content_rect, menu_style, file_style)
             }
             DisplayMode::Preview => PreviewDisplay::new(self, menu_style, file_style).draw(
                 f,
@@ -480,9 +477,8 @@ impl<'a> DirectoryDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) {
-        self.files(f, rect, menu_style, file_style, rwx_color)
+        self.files(f, rect, menu_style, file_style)
     }
 
     /// Displays the current directory content, one line per item like in
@@ -498,7 +494,6 @@ impl<'a> DirectoryDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) {
         let p_rect = rect.offseted(0, 0);
         let format_kind = FormatKind::from_flags(self.status.session.metadata(), p_rect.width);
@@ -508,15 +503,7 @@ impl<'a> DirectoryDisplay<'a> {
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line2(
-                    index,
-                    file,
-                    &format_kind,
-                    with_icon,
-                    menu_style,
-                    file_style,
-                    rwx_color,
-                )
+                self.files_line2(index, file, &format_kind, with_icon, menu_style, file_style)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -546,7 +533,6 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Line<'b> {
         let mut style = file.style(file_style);
         self.reverse_selected(index, &mut style);
@@ -586,11 +572,8 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Line<'b> {
         let mut style = file.style(file_style);
-        self.reverse_selected(index, &mut style);
-        self.color_searched(file, &mut style, menu_style);
 
         let mut spans = vec![
             self.span_flagged_symbol(file, &mut style, menu_style),
@@ -603,14 +586,12 @@ impl<'a> DirectoryDisplay<'a> {
             with_icon,
             menu_style,
             file_style,
-            rwx_color,
         ));
         if index == self.tab.directory.index {
             spans = spans
-                .iter()
+                .into_iter()
                 .map(|span| {
-                    span.clone()
-                        .set_style(file.style(file_style))
+                    span.set_style(style)
                         .add_modifier(if file.is_dir() {
                             Modifier::BOLD
                         } else {
@@ -619,6 +600,7 @@ impl<'a> DirectoryDisplay<'a> {
                         .add_modifier(Modifier::REVERSED)
                 })
                 .collect();
+            spans[0] = spans[0].clone().remove_modifier(Modifier::REVERSED);
         }
         let mut line = Line::from(spans);
         if self.status.menu.flagged.contains(&file.path) {
@@ -634,14 +616,12 @@ impl<'a> DirectoryDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Vec<Span<'b>> {
         let mut spans = Self::metadata(
             format_kind,
             file,
             menu_style,
             file_style,
-            rwx_color,
             self.group_owner_sizes,
         );
 
@@ -664,15 +644,12 @@ impl<'a> DirectoryDisplay<'a> {
         file: &FileInfo,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
         group_owner_size: (usize, usize),
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
 
         if format_kind.has_permissions() {
-            spans.append(&mut Self::permissions(
-                file, menu_style, file_style, rwx_color,
-            ));
+            spans.append(&mut Self::permissions(file, menu_style, file_style));
         }
 
         if format_kind.has_medatada() {
@@ -698,7 +675,6 @@ impl<'a> DirectoryDisplay<'a> {
         file: &FileInfo,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
         let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
@@ -706,11 +682,11 @@ impl<'a> DirectoryDisplay<'a> {
             file.dir_symbol().to_string(),
             file.style(file_style),
         ));
-        for (permission, color) in permissions.iter().zip(rwx_color) {
+        for (permission, color) in permissions.iter().zip(menu_style.rwx_colors()) {
             spans.push(Span::styled(
                 *permission,
                 Style::default().fg(if permission != &"-" {
-                    *color
+                    color
                 } else {
                     menu_style.permission_no_right.fg.unwrap()
                 }),
@@ -975,9 +951,8 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) {
-        self.tree(f, rect, menu_style, file_style, rwx_color)
+        self.tree(f, rect, menu_style, file_style)
     }
 
     fn tree(
@@ -986,7 +961,6 @@ impl<'a> TreeDisplay<'a> {
         rect: &Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) {
         let paragraph = Self::tree_paragraph(
             self.status,
@@ -996,7 +970,6 @@ impl<'a> TreeDisplay<'a> {
             rect,
             menu_style,
             file_style,
-            rwx_color,
         );
         Self::render(paragraph, f, rect)
     }
@@ -1013,7 +986,6 @@ impl<'a> TreeDisplay<'a> {
         rect: &'b Rect,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Paragraph<'b> {
         let p_rect = rect.offseted(0, 0);
         let width = p_rect.width.saturating_sub(6);
@@ -1031,7 +1003,6 @@ impl<'a> TreeDisplay<'a> {
                         with_icon,
                         menu_style,
                         file_style,
-                        rwx_color,
                     )
                     .ok()
                 })
@@ -1051,7 +1022,6 @@ impl<'a> TreeDisplay<'a> {
         with_icon: bool,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
     ) -> Result<Line<'b>> {
         let path = line_builder.path();
         let fileinfo = FileInfo::new(&line_builder.path, &status.tabs[0].users)?;
@@ -1067,7 +1037,6 @@ impl<'a> TreeDisplay<'a> {
             &fileinfo,
             menu_style,
             file_style,
-            rwx_color,
             (6, 6),
         ));
         spans.append(&mut vec![
@@ -1118,7 +1087,6 @@ impl<'a> TreeDisplay<'a> {
         file: &FileInfo,
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
-        rwx_color: &[Color; 9],
         group_owner_col_width: (usize, usize),
     ) -> Vec<Span<'b>> {
         DirectoryDisplay::metadata(
@@ -1126,7 +1094,6 @@ impl<'a> TreeDisplay<'a> {
             file,
             menu_style,
             file_style,
-            rwx_color,
             group_owner_col_width,
         )
         // Span::styled(formater(fileinfo, (6, 6)), style)
@@ -1329,7 +1296,6 @@ impl<'a> PreviewDisplay<'a> {
             rect,
             self.menu_style,
             self.file_style,
-            &[Color::LightYellow; 9],
         );
         TreeDisplay::render(paragraph, f, rect)
     }
@@ -2013,8 +1979,6 @@ pub struct Display {
     menu_style: &'static MenuStyle,
     /// A static reference to the file style set by the user in config
     file_style: &'static FileStyle,
-    /// Colors for rwxr--r--
-    rwx_colors: [Color; 9],
 }
 
 impl Display {
@@ -2024,50 +1988,11 @@ impl Display {
         let image_adapter = ImageAdapter::detect();
         let menu_style = MENU_STYLES.get().expect("Menu style should be set");
         let file_style = FILE_STYLES.get().expect("FIle style should be set");
-        let rwx_colors: [Color; 9] = [
-            menu_style
-                .permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            menu_style
-                .permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
-        ];
         Self {
             term,
             image_adapter,
             menu_style,
             file_style,
-            rwx_colors,
         }
     }
 
@@ -2169,7 +2094,6 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
-                &self.rwx_colors,
             );
             menus
                 .0
@@ -2180,7 +2104,6 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
-                &self.rwx_colors,
             );
             menus
                 .1
@@ -2249,7 +2172,6 @@ impl Display {
                 &mut self.image_adapter,
                 self.menu_style,
                 self.file_style,
-                &self.rwx_colors,
             );
             menu_left.draw(f, &inside_wins[2], self.menu_style, self.file_style);
             if status.internal_settings.cursor.is_active() {
