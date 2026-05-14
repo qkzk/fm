@@ -14,7 +14,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
     prelude::*,
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Styled},
     text::{Line, Span, ToSpan},
     widgets::{Block, BorderType, Borders, Paragraph},
     CompletedFrame, Frame, Terminal,
@@ -605,10 +605,22 @@ impl<'a> DirectoryDisplay<'a> {
             file_style,
             rwx_color,
         ));
-        let mut line = Line::from(spans);
         if index == self.tab.directory.index {
-            line = line.add_modifier(Modifier::REVERSED);
+            spans = spans
+                .iter()
+                .map(|span| {
+                    span.clone()
+                        .set_style(file.style(file_style))
+                        .add_modifier(if file.is_dir() {
+                            Modifier::BOLD
+                        } else {
+                            Modifier::empty()
+                        })
+                        .add_modifier(Modifier::REVERSED)
+                })
+                .collect();
         }
+        let mut line = Line::from(spans);
         if self.status.menu.flagged.contains(&file.path) {
             line = line.add_modifier(Modifier::BOLD);
         }
@@ -724,7 +736,7 @@ impl<'a> DirectoryDisplay<'a> {
     ) -> Span<'b> {
         let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
         Span::styled(
-            format!(" {owner:<owner_col_width$} "),
+            format!(" {owner:<owner_col_width$}"),
             Style::default().fg(menu_style.metadata_owner.fg.unwrap()),
         )
     }
@@ -736,7 +748,7 @@ impl<'a> DirectoryDisplay<'a> {
     ) -> Span<'b> {
         let group = format!("{group:.group_col_width$}", group = file.group);
         Span::styled(
-            format!("{group:<group_col_width$} "),
+            format!(" {group:<group_col_width$}"),
             Style::default().fg(menu_style.metadata_group.fg.unwrap()),
         )
     }
@@ -744,7 +756,7 @@ impl<'a> DirectoryDisplay<'a> {
     fn modified<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
         vec![
             Span::styled(
-                file.system_time.to_string(),
+                format!(" {}", file.system_time),
                 Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
             ),
             ' '.to_span().fg(Color::Blue),
