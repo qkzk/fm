@@ -14,8 +14,8 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size},
     prelude::*,
-    style::{Color, Modifier, Style, Styled},
-    text::{Line, Span, ToSpan},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
     CompletedFrame, Frame, Terminal,
 };
@@ -497,7 +497,6 @@ impl<'a> DirectoryDisplay<'a> {
     ) {
         let p_rect = rect.offseted(0, 0);
         let format_kind = FormatKind::from_flags(self.status.session.metadata(), p_rect.width);
-        let formater = format_kind.formater();
         let with_icon = with_icon();
         let lines: Vec<_> = self
             .tab
@@ -509,11 +508,6 @@ impl<'a> DirectoryDisplay<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
-    fn pick_formater(with_metadata: bool, width: u16) -> Formater {
-        let kind = FormatKind::from_flags(with_metadata, width);
-        kind.formater()
-    }
-
     fn group_owner_size(status: &Status, tab: &Tab) -> (usize, usize) {
         if status.session.metadata() {
             (
@@ -523,36 +517,6 @@ impl<'a> DirectoryDisplay<'a> {
         } else {
             (0, 0)
         }
-    }
-
-    fn files_line<'b>(
-        &self,
-        index: usize,
-        file: &FileInfo,
-        formater: &fn(&FileInfo, (usize, usize)) -> String,
-        with_icon: bool,
-        menu_style: &'static MenuStyle,
-        file_style: &'static FileStyle,
-    ) -> Line<'b> {
-        let mut style = file.style(file_style);
-        self.reverse_selected(index, &mut style);
-        self.color_searched(file, &mut style, menu_style);
-        let mut content = formater(file, self.group_owner_sizes);
-
-        content.push(' ');
-        if with_icon {
-            content.push_str(file.icon());
-        }
-        content.push_str(&file.filename);
-        if file.is_symlink() {
-            file.expand_symlink(&mut content);
-        }
-
-        Line::from(vec![
-            self.span_flagged_symbol(file, &mut style, menu_style),
-            Self::mark_span(self.status, file, menu_style),
-            Span::styled(content, style),
-        ])
     }
 
     fn mark_span<'b>(status: &Status, file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
@@ -795,18 +759,6 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn reverse_selected(&self, index: usize, style: &mut Style) {
-        if index == self.tab.directory.index {
-            style.add_modifier |= Modifier::REVERSED;
-        }
-    }
-
-    fn color_searched(&self, file: &FileInfo, style: &mut Style, menu_style: &'static MenuStyle) {
-        if self.tab.search.is_match(&file.filename) {
-            style.fg = menu_style.palette_4.fg;
-        }
-    }
-
     fn span_flagged_symbol<'b>(
         &self,
         file: &FileInfo,
@@ -819,32 +771,6 @@ impl<'a> DirectoryDisplay<'a> {
         } else {
             Span::raw("")
         }
-    }
-}
-
-type Formater = fn(&FileInfo, (usize, usize)) -> String;
-
-struct FileFormater;
-
-impl FileFormater {
-    fn metadata(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_base(owner_sizes.1, owner_sizes.0)
-    }
-
-    fn metadata_no_group(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_no_group(owner_sizes.1)
-    }
-
-    fn metadata_no_permissions(file: &FileInfo, owner_sizes: (usize, usize)) -> String {
-        file.format_no_permissions(owner_sizes.1)
-    }
-
-    fn metadata_no_owner(file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        file.format_no_owner()
-    }
-
-    fn simple(_file: &FileInfo, _owner_sizes: (usize, usize)) -> String {
-        " ".to_owned()
     }
 }
 
@@ -900,16 +826,6 @@ impl FormatKind {
 
     fn has_medatada(&self) -> bool {
         !matches!(&self, Self::Simple)
-    }
-
-    fn formater(&self) -> Formater {
-        match self {
-            FormatKind::Metadata => FileFormater::metadata,
-            FormatKind::MetadataNoGroup => FileFormater::metadata_no_group,
-            FormatKind::MetadataNoPermissions => FileFormater::metadata_no_permissions,
-            FormatKind::MetadataNoOwner => FileFormater::metadata_no_owner,
-            FormatKind::Simple => FileFormater::simple,
-        }
     }
 }
 
@@ -971,8 +887,8 @@ impl<'a> TreeDisplay<'a> {
         let p_rect = rect.offseted(0, 0);
         let width = p_rect.width.saturating_sub(6);
         let format_kind = FormatKind::from_flags(status.session.metadata(), width);
-
         let with_icon = Self::use_icon(with_metadata);
+
         Paragraph::new(
             tree.lines_enum_skip_take(window)
                 .filter_map(|(index, line_builder)| {
@@ -1012,7 +928,7 @@ impl<'a> TreeDisplay<'a> {
             Self::span_flagged_symbol(status, path, &mut style, menu_style),
             DirectoryDisplay::mark_span(status, &fileinfo, menu_style),
         ];
-        spans.append(&mut Self::metadata(
+        spans.append(&mut DirectoryDisplay::metadata(
             format_kind,
             &fileinfo,
             menu_style,
@@ -1029,12 +945,6 @@ impl<'a> TreeDisplay<'a> {
         }
         let line = Line::from(spans);
         Ok(line)
-    }
-
-    fn reverse_selected(line_builder: &TLine, style: &mut Style) {
-        if line_builder.is_selected {
-            style.add_modifier |= Modifier::REVERSED;
-        }
     }
 
     fn color_searched(
@@ -1060,23 +970,6 @@ impl<'a> TreeDisplay<'a> {
         } else {
             Span::raw(" ")
         }
-    }
-
-    fn metadata<'b>(
-        format_kind: &FormatKind,
-        file: &FileInfo,
-        menu_style: &'static MenuStyle,
-        file_style: &'static FileStyle,
-        group_owner_col_width: (usize, usize),
-    ) -> Vec<Span<'b>> {
-        DirectoryDisplay::metadata(
-            format_kind,
-            file,
-            menu_style,
-            file_style,
-            group_owner_col_width,
-        )
-        // Span::styled(formater(fileinfo, (6, 6)), style)
     }
 
     fn prefix(line_builder: &TLine) -> Span<'_> {
