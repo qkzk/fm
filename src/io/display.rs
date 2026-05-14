@@ -633,7 +633,7 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if file.is_symlink() {
-            spans.push(self.symbolic_link(file));
+            spans.push(self.symbolic_link(file, file_style));
         };
 
         spans
@@ -799,17 +799,15 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
-    fn symbolic_link<'b>(&self, file: &FileInfo) -> Span<'b> {
+    fn symbolic_link<'b>(&self, file: &FileInfo, file_style: &'static FileStyle) -> Span<'b> {
         match std::fs::read_link(&file.path) {
             Ok(dest) if dest.exists() => Span::styled(
                 format!(" -> {dest}", dest = dest.display()),
-                Style::default().fg(Color::Yellow),
+                file_style.symlink,
             ),
             _ => Span::styled(
                 "  broken link",
-                Style::default()
-                    .fg(Color::Gray)
-                    .add_modifier(Modifier::ITALIC),
+                file_style.broken.add_modifier(Modifier::ITALIC),
             ),
         }
     }
