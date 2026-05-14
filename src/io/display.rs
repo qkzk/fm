@@ -653,7 +653,7 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if format_kind.has_medatada() {
-            spans.append(&mut Self::size(file, menu_style))
+            spans.push(Self::size(file, menu_style))
         }
 
         if format_kind.has_owner() {
@@ -665,7 +665,7 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if format_kind.has_medatada() {
-            spans.append(&mut Self::modified(file, menu_style));
+            spans.push(Self::modified(file, menu_style));
         }
 
         spans
@@ -695,14 +695,11 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
-    fn size<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
-        vec![
-            ' '.to_span().fg(Color::Blue),
-            Span::styled(
-                file.size_column.to_string(),
-                Style::default().fg(menu_style.metadata_size.fg.unwrap()),
-            ),
-        ]
+    fn size<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
+        Span::styled(
+            file.size_column.to_string(),
+            Style::default().fg(menu_style.metadata_size.fg.unwrap()),
+        )
     }
 
     fn owner<'b>(
@@ -729,14 +726,11 @@ impl<'a> DirectoryDisplay<'a> {
         )
     }
 
-    fn modified<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Vec<Span<'b>> {
-        vec![
-            Span::styled(
-                format!(" {}", file.system_time),
-                Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
-            ),
-            ' '.to_span().fg(Color::Blue),
-        ]
+    fn modified<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
+        Span::styled(
+            format!(" {} ", file.system_time),
+            Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
+        )
     }
 
     fn search<'b>(
