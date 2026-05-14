@@ -627,13 +627,13 @@ impl<'a> DirectoryDisplay<'a> {
 
         let style = file.style(file_style);
         if self.tab.search.is_match(&file.filename) {
-            spans.append(&mut self.search(file, with_icon, style, menu_style));
+            spans.append(&mut self.with_search(file, with_icon, style, menu_style));
         } else {
-            spans.append(&mut self.not_search(file, with_icon, style));
+            spans.append(&mut self.without_search(file, with_icon, style));
         }
 
         if file.is_symlink() {
-            spans.push(self.symbolic_link(file, file_style));
+            spans.push(self.symbolic_link(file, style));
         };
 
         spans
@@ -677,29 +677,26 @@ impl<'a> DirectoryDisplay<'a> {
         file_style: &'static FileStyle,
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
-        let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
         spans.push(Span::styled(
             file.dir_symbol().to_string(),
             file.style(file_style),
         ));
-        for (permission, color) in permissions.iter().zip(menu_style.rwx_colors()) {
+        let permissions = file.permissions_strings().unwrap_or(["?"; 9]);
+        for (permission, style) in permissions.iter().zip(menu_style.rwx_colors()) {
             spans.push(Span::styled(
                 *permission,
-                Style::default().fg(if permission != &"-" {
-                    color
+                if *permission != "-" {
+                    style
                 } else {
-                    menu_style.permission_no_right.fg.unwrap()
-                }),
+                    menu_style.permission_no_right
+                },
             ));
         }
         spans
     }
 
     fn size<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
-        Span::styled(
-            file.size_column.to_string(),
-            Style::default().fg(menu_style.metadata_size.fg.unwrap()),
-        )
+        Span::styled(file.size_column.to_string(), menu_style.metadata_size)
     }
 
     fn owner<'b>(
@@ -710,7 +707,7 @@ impl<'a> DirectoryDisplay<'a> {
         let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
         Span::styled(
             format!(" {owner:<owner_col_width$}"),
-            Style::default().fg(menu_style.metadata_owner.fg.unwrap()),
+            menu_style.metadata_owner,
         )
     }
 
@@ -722,18 +719,18 @@ impl<'a> DirectoryDisplay<'a> {
         let group = format!("{group:.group_col_width$}", group = file.group);
         Span::styled(
             format!(" {group:<group_col_width$}"),
-            Style::default().fg(menu_style.metadata_group.fg.unwrap()),
+            menu_style.metadata_group,
         )
     }
 
     fn modified<'b>(file: &FileInfo, menu_style: &'static MenuStyle) -> Span<'b> {
         Span::styled(
             format!(" {} ", file.system_time),
-            Style::default().fg(menu_style.metadata_modified.fg.unwrap()),
+            menu_style.metadata_modified,
         )
     }
 
-    fn search<'b>(
+    fn with_search<'b>(
         &self,
         file: &FileInfo,
         with_icon: bool,
@@ -742,10 +739,7 @@ impl<'a> DirectoryDisplay<'a> {
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
         if with_icon {
-            spans.push(Span::styled(
-                file.icon(),
-                Style::default().fg(menu_style.palette_4.fg.unwrap()),
-            ))
+            spans.push(Span::styled(file.icon(), menu_style.palette_4))
         }
         let mat = self
             .tab
@@ -763,12 +757,11 @@ impl<'a> DirectoryDisplay<'a> {
             Modifier::empty()
         }));
         spans.push(
-            Span::styled(inner, Style::default().fg(menu_style.palette_4.fg.unwrap()))
-                .add_modifier(if file.is_dir() {
-                    Modifier::BOLD
-                } else {
-                    Modifier::empty()
-                }),
+            Span::styled(inner, menu_style.palette_4).add_modifier(if file.is_dir() {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            }),
         );
         spans.push(Span::styled(after, style).add_modifier(if file.is_dir() {
             Modifier::BOLD
@@ -778,7 +771,7 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
-    fn not_search<'b>(&self, file: &FileInfo, with_icon: bool, style: Style) -> Vec<Span<'b>> {
+    fn without_search<'b>(&self, file: &FileInfo, with_icon: bool, style: Style) -> Vec<Span<'b>> {
         let mut spans = vec![];
         if with_icon {
             spans.push(Span::styled(file.icon(), style))
@@ -793,16 +786,12 @@ impl<'a> DirectoryDisplay<'a> {
         spans
     }
 
-    fn symbolic_link<'b>(&self, file: &FileInfo, file_style: &'static FileStyle) -> Span<'b> {
+    fn symbolic_link<'b>(&self, file: &FileInfo, style: Style) -> Span<'b> {
         match std::fs::read_link(&file.path) {
-            Ok(dest) if dest.exists() => Span::styled(
-                format!(" -> {dest}", dest = dest.display()),
-                file_style.symlink,
-            ),
-            _ => Span::styled(
-                "  broken link",
-                file_style.broken.add_modifier(Modifier::ITALIC),
-            ),
+            Ok(dest) if dest.exists() => {
+                Span::styled(format!(" -> {dest}", dest = dest.display()), style)
+            }
+            _ => Span::styled("  broken link", style),
         }
     }
 

@@ -286,35 +286,17 @@ impl MenuStyle {
     }
 
     #[inline]
-    pub const fn rwx_colors(&self) -> [Color; 9] {
+    pub const fn rwx_colors(&self) -> [Style; 9] {
         [
-            self.permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_read
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_write
-                .fg
-                .expect("Menu style fg can't be None."),
-            self.permission_execute
-                .fg
-                .expect("Menu style fg can't be None."),
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
         ]
     }
 }
