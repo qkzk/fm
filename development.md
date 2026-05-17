@@ -2141,16 +2141,17 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: color every cell & refactor
   - [ ] format 
     - [x] per item simple 
-    - [ ] per item configurable
+    - [x] per item configurable
+    - [x] responsive sizing...
+    - [ ] tests
   - [ ] options
-    - [ ] option to pick kind of colourer (per extension or eza like)
-    - [ ] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
-    - [ ] responsive sizing...
+    - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
     - [ ] refactor the whole display
     - [ ] include in theming with sane defaults allowing backward compatibiliy
 - [ ] BUG: tab doesn't use whole space
 - [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
     - [ ] Needs more testing
+- [x] FEAT: configure fuzzy finder colors with menu style
   
 
 ### Other ideas

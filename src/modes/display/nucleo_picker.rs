@@ -9,14 +9,17 @@ use std::{
 use anyhow::Result;
 use nucleo::{pattern, Config, Injector, Nucleo, Utf32String};
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
 };
 use tokio::process::Command as TokioCommand;
 use unicode_segmentation::UnicodeSegmentation;
 use walkdir::WalkDir;
 
-use crate::modes::{extract_extension, ContentWindow, Icon, Input};
+use crate::{
+    config::MenuStyle,
+    modes::{extract_extension, ContentWindow, Icon, Input},
+};
 use crate::{
     config::{with_icon, with_icon_metadata},
     io::inject_command,
@@ -424,10 +427,11 @@ pub fn highlighted_text<'a>(
     is_selected: bool,
     is_file: bool,
     is_flagged: bool,
+    menu_style: &MenuStyle,
 ) -> Line<'a> {
-    let mut spans = create_spans(is_selected, is_flagged);
+    let mut spans = create_spans(is_selected, is_flagged, menu_style);
     if is_file && with_icon() || with_icon_metadata() {
-        push_icon(text, is_selected, is_flagged, &mut spans);
+        push_icon(text, is_selected, is_flagged, menu_style, &mut spans);
     }
     let mut curr_segment = String::new();
     let mut highlight_indices = highlighted.iter().copied().peekable();
@@ -442,10 +446,18 @@ pub fn highlighted_text<'a>(
                     is_selected,
                     false,
                     is_flagged,
+                    menu_style,
                 );
             }
             curr_segment.push_str(grapheme);
-            push_clear(&mut spans, &mut curr_segment, is_selected, true, is_flagged);
+            push_clear(
+                &mut spans,
+                &mut curr_segment,
+                is_selected,
+                true,
+                is_flagged,
+                menu_style,
+            );
             next_highlight = highlight_indices.next();
         } else {
             curr_segment.push_str(grapheme);
@@ -453,13 +465,25 @@ pub fn highlighted_text<'a>(
     }
 
     if !curr_segment.is_empty() {
-        spans.push(create_span(curr_segment, is_selected, false, is_flagged));
+        spans.push(create_span(
+            curr_segment,
+            is_selected,
+            false,
+            is_flagged,
+            menu_style,
+        ));
     }
 
     Line::from(spans)
 }
 
-fn push_icon(text: &str, is_selected: bool, is_flagged: bool, spans: &mut Vec<Span>) {
+fn push_icon(
+    text: &str,
+    is_selected: bool,
+    is_flagged: bool,
+    menu_style: &MenuStyle,
+    spans: &mut Vec<Span>,
+) {
     let file_path = std::path::Path::new(&text);
     let Ok(meta) = file_path.symlink_metadata() else {
         return;
@@ -473,7 +497,7 @@ fn push_icon(text: &str, is_selected: bool, is_flagged: bool, spans: &mut Vec<Sp
     if is_flagged {
         index += 4;
     }
-    spans.push(Span::styled(file_icon, ARRAY_STYLES[index]))
+    spans.push(Span::styled(file_icon, menu_style.fuzzy_styles()[index]))
 }
 
 fn push_clear(
@@ -482,98 +506,24 @@ fn push_clear(
     is_selected: bool,
     is_highlighted: bool,
     is_flagged: bool,
+    menu_style: &MenuStyle,
 ) {
     spans.push(create_span(
         curr_segment.clone(),
         is_selected,
         is_highlighted,
         is_flagged,
+        menu_style,
     ));
     curr_segment.clear();
 }
 
-static DEFAULT_STYLE: Style = Style {
-    fg: Some(Color::Gray),
-    bg: None,
-    add_modifier: Modifier::empty(),
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static SELECTED: Style = Style {
-    fg: Some(Color::Black),
-    bg: Some(Color::Cyan),
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static HIGHLIGHTED: Style = Style {
-    fg: Some(Color::White),
-    bg: None,
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static HIGHLIGHTED_SELECTED: Style = Style {
-    fg: Some(Color::White),
-    bg: Some(Color::Cyan),
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static DEFAULT_STYLE_FLAGGED: Style = Style {
-    fg: Some(Color::Yellow),
-    bg: None,
-    add_modifier: Modifier::empty(),
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static SELECTED_FLAGGED: Style = Style {
-    fg: Some(Color::Black),
-    bg: Some(Color::Yellow),
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static HIGHLIGHTED_FLAGGED: Style = Style {
-    fg: Some(Color::Yellow),
-    bg: None,
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-static HIGHLIGHTED_SELECTED_FLAGGED: Style = Style {
-    fg: Some(Color::White),
-    bg: Some(Color::Yellow),
-    add_modifier: Modifier::BOLD,
-    underline_color: None,
-    sub_modifier: Modifier::empty(),
-};
-
-/// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
-static ARRAY_STYLES: [Style; 8] = [
-    DEFAULT_STYLE,
-    HIGHLIGHTED,
-    SELECTED,
-    HIGHLIGHTED_SELECTED,
-    DEFAULT_STYLE_FLAGGED,
-    HIGHLIGHTED_FLAGGED,
-    SELECTED_FLAGGED,
-    HIGHLIGHTED_SELECTED_FLAGGED,
-];
-
 static SPACER_DEFAULT: &str = "  ";
 static SPACER_SELECTED: &str = "> ";
 
-fn create_spans(is_selected: bool, is_flagged: bool) -> Vec<Span<'static>> {
+fn create_spans(is_selected: bool, is_flagged: bool, menu_style: &MenuStyle) -> Vec<Span<'static>> {
     let index = ((is_flagged as usize) << 2) + ((is_selected as usize) << 1);
-    let style = ARRAY_STYLES[index];
+    let style = menu_style.fuzzy_styles()[index];
     let space = if is_selected {
         SPACER_SELECTED
     } else {
@@ -582,10 +532,15 @@ fn create_spans(is_selected: bool, is_flagged: bool) -> Vec<Span<'static>> {
     vec![Span::styled(space, style)]
 }
 
-fn choose_style(is_selected: bool, is_highlighted: bool, is_flagged: bool) -> Style {
+fn choose_style(
+    is_selected: bool,
+    is_highlighted: bool,
+    is_flagged: bool,
+    menu_style: &MenuStyle,
+) -> Style {
     let index =
         ((is_flagged as usize) << 2) + ((is_selected as usize) << 1) + is_highlighted as usize;
-    ARRAY_STYLES[index]
+    menu_style.fuzzy_styles()[index]
 }
 
 fn create_span<'a>(
@@ -593,9 +548,10 @@ fn create_span<'a>(
     is_selected: bool,
     is_highlighted: bool,
     is_flagged: bool,
+    menu_style: &MenuStyle,
 ) -> Span<'a> {
     Span::styled(
         curr_segment,
-        choose_style(is_selected, is_highlighted, is_flagged),
+        choose_style(is_selected, is_highlighted, is_flagged, menu_style),
     )
 }

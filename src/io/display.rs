@@ -338,13 +338,19 @@ impl<'a> FuzzyDisplay<'a> {
         let rects = Rects::fuzzy(content_rect);
 
         self.draw_prompt(fuzzy, f, second_line_rect, menu_style);
-        self.draw_match_counts(fuzzy, f, &rects[0]);
-        self.draw_matches(fuzzy, f, rects[1]);
+        self.draw_match_counts(fuzzy, menu_style, f, &rects[0]);
+        self.draw_matches(fuzzy, menu_style, f, rects[1]);
     }
 
     /// Draw the matched items
-    fn draw_match_counts(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: &Rect) {
-        let match_info = self.line_match_info(fuzzy);
+    fn draw_match_counts(
+        &self,
+        fuzzy: &FuzzyFinder<String>,
+        menu_style: &'static MenuStyle,
+        f: &mut Frame,
+        rect: &Rect,
+    ) {
+        let match_info = self.line_match_info(fuzzy, menu_style);
         let match_count_paragraph = Self::paragraph_match_count(match_info);
         f.render_widget(match_count_paragraph, *rect);
     }
@@ -376,20 +382,19 @@ impl<'a> FuzzyDisplay<'a> {
         });
     }
 
-    fn line_match_info(&self, fuzzy: &FuzzyFinder<String>) -> Line<'_> {
+    fn line_match_info(
+        &self,
+        fuzzy: &FuzzyFinder<String>,
+        menu_style: &'static MenuStyle,
+    ) -> Line<'_> {
         Line::from(vec![
-            Span::styled("  ", Style::default().fg(Color::Yellow)),
+            Span::styled("  ", menu_style.palette_2),
             Span::styled(
                 format!("{}", fuzzy.matched_item_count),
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::ITALIC),
+                menu_style.palette_2.add_modifier(Modifier::ITALIC),
             ),
-            Span::styled(" / ", Style::default().fg(Color::Yellow)),
-            Span::styled(
-                format!("{}", fuzzy.item_count),
-                Style::default().fg(Color::Yellow),
-            ),
+            Span::styled(" / ", menu_style.palette_2),
+            Span::styled(format!("{}", fuzzy.item_count), menu_style.palette_2),
             Span::raw(" "),
         ])
     }
@@ -401,7 +406,13 @@ impl<'a> FuzzyDisplay<'a> {
             .block(Block::default().borders(Borders::NONE))
     }
 
-    fn draw_matches(&self, fuzzy: &FuzzyFinder<String>, f: &mut Frame, rect: Rect) {
+    fn draw_matches(
+        &self,
+        fuzzy: &FuzzyFinder<String>,
+        menu_style: &'static MenuStyle,
+        f: &mut Frame,
+        rect: Rect,
+    ) {
         let snapshot = fuzzy.matcher.snapshot();
         let (top, bottom) = fuzzy.top_bottom();
         let mut indices = vec![];
@@ -435,6 +446,7 @@ impl<'a> FuzzyDisplay<'a> {
                     index as u32 + top == fuzzy.index,
                     is_file,
                     is_flagged,
+                    menu_style,
                 );
                 let line_rect = Self::line_rect(rect, index);
                 line.render(line_rect, f.buffer_mut());

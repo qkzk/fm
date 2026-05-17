@@ -2,7 +2,7 @@ use std::{fs::File, path};
 
 use anyhow::Result;
 use clap::Parser;
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use serde_yaml_ng::{from_reader, Value};
 
 use crate::common::{tilde, SYNTECT_DEFAULT_THEME};
@@ -281,11 +281,6 @@ impl MenuStyle {
     }
 
     #[inline]
-    pub const fn palette_size(&self) -> usize {
-        self.palette().len()
-    }
-
-    #[inline]
     pub const fn rwx_colors(&self) -> [Style; 9] {
         [
             self.permission_read,
@@ -297,6 +292,32 @@ impl MenuStyle {
             self.permission_read,
             self.permission_write,
             self.permission_execute,
+        ]
+    }
+
+    /// Styles used for fuzzy finder.
+    ///
+    /// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
+    /// 0. default style,
+    /// 1. highlighted,
+    /// 2. selected,
+    /// 3. highlighted selected,
+    /// 4. default style flagged,
+    /// 5. highlighted flagged,
+    /// 6. selected flagged,
+    /// 7. highlighted selected flagged,
+    #[rustfmt::skip]
+    #[inline]
+    pub fn fuzzy_styles(&self) -> [Style; 8] {
+        [
+            self.palette_1,
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_2.add_modifier(Modifier::BOLD),
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_4,
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_2.add_modifier(Modifier::BOLD),
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ]
     }
 }
