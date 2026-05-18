@@ -2155,6 +2155,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
     - [ ] Needs more testing
 - [x] FEAT: configure fuzzy finder colors with menu style
+- [ ] BUG: can't copy a file to its parent ???
   
 
 ### Other ideas

@@ -1106,7 +1106,7 @@ impl Status {
     /// Only used before _moving_, for copying it doesn't matter.
     fn remove_subdir_of_dest(mut sources: Vec<PathBuf>, dest: &Path) -> Vec<PathBuf> {
         for index in (0..sources.len()).rev() {
-            if sources[index].starts_with(dest) {
+            if dest.starts_with(&sources[index]) {
                 log_info!("Cannot move to a subdirectory of itself");
                 log_line!("Cannot move to a subdirectory of itself");
                 sources.remove(index);
