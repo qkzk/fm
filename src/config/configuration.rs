@@ -312,11 +312,11 @@ impl MenuStyle {
         [
             self.palette_1,
             self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
-            self.palette_2.add_modifier(Modifier::BOLD),
+            self.palette_3.add_modifier(Modifier::BOLD),
             self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
             self.palette_4,
             self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
-            self.palette_2.add_modifier(Modifier::BOLD),
+            self.palette_3.add_modifier(Modifier::BOLD),
             self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ]
     }
