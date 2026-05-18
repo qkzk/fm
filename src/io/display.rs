@@ -497,7 +497,7 @@ impl<'a> DirectoryDisplay<'a> {
     /// `ls -l`.
     ///
     /// Only the files around the selected one are displayed.
-    /// We reverse the attributes of the selected one, underline the flagged files.
+    /// We reverse the attributes of the selected one, color and offset the flagged files.
     /// When we display a simpler version, the menu line is used to display the
     /// metadata of the selected file.
     fn files(
@@ -514,7 +514,7 @@ impl<'a> DirectoryDisplay<'a> {
             .tab
             .dir_enum_skip_take()
             .map(|(index, file)| {
-                self.files_line2(index, file, &format_kind, with_icon, menu_style, file_style)
+                self.files_line(index, file, &format_kind, with_icon, menu_style, file_style)
             })
             .collect();
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
@@ -540,7 +540,7 @@ impl<'a> DirectoryDisplay<'a> {
         }
     }
 
-    fn files_line2<'b>(
+    fn files_line<'b>(
         &self,
         index: usize,
         file: &FileInfo,
@@ -634,11 +634,19 @@ impl<'a> DirectoryDisplay<'a> {
         }
 
         if format_kind.has_owner() {
-            spans.push(Self::owner(file, menu_style, group_owner_size.0));
+            spans.push(Self::owner_group(
+                &file.owner,
+                menu_style.metadata_owner,
+                group_owner_size.0,
+            ));
         }
 
         if format_kind.has_group() {
-            spans.push(Self::group(file, menu_style, group_owner_size.1));
+            spans.push(Self::owner_group(
+                &file.group,
+                menu_style.metadata_group,
+                group_owner_size.1,
+            ));
         }
 
         if format_kind.has_medatada() {
@@ -676,27 +684,13 @@ impl<'a> DirectoryDisplay<'a> {
         Span::styled(file.size_column.to_string(), menu_style.metadata_size)
     }
 
-    fn owner<'b>(
-        file: &FileInfo,
-        menu_style: &'static MenuStyle,
-        owner_col_width: usize,
-    ) -> Span<'b> {
-        let owner = format!("{owner:.owner_col_width$}", owner = file.owner);
+    fn owner_group<'b>(username: &str, style: Style, width: usize) -> Span<'b> {
         Span::styled(
-            format!(" {owner:<owner_col_width$}"),
-            menu_style.metadata_owner,
-        )
-    }
-
-    fn group<'b>(
-        file: &FileInfo,
-        menu_style: &'static MenuStyle,
-        group_col_width: usize,
-    ) -> Span<'b> {
-        let group = format!("{group:.group_col_width$}", group = file.group);
-        Span::styled(
-            format!(" {group:<group_col_width$}"),
-            menu_style.metadata_group,
+            format!(
+                " {truncated:<width$}",
+                truncated = format!("{username:.width$}")
+            ),
+            style,
         )
     }
 
@@ -718,14 +712,14 @@ impl<'a> DirectoryDisplay<'a> {
         if with_icon {
             spans.push(Span::styled(file.icon(), menu_style.palette_4))
         }
-        let mat = tab
+        let matches = tab
             .search
             .match_find(&file.filename)
             .expect("A matched regex should'nt be None");
-        let range = mat.range();
+        let range = matches.range();
         let filename = file.filename.to_string();
         let before: String = filename.graphemes(false).take(range.start).collect();
-        let inner = mat.as_str().to_string();
+        let inner = matches.as_str().to_string();
         let after: String = filename.graphemes(false).skip(range.end).collect();
         spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
             Modifier::BOLD
