@@ -7,7 +7,7 @@ normal_stop: "#b4f9f8"
 # color for different filekinds
 # here you can use ANSI values
 # colors for folders / directory
-directory: "#fca7ea"
+directory: "#ff9e64"
 # block device (hard drives...)
 block: "#c53d53"
 # char devices (ttys, /dev/urandom etc.)
@@ -35,4 +35,15 @@ inert_border: "#c8d3f5"
 palette_1: "#86d3f5"
 palette_2: "#ff966c"
 palette_3: "#4fd6be"
-palette_4: "#ffc777"
+
+# Colors for permissions
+permission_read: "#86d3f5"
+permission_write: "#4fd6be"
+permission_execute: "#ff966c"
+permission_no_right: "#c8d3f5"
+
+# Metadata colors
+metadata_size: "#fca7ea"
+metadata_owner: "#ff9e64"
+metadata_group: "#e0af68"
+metadata_modified: "#2ac3de"

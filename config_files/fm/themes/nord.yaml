@@ -36,3 +36,15 @@ palette_1: "#d8dee9"
 palette_2: "#e5e9f0"
 palette_3: "#eceff4"
 palette_4: "#e5e9f0"
+
+# Colors for permissions
+permission_read: "#e5e9f0"
+permission_write: "#d8dee9"
+permission_execute: "#e5e9f0"
+permission_no_right: "#3B4252"
+
+# Metadata colors
+metadata_size: "#616e88"
+metadata_owner: "#e5e9f0"
+metadata_group: "#616e88"
+metadata_modified: "#d8dee9"

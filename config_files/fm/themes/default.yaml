@@ -36,3 +36,15 @@ palette_1: rgb(45, 250, 209)
 palette_2: rgb(230, 189, 87)
 palette_3: rgb(230, 167, 255)
 palette_4: rgb(59, 204, 255)
+
+# Colors for permissions
+permission_read: "rgb(180, 255, 255)"
+permission_write: "rgb(230, 189, 87)"
+permission_execute: "rgb(45, 250, 209)"
+permission_no_right: "rgb(140, 140, 140)"
+
+# Metadata colors
+metadata_size: "rgb(230, 189, 87)"
+metadata_owner: "rgb(45, 250, 209)"
+metadata_group: "rgb(230, 167, 255)"
+metadata_modified: "rgb(59, 204, 255)"

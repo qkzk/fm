@@ -2146,9 +2146,11 @@ Once that's done, it's all. No not implement anything else
     - [ ] tests
   - [ ] options
     - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
+    - [x] update all themes
     - [ ] refactor the whole display
-    - [ ] include in theming with sane defaults allowing backward compatibiliy
 - [ ] BUG: tab doesn't use whole space
+  - happens when opening directrly
+  - can't reproduce ? Side effect of display ???
 - [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
     - [ ] Needs more testing
 - [x] FEAT: configure fuzzy finder colors with menu style
