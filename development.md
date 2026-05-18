@@ -2134,6 +2134,13 @@ Once that's done, it's all. No not implement anything else
 ## Summary 
 
 - Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
+- Fuzzy finder now uses colors from your theme 
+
+### Bugfixes 
+
+- Fixed a typo in catppuccin theme 
+- Fixed a bug preventing you from moving a file to a parent folder 
+- Fixed a bug where focus is moved to an invisible tab
 
 ## TODO
 
@@ -2155,7 +2162,7 @@ Once that's done, it's all. No not implement anything else
 - [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
     - [ ] Needs more testing
 - [x] FEAT: configure fuzzy finder colors with menu style
-- [ ] BUG: can't copy a file to its parent ???
+- [x] FIX: can't move a file to its parent. Comparison in wrong order.
   
 
 ### Other ideas
