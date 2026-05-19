@@ -536,7 +536,7 @@ impl<'a> DirectoryDisplay<'a> {
             Span::styled(index.to_string(), menu_style.palette_1)
         } else {
             let first_char = status.menu.marks.char_for(&file.path);
-            Span::styled(String::from(*first_char), menu_style.palette_2)
+            Span::styled(first_char.to_string(), menu_style.palette_2)
         }
     }
 
