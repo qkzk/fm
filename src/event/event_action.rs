@@ -984,10 +984,13 @@ impl EventAction {
 
     /// Special move to the next "thing".
     /// if we're in tree mode, focusing a file, it's the next sibling (= node of the same level sharing parent)
+    /// if we're in directory mode, it will jump to the next flagged file
     /// if we're inputing something, it's the next history result
     pub fn next_thing(status: &mut Status) -> Result<()> {
         if status.current_tab().display_mode.is_tree() && status.focus.is_file() {
             status.current_tab_mut().tree_next_sibling();
+        } else if status.current_tab().display_mode.is_directory() && status.focus.is_file() {
+            status.jump_next_flagged()?;
         } else {
             status.input_history_prev()?;
         }
@@ -996,10 +999,13 @@ impl EventAction {
 
     /// Special move to the previous "thing".
     /// if we're in tree mode, focusing a file, it's the previous sibling (= node of the same level sharing parent)
+    /// if we're in directory mode, it will jump to the previous flagged file
     /// if we're inputing something, it's the previous history result
     pub fn previous_thing(status: &mut Status) -> Result<()> {
         if status.current_tab().display_mode.is_tree() && status.focus.is_file() {
             status.current_tab_mut().tree_prev_sibling();
+        } else if status.current_tab().display_mode.is_directory() && status.focus.is_file() {
+            status.jump_previous_flagged()?;
         } else {
             status.input_history_next()?;
         }

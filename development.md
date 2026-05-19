@@ -2135,6 +2135,7 @@ Once that's done, it's all. No not implement anything else
 
 - Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
 - Fuzzy finder now uses colors from your theme 
+- In directory display mode, "next thing"/"previous thing" (shift+down, shift+up) moves to the next flagged file in this directory.
 
 ### Bugfixes 
 
@@ -2163,6 +2164,7 @@ Once that's done, it's all. No not implement anything else
     - [ ] Needs more testing
 - [x] FEAT: configure fuzzy finder colors with menu style
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
+- [x] FEAT: jump to next flag
   
 
 ### Other ideas

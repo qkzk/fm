@@ -1073,6 +1073,87 @@ impl Status {
         self.update_second_pane_for_preview()
     }
 
+    /// Jumps to the next flagged file in current directory.
+    ///
+    /// It's the responsability of the caller to call this method only in tab directory display mode.
+    pub fn jump_next_flagged(&mut self) -> Result<()> {
+        let index = self.current_tab().directory.index;
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .take(index)
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        Ok(())
+    }
+
+    /// Jumps to the previous flagged file in current directory.
+    ///
+    /// It's the responsability of the caller to call this method only in tab directory display mode.
+    pub fn jump_previous_flagged(&mut self) -> Result<()> {
+        let index = self.current_tab().directory.index;
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .take(index)
+            .rev()
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .rev()
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        Ok(())
+    }
     /// Execute a move or a copy of the flagged files to current directory.
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
