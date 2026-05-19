@@ -507,8 +507,7 @@ impl<'a> DirectoryDisplay<'a> {
         menu_style: &'static MenuStyle,
         file_style: &'static FileStyle,
     ) {
-        let p_rect = rect.offseted(0, 0);
-        let format_kind = FormatKind::from_flags(self.status.session.metadata(), p_rect.width);
+        let format_kind = FormatKind::from_flags(self.status.session.metadata(), rect.width);
         let with_icon = with_icon();
         let lines: Vec<_> = self
             .tab
@@ -517,7 +516,7 @@ impl<'a> DirectoryDisplay<'a> {
                 self.files_line(index, file, &format_kind, with_icon, menu_style, file_style)
             })
             .collect();
-        Paragraph::new(lines).render(p_rect, f.buffer_mut());
+        Paragraph::new(lines).render(*rect, f.buffer_mut());
     }
 
     fn group_owner_size(status: &Status, tab: &Tab) -> (usize, usize) {
