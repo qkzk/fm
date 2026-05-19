@@ -718,9 +718,9 @@ impl<'a> DirectoryDisplay<'a> {
             .expect("A matched regex should'nt be None");
         let range = matches.range();
         let filename = file.filename.to_string();
-        let before: String = filename.graphemes(false).take(range.start).collect();
+        let before: String = filename.graphemes(true).take(range.start).collect();
         let inner = matches.as_str().to_string();
-        let after: String = filename.graphemes(false).skip(range.end).collect();
+        let after: String = filename.graphemes(true).skip(range.end).collect();
         spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
             Modifier::BOLD
         } else {
