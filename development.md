@@ -2165,6 +2165,7 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: configure fuzzy finder colors with menu style
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
 - [x] FEAT: jump to next flag
+- [ ] BUG: crash when a device is removed "os error 2, no file or directory"
   
 
 ### Other ideas
