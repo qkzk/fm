@@ -59,6 +59,8 @@ pub struct InternalSettings {
     pub cursor: Cursor,
     /// Last registered frame
     pub last_buffer: Option<Buffer>,
+    /// are we dragging a file ?
+    pub is_dragging: bool,
 }
 
 impl InternalSettings {
@@ -75,6 +77,7 @@ impl InternalSettings {
         let clear_before_quit = false;
         let cursor = Cursor::new(binds);
         let last_buffer = None;
+        let is_dragging = false;
         Self {
             force_clear,
             must_quit,
@@ -89,6 +92,7 @@ impl InternalSettings {
             clear_before_quit,
             cursor,
             last_buffer,
+            is_dragging,
         }
     }
 

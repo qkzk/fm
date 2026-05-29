@@ -2143,7 +2143,7 @@ Once that's done, it's all. No not implement anything else
 - Fixed a bug preventing you from moving a file to a parent folder 
 - Fixed a bug where focus is moved to an invisible tab
 
-## TODO
+### Changelog
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
@@ -2166,7 +2166,9 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
 - [x] FEAT: jump to next flag
 - [ ] BUG: crash when a device is removed "os error 2, no file or directory"
+- [ ] FEAT: dragon-drop from drag & drop
   
+## TODO
 
 ### Other ideas
 

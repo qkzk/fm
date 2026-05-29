@@ -10,14 +10,14 @@ use crate::common::{
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, CursorDirection, External};
+use crate::io::{execute, read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, Content, ContentWindow,
-    Direction as FuzzyDirection, Display, DoneCopyMove, FuzzyKind, Go, InputCompleted, InputSimple,
-    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder, ReEnterMenu,
-    Search, Selectable, To,
+    Direction as FuzzyDirection, Display, DoneCopyMove, FmExpansion, FuzzyKind, Go, InputCompleted,
+    InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder,
+    ReEnterMenu, Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -1213,8 +1213,24 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn file_mouse_drag(
+        status: &mut Status,
+        binds: &Bindings,
+        row: u16,
+        col: u16,
+    ) -> Result<()> {
+        if status.focus.is_file() && Self::click(status, binds, row, col).is_ok() {
+            let mut args = vec!["-a".to_string()];
+            args.append(&mut FmExpansion::selected_or_flagged(status)?);
+            let mut child = execute("dragon-drop", &args)?;
+            child.wait()?;
+        };
+
+        Ok(())
+    }
+
     /// A mouse drag when selecting with cursor extends the selection upto there.
-    pub fn mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
+    pub fn cursor_mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
         log_info!("mouse_drag col: {col}, row: {col}");
         status.internal_settings.cursor.mouse_drag(row, col);
         Ok(())

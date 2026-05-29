@@ -53,7 +53,7 @@ enum Token {
 }
 
 #[derive(Debug)]
-enum FmExpansion {
+pub enum FmExpansion {
     Selected,
     SelectedFilename,
     SelectedPath,
@@ -144,7 +144,7 @@ impl FmExpansion {
         Ok(clipboard.split_whitespace().map(|s| s.to_owned()).collect())
     }
 
-    fn selected_or_flagged(status: &Status) -> Result<Vec<String>> {
+    pub fn selected_or_flagged(status: &Status) -> Result<Vec<String>> {
         if status.menu.flagged.is_empty() {
             Self::selected(status)
         } else {

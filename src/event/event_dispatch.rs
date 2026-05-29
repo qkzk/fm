@@ -80,7 +80,18 @@ impl EventDispatcher {
             MouseEventKind::Drag(MouseButton::Left)
                 if status.internal_settings.cursor.is_selecting() =>
             {
-                EventAction::mouse_drag(status, mouse_event.row, mouse_event.column)
+                EventAction::cursor_mouse_drag(status, mouse_event.row, mouse_event.column)
+            }
+            MouseEventKind::Drag(MouseButton::Left) if !status.internal_settings.is_dragging => {
+                status.internal_settings.is_dragging = true;
+                EventAction::file_mouse_drag(
+                    status,
+                    &self.binds,
+                    mouse_event.row,
+                    mouse_event.column,
+                )?;
+                status.internal_settings.is_dragging = false;
+                Ok(())
             }
             MouseEventKind::Up(MouseButton::Left)
                 if status.internal_settings.cursor.is_selecting()
