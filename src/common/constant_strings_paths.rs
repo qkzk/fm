@@ -266,5 +266,7 @@ pub const PDFINFO: &str = "pdfinfo";
 pub const PDFTOTEXT: &str = "pdftotext";
 /// readelf
 pub const READELF: &str = "readelf";
+/// dragon-drop
+pub const DRAGON_DROP: &str = "dragon-drop";
 /// default nerdfont icon used for directories.
 pub const DIR_ICON: &str = " ";

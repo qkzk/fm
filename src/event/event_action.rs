@@ -1,16 +1,17 @@
 use std::borrow::Borrow;
 use std::path;
+use std::process::Stdio;
 
 use anyhow::{Context, Result};
 use indicatif::InMemoryTerm;
 
 use crate::app::{Direction, Focus, Status, Tab};
 use crate::common::{
-    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
-    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
+    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
+    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH, DRAGON_DROP,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{execute, read_log, CursorDirection, External};
+use crate::io::{read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -1220,10 +1221,29 @@ impl EventAction {
         col: u16,
     ) -> Result<()> {
         if status.focus.is_file() && Self::click(status, binds, row, col).is_ok() {
-            let mut args = vec!["-a".to_string()];
-            args.append(&mut FmExpansion::selected_or_flagged(status)?);
-            let mut child = execute("dragon-drop", &args)?;
-            child.wait()?;
+            if !is_in_path(DRAGON_DROP) {
+                return Ok(());
+            }
+            if let Some(pid) = &status.internal_settings.dragon_drop_id {
+                if path::Path::new(&format!("/proc/{pid}/status")).exists() {
+                    return Ok(());
+                } else {
+                    status.internal_settings.dragon_drop_id = None;
+                }
+            }
+            log_info!("dragging started");
+            let args = FmExpansion::selected_or_flagged(status)?;
+            let mut command = std::process::Command::new(DRAGON_DROP);
+            command
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .arg("-a")
+                .arg("-x")
+                .args(&args);
+            let mut spawn = command.spawn()?;
+            status.internal_settings.dragon_drop_id = Some(spawn.id());
+            // spawn.wait()?;
         };
 
         Ok(())
