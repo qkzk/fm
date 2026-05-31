@@ -31,6 +31,7 @@ where
     log_line!("Execute: {exe:?}, arguments: {args:?}");
     if is_in_path(SETSID) {
         Ok(Command::new(SETSID)
+            .arg("-f")
             .arg(exe)
             .args(args)
             .stdin(Stdio::null())
@@ -54,13 +55,7 @@ pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
-    log_info!("execute_in_child_without_output. executable: {exe:?}, arguments: {args:?}",);
-    Ok(Command::new(exe)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?)
+    execute(exe, args)
 }
 
 /// Execute a command with options in a fork.
@@ -301,19 +296,20 @@ where
 
 /// Runs `sudo -k` removing sudo privileges of current running instance.
 pub fn drop_sudo_privileges() -> Result<()> {
-    Command::new("sudo")
+    let mut child = Command::new("sudo")
         .arg("-k")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
+    child.wait()?;
     Ok(())
 }
 
 /// Reset the sudo faillock to avoid being blocked from running sudo commands.
 /// Runs `faillock --user $USERNAME --reset`
 pub fn reset_sudo_faillock() -> Result<()> {
-    Command::new("faillock")
+    let mut child = Command::new("faillock")
         .arg("--user")
         .arg(current_username()?)
         .arg("--reset")
@@ -321,6 +317,7 @@ pub fn reset_sudo_faillock() -> Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
+    child.wait()?;
     Ok(())
 }
 
