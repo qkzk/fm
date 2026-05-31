@@ -22,7 +22,7 @@ use crate::{log_info, log_line};
 /// # Errors
 ///
 /// May fail if the command can't be spawned.
-pub fn execute<S, P>(exe: S, args: &[P]) -> Result<std::process::Child>
+pub fn execute<S, P>(exe: S, args: &[P]) -> Result<()>
 where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<std::ffi::OsStr> + fmt::Debug,
@@ -30,22 +30,24 @@ where
     log_info!("execute. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
     if is_in_path(SETSID) {
-        Ok(Command::new(SETSID)
+        let mut child = Command::new(SETSID)
             .arg("-f")
             .arg(exe)
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn()?)
+            .spawn()?;
+        child.wait()?;
     } else {
-        Ok(Command::new(exe)
+        Command::new(exe)
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn()?)
+            .spawn()?;
     }
+    Ok(())
 }
 
 /// Execute a command with options in a fork.
@@ -54,7 +56,7 @@ where
 pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
-) -> Result<std::process::Child> {
+) -> Result<()> {
     execute(exe, args)
 }
 

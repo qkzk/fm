@@ -289,7 +289,7 @@ impl External {
         )
     }
 
-    fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
+    fn without_term(mut args: Vec<&str>) -> Result<()> {
         if args.is_empty() {
             bail!("args shouldn't be empty");
         }
