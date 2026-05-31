@@ -88,10 +88,7 @@ impl EventDispatcher {
                 mouse_event.row,
                 mouse_event.column,
             ),
-            MouseEventKind::Up(MouseButton::Left)
-                if status.internal_settings.cursor.is_selecting()
-                    && status.internal_settings.cursor.is_dragging =>
-            {
+            MouseEventKind::Up(MouseButton::Left) => {
                 EventAction::mouse_up(status, mouse_event.row, mouse_event.column)
             }
             MouseEventKind::Down(MouseButton::Left) => {
