@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::path;
-use std::process::Stdio;
 
 use anyhow::{Context, Result};
 use indicatif::InMemoryTerm;
@@ -9,10 +8,9 @@ use crate::app::{Direction, Focus, Status, Tab};
 use crate::common::{
     content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
     open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH, DRAGON_DROP,
-    SETSID,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, CursorDirection, External};
+use crate::io::{execute, read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -1222,24 +1220,15 @@ impl EventAction {
         col: u16,
     ) -> Result<()> {
         if status.focus.is_file() && Self::click(status, binds, row, col).is_ok() {
-            if !is_in_path(DRAGON_DROP) || !is_in_path(SETSID) {
+            if !is_in_path(DRAGON_DROP) {
                 return Ok(());
             }
             if status.internal_settings.is_dragging_file {
                 return Ok(());
             }
-            let args = FmExpansion::selected_or_flagged(status)?;
-            let mut command = std::process::Command::new(SETSID);
-            command
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .arg("-f")
-                .arg(DRAGON_DROP)
-                .arg("-a")
-                .arg("-x")
-                .args(&args);
-            command.spawn()?;
+            let mut args = vec!["-a".to_owned(), "-x".to_owned()];
+            args.append(&mut FmExpansion::selected_or_flagged(status)?);
+            execute(DRAGON_DROP, &args)?;
             status.internal_settings.is_dragging_file = true;
         };
 

@@ -38,8 +38,6 @@ pub const TMP_FOLDER_PATH: &str = "/tmp";
 pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
 /// Default syntect theme, theme is hardcoded into binary
 pub const SYNTECT_DEFAULT_THEME: &str = "monokai";
-/// setsid. Installed in most distros
-pub const SETSID: &str = "setsid";
 /// Opener used to play audio files. Does it require a terminal ?
 pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?

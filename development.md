@@ -1,4 +1,4 @@
-# Development
+ Development
 
 I write every step in this file.
 
@@ -2166,9 +2166,11 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
 - [x] FEAT: jump to next flag
 - [ ] BUG: crash when a device is removed "os error 2, no file or directory"
-- [ ] FEAT: dragon-drop from drag & drop
-  - [ ] draging a file opens dragondrop 
-  - [ ] use setsid to avoid zombies
+- [x] IMP: replaced linux setsid by fork library. fm shouldn't create zombies anymore.
+- [x] FEAT: dragon-drop from drag & drop
+  - [x] draging a file opens dragondrop 
+  - [x] replace setsid by fork package
+  - [x] use libc setsid to avoid zombies
   
 ## TODO
 
