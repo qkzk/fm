@@ -2165,12 +2165,16 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: configure fuzzy finder colors with menu style
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
 - [x] FEAT: jump to next flag
-- [ ] BUG: crash when a device is removed "os error 2, no file or directory"
 - [x] IMP: replaced linux setsid by fork library. fm shouldn't create zombies anymore.
-- [x] FEAT: dragon-drop from drag & drop
+- [ ] FEAT: dragon-drop from drag & drop
   - [x] draging a file opens dragondrop 
   - [x] replace setsid by fork package
   - [x] use libc setsid to avoid zombies
+  - [ ] calling zoxide shouldn't write to log... ?
+- [ ] BUG: crash when a device is removed "os error 2, no file or directory"
+  - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
+  - [x] move to parent if problem occurs while reading metadata
+  - [ ] need more testing... like deleting from outside
   
 ## TODO
 

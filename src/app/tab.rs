@@ -291,7 +291,13 @@ impl Tab {
         if match self.display_mode {
             Display::Preview => false,
             Display::Directory => {
-                has_last_modification_happened_less_than(&self.directory.path, 10)?
+                match has_last_modification_happened_less_than(&self.directory.path, 10) {
+                    Ok(modif) => modif,
+                    Err(_) => {
+                        self.cd_to_parent()?;
+                        true
+                    }
+                }
             }
             Display::Tree => self.tree.has_modified_dirs(),
             Display::Fuzzy => false,
@@ -508,6 +514,12 @@ impl Tab {
             Display::Tree => SortKind::tree_default(),
             _ => SortKind::default(),
         };
+    }
+
+    fn cd_to_parent(&mut self) -> Result<()> {
+        let current = self.directory.path.clone();
+        let parent = current.parent().unwrap_or(path::Path::new("/"));
+        self.cd(parent)
     }
 
     pub fn cd_to_file<P>(&mut self, path: P) -> Result<()>
