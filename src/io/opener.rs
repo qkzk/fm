@@ -297,7 +297,7 @@ impl External {
         if executable.contains(' ') {
             Self::include_options_in_args(&mut executable, &mut args)?;
         }
-        execute(executable, &args)
+        execute(executable, &args, true)
     }
 
     /// Called when the command contains options, flags etc.

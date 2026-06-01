@@ -377,7 +377,7 @@ impl Drop for ConflictHandler {
 /// Does nothing if "notify-send" isn't installed.
 fn notify(text: &str) -> Result<()> {
     if is_in_path(NOTIFY_EXECUTABLE) {
-        execute(NOTIFY_EXECUTABLE, &[text])?;
+        execute(NOTIFY_EXECUTABLE, &[text], false)?;
     }
     Ok(())
 }

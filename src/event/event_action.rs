@@ -1228,7 +1228,7 @@ impl EventAction {
             }
             let mut args = vec!["-a".to_owned(), "-x".to_owned()];
             args.append(&mut FmExpansion::selected_or_flagged(status)?);
-            execute(DRAGON_DROP, &args)?;
+            execute(DRAGON_DROP, &args, true)?;
             status.internal_settings.is_dragging_file = true;
         };
 

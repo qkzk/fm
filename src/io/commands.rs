@@ -24,13 +24,15 @@ use crate::{log_info, log_line};
 /// # Errors
 ///
 /// May fail if the command can't be spawned.
-pub fn execute<S, P>(exe: S, args: &[P]) -> Result<()>
+pub fn execute<S, P>(exe: S, args: &[P], should_log: bool) -> Result<()>
 where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<std::ffi::OsStr> + fmt::Debug,
 {
-    log_info!("execute. executable: {exe:?}, arguments: {args:?}");
-    log_line!("Execute: {exe:?}, arguments: {args:?}");
+    if should_log {
+        log_info!("execute. executable: {exe:?}, arguments: {args:?}");
+        log_line!("Execute: {exe:?}, arguments: {args:?}");
+    }
     match fork::fork() {
         Ok(Fork::Parent(child)) => {
             log_info!("Parent process, child PID: {}", child);
@@ -67,7 +69,7 @@ pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<()> {
-    execute(exe, args)
+    execute(exe, args, false)
 }
 
 /// Execute a command with options in a fork.
