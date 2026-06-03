@@ -2176,7 +2176,8 @@ Once that's done, it's all. No not implement anything else
   - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
   - [x] move to parent if problem occurs while reading metadata
   - [ ] need more testing... like deleting from outside
-  
+- [ ] BUG: some broken symlinks aren't coloured as broken but as valid. See /dev/
+
 ## TODO
 
 ### Other ideas
