@@ -7,15 +7,15 @@ normal_stop: "#b4f9f8"
 # color for different filekinds
 # here you can use ANSI values
 # colors for folders / directory
-directory: "#b8db87"
+directory: "#fca7ea"
 # block device (hard drives...)
 block: "#c53d53"
 # char devices (ttys, /dev/urandom etc.)
-char: "#ff9e64"
+char: "#b8db87"
 # fifos
 fifo: "#4fd6be"
 # opened sockets
-socket: "#fca7ea"
+socket: "#ff9e64"
 # valid symlinks
 symlink: "#e26a75"
 # broken symlinks
@@ -28,23 +28,22 @@ header_first: "#86d3f5"
 # second color
 header_second: "#4fd6be"
 # selected tab border
-selected_border: "#c099ff"
+selected_border: "#fca7ea"
 # non selected tab border
 inert_border: "#c8d3f5"
 # palette of 4 elements, used in menus (second window)
 palette_1: "#86d3f5"
-palette_2: "#c099ff"
+palette_2: "#fca7ea"
 palette_3: "#4fd6be"
-palette_4: "#ff966c"
 
 # Colors for permissions
 permission_read: "#86d3f5"
 permission_write: "#4fd6be"
-permission_execute: "#ff966c"
+permission_execute: "#fca7ea"
 permission_no_right: "#c8d3f5"
 
 # Metadata colors
-metadata_size: "#ff9e64"
-metadata_owner: "#fca7ea"
-metadata_group: "#e0af68"
+metadata_size: "#fca7ea"
+metadata_owner: "#ff9e64"
+metadata_group: "#fca7ea"
 metadata_modified: "#2ac3de"

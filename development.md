@@ -2175,7 +2175,6 @@ Once that's done, it's all. No not implement anything else
   - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
   - [x] move to parent if problem occurs while reading metadata
   - [ ] need more testing... like deleting from outside
-- [ ] nvim plugin can't be used on laptop... no message
   
 ## TODO
 
