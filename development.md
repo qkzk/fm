@@ -2156,6 +2156,7 @@ Once that's done, it's all. No not implement anything else
     - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
     - [x] update all themes
     - [ ] refactor the whole display
+  - [x] IMP: store metadata in fileinfo. Faster than using syscall every frame
 - [x] FIX: typo in catPPuccin !!!
 - [ ] BUG: tab doesn't use whole space
   - happens when opening directrly

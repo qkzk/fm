@@ -181,6 +181,8 @@ pub struct FileInfo {
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
     pub extension: Arc<str>,
+    /// Metadata,
+    pub metadata: Metadata,
 }
 
 impl FileInfo {
@@ -206,6 +208,7 @@ impl FileInfo {
             system_time,
             file_kind,
             extension,
+            metadata,
         })
     }
 
@@ -223,34 +226,20 @@ impl FileInfo {
         Ok(file_info)
     }
 
-    /// Symlink metadata of the file.
-    /// Doesn't follow the symlinks.
-    /// Correspond to `lstat` function on Linux.
-    /// See [`std::fs::symlink_metadata`].
-    ///
-    /// # Errors
-    ///
-    /// Could return an error if the file doesn't exist or if the user can't stat it.
-    pub fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
-        symlink_metadata(&self.path)
-    }
-
     /// Returns the Inode number.
     ///
     /// Returns 0 if the metadata can't be read.
     pub fn ino(&self) -> u64 {
-        self.metadata()
-            .map(|metadata| metadata.ino())
-            .unwrap_or_default()
+        self.metadata.ino()
     }
 
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
-        Ok(permission_mode_to_str(self.metadata()?.mode()))
+        Ok(permission_mode_to_str(self.metadata.mode()))
     }
 
     pub fn permissions_strings(&self) -> Result<[&'static str; 9]> {
-        Ok(permission_mode_to_strings(self.metadata()?.mode()))
+        Ok(permission_mode_to_strings(self.metadata.mode()))
     }
 
     /// A formated filename where the "kind" of file
@@ -295,32 +284,6 @@ impl FileInfo {
         }
     }
 
-    pub fn format_no_group(&self, owner_col_width: usize) -> String {
-        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        let permissions = self
-            .permissions()
-            .unwrap_or_else(|_| Arc::from("?????????"));
-        format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
-            dir_symbol = self.dir_symbol(),
-            file_size = self.size_column,
-            system_time = self.system_time,
-        )
-    }
-
-    pub fn format_no_permissions(&self, owner_col_width: usize) -> String {
-        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        format!(
-            "{file_size} {owner:<owner_col_width$} {system_time}",
-            file_size = self.size_column,
-            system_time = self.system_time,
-        )
-    }
-
-    pub fn format_no_owner(&self) -> String {
-        format!("{file_size}", file_size = self.size_column)
-    }
-
     pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let group = format!("{group:.group_col_width$}", group = self.group,);
@@ -333,11 +296,6 @@ impl FileInfo {
             file_size = self.size_column,
             system_time = self.system_time,
         )
-    }
-    /// Format the metadata line, without the filename.
-    /// Owned & Group have fixed width of 6.
-    pub fn format_no_filename(&self) -> String {
-        self.format_base(6, 6)
     }
 
     pub fn dir_symbol(&self) -> char {
