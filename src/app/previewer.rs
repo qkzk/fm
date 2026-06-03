@@ -4,7 +4,7 @@ use std::thread;
 
 use anyhow::Result;
 
-use crate::modes::{Preview, PreviewBuilder};
+use crate::modes::{FileInfo, Preview, PreviewBuilder};
 
 enum RequestKind {
     PreviewRequest(PreviewRequest),
@@ -12,15 +12,15 @@ enum RequestKind {
 }
 
 struct PreviewRequest {
-    path: PathBuf,
+    file_info: FileInfo,
     tab_index: usize,
     line_nr: Option<usize>,
 }
 
 impl PreviewRequest {
-    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>) -> Self {
+    fn new(file_info: FileInfo, tab_index: usize, line_nr: Option<usize>) -> Self {
         Self {
-            path,
+            file_info,
             tab_index,
             line_nr,
         }
@@ -75,13 +75,19 @@ impl Previewer {
             while let Some(request) = rx_request.iter().next() {
                 match request {
                     RequestKind::PreviewRequest(PreviewRequest {
-                        path,
+                        file_info,
                         tab_index,
                         line_nr,
                     }) => {
-                        if let Ok(preview) = PreviewBuilder::new(&path).build() {
+                        let path = file_info.path.clone();
+                        if let Ok(preview) = PreviewBuilder::new(file_info).build() {
                             tx_preview
-                                .send(PreviewResponse::new(path, tab_index, line_nr, preview))
+                                .send(PreviewResponse::new(
+                                    path.to_path_buf(),
+                                    tab_index,
+                                    line_nr,
+                                    preview,
+                                ))
                                 .unwrap();
                         };
                     }
@@ -104,10 +110,15 @@ impl Previewer {
     /// Sends an "ask preview" to the previewer loop. A preview will be built, which won't block the application.
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
-    pub fn build(&self, path: PathBuf, index: usize, line_index: Option<usize>) -> Result<()> {
+    pub fn build(
+        &self,
+        file_info: FileInfo,
+        index: usize,
+        line_index: Option<usize>,
+    ) -> Result<()> {
         self.tx_request
             .send(RequestKind::PreviewRequest(PreviewRequest::new(
-                path, index, line_index,
+                file_info, index, line_index,
             )))?;
         Ok(())
     }

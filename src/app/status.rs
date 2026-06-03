@@ -721,8 +721,7 @@ impl Status {
         };
         log_info!("sending preview request");
 
-        self.previewer
-            .build(fileinfo.path.to_path_buf(), 1, line_index)?;
+        self.previewer.build(fileinfo, 1, line_index)?;
 
         Ok(())
     }

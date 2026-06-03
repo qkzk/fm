@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::convert::Into;
 use std::fmt::{Display, Write as _};
-use std::fs::symlink_metadata;
+use std::fs::Metadata;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
@@ -33,7 +33,8 @@ use crate::io::execute_and_capture_output_without_check;
 use crate::log_info;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
-    DisplayedImageBuilder, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder, TreeLines, Users,
+    DisplayedImageBuilder, FileInfo, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder,
+    TreeLines, Users,
 };
 
 fn images_are_enabled() -> bool {
@@ -230,14 +231,18 @@ impl Preview {
 /// Using a builder is useful since there's many kind of preview which all use a different method.
 pub struct PreviewBuilder {
     path: PathBuf,
+    file_kind: FileKind<bool>,
+    metadata: Metadata,
 }
 
 impl PreviewBuilder {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    pub fn new(path: &Path) -> Self {
+    pub fn new(file_info: FileInfo) -> Self {
         Self {
-            path: path.to_owned(),
+            path: file_info.path.to_path_buf(),
+            file_kind: file_info.file_kind,
+            metadata: file_info.metadata,
         }
     }
 
@@ -273,8 +278,7 @@ impl PreviewBuilder {
 
     fn internal_preview(&self) -> Result<Preview> {
         clear_tmp_files();
-        let file_kind = FileKind::new(&symlink_metadata(&self.path)?, &self.path);
-        match file_kind {
+        match self.file_kind {
             FileKind::Directory => self.directory(),
             FileKind::NormalFile => self.normal_file(),
             FileKind::Socket if is_in_path(SS) => self.socket(),
@@ -300,7 +304,8 @@ impl PreviewBuilder {
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
-        Self::new(&std::fs::read_link(&self.path).unwrap_or_default()).build()
+        todo!("I need a fileinfo here...")
+        // Self::new(&std::fs::read_link(&self.path).unwrap_or_default()).build()
     }
 
     fn normal_file(&self) -> Result<Preview> {
@@ -332,7 +337,7 @@ impl PreviewBuilder {
             _ if kind.is_image_kind() && kind.has_programs() && images_are_enabled() => {
                 Self::image(&self.path, kind)
             }
-            _ if kind.is_image_kind() => Self::text_image(&self.path, kind),
+            _ if kind.is_image_kind() => Self::text_image(&self.path, kind, &self.metadata),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -349,7 +354,7 @@ impl PreviewBuilder {
         }
     }
 
-    fn text_image(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+    fn text_image(path: &Path, kind: ExtensionKind, metadata: &Metadata) -> Result<Preview> {
         let preview = match kind {
             ExtensionKind::Image | ExtensionKind::Video if is_in_path(MEDIAINFO) => {
                 Preview::Text(Text::media_content(path)?)
@@ -358,7 +363,9 @@ impl PreviewBuilder {
             ExtensionKind::Office if is_in_path(LIBREOFFICE) => {
                 Preview::Text(Text::office_text(path)?)
             }
-            ExtensionKind::Font | ExtensionKind::Svg => Preview::Binary(BinaryContent::new(path)?),
+            ExtensionKind::Font | ExtensionKind::Svg => {
+                Preview::Binary(BinaryContent::new(path, metadata)?)
+            }
             _ => Preview::Empty,
         };
         Ok(preview)
@@ -377,7 +384,7 @@ impl PreviewBuilder {
     }
 
     fn syntaxed(&self, ext: &str) -> Option<Preview> {
-        if symlink_metadata(&self.path).ok()?.len() > HLContent::SIZE_LIMIT as u64 {
+        if self.metadata.len() > HLContent::SIZE_LIMIT as u64 {
             return None;
         };
         let ss = SyntaxSet::load_defaults_nonewlines();
@@ -415,7 +422,10 @@ impl PreviewBuilder {
         if let Some(elf) = self.read_elf() {
             Ok(Preview::Text(Text::from_readelf(&self.path, elf)?))
         } else if self.is_binary()? {
-            Ok(Preview::Binary(BinaryContent::new(&self.path)?))
+            Ok(Preview::Binary(BinaryContent::new(
+                &self.path,
+                &self.metadata,
+            )?))
         } else {
             Ok(Preview::Text(Text::from_file(&self.path)?))
         }
@@ -438,13 +448,12 @@ impl PreviewBuilder {
     fn is_binary(&self) -> Result<bool> {
         let mut file = std::fs::File::open(&self.path)?;
         let mut buffer = [0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-        let Ok(metadata) = self.path.metadata() else {
-            return Ok(false);
-        };
 
-        Ok(metadata.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
-            && file.read_exact(&mut buffer).is_ok()
-            && inspect(&buffer) == ContentType::BINARY)
+        Ok(
+            self.metadata.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+                && file.read_exact(&mut buffer).is_ok()
+                && inspect(&buffer) == ContentType::BINARY,
+        )
     }
 
     /// Creates the help preview as if it was a text file.
@@ -1029,10 +1038,7 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
     const SIZE_LIMIT: usize = 1048576;
 
-    fn new(path: &Path) -> Result<Self> {
-        let Ok(metadata) = path.metadata() else {
-            return Ok(Self::default());
-        };
+    fn new(path: &Path, metadata: &Metadata) -> Result<Self> {
         let length = metadata.len() / Self::LINE_WIDTH as u64;
         let content = Self::read_content(path)?;
 
