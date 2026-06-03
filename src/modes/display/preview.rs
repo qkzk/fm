@@ -276,7 +276,7 @@ impl PreviewBuilder {
         }
     }
 
-    fn internal_preview(&self) -> Result<Preview> {
+    fn internal_preview(self) -> Result<Preview> {
         clear_tmp_files();
         match self.file_kind {
             FileKind::Directory => self.directory(),
@@ -284,7 +284,7 @@ impl PreviewBuilder {
             FileKind::Socket if is_in_path(SS) => self.socket(),
             FileKind::BlockDevice if is_in_path(LSBLK) => self.block_device(),
             FileKind::Fifo | FileKind::CharDevice if is_in_path(UDEVADM) => self.fifo_chardevice(),
-            FileKind::SymbolicLink(true) => self.valid_symlink(),
+            FileKind::SymbolicLink(true) => self.symlink(),
             _ => Ok(Preview::default()),
         }
     }
@@ -303,9 +303,11 @@ impl PreviewBuilder {
         ))
     }
 
-    fn valid_symlink(&self) -> Result<Preview> {
-        todo!("I need a fileinfo here...")
-        // Self::new(&std::fs::read_link(&self.path).unwrap_or_default()).build()
+    fn symlink(mut self) -> Result<Preview> {
+        self.path = std::fs::read_link(&self.path).unwrap_or_default();
+        self.metadata = self.path.metadata()?;
+        self.file_kind = FileKind::new(&self.metadata, &self.path);
+        self.build()
     }
 
     fn normal_file(&self) -> Result<Preview> {
