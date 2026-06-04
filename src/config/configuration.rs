@@ -1,3 +1,4 @@
+use std::env::var;
 use std::{fs::File, path};
 
 use anyhow::Result;
@@ -5,9 +6,9 @@ use clap::Parser;
 use ratatui::style::{Color, Modifier, Style};
 use serde_yaml_ng::{from_reader, Value};
 
-use crate::common::{tilde, SYNTECT_DEFAULT_THEME};
+use crate::common::{is_in_path, tilde, CHAFA, SYNTECT_DEFAULT_THEME, UEBERZUG};
 use crate::config::{make_default_config_files, Bindings, ColorG};
-use crate::io::Args;
+use crate::io::{user_has_x11, Args, COMPATIBLES};
 use crate::log_info;
 
 /// Holds every configurable aspect of the application.
@@ -366,6 +367,26 @@ pub enum Imagers {
     Chafa,
 }
 
+impl Imagers {
+    fn is_possible(&self) -> bool {
+        match self {
+            Self::Disabled => true,
+            Self::Ueberzug => is_in_path(UEBERZUG) && user_has_x11(),
+            Self::Inline => {
+                let mut is_possible = false;
+                for variable in COMPATIBLES {
+                    if var(variable).is_ok() {
+                        is_possible = true;
+                        break;
+                    }
+                }
+                is_possible
+            }
+            Self::Chafa => is_in_path(CHAFA),
+        }
+    }
+}
+
 /// Name of the syntect theme used.
 #[derive(Debug, Default)]
 pub struct PreferedImager {
@@ -373,6 +394,15 @@ pub struct PreferedImager {
 }
 
 impl PreferedImager {
+    /// Load the prefered imagers from arguments and config.
+    /// The argument line `disable_images` is set, it takes precedence and no image is displayed.
+    /// Otherwise, we read the config.
+    /// Config allows multiple imagers separated by a pipe `|`. The first "possible" one is loaded.
+    ///
+    /// For an imager to be "possible", it should be able to display the image.
+    /// - ueberzug requires the executable in path and X11,
+    /// - chafa only requires its executable,
+    /// - inline requires a compatible terminal, which is detected from env. variables & X11.
     pub fn from_config(path: &str) -> Result<Self> {
         if Args::parse().disable_images {
             return Ok(Self::default());
@@ -384,17 +414,25 @@ impl PreferedImager {
         let Ok(yaml) = from_reader::<File, Value>(file) else {
             return Ok(Self::default());
         };
-        let Some(imager) = yaml["imager"].as_str() else {
+        let Some(imager_config) = yaml["imager"].as_str() else {
             return Ok(Self::default());
         };
-        crate::log_info!("Config: found imager : {imager}");
-        let imager = match imager {
-            "Ueberzug" => Imagers::Ueberzug,
-            "Inline" => Imagers::Inline,
-            "Chafa" => Imagers::Chafa,
-            _ => Imagers::Disabled,
-        };
+        let imagers = imager_config.split('|').map(|s| s.trim().to_lowercase());
+        for imager in imagers {
+            crate::log_info!("Config: found imager in config... : {imager}");
+            let imager = match imager.as_str() {
+                "ueberzug" => Imagers::Ueberzug,
+                "inline" => Imagers::Inline,
+                "chafa" => Imagers::Chafa,
+                _ => Imagers::Disabled,
+            };
+            if imager.is_possible() {
+                return Ok(Self { imager });
+            }
+        }
 
-        Ok(Self { imager })
+        Ok(Self {
+            imager: Imagers::Disabled,
+        })
     }
 }
