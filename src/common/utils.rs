@@ -108,7 +108,7 @@ unsafe extern "C" {
 }
 
 /// Uid of the current user.
-/// Get it from a syscal to C library.
+/// Get it from a syscall to `geteuid` from C library.
 /// Should never fail.
 pub fn current_uid() -> u32 {
     unsafe { geteuid() }
