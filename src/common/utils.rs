@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
+use std::env::split_paths;
 use std::fs::{metadata, read_to_string, File};
 use std::io::{BufRead, Write};
 use std::os::unix::fs::MetadataExt;
@@ -132,10 +133,10 @@ where
     if Path::new(program).exists() {
         return true;
     }
-    if let Ok(path) = std::env::var("PATH") {
-        for p in path.split(':') {
-            let p_str = &format!("{p}/{program}");
-            if std::path::Path::new(p_str).exists() {
+    if let Some(path) = std::env::var_os("PATH") {
+        for mut p in split_paths(&path) {
+            p.push(program);
+            if p.exists() {
                 return true;
             }
         }
