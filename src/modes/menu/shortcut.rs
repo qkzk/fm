@@ -104,9 +104,7 @@ impl Shortcut {
 
     /// Update the shortcuts with MTP mount points
     fn extend_with_mtp(&mut self) {
-        let Ok(uid) = current_uid() else {
-            return;
-        };
+        let uid = current_uid();
         let mtp_mount_point = PathBuf::from(format!("/run/user/{uid}/gvfs/"));
         if !mtp_mount_point.exists() || !mtp_mount_point.is_dir() {
             return;

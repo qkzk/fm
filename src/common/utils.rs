@@ -3,9 +3,8 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
 use std::env::split_paths;
-use std::fs::{metadata, read_to_string, File};
+use std::fs::{read_to_string, File};
 use std::io::{BufRead, Write};
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -104,18 +103,22 @@ pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
         .context("couldn't parse the filename")
 }
 
+unsafe extern "C" {
+    unsafe fn geteuid() -> u32;
+}
+
 /// Uid of the current user.
-/// Read from `/proc/self`.
+/// Get it from a syscal to C library.
 /// Should never fail.
-pub fn current_uid() -> Result<u32> {
-    Ok(metadata("/proc/self").map(|metadata| metadata.uid())?)
+pub fn current_uid() -> u32 {
+    unsafe { geteuid() }
 }
 
 /// Get the current username as a String.
 /// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
     Users::only_users()
-        .get_user_by_uid(current_uid()?)
+        .get_user_by_uid(current_uid())
         .context("Couldn't read my own name")
         .cloned()
 }
