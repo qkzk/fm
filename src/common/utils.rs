@@ -11,8 +11,7 @@ use std::str::FromStr;
 use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use sysinfo::Disk;
-use sysinfo::Disks;
+use sysinfo::{Disk, Disks};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::{CONFIG_FOLDER, ZOXIDE};
