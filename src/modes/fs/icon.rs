@@ -259,7 +259,7 @@ impl Icon for std::path::Path {
     }
 }
 
-impl Icon for FileKind<bool> {
+impl Icon for FileKind {
     /// Icon per file kind.
     /// Shouldn't be called for normal files, use extension.icon() directly.
     fn icon(&self) -> &'static str {
@@ -270,7 +270,8 @@ impl Icon for FileKind<bool> {
             Self::NormalFile => "",
             Self::CharDevice => " ",
             Self::BlockDevice => " ",
-            Self::SymbolicLink(_) => " ",
+            Self::ValidSymbolicLink => " ",
+            Self::InvalidSymbolicLink => "⛓️‍💥",
         }
     }
 }

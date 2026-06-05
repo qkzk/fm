@@ -231,7 +231,7 @@ impl Preview {
 /// Using a builder is useful since there's many kind of preview which all use a different method.
 pub struct PreviewBuilder {
     path: PathBuf,
-    file_kind: FileKind<bool>,
+    file_kind: FileKind,
     metadata: Metadata,
 }
 
@@ -284,7 +284,8 @@ impl PreviewBuilder {
             FileKind::Socket if is_in_path(SS) => self.socket(),
             FileKind::BlockDevice if is_in_path(LSBLK) => self.block_device(),
             FileKind::Fifo | FileKind::CharDevice if is_in_path(UDEVADM) => self.fifo_chardevice(),
-            FileKind::SymbolicLink(true) => self.symlink(),
+            FileKind::ValidSymbolicLink => self.symlink(),
+            FileKind::InvalidSymbolicLink => self.symlink(),
             _ => Ok(Preview::default()),
         }
     }
