@@ -1108,7 +1108,7 @@ impl Line {
         let mut hex_repr = String::new();
         for (i, byte) in self.line.iter().enumerate() {
             let _ = write!(hex_repr, "{byte:02x}");
-            if i % 2 == 1 {
+            if i & 1 == 1 {
                 hex_repr.push(' ');
             }
         }
