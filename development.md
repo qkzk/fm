@@ -2180,6 +2180,7 @@ Once that's done, it's all. No not implement anything else
   - [x] allow multiple image previewers in config and pick first available "Inline | Ueberzug | Chafa"
   - [ ] test new configs with old version: breaking changes
 - [ ] CLIPPY: preview requests are too big, box them
+- [x] IMP: new filekind variant: invalidlink. Better than storing a bool
 
 
 ## TODO
