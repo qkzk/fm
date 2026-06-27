@@ -2181,6 +2181,8 @@ Once that's done, it's all. No not implement anything else
   - [ ] test new configs with old version: breaking changes
 - [ ] CLIPPY: preview requests are too big, box them
 - [x] IMP: new filekind variant: invalidlink. Better than storing a bool
+- [ ] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
+  It's more "natural" and you can always open the flagged files by pressing o.
 
 
 ## TODO

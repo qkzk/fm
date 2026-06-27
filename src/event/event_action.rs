@@ -473,6 +473,15 @@ impl EventAction {
         Self::new_node(status, InputSimple::Newfile)
     }
 
+    fn enter_dir_or_file(status: &mut Status) -> Result<()> {
+        if let Some(selected_path) = status.current_tab().selected_path() {
+            if selected_path.is_dir() {
+                return status.current_tab_mut().cd(&selected_path);
+            }
+        }
+        Self::enter_file(status)
+    }
+
     fn enter_file(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
@@ -1149,11 +1158,7 @@ impl EventAction {
             return Ok(());
         }
         if status.focus.is_file() {
-            let file = status.current_tab().current_file()?;
-            if file.is_dir() {
-                return status.current_tab_mut().cd(&file.path);
-            }
-            Self::enter_file(status)
+            Self::enter_dir_or_file(status)
         } else {
             let tab: &mut Tab = status.current_tab_mut();
             match tab.menu_mode {
@@ -1507,7 +1512,7 @@ impl EventAction {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         if status.focus.is_file() {
-            Self::enter_file(status)
+            Self::enter_dir_or_file(status)
         } else {
             LeaveMenu::leave_menu(status, binds)
         }
