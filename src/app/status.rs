@@ -987,6 +987,7 @@ impl Status {
                 .directory
                 .content
                 .iter()
+                .filter(|file| file.filename.as_ref() != "." && file.filename.as_ref() != "..")
                 .for_each(|file| self.menu.flagged.toggle(&file.path));
         }
     }

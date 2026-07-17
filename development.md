@@ -2183,7 +2183,7 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: new filekind variant: invalidlink. Better than storing a bool
 - [x] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
   It's more "natural" and you can always open the flagged files by pressing o.
-
+- [x] IMP: reverse flags (v) shouldn't flag . and ..
 
 ## TODO
 
