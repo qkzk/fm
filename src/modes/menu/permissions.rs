@@ -38,6 +38,7 @@ impl Permissions {
             log_line!("Changed permissions to {mode_str}");
         } else if Self::validate_chmod_args(mode_str) {
             Self::execute_chmod_for_flagged(mode_str, flagged)?;
+            log_line!("Changed permissions to {mode_str}");
         }
         Ok(())
     }
