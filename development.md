@@ -2136,6 +2136,7 @@ Once that's done, it's all. No not implement anything else
 - Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
 - Fuzzy finder now uses colors from your theme 
 - In directory display mode, "next thing"/"previous thing" (shift+down, shift+up) moves to the next flagged file in this directory.
+- Reverse flag doesn't flag . and .. anymore
 
 ### Bugfixes 
 
@@ -2168,10 +2169,6 @@ Once that's done, it's all. No not implement anything else
 - [x] FEAT: jump to next flag
 - [x] IMP: replaced linux setsid by fork library. fm shouldn't create zombies anymore.
   - [x] calling zoxide shouldn't write to log
-- [ ] FEAT: dragon-drop from drag & drop
-  - [x] draging a file opens dragondrop 
-  - [x] replace setsid by fork package
-  - [x] use libc setsid to avoid zombies
 - [ ] BUG: crash when a device is removed "os error 2, no file or directory"
   - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
   - [x] move to parent if problem occurs while reading metadata
@@ -2179,11 +2176,16 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: image preview when not possible...
   - [x] allow multiple image previewers in config and pick first available "Inline | Ueberzug | Chafa"
   - [ ] test new configs with old version: breaking changes
-- [ ] CLIPPY: preview requests are too big, box them
+- [x] CLIPPY: preview requests are too big, box them
 - [x] IMP: new filekind variant: invalidlink. Better than storing a bool
 - [x] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
   It's more "natural" and you can always open the flagged files by pressing o.
 - [x] IMP: reverse flags (v) shouldn't flag . and ..
+- [ ] FEAT: dragon-drop from drag & drop
+  - [x] draging a file opens dragondrop 
+  - [x] replace setsid by fork package
+  - [x] use libc setsid to avoid zombies
+  - [ ] problem with paths containing spaces like camera folder
 
 ## TODO
 
@@ -2313,6 +2315,10 @@ All of this stuff can be done easily through a shell command or automatically. I
 - [ ] auto mount usb keys ??? just use udiskie (started automatically) and udiskie-umount /mount/point
 - [ ] cloud services (apple, microsoft, google, dropbox etc.)
 - [ ] ftp
+
+### Internal dragndrop
+
+- [ ] currently (0.2.5) only external dragndrop is possible, mostly for web apps. An internal dragndrop might be useful
 
 ## Sources
 
