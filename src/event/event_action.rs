@@ -15,9 +15,9 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::{
     help_string, lsblk_and_udisksctl_installed, Content, ContentWindow,
-    Direction as FuzzyDirection, Display, DoneCopyMove, FmExpansion, FuzzyKind, Go, InputCompleted,
-    InputSimple, LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder,
-    ReEnterMenu, Search, Selectable, To,
+    Direction as FuzzyDirection, Display, DoneCopyMove, FuzzyKind, Go, InputCompleted, InputSimple,
+    LeaveMenu, MarkAction, Menu, Navigate, NeedConfirmation, Preview, PreviewBuilder, ReEnterMenu,
+    Search, Selectable, To,
 };
 
 /// Links events from ratatui to custom actions.
@@ -1225,14 +1225,18 @@ impl EventAction {
         col: u16,
     ) -> Result<()> {
         if status.focus.is_file() && Self::click(status, binds, row, col).is_ok() {
-            if !is_in_path(DRAGON_DROP) {
-                return Ok(());
-            }
             if status.internal_settings.is_dragging_file {
                 return Ok(());
             }
+            if !is_in_path(DRAGON_DROP) {
+                return Ok(());
+            }
             let mut args = vec!["-a".to_owned(), "-x".to_owned()];
-            args.append(&mut FmExpansion::selected_or_flagged(status)?);
+            if status.menu.flagged.is_empty() {
+                args.push(status.current_tab().current_file_string()?);
+            } else {
+                args.append(&mut status.menu.flagged.as_strings())
+            }
             execute(DRAGON_DROP, &args, true)?;
             status.internal_settings.is_dragging_file = true;
         };

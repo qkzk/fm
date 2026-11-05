@@ -2137,6 +2137,7 @@ Once that's done, it's all. No not implement anything else
 - Fuzzy finder now uses colors from your theme 
 - In directory display mode, "next thing"/"previous thing" (shift+down, shift+up) moves to the next flagged file in this directory.
 - Reverse flag doesn't flag . and .. anymore
+- Drag&Drop from fm. Drag a file or a bunch of flagged files with the mouse. It will open a dragon-drop window you can use to drop files somewhere.
 
 ### Bugfixes 
 
@@ -2181,11 +2182,11 @@ Once that's done, it's all. No not implement anything else
 - [x] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
   It's more "natural" and you can always open the flagged files by pressing o.
 - [x] IMP: reverse flags (v) shouldn't flag . and ..
-- [ ] FEAT: dragon-drop from drag & drop
+- [x] FEAT: dragon-drop from drag & drop
   - [x] draging a file opens dragondrop 
   - [x] replace setsid by fork package
   - [x] use libc setsid to avoid zombies
-  - [ ] problem with paths containing spaces like camera folder
+  - [x] FIX: problem with paths containing spaces like camera folder. Don't quote...
 
 ## TODO
 
