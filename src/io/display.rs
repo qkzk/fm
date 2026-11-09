@@ -549,12 +549,40 @@ impl<'a> DirectoryDisplay<'a> {
         file_style: &'static FileStyle,
     ) -> Line<'b> {
         let mut style = file.style(file_style);
+        let mut spans = self.create_spans(file, &mut style, menu_style);
+        self.complete_spans(
+            file,
+            format_kind,
+            with_icon,
+            menu_style,
+            file_style,
+            &mut spans,
+        );
+        spans = self.span_stylized_selected(index, file, &style, spans);
+        self.create_line(file, spans)
+    }
 
-        let mut spans = vec![
-            self.span_flagged_symbol(file, &mut style, menu_style),
+    fn create_spans<'b>(
+        &self,
+        file: &FileInfo,
+        style: &mut Style,
+        menu_style: &'static MenuStyle,
+    ) -> Vec<Span<'b>> {
+        vec![
+            self.span_flagged_symbol(file, style, menu_style),
             Self::mark_span(self.status, file, menu_style),
-        ];
+        ]
+    }
 
+    fn complete_spans<'b>(
+        &self,
+        file: &FileInfo,
+        format_kind: &FormatKind,
+        with_icon: bool,
+        menu_style: &'static MenuStyle,
+        file_style: &'static FileStyle,
+        spans: &mut Vec<Span<'b>>,
+    ) {
         spans.append(&mut Self::metadata(
             format_kind,
             file,
@@ -562,17 +590,20 @@ impl<'a> DirectoryDisplay<'a> {
             file_style,
             self.group_owner_sizes,
         ));
-
         spans.append(&mut self.icon_filename(file, with_icon, menu_style, file_style));
+    }
 
+    fn span_stylized_selected<'b>(
+        &self,
+        index: usize,
+        file: &FileInfo,
+        style: &Style,
+        mut spans: Vec<Span<'b>>,
+    ) -> Vec<Span<'b>> {
         if index == self.tab.directory.index {
-            spans = Self::reverse_selection(file, &style, spans);
+            spans = Self::reverse_selection(file, style, spans);
         }
-        let mut line = Line::from(spans);
-        if self.status.menu.flagged.contains(&file.path) {
-            line = line.add_modifier(Modifier::BOLD);
-        }
-        line
+        spans
     }
 
     fn reverse_selection<'b>(
@@ -589,6 +620,14 @@ impl<'a> DirectoryDisplay<'a> {
         }
         spans[0] = spans[0].clone().remove_modifier(Modifier::REVERSED);
         spans
+    }
+
+    fn create_line<'b>(&self, file: &FileInfo, spans: Vec<Span<'b>>) -> Line<'b> {
+        let mut line = Line::from(spans);
+        if self.status.menu.flagged.contains(&file.path) {
+            line = line.add_modifier(Modifier::BOLD);
+        }
+        line
     }
 
     fn icon_filename<'b>(
@@ -708,18 +747,43 @@ impl<'a> DirectoryDisplay<'a> {
         menu_style: &'static MenuStyle,
     ) -> Vec<Span<'b>> {
         let mut spans = vec![];
+        Self::push_icon(file, with_icon, menu_style, &mut spans);
+        Self::push_styled_filename(tab, file, style, menu_style, &mut spans);
+        spans
+    }
+
+    fn push_icon<'b>(
+        file: &FileInfo,
+        with_icon: bool,
+        menu_style: &'static MenuStyle,
+        spans: &mut Vec<Span<'b>>,
+    ) {
         if with_icon {
             spans.push(Span::styled(file.icon(), menu_style.palette_4))
         }
+    }
+
+    fn split_matched_filename(tab: &Tab, file: &FileInfo) -> (String, String, String) {
         let matches = tab
             .search
             .match_find(&file.filename)
             .expect("A matched regex should'nt be None");
         let range = matches.range();
         let filename = file.filename.to_string();
-        let before: String = filename.graphemes(true).take(range.start).collect();
+        let before = filename.graphemes(true).take(range.start).collect();
         let inner = matches.as_str().to_string();
-        let after: String = filename.graphemes(true).skip(range.end).collect();
+        let after = filename.graphemes(true).skip(range.end).collect();
+        (before, inner, after)
+    }
+
+    fn push_styled_filename<'b>(
+        tab: &Tab,
+        file: &FileInfo,
+        style: Style,
+        menu_style: &'static MenuStyle,
+        spans: &mut Vec<Span<'b>>,
+    ) {
+        let (before, inner, after) = Self::split_matched_filename(tab, file);
         spans.push(Span::styled(before, style).add_modifier(if file.is_dir() {
             Modifier::BOLD
         } else {
@@ -737,7 +801,6 @@ impl<'a> DirectoryDisplay<'a> {
         } else {
             Modifier::empty()
         }));
-        spans
     }
 
     fn without_search<'b>(file: &FileInfo, with_icon: bool, style: Style) -> Vec<Span<'b>> {
