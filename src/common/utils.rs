@@ -2,17 +2,16 @@ use std::borrow::Borrow;
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::env;
-use std::fs::{metadata, read_to_string, File};
+use std::env::split_paths;
+use std::fs::{read_to_string, File};
 use std::io::{BufRead, Write};
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use sysinfo::Disk;
-use sysinfo::Disks;
+use sysinfo::{Disk, Disks};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::{CONFIG_FOLDER, ZOXIDE};
@@ -103,18 +102,22 @@ pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
         .context("couldn't parse the filename")
 }
 
+unsafe extern "C" {
+    unsafe fn geteuid() -> u32;
+}
+
 /// Uid of the current user.
-/// Read from `/proc/self`.
+/// Get it from a syscall to `geteuid` from C library.
 /// Should never fail.
-pub fn current_uid() -> Result<u32> {
-    Ok(metadata("/proc/self").map(|metadata| metadata.uid())?)
+pub fn current_uid() -> u32 {
+    unsafe { geteuid() }
 }
 
 /// Get the current username as a String.
 /// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
     Users::only_users()
-        .get_user_by_uid(current_uid()?)
+        .get_user_by_uid(current_uid())
         .context("Couldn't read my own name")
         .cloned()
 }
@@ -132,10 +135,10 @@ where
     if Path::new(program).exists() {
         return true;
     }
-    if let Ok(path) = std::env::var("PATH") {
-        for p in path.split(':') {
-            let p_str = &format!("{p}/{program}");
-            if std::path::Path::new(p_str).exists() {
+    if let Some(path) = std::env::var_os("PATH") {
+        for mut p in split_paths(&path) {
+            p.push(program);
+            if p.exists() {
                 return true;
             }
         }
@@ -260,6 +263,7 @@ pub fn clear_tmp_files() {
         .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
 }
 
+/// Removes the input socket file from filetree before leaving fm
 pub fn clear_input_socket_files() -> Result<()> {
     let input_socket_filepath = build_input_socket_filepath();
     if std::path::Path::new(&input_socket_filepath).exists() {

@@ -210,4 +210,12 @@ impl Search {
     pub fn is_match(&self, filename: &str) -> bool {
         !self.is_empty() && self.regex.is_match(filename)
     }
+
+    pub fn match_find<'a>(&self, filename: &'a str) -> Option<regex::Match<'a>> {
+        if !self.is_empty() {
+            self.regex.find(filename)
+        } else {
+            None
+        }
+    }
 }

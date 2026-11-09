@@ -294,7 +294,7 @@ impl Mtp {
             .replace('/', "")
             .trim()
             .to_owned();
-        let uid = current_uid()?;
+        let uid = current_uid();
         let path = format!("/run/user/{uid}/gvfs/mtp:host={name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;

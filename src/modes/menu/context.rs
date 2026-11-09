@@ -128,11 +128,8 @@ impl<'a> MoreInfos<'a> {
     }
 
     fn system_times(&self) -> Vec<String> {
-        let Ok(metadata) = &self.file_info.metadata() else {
-            return vec!["".to_owned(), "".to_owned(), "".to_owned()];
-        };
         TimeKind::iter()
-            .map(|time_kind| time_kind.format_time(metadata))
+            .map(|time_kind| time_kind.format_time(&self.file_info.metadata))
             .collect()
     }
 }

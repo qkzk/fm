@@ -122,7 +122,7 @@ impl Directory {
         let fileinfo = self.selected().context("")?;
         match fileinfo.file_kind {
             FileKind::Directory => Ok(true),
-            FileKind::SymbolicLink(true) => {
+            FileKind::ValidSymbolicLink => {
                 let dest = std::fs::read_link(&fileinfo.path).unwrap_or_default();
                 Ok(dest.is_dir())
             }

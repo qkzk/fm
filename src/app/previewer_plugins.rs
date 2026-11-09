@@ -79,6 +79,12 @@ pub fn try_build_plugin(path: &Path, plugins: &[(String, PreviewerPlugin)]) -> O
     None
 }
 
+/// Plugins used to preview some files.
+///
+/// A previewer plugin should have a name, a dynamicly loaded library and two methods:
+///
+/// - `is_match` which takes a filepath and returns true if the path can be previewed,
+/// - `previewer` which takes a path and returns its preview as a C-string.
 #[derive(Debug)]
 pub struct PreviewerPlugin {
     _lib: Library,

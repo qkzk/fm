@@ -6,11 +6,11 @@ use indicatif::InMemoryTerm;
 
 use crate::app::{Direction, Focus, Status, Tab};
 use crate::common::{
-    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard,
-    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH,
+    content_to_clipboard, filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
+    open_in_current_neovim, set_clipboard, set_current_dir, tilde, CONFIG_PATH, DRAGON_DROP,
 };
 use crate::config::{Bindings, START_FOLDER};
-use crate::io::{read_log, CursorDirection, External};
+use crate::io::{execute, read_log, CursorDirection, External};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
@@ -471,6 +471,15 @@ impl EventAction {
     /// Enter the new file mode.
     pub fn new_file(status: &mut Status) -> Result<()> {
         Self::new_node(status, InputSimple::Newfile)
+    }
+
+    fn enter_dir_or_file(status: &mut Status) -> Result<()> {
+        if let Some(selected_path) = status.current_tab().selected_path() {
+            if selected_path.is_dir() {
+                return status.current_tab_mut().cd(&selected_path);
+            }
+        }
+        Self::enter_file(status)
     }
 
     fn enter_file(status: &mut Status) -> Result<()> {
@@ -984,10 +993,13 @@ impl EventAction {
 
     /// Special move to the next "thing".
     /// if we're in tree mode, focusing a file, it's the next sibling (= node of the same level sharing parent)
+    /// if we're in directory mode, it will jump to the next flagged file
     /// if we're inputing something, it's the next history result
     pub fn next_thing(status: &mut Status) -> Result<()> {
         if status.current_tab().display_mode.is_tree() && status.focus.is_file() {
             status.current_tab_mut().tree_next_sibling();
+        } else if status.current_tab().display_mode.is_directory() && status.focus.is_file() {
+            status.jump_next_flagged()?;
         } else {
             status.input_history_prev()?;
         }
@@ -996,10 +1008,13 @@ impl EventAction {
 
     /// Special move to the previous "thing".
     /// if we're in tree mode, focusing a file, it's the previous sibling (= node of the same level sharing parent)
+    /// if we're in directory mode, it will jump to the previous flagged file
     /// if we're inputing something, it's the previous history result
     pub fn previous_thing(status: &mut Status) -> Result<()> {
         if status.current_tab().display_mode.is_tree() && status.focus.is_file() {
             status.current_tab_mut().tree_prev_sibling();
+        } else if status.current_tab().display_mode.is_directory() && status.focus.is_file() {
+            status.jump_previous_flagged()?;
         } else {
             status.input_history_next()?;
         }
@@ -1143,11 +1158,7 @@ impl EventAction {
             return Ok(());
         }
         if status.focus.is_file() {
-            let file = status.current_tab().current_file()?;
-            if file.is_dir() {
-                return status.current_tab_mut().cd(&file.path);
-            }
-            Self::enter_file(status)
+            Self::enter_dir_or_file(status)
         } else {
             let tab: &mut Tab = status.current_tab_mut();
             match tab.menu_mode {
@@ -1207,8 +1218,34 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn file_mouse_drag(
+        status: &mut Status,
+        binds: &Bindings,
+        row: u16,
+        col: u16,
+    ) -> Result<()> {
+        if status.focus.is_file() && Self::click(status, binds, row, col).is_ok() {
+            if status.internal_settings.is_dragging_file {
+                return Ok(());
+            }
+            if !is_in_path(DRAGON_DROP) {
+                return Ok(());
+            }
+            let mut args = vec!["-a".to_owned(), "-x".to_owned()];
+            if status.menu.flagged.is_empty() {
+                args.push(status.current_tab().current_file_string()?);
+            } else {
+                args.append(&mut status.menu.flagged.as_strings())
+            }
+            execute(DRAGON_DROP, &args, true)?;
+            status.internal_settings.is_dragging_file = true;
+        };
+
+        Ok(())
+    }
+
     /// A mouse drag when selecting with cursor extends the selection upto there.
-    pub fn mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
+    pub fn cursor_mouse_drag(status: &mut Status, row: u16, col: u16) -> Result<()> {
         log_info!("mouse_drag col: {col}, row: {col}");
         status.internal_settings.cursor.mouse_drag(row, col);
         Ok(())
@@ -1216,8 +1253,14 @@ impl EventAction {
 
     /// A mouse up when selecting & dragging with cursor ends the dragging.
     pub fn mouse_up(status: &mut Status, row: u16, col: u16) -> Result<()> {
-        log_info!("mouse_up col: {col}, row: {row} ");
-        status.internal_settings.cursor.stop_drag();
+        if status.internal_settings.cursor.is_selecting()
+            && status.internal_settings.cursor.is_dragging
+        {
+            log_info!("mouse_up - stop drag - col: {col}, row: {row} ");
+            status.internal_settings.cursor.stop_drag();
+        } else if status.internal_settings.is_dragging_file {
+            status.internal_settings.is_dragging_file = false;
+        }
         Ok(())
     }
 
@@ -1473,7 +1516,7 @@ impl EventAction {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         if status.focus.is_file() {
-            Self::enter_file(status)
+            Self::enter_dir_or_file(status)
         } else {
             LeaveMenu::leave_menu(status, binds)
         }

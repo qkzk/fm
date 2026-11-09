@@ -5,12 +5,14 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, bail, Context, Result};
+use fork::setsid;
+use fork::Fork;
 use nucleo::Injector;
 use tokio::{
     io::AsyncBufReadExt, io::BufReader as TokioBufReader, process::Command as TokioCommand,
 };
 
-use crate::common::{current_username, is_in_path, GREP_EXECUTABLE, RG_EXECUTABLE, SETSID};
+use crate::common::{current_username, is_in_path, GREP_EXECUTABLE, RG_EXECUTABLE};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
@@ -22,29 +24,42 @@ use crate::{log_info, log_line};
 /// # Errors
 ///
 /// May fail if the command can't be spawned.
-pub fn execute<S, P>(exe: S, args: &[P]) -> Result<std::process::Child>
+pub fn execute<S, P>(exe: S, args: &[P], should_log: bool) -> Result<()>
 where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<std::ffi::OsStr> + fmt::Debug,
 {
-    log_info!("execute. executable: {exe:?}, arguments: {args:?}");
-    log_line!("Execute: {exe:?}, arguments: {args:?}");
-    if is_in_path(SETSID) {
-        Ok(Command::new(SETSID)
-            .arg(exe)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?)
-    } else {
-        Ok(Command::new(exe)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?)
+    if should_log {
+        log_info!("execute. executable: {exe:?}, arguments: {args:?}");
+        log_line!("Execute: {exe:?}, arguments: {args:?}");
     }
+    match fork::fork() {
+        Ok(Fork::Parent(child)) => {
+            log_info!("Parent process, child PID: {}", child);
+        }
+        Ok(Fork::Child) => {
+            // Create new session
+            match setsid() {
+                Ok(sid) => {
+                    log_info!("Child process, setsid {sid}");
+                    Command::new(exe)
+                        .args(args)
+                        .stdin(Stdio::null())
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .spawn()?;
+                    std::process::exit(0);
+                }
+                Err(e) => {
+                    log_info!("Failed to create session: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Err(e) => log_info!("Fork failed: {}", e),
+    }
+
+    Ok(())
 }
 
 /// Execute a command with options in a fork.
@@ -53,14 +68,8 @@ where
 pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
-) -> Result<std::process::Child> {
-    log_info!("execute_in_child_without_output. executable: {exe:?}, arguments: {args:?}",);
-    Ok(Command::new(exe)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?)
+) -> Result<()> {
+    execute(exe, args, false)
 }
 
 /// Execute a command with options in a fork.
@@ -301,19 +310,20 @@ where
 
 /// Runs `sudo -k` removing sudo privileges of current running instance.
 pub fn drop_sudo_privileges() -> Result<()> {
-    Command::new("sudo")
+    let mut child = Command::new("sudo")
         .arg("-k")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
+    child.wait()?;
     Ok(())
 }
 
 /// Reset the sudo faillock to avoid being blocked from running sudo commands.
 /// Runs `faillock --user $USERNAME --reset`
 pub fn reset_sudo_faillock() -> Result<()> {
-    Command::new("faillock")
+    let mut child = Command::new("faillock")
         .arg("--user")
         .arg(current_username()?)
         .arg("--reset")
@@ -321,6 +331,7 @@ pub fn reset_sudo_faillock() -> Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
+    child.wait()?;
     Ok(())
 }
 

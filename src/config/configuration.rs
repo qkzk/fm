@@ -1,13 +1,14 @@
+use std::env::var;
 use std::{fs::File, path};
 
 use anyhow::Result;
 use clap::Parser;
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use serde_yaml_ng::{from_reader, Value};
 
-use crate::common::{tilde, SYNTECT_DEFAULT_THEME};
+use crate::common::{is_in_path, tilde, CHAFA, SYNTECT_DEFAULT_THEME, UEBERZUG};
 use crate::config::{make_default_config_files, Bindings, ColorG};
-use crate::io::Args;
+use crate::io::{user_has_x11, Args, COMPATIBLES};
 use crate::log_info;
 
 /// Holds every configurable aspect of the application.
@@ -211,6 +212,15 @@ pub struct MenuStyle {
     pub palette_2: Style,
     pub palette_3: Style,
     pub palette_4: Style,
+
+    pub permission_read: Style,
+    pub permission_write: Style,
+    pub permission_execute: Style,
+    pub permission_no_right: Style,
+    pub metadata_size: Style,
+    pub metadata_owner: Style,
+    pub metadata_group: Style,
+    pub metadata_modified: Style,
 }
 
 impl Default for MenuStyle {
@@ -224,6 +234,15 @@ impl Default for MenuStyle {
             palette_2: Color::Rgb(230, 189, 87).into(),
             palette_3: Color::Rgb(230, 167, 255).into(),
             palette_4: Color::Rgb(59, 204, 255).into(),
+
+            permission_read: Color::Rgb(45, 250, 209).into(),
+            permission_write: Color::Rgb(45, 250, 209).into(),
+            permission_execute: Color::Rgb(45, 250, 209).into(),
+            permission_no_right: Color::Rgb(45, 250, 209).into(),
+            metadata_size: Color::Rgb(45, 250, 209).into(),
+            metadata_owner: Color::Rgb(45, 250, 209).into(),
+            metadata_group: Color::Rgb(45, 250, 209).into(),
+            metadata_modified: Color::Rgb(45, 250, 209).into(),
         }
     }
 }
@@ -239,6 +258,14 @@ impl MenuStyle {
             update_style!(self.palette_2, menu_colors, "palette_2");
             update_style!(self.palette_3, menu_colors, "palette_3");
             update_style!(self.palette_4, menu_colors, "palette_4");
+            update_style!(self.permission_read, menu_colors, "permission_read");
+            update_style!(self.permission_write, menu_colors, "permission_write");
+            update_style!(self.permission_execute, menu_colors, "permission_execute");
+            update_style!(self.permission_no_right, menu_colors, "permission_no_right");
+            update_style!(self.metadata_size, menu_colors, "metadata_size");
+            update_style!(self.metadata_owner, menu_colors, "metadata_owner");
+            update_style!(self.metadata_group, menu_colors, "metadata_group");
+            update_style!(self.metadata_modified, menu_colors, "metadata_modified");
         }
 
         self
@@ -255,8 +282,44 @@ impl MenuStyle {
     }
 
     #[inline]
-    pub const fn palette_size(&self) -> usize {
-        self.palette().len()
+    pub const fn rwx_colors(&self) -> [Style; 9] {
+        [
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
+            self.permission_read,
+            self.permission_write,
+            self.permission_execute,
+        ]
+    }
+
+    /// Styles used for fuzzy finder.
+    ///
+    /// Order is important, item are retrieved by calculating (is_selected)<<1 + (is_highlighted).
+    /// 0. default style,
+    /// 1. highlighted,
+    /// 2. selected,
+    /// 3. highlighted selected,
+    /// 4. default style flagged,
+    /// 5. highlighted flagged,
+    /// 6. selected flagged,
+    /// 7. highlighted selected flagged,
+    #[rustfmt::skip]
+    #[inline]
+    pub fn fuzzy_styles(&self) -> [Style; 8] {
+        [
+            self.palette_1,
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_3.add_modifier(Modifier::BOLD),
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_4,
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            self.palette_3.add_modifier(Modifier::BOLD),
+            self.palette_2.add_modifier(Modifier::BOLD | Modifier::REVERSED),
+        ]
     }
 }
 
@@ -304,6 +367,26 @@ pub enum Imagers {
     Chafa,
 }
 
+impl Imagers {
+    fn is_possible(&self) -> bool {
+        match self {
+            Self::Disabled => true,
+            Self::Ueberzug => is_in_path(UEBERZUG) && user_has_x11(),
+            Self::Inline => {
+                let mut is_possible = false;
+                for variable in COMPATIBLES {
+                    if var(variable).is_ok() {
+                        is_possible = true;
+                        break;
+                    }
+                }
+                is_possible
+            }
+            Self::Chafa => is_in_path(CHAFA),
+        }
+    }
+}
+
 /// Name of the syntect theme used.
 #[derive(Debug, Default)]
 pub struct PreferedImager {
@@ -311,6 +394,15 @@ pub struct PreferedImager {
 }
 
 impl PreferedImager {
+    /// Load the prefered imagers from arguments and config.
+    /// The argument line `disable_images` is set, it takes precedence and no image is displayed.
+    /// Otherwise, we read the config.
+    /// Config allows multiple imagers separated by a pipe `|`. The first "possible" one is loaded.
+    ///
+    /// For an imager to be "possible", it should be able to display the image.
+    /// - ueberzug requires the executable in path and X11,
+    /// - chafa only requires its executable,
+    /// - inline requires a compatible terminal, which is detected from env. variables & X11.
     pub fn from_config(path: &str) -> Result<Self> {
         if Args::parse().disable_images {
             return Ok(Self::default());
@@ -322,17 +414,25 @@ impl PreferedImager {
         let Ok(yaml) = from_reader::<File, Value>(file) else {
             return Ok(Self::default());
         };
-        let Some(imager) = yaml["imager"].as_str() else {
+        let Some(imager_config) = yaml["imager"].as_str() else {
             return Ok(Self::default());
         };
-        crate::log_info!("Config: found imager : {imager}");
-        let imager = match imager {
-            "Ueberzug" => Imagers::Ueberzug,
-            "Inline" => Imagers::Inline,
-            "Chafa" => Imagers::Chafa,
-            _ => Imagers::Disabled,
-        };
+        let imagers = imager_config.split('|').map(|s| s.trim().to_lowercase());
+        for imager in imagers {
+            crate::log_info!("Config: found imager in config... : {imager}");
+            let imager = match imager.as_str() {
+                "ueberzug" => Imagers::Ueberzug,
+                "inline" => Imagers::Inline,
+                "chafa" => Imagers::Chafa,
+                _ => Imagers::Disabled,
+            };
+            if imager.is_possible() {
+                return Ok(Self { imager });
+            }
+        }
 
-        Ok(Self { imager })
+        Ok(Self {
+            imager: Imagers::Disabled,
+        })
     }
 }

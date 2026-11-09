@@ -23,7 +23,7 @@ impl Icon for str {
             "asm" => " ",
             "asp" => " ",
             "aup" => " ",
-            "avi" => " ",
+            "avi" => " ",
             "awk" => " ",
             "bash" => " ",
             "bat" => " ",
@@ -80,7 +80,7 @@ impl Icon for str {
             "fifo" => "󰟥 ",
             "fish" => " ",
             "flac" => " ",
-            "flv" => " ",
+            "flv" => " ",
             "fs" => " ",
             "fsi" => " ",
             "fsscript" => " ",
@@ -129,20 +129,20 @@ impl Icon for str {
             "lzh" => " ",
             "lzma" => " ",
             "m4a" => " ",
-            "m4v" => " ",
+            "m4v" => " ",
             "markdown" => " ",
             "md" => " ",
             "mdx" => " ",
             "mjs" => " ",
             "mka" => " ",
-            "mkv" => " ",
+            "mkv" => " ",
             "ml" => "λ ",
             "mli" => "λ ",
-            "mov" => " ",
+            "mov" => " ",
             "mp3" => " ",
-            "mp4" => " ",
-            "mpeg" => " ",
-            "mpg" => " ",
+            "mp4" => " ",
+            "mpeg" => " ",
+            "mpg" => " ",
             "msi" => " ",
             "mustache" => " ",
             "nix" => " ",
@@ -214,7 +214,7 @@ impl Icon for str {
             "vimrc" => " ",
             "vue" => "󰡄 ",
             "wav" => " ",
-            "webm" => " ",
+            "webm" => " ",
             "webmanifest" => " ",
             "webp" => " ",
             "xbps" => " ",
@@ -259,7 +259,7 @@ impl Icon for std::path::Path {
     }
 }
 
-impl Icon for FileKind<bool> {
+impl Icon for FileKind {
     /// Icon per file kind.
     /// Shouldn't be called for normal files, use extension.icon() directly.
     fn icon(&self) -> &'static str {
@@ -270,7 +270,8 @@ impl Icon for FileKind<bool> {
             Self::NormalFile => "",
             Self::CharDevice => " ",
             Self::BlockDevice => " ",
-            Self::SymbolicLink(_) => " ",
+            Self::ValidSymbolicLink => " ",
+            Self::InvalidSymbolicLink => "⛓️‍💥",
         }
     }
 }

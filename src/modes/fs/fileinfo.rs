@@ -9,13 +9,11 @@ use chrono::DateTime;
 use ratatui::style::Style;
 
 use crate::config::{extension_color, FileStyle};
-use crate::modes::{human_size, permission_mode_to_str, ToPath, Users};
-
-type Valid = bool;
+use crate::modes::{human_size, permission_mode_to_str, permission_mode_to_strings, ToPath, Users};
 
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
-pub enum FileKind<Valid> {
+pub enum FileKind {
     /// Classic files.
     NormalFile,
     /// Folder
@@ -28,11 +26,13 @@ pub enum FileKind<Valid> {
     Fifo,
     /// File socket
     Socket,
-    /// symlink
-    SymbolicLink(Valid),
+    /// valid symlink
+    ValidSymbolicLink,
+    /// Broken symlink
+    InvalidSymbolicLink,
 }
 
-impl FileKind<Valid> {
+impl FileKind {
     /// Returns a new `FileKind` depending on metadata.
     /// Only linux files have some of those metadata
     /// since we rely on `std::fs::MetadataExt`.
@@ -48,7 +48,11 @@ impl FileKind<Valid> {
         } else if meta.file_type().is_fifo() {
             Self::Fifo
         } else if meta.file_type().is_symlink() {
-            Self::SymbolicLink(is_valid_symlink(filepath))
+            if is_valid_symlink(filepath) {
+                Self::ValidSymbolicLink
+            } else {
+                Self::InvalidSymbolicLink
+            }
         } else {
             Self::NormalFile
         }
@@ -64,7 +68,7 @@ impl FileKind<Valid> {
             Self::NormalFile => '.',
             Self::CharDevice => 'c',
             Self::BlockDevice => 'b',
-            Self::SymbolicLink(_) => 'l',
+            Self::ValidSymbolicLink | Self::InvalidSymbolicLink => 'l',
         }
     }
 
@@ -72,7 +76,7 @@ impl FileKind<Valid> {
         match self {
             Self::Directory => 'a',
             Self::NormalFile => 'b',
-            Self::SymbolicLink(_) => 'c',
+            Self::ValidSymbolicLink | Self::InvalidSymbolicLink => 'c',
             Self::BlockDevice => 'd',
             Self::CharDevice => 'e',
             Self::Socket => 'f',
@@ -88,25 +92,37 @@ impl FileKind<Valid> {
             Self::NormalFile => "normal file",
             Self::CharDevice => "char device",
             Self::BlockDevice => "block device",
-            Self::SymbolicLink(_) => "symbolic link",
+            Self::ValidSymbolicLink | Self::InvalidSymbolicLink => "symbolic link",
         }
     }
 
     #[rustfmt::skip]
     pub fn size_description(&self) -> &'static str {
         match self {
-            Self::Fifo              => "Size:       ",
-            Self::Socket            => "Size:       ",
-            Self::Directory         => "Elements:   ",
-            Self::NormalFile        => "Size:       ",
-            Self::CharDevice        => "Major,Minor:",
-            Self::BlockDevice       => "Major,Minor:",
-            Self::SymbolicLink(_)   => "Size:       ",
+            Self::Fifo                => "Size:       ",
+            Self::Socket              => "Size:       ",
+            Self::Directory           => "Elements:   ",
+            Self::NormalFile          => "Size:       ",
+            Self::CharDevice          => "Major,Minor:",
+            Self::BlockDevice         => "Major,Minor:",
+            Self::ValidSymbolicLink   => "Size:       ",
+            Self::InvalidSymbolicLink => "Size:       ",
         }
     }
 
     pub fn is_normal_file(&self) -> bool {
         matches!(self, Self::NormalFile)
+    }
+
+    pub fn is_dir(&self) -> bool {
+        matches!(self, FileKind::Directory)
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        matches!(
+            self,
+            FileKind::ValidSymbolicLink | FileKind::InvalidSymbolicLink
+        )
     }
 }
 
@@ -136,7 +152,7 @@ impl std::fmt::Display for SizeColumn {
 }
 
 impl SizeColumn {
-    fn new(size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> Self {
+    fn new(size: u64, metadata: &Metadata, file_kind: &FileKind) -> Self {
         match file_kind {
             FileKind::Directory => Self::EntryCount(size),
             FileKind::CharDevice | FileKind::BlockDevice => Self::MajorMinor(major_minor(metadata)),
@@ -170,9 +186,11 @@ pub struct FileInfo {
     /// System time of last modification
     pub system_time: Arc<str>,
     /// What kind of file is this ?
-    pub file_kind: FileKind<Valid>,
+    pub file_kind: FileKind,
     /// Extension of the file. `""` for a directory.
     pub extension: Arc<str>,
+    /// Metadata,
+    pub metadata: Metadata,
 }
 
 impl FileInfo {
@@ -198,6 +216,7 @@ impl FileInfo {
             system_time,
             file_kind,
             extension,
+            metadata,
         })
     }
 
@@ -215,30 +234,21 @@ impl FileInfo {
         Ok(file_info)
     }
 
-    /// Symlink metadata of the file.
-    /// Doesn't follow the symlinks.
-    /// Correspond to `lstat` function on Linux.
-    /// See [`std::fs::symlink_metadata`].
-    ///
-    /// # Errors
-    ///
-    /// Could return an error if the file doesn't exist or if the user can't stat it.
-    pub fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
-        symlink_metadata(&self.path)
-    }
-
     /// Returns the Inode number.
     ///
     /// Returns 0 if the metadata can't be read.
     pub fn ino(&self) -> u64 {
-        self.metadata()
-            .map(|metadata| metadata.ino())
-            .unwrap_or_default()
+        self.metadata.ino()
     }
 
     /// String representation of file permissions
     pub fn permissions(&self) -> Result<Arc<str>> {
-        Ok(permission_mode_to_str(self.metadata()?.mode()))
+        Ok(permission_mode_to_str(self.metadata.mode()))
+    }
+
+    /// Returns an array of strings representing the permission.
+    pub fn permissions_strings(&self) -> Result<[&'static str; 9]> {
+        Ok(permission_mode_to_strings(self.metadata.mode()))
     }
 
     /// A formated filename where the "kind" of file
@@ -259,7 +269,7 @@ impl FileInfo {
         let mut repr = self.format_base(owner_col_width, group_col_width);
         repr.push(' ');
         repr.push_str(&self.filename);
-        if let FileKind::SymbolicLink(_) = self.file_kind {
+        if let FileKind::ValidSymbolicLink | FileKind::InvalidSymbolicLink = self.file_kind {
             self.expand_symlink(&mut repr);
         }
         repr
@@ -283,32 +293,6 @@ impl FileInfo {
         }
     }
 
-    pub fn format_no_group(&self, owner_col_width: usize) -> String {
-        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        let permissions = self
-            .permissions()
-            .unwrap_or_else(|_| Arc::from("?????????"));
-        format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time}",
-            dir_symbol = self.dir_symbol(),
-            file_size = self.size_column,
-            system_time = self.system_time,
-        )
-    }
-
-    pub fn format_no_permissions(&self, owner_col_width: usize) -> String {
-        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
-        format!(
-            "{file_size} {owner:<owner_col_width$} {system_time}",
-            file_size = self.size_column,
-            system_time = self.system_time,
-        )
-    }
-
-    pub fn format_no_owner(&self) -> String {
-        format!("{file_size}", file_size = self.size_column)
-    }
-
     pub fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> String {
         let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
         let group = format!("{group:.group_col_width$}", group = self.group,);
@@ -322,11 +306,6 @@ impl FileInfo {
             system_time = self.system_time,
         )
     }
-    /// Format the metadata line, without the filename.
-    /// Owned & Group have fixed width of 6.
-    pub fn format_no_filename(&self) -> String {
-        self.format_base(6, 6)
-    }
 
     pub fn dir_symbol(&self) -> char {
         self.file_kind.dir_symbol()
@@ -338,11 +317,11 @@ impl FileInfo {
     }
 
     pub fn is_dir(&self) -> bool {
-        matches!(self.file_kind, FileKind::Directory)
+        self.file_kind.is_dir()
     }
 
     pub fn is_symlink(&self) -> bool {
-        matches!(self.file_kind, FileKind::SymbolicLink(_))
+        self.file_kind.is_symlink()
     }
 
     /// True iff the parent of the file is root.
@@ -387,8 +366,8 @@ impl FileInfo {
             FileKind::CharDevice => styles.char,
             FileKind::Fifo => styles.fifo,
             FileKind::Socket => styles.socket,
-            FileKind::SymbolicLink(true) => styles.symlink,
-            FileKind::SymbolicLink(false) => styles.broken,
+            FileKind::ValidSymbolicLink => styles.symlink,
+            FileKind::InvalidSymbolicLink => styles.broken,
             _ => unreachable!("Should be done already"),
         }
     }

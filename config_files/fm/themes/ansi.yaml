@@ -36,3 +36,15 @@ palette_1: light_magenta
 palette_2: light_blue
 palette_3: light_red
 palette_4: light_yellow
+
+# Colors for permissions
+permission_read: light_blue
+permission_write: light_magenta
+permission_execute: light_yellow
+permission_no_right: light_white
+
+# Metadata colors
+metadata_size: light_blue
+metadata_owner: light_magenta
+metadata_group: light_yellow
+metadata_modified: light_red

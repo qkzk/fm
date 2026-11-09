@@ -65,6 +65,10 @@ impl CaseDependantRegex {
         self.regex.is_match(haystack)
     }
 
+    pub fn find<'a>(&self, haystack: &'a str) -> Option<regex::Match<'a>> {
+        self.regex.find(haystack)
+    }
+
     fn complete_regex(input_string: &str) -> Result<Regex> {
         let re = if Self::has_uppercase(input_string) {
             input_string

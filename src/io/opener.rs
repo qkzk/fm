@@ -289,7 +289,7 @@ impl External {
         )
     }
 
-    fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
+    fn without_term(mut args: Vec<&str>) -> Result<()> {
         if args.is_empty() {
             bail!("args shouldn't be empty");
         }
@@ -297,7 +297,7 @@ impl External {
         if executable.contains(' ') {
             Self::include_options_in_args(&mut executable, &mut args)?;
         }
-        execute(executable, &args)
+        execute(executable, &args, true)
     }
 
     /// Called when the command contains options, flags etc.

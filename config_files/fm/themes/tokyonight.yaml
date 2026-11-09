@@ -15,7 +15,7 @@ char: "#b8db87"
 # fifos
 fifo: "#4fd6be"
 # opened sockets
-socket: "#fca7ea"
+socket: "#ff9e64"
 # valid symlinks
 symlink: "#e26a75"
 # broken symlinks
@@ -28,11 +28,22 @@ header_first: "#86d3f5"
 # second color
 header_second: "#4fd6be"
 # selected tab border
-selected_border: "#ff966c"
+selected_border: "#fca7ea"
 # non selected tab border
 inert_border: "#c8d3f5"
 # palette of 4 elements, used in menus (second window)
 palette_1: "#86d3f5"
-palette_2: "#ff966c"
+palette_2: "#fca7ea"
 palette_3: "#4fd6be"
-palette_4: "#ffc777"
+
+# Colors for permissions
+permission_read: "#86d3f5"
+permission_write: "#4fd6be"
+permission_execute: "#fca7ea"
+permission_no_right: "#c8d3f5"
+
+# Metadata colors
+metadata_size: "#fca7ea"
+metadata_owner: "#ff9e64"
+metadata_group: "#fca7ea"
+metadata_modified: "#2ac3de"

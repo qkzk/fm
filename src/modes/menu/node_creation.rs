@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::fs;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::app::{Status, Tab};
 use crate::log_line;
@@ -30,16 +30,12 @@ impl NodeCreation {
     ///
     /// It may fail if the node creation fail. See [`std::fs::create_dir_all`] and [`std::fs::File::create`]
     pub fn create(&self, status: &mut Status) -> Result<std::path::PathBuf> {
-        let tab = status.current_tab_mut();
-        let root_path = Self::root_path(tab)?;
+        let root_path = Self::root_path(status.current_tab())?;
         let path = root_path.join(status.menu.input.string());
 
         if path.exists() {
             log_line!("{self} {path} already exists", path = path.display());
-            return Err(anyhow::anyhow!(
-                "File {path} alredy exists",
-                path = path.display()
-            ));
+            bail!("File {path} alredy exists", path = path.display());
         };
 
         match self {
@@ -54,14 +50,10 @@ impl NodeCreation {
         Ok(path)
     }
 
-    fn root_path(tab: &mut Tab) -> Result<std::path::PathBuf> {
+    fn root_path(tab: &Tab) -> Result<&std::path::Path> {
         let root_path = match tab.display_mode {
-            DisplayMode::Tree => tab
-                .tree
-                .directory_of_selected()
-                .context("no parent")?
-                .to_owned(),
-            _ => tab.directory.path.to_path_buf(),
+            DisplayMode::Tree => tab.tree.directory_of_selected().context("no parent")?,
+            _ => tab.directory.path.as_ref(),
         };
         Ok(root_path)
     }

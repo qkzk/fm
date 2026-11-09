@@ -291,7 +291,13 @@ impl Tab {
         if match self.display_mode {
             Display::Preview => false,
             Display::Directory => {
-                has_last_modification_happened_less_than(&self.directory.path, 10)?
+                match has_last_modification_happened_less_than(&self.directory.path, 10) {
+                    Ok(modif) => modif,
+                    Err(_) => {
+                        self.cd_to_parent()?;
+                        true
+                    }
+                }
             }
             Display::Tree => self.tree.has_modified_dirs(),
             Display::Fuzzy => false,
@@ -372,9 +378,7 @@ impl Tab {
     /// Creates a preview and assign it.
     /// Doesn't check if it's the correct action to do according to display.
     fn make_preview_unchecked(&mut self, file_info: FileInfo) {
-        let preview = PreviewBuilder::new(&file_info.path)
-            .build()
-            .unwrap_or_default();
+        let preview = PreviewBuilder::new(file_info).build().unwrap_or_default();
         self.set_display_mode(Display::Preview);
         self.window.reset(preview.len());
         self.preview = preview;
@@ -508,6 +512,12 @@ impl Tab {
             Display::Tree => SortKind::tree_default(),
             _ => SortKind::default(),
         };
+    }
+
+    fn cd_to_parent(&mut self) -> Result<()> {
+        let current = self.directory.path.clone();
+        let parent = current.parent().unwrap_or(path::Path::new("/"));
+        self.cd(parent)
     }
 
     pub fn cd_to_file<P>(&mut self, path: P) -> Result<()>

@@ -1,4 +1,4 @@
-# Development
+ Development
 
 I write every step in this file.
 
@@ -2037,7 +2037,6 @@ Once that's done, it's all. No not implement anything else
     - [x] ensure marks are unique per path. Can't have multiple path with same marks.
     - [x] trashing a file remove its marks.
 
-## Current dev
 
 ### Version 0.2.4 
 
@@ -2128,12 +2127,74 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: open all tar.xz archive. Some tar.xz files aren't compressed by xz but with gz instead. Why ? I don't know. Try every method of decompression for those files.
 - [x] FIX: can't compress a whole directory easily
 
+## Current dev
+
+### Version 0.2.5 - colouring for every displayed cell ?
+
+## Summary 
+
+- Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
+- Fuzzy finder now uses colors from your theme 
+- In directory display mode, "next thing"/"previous thing" (shift+down, shift+up) moves to the next flagged file in this directory.
+- Reverse flag doesn't flag . and .. anymore
+- Drag&Drop from fm. Drag a file or a bunch of flagged files with the mouse. It will open a dragon-drop window you can use to drop files somewhere.
+- **Breaking change** : Setup multiple image previewers in config with "Inline | Ueberzug | Chafa". This configuration can't be read in older version of fm.
+
+### Bugfixes 
+
+- Fixed a typo in catppuccin theme 
+- Fixed a bug preventing you from moving a file to a parent folder 
+- Fixed a bug where focus is moved to an invisible tab
+- Fixed a bug where fm wasn't aware of the terminal size and wouldn't use all available space
+- Fixed a bug where editing/removing a directory from outside would crash fm
+
+## Changelog
+
+- [x] FEAT: uncompress file.gz / file.xz without tar.
+- [x] FEAT: color every cell & refactor
+  - [x] format 
+    - [x] per item simple 
+    - [x] per item configurable
+    - [x] responsive sizing...
+  - [x] options
+    - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
+    - [x] update all themes
+    - [x] refactor the whole display
+  - [x] IMP: store metadata in fileinfo. Faster than using syscall every frame
+- [x] FIX: typo in catPPuccin !!!
+- [x] BUG: tab doesn't use whole space
+  - happens when opening directrly
+  - can't reproduce ? Side effect of display ???
+- [x] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
+- [x] FEAT: configure fuzzy finder colors with menu style
+- [x] FIX: can't move a file to its parent. Comparison in wrong order.
+- [x] FEAT: jump to next flag
+- [x] IMP: replaced linux setsid by fork library. fm shouldn't create zombies anymore.
+  - [x] calling zoxide shouldn't write to log
+- [x] FIX: crash when a device is removed "os error 2, no file or directory"
+  - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
+  - [x] move to parent if problem occurs while reading metadata
+- [x] FEAT: image preview when not possible...
+  - [x] allow multiple image previewers in config and pick first available "Inline | Ueberzug | Chafa"
+- [x] CLIPPY: preview requests are too big, box them
+- [x] IMP: new filekind variant: invalidlink. Better than storing a bool
+- [x] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
+  It's more "natural" and you can always open the flagged files by pressing o.
+- [x] IMP: reverse flags (v) shouldn't flag . and ..
+- [x] FEAT: dragon-drop from drag & drop
+  - [x] draging a file opens dragondrop 
+  - [x] replace setsid by fork package
+  - [x] use libc setsid to avoid zombies
+  - [x] FIX: problem with paths containing spaces like camera folder. Don't quote...
+
 ## TODO
 
 ### Other ideas
 
-- [ ] FEAT: preview xournal files
-- [ ] IMP: Coloring should be simpler and allow colouring of single elements
+- [ ] FEAT: Wayland ???
+  - [ ] ueberzug
+  - [ ] ???
+- [ ] WONTDO: preview xournal files (xournalpp -p source.xopp source.pdf)
 - [ ] IMP: Configuration shouldn't require 10 files 
 - [ ] Menu plugin 
   - [ ] API:
@@ -2254,6 +2315,10 @@ All of this stuff can be done easily through a shell command or automatically. I
 - [ ] auto mount usb keys ??? just use udiskie (started automatically) and udiskie-umount /mount/point
 - [ ] cloud services (apple, microsoft, google, dropbox etc.)
 - [ ] ftp
+
+### Internal dragndrop
+
+- [ ] currently (0.2.5) only external dragndrop is possible, mostly for web apps. An internal dragndrop might be useful
 
 ## Sources
 

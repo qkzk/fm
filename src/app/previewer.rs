@@ -4,23 +4,29 @@ use std::thread;
 
 use anyhow::Result;
 
-use crate::modes::{Preview, PreviewBuilder};
+use crate::modes::{FileInfo, Preview, PreviewBuilder};
 
 enum RequestKind {
-    PreviewRequest(PreviewRequest),
+    PreviewRequest(Box<PreviewRequest>),
     Quit,
 }
 
+impl RequestKind {
+    fn new_preview_request(file_info: FileInfo, index: usize, line_index: Option<usize>) -> Self {
+        Self::PreviewRequest(Box::new(PreviewRequest::new(file_info, index, line_index)))
+    }
+}
+
 struct PreviewRequest {
-    path: PathBuf,
+    file_info: FileInfo,
     tab_index: usize,
     line_nr: Option<usize>,
 }
 
 impl PreviewRequest {
-    fn new(path: PathBuf, tab_index: usize, line_nr: Option<usize>) -> Self {
+    fn new(file_info: FileInfo, tab_index: usize, line_nr: Option<usize>) -> Self {
         Self {
-            path,
+            file_info,
             tab_index,
             line_nr,
         }
@@ -71,24 +77,7 @@ impl Previewer {
     ///   for the preview.
     pub fn new(tx_preview: mpsc::Sender<PreviewResponse>) -> Self {
         let (tx_request, rx_request) = mpsc::channel::<RequestKind>();
-        thread::spawn(move || {
-            while let Some(request) = rx_request.iter().next() {
-                match request {
-                    RequestKind::PreviewRequest(PreviewRequest {
-                        path,
-                        tab_index,
-                        line_nr,
-                    }) => {
-                        if let Ok(preview) = PreviewBuilder::new(&path).build() {
-                            tx_preview
-                                .send(PreviewResponse::new(path, tab_index, line_nr, preview))
-                                .unwrap();
-                        };
-                    }
-                    RequestKind::Quit => break,
-                }
-            }
-        });
+        thread::spawn(|| Self::handle_requests(tx_preview, rx_request));
         Self { tx_request }
     }
 
@@ -104,11 +93,47 @@ impl Previewer {
     /// Sends an "ask preview" to the previewer loop. A preview will be built, which won't block the application.
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
-    pub fn build(&self, path: PathBuf, index: usize, line_index: Option<usize>) -> Result<()> {
-        self.tx_request
-            .send(RequestKind::PreviewRequest(PreviewRequest::new(
-                path, index, line_index,
-            )))?;
+    pub fn build(
+        &self,
+        file_info: FileInfo,
+        index: usize,
+        line_index: Option<usize>,
+    ) -> Result<()> {
+        self.tx_request.send(RequestKind::new_preview_request(
+            file_info, index, line_index,
+        ))?;
+        Ok(())
+    }
+
+    fn handle_requests(
+        tx_preview: mpsc::Sender<PreviewResponse>,
+        rx_request: mpsc::Receiver<RequestKind>,
+    ) {
+        while let Some(request) = rx_request.iter().next() {
+            match request {
+                RequestKind::PreviewRequest(boxed_request) => {
+                    if Self::handle_preview_requests(boxed_request, &tx_preview).is_err() {
+                        break;
+                    }
+                }
+                RequestKind::Quit => break,
+            }
+        }
+    }
+
+    fn handle_preview_requests(
+        boxed_request: Box<PreviewRequest>,
+        tx_preview: &mpsc::Sender<PreviewResponse>,
+    ) -> Result<()> {
+        let PreviewRequest {
+            file_info,
+            tab_index,
+            line_nr,
+        } = *boxed_request;
+        let path = file_info.path.to_path_buf();
+        if let Ok(preview) = PreviewBuilder::new(file_info).build() {
+            tx_preview.send(PreviewResponse::new(path, tab_index, line_nr, preview))?;
+        }
         Ok(())
     }
 }

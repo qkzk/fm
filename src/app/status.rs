@@ -276,7 +276,7 @@ impl Status {
 
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
-        if self.session.dual() {
+        if self.use_dual() {
             if col < self.term_width() / 2 {
                 self.select_left();
             } else {
@@ -665,6 +665,7 @@ impl Status {
         !self.wide_enough_for_dual() && self.session.dual()
     }
 
+    /// True iff two tabs are displayed.
     #[inline]
     pub fn use_dual(&self) -> bool {
         self.wide_enough_for_dual() && self.session.dual()
@@ -720,8 +721,7 @@ impl Status {
         };
         log_info!("sending preview request");
 
-        self.previewer
-            .build(fileinfo.path.to_path_buf(), 1, line_index)?;
+        self.previewer.build(fileinfo, 1, line_index)?;
 
         Ok(())
     }
@@ -987,6 +987,7 @@ impl Status {
                 .directory
                 .content
                 .iter()
+                .filter(|file| file.filename.as_ref() != "." && file.filename.as_ref() != "..")
                 .for_each(|file| self.menu.flagged.toggle(&file.path));
         }
     }
@@ -1072,6 +1073,87 @@ impl Status {
         self.update_second_pane_for_preview()
     }
 
+    /// Jumps to the next flagged file in current directory.
+    ///
+    /// It's the responsability of the caller to call this method only in tab directory display mode.
+    pub fn jump_next_flagged(&mut self) -> Result<()> {
+        let index = self.current_tab().directory.index;
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .take(index)
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        Ok(())
+    }
+
+    /// Jumps to the previous flagged file in current directory.
+    ///
+    /// It's the responsability of the caller to call this method only in tab directory display mode.
+    pub fn jump_previous_flagged(&mut self) -> Result<()> {
+        let index = self.current_tab().directory.index;
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .take(index)
+            .rev()
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        let next_index = self
+            .current_tab()
+            .directory
+            .content
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .rev()
+            .find(|(_, file)| self.menu.flagged.contains(&file.path))
+            .map(|(next_index, _)| next_index);
+        if let Some(next_index) = next_index {
+            let next_file = &self.current_tab().directory.content[next_index]
+                .path
+                .clone();
+            self.current_tab_mut().cd_to_file(next_file)?;
+            return Ok(());
+        }
+        Ok(())
+    }
     /// Execute a move or a copy of the flagged files to current directory.
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
@@ -1105,7 +1187,7 @@ impl Status {
     /// Only used before _moving_, for copying it doesn't matter.
     fn remove_subdir_of_dest(mut sources: Vec<PathBuf>, dest: &Path) -> Vec<PathBuf> {
         for index in (0..sources.len()).rev() {
-            if sources[index].starts_with(dest) {
+            if dest.starts_with(&sources[index]) {
                 log_info!("Cannot move to a subdirectory of itself");
                 log_line!("Cannot move to a subdirectory of itself");
                 sources.remove(index);

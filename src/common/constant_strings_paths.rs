@@ -38,8 +38,6 @@ pub const TMP_FOLDER_PATH: &str = "/tmp";
 pub const TMP_THUMBNAILS_DIR: &str = "/tmp/fm-thumbnails";
 /// Default syntect theme, theme is hardcoded into binary
 pub const SYNTECT_DEFAULT_THEME: &str = "monokai";
-/// setsid. Installed in most distros
-pub const SETSID: &str = "setsid";
 /// Opener used to play audio files. Does it require a terminal ?
 pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?
@@ -60,9 +58,12 @@ pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
 /// The index of each string gives a correct representation.
 pub const NORMAL_PERMISSIONS_STR: [&str; 8] =
     ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+/// Array of text representation of a special file permissions.
 pub const SETUID_PERMISSIONS_STR: [&str; 8] =
     ["--S", "--s", "-wS", "-ws", "r-S", "r-s", "rwS", "rws"];
+/// Array of text representation of a special file permissions.
 pub const SETGID_PERMISSIONS_STR: [&str; 8] = SETUID_PERMISSIONS_STR;
+/// Array of text representation of a sticky file permissions.
 pub const STICKY_PERMISSIONS_STR: [&str; 8] =
     ["--T", "--t", "-w-", "-wt", "r-T", "r-t", "rwT", "rwt"];
 /// Description of the application.
@@ -266,5 +267,7 @@ pub const PDFINFO: &str = "pdfinfo";
 pub const PDFTOTEXT: &str = "pdftotext";
 /// readelf
 pub const READELF: &str = "readelf";
+/// dragon-drop
+pub const DRAGON_DROP: &str = "dragon-drop";
 /// default nerdfont icon used for directories.
 pub const DIR_ICON: &str = " ";
