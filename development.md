@@ -2151,15 +2151,15 @@ Once that's done, it's all. No not implement anything else
 ## Changelog
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
-- [ ] FEAT: color every cell & refactor
+- [x] FEAT: color every cell & refactor
   - [x] format 
     - [x] per item simple 
     - [x] per item configurable
     - [x] responsive sizing...
-  - [ ] options
+  - [x] options
     - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
     - [x] update all themes
-    - [ ] refactor the whole display
+    - [x] refactor the whole display
   - [x] IMP: store metadata in fileinfo. Faster than using syscall every frame
 - [x] FIX: typo in catPPuccin !!!
 - [x] BUG: tab doesn't use whole space
