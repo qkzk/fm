@@ -2138,45 +2138,44 @@ Once that's done, it's all. No not implement anything else
 - In directory display mode, "next thing"/"previous thing" (shift+down, shift+up) moves to the next flagged file in this directory.
 - Reverse flag doesn't flag . and .. anymore
 - Drag&Drop from fm. Drag a file or a bunch of flagged files with the mouse. It will open a dragon-drop window you can use to drop files somewhere.
+- **Breaking change** : Setup multiple image previewers in config with "Inline | Ueberzug | Chafa". This configuration can't be read in older version of fm.
 
 ### Bugfixes 
 
 - Fixed a typo in catppuccin theme 
 - Fixed a bug preventing you from moving a file to a parent folder 
 - Fixed a bug where focus is moved to an invisible tab
+- Fixed a bug where fm wasn't aware of the terminal size and wouldn't use all available space
+- Fixed a bug where editing/removing a directory from outside would crash fm
 
 ## Changelog
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [ ] FEAT: color every cell & refactor
-  - [ ] format 
+  - [x] format 
     - [x] per item simple 
     - [x] per item configurable
     - [x] responsive sizing...
-    - [ ] tests
   - [ ] options
     - [x] options for mark, dirsymbol, permission, size, owner, group, modified, filename(?)
     - [x] update all themes
     - [ ] refactor the whole display
   - [x] IMP: store metadata in fileinfo. Faster than using syscall every frame
 - [x] FIX: typo in catPPuccin !!!
-- [ ] BUG: tab doesn't use whole space
+- [x] BUG: tab doesn't use whole space
   - happens when opening directrly
   - can't reproduce ? Side effect of display ???
-- [ ] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
-    - [ ] Needs more testing
+- [x] FIX: focus lost. Dual, open new window, move mouse, focus is on right side
 - [x] FEAT: configure fuzzy finder colors with menu style
 - [x] FIX: can't move a file to its parent. Comparison in wrong order.
 - [x] FEAT: jump to next flag
 - [x] IMP: replaced linux setsid by fork library. fm shouldn't create zombies anymore.
   - [x] calling zoxide shouldn't write to log
-- [ ] BUG: crash when a device is removed "os error 2, no file or directory"
+- [x] FIX: crash when a device is removed "os error 2, no file or directory"
   - [x] tab::refresh_is_needed should behave differently if the file doesn't exist
   - [x] move to parent if problem occurs while reading metadata
-  - [ ] need more testing... like deleting from outside
-- [ ] FEAT: image preview when not possible...
+- [x] FEAT: image preview when not possible...
   - [x] allow multiple image previewers in config and pick first available "Inline | Ueberzug | Chafa"
-  - [ ] test new configs with old version: breaking changes
 - [x] CLIPPY: preview requests are too big, box them
 - [x] IMP: new filekind variant: invalidlink. Better than storing a bool
 - [x] IMP: pressing enter while selection is a directory always cd to the dir, even if some files are flagged.
