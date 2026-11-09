@@ -263,6 +263,7 @@ pub fn clear_tmp_files() {
         .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
 }
 
+/// Removes the input socket file from filetree before leaving fm
 pub fn clear_input_socket_files() -> Result<()> {
     let input_socket_filepath = build_input_socket_filepath();
     if std::path::Path::new(&input_socket_filepath).exists() {

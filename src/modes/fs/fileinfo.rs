@@ -246,6 +246,7 @@ impl FileInfo {
         Ok(permission_mode_to_str(self.metadata.mode()))
     }
 
+    /// Returns an array of strings representing the permission.
     pub fn permissions_strings(&self) -> Result<[&'static str; 9]> {
         Ok(permission_mode_to_strings(self.metadata.mode()))
     }

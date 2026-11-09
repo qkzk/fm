@@ -5,6 +5,8 @@ use crate::config::{get_prefered_imager, Imagers};
 use crate::io::{Chafa, InlineImage, Ueberzug};
 use crate::modes::DisplayedImage;
 
+/// Environment variables used to detect if a terminal has
+/// iTerm2 image display capabilities.
 pub const COMPATIBLES: [&str; 4] = [
     "WEZTERM_EXECUTABLE",
     "WARP_HONOR_PS1",

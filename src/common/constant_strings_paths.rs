@@ -58,9 +58,12 @@ pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
 /// The index of each string gives a correct representation.
 pub const NORMAL_PERMISSIONS_STR: [&str; 8] =
     ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+/// Array of text representation of a special file permissions.
 pub const SETUID_PERMISSIONS_STR: [&str; 8] =
     ["--S", "--s", "-wS", "-ws", "r-S", "r-s", "rwS", "rws"];
+/// Array of text representation of a special file permissions.
 pub const SETGID_PERMISSIONS_STR: [&str; 8] = SETUID_PERMISSIONS_STR;
+/// Array of text representation of a sticky file permissions.
 pub const STICKY_PERMISSIONS_STR: [&str; 8] =
     ["--T", "--t", "-w-", "-wt", "r-T", "r-t", "rwT", "rwt"];
 /// Description of the application.

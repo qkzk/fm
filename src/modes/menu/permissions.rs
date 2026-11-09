@@ -285,6 +285,7 @@ const BITS: [u32; 9] = [
 
 const CHARS: [&str; 9] = ["r", "w", "x", "r", "w", "x", "r", "w", "x"];
 
+/// Takes a permission mode as a `u32` and returns an array of 9 strings.
 pub fn permission_mode_to_strings(mode: u32) -> [&'static str; 9] {
     let mut repr = ["-"; 9];
 

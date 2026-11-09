@@ -17,13 +17,15 @@ pub const SAME_WINDOW_TOKEN: &str = "%t";
 ///
 /// Some expansion are allowed to interact with the content of fm.
 /// Expanded tokens from a configured command.
-/// %s is converted into a `Selected`
-/// %f is converted into a `Flagged`
-/// %e is converted into a `Extension`
-/// %n is converted into a `Filename`
-/// %t is converted into a `$TERM` + custom flag.
-/// %c is converted into a `Clipboard content`.
-/// %x is converted into a `Selected or Flagged`.
+///
+/// - %s is converted into a `Selected`
+/// - %f is converted into a `Flagged`
+/// - %e is converted into a `Extension`
+/// - %n is converted into a `Filename`
+/// - %t is converted into a `$TERM` + custom flag.
+/// - %c is converted into a `Clipboard content`.
+/// - %x is converted into a `Selected or Flagged`.
+///
 /// Everything else is left intact and wrapped into an `Arg(string)`.
 ///
 /// # Errors
@@ -52,6 +54,16 @@ enum Token {
     FmExpansion(FmExpansion),
 }
 
+/// Variant of strings which can be expanded in shell scripts
+/// Expanded tokens from a configured command.
+///
+/// - %s is converted into a `Selected`
+/// - %f is converted into a `Flagged`
+/// - %e is converted into a `Extension`
+/// - %n is converted into a `Filename`
+/// - %t is converted into a `$TERM` + custom flag.
+/// - %c is converted into a `Clipboard content`.
+/// - %x is converted into a `Selected or Flagged`.
 #[derive(Debug)]
 pub enum FmExpansion {
     Selected,
