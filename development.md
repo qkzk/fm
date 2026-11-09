@@ -2127,11 +2127,9 @@ Once that's done, it's all. No not implement anything else
 - [x] FIX: open all tar.xz archive. Some tar.xz files aren't compressed by xz but with gz instead. Why ? I don't know. Try every method of decompression for those files.
 - [x] FIX: can't compress a whole directory easily
 
-## Current dev
-
 ### Version 0.2.5 - colouring for every displayed cell ?
 
-## Summary 
+#### Summary 
 
 - Decompress a single file.xz / file.gz into its parent directory. Up to now, it only worked for tar.xz / tar.gz
 - Fuzzy finder now uses colors from your theme 
@@ -2140,7 +2138,7 @@ Once that's done, it's all. No not implement anything else
 - Drag&Drop from fm. Drag a file or a bunch of flagged files with the mouse. It will open a dragon-drop window you can use to drop files somewhere.
 - **Breaking change** : Setup multiple image previewers in config with "Inline | Ueberzug | Chafa". This configuration can't be read in older version of fm.
 
-### Bugfixes 
+##### Bugfixes 
 
 - Fixed a typo in catppuccin theme 
 - Fixed a bug preventing you from moving a file to a parent folder 
@@ -2148,7 +2146,7 @@ Once that's done, it's all. No not implement anything else
 - Fixed a bug where fm wasn't aware of the terminal size and wouldn't use all available space
 - Fixed a bug where editing/removing a directory from outside would crash fm
 
-## Changelog
+#### Changelog
 
 - [x] FEAT: uncompress file.gz / file.xz without tar.
 - [x] FEAT: color every cell & refactor
@@ -2186,6 +2184,14 @@ Once that's done, it's all. No not implement anything else
   - [x] replace setsid by fork package
   - [x] use libc setsid to avoid zombies
   - [x] FIX: problem with paths containing spaces like camera folder. Don't quote...
+
+## Current dev
+
+### Version 0.2.6 
+
+#### Changelog 
+
+- [ ] warning: package `spin v0.9.8` in Cargo.lock is yanked in registry `crates-io`, consider running without --locked
 
 ## TODO
 
