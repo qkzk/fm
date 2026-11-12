@@ -247,8 +247,12 @@ pub const NVIM: &str = "nvim";
 pub const BSDTAR: &str = "bsdtar";
 /// column executable, used to format csv files
 pub const COLUMN: &str = "column";
+/// tar executable, used to compress files
+pub const TAR: &str = "tar";
 /// 7z executable, used to display 7z archive content
 pub const SEVENZ: &str = "7z";
+/// zip executable, used to compress files
+pub const ZIP: &str = "zip";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit

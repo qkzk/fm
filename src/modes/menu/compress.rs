@@ -1,13 +1,9 @@
 use std::borrow::Cow;
-use std::io::{prelude::*, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
-use flate2::Compression;
-use zip::write::SimpleFileOptions;
 
-use crate::common::{is_in_path, SEVENZ};
+use crate::common::{is_in_path, SEVENZ, TAR, ZIP};
 use crate::io::execute_without_output;
 use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info, log_line};
 
@@ -15,7 +11,6 @@ use crate::{impl_content, impl_draw_menu_with_char, impl_selectable, log_info, l
 #[derive(Debug)]
 pub enum CompressionMethod {
     Zip,
-    Defl,
     Gz,
     Zlib,
     Sevenz,
@@ -25,7 +20,6 @@ impl CompressionMethod {
     fn to_str(&self) -> &'static str {
         match self {
             Self::Zip => "ZIP:     archive.zip",
-            Self::Defl => "DEFLATE: archive.tar.gz",
             Self::Gz => "GZ:      archive.tar.gz",
             Self::Zlib => "ZLIB:    archive.tar.xz",
             Self::Sevenz => "7Z:      archive.7z",
@@ -46,7 +40,6 @@ impl Compresser {
             CompressionMethod::Zip,
             CompressionMethod::Zlib,
             CompressionMethod::Gz,
-            CompressionMethod::Defl,
             CompressionMethod::Sevenz,
         ];
     }
@@ -59,91 +52,54 @@ impl Compresser {
         };
         match selected {
             #[rustfmt::skip]
-            CompressionMethod::Zip  => Self::zip (Self::archive(here, "archive.zip")?, files)?,
-            CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
-            CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
-            CompressionMethod::Defl => Self::defl(Self::archive(here, "archive.tar.gz")?, files)?,
+            CompressionMethod::Zip  => Self::zip(here, "archive.zip", files)?,
+            CompressionMethod::Zlib => Self::xz(here, "archive.tar.xz", files)?,
+            CompressionMethod::Gz => Self::gz(here, "archive.tar.gz", files)?,
             CompressionMethod::Sevenz => Self::sevenz(here, "archive.7z", files)?,
         }
         log_line!("Compressed with {selected}", selected = selected.to_str());
         Ok(())
     }
 
-    fn make_tar<W>(files: Vec<PathBuf>, mut archive: tar::Builder<W>) -> Result<()>
-    where
-        W: Write,
-    {
-        for path in files.iter() {
-            if path.starts_with("..") {
-                continue;
-            }
-            if path.is_dir() {
-                archive.append_dir_all(path, path)?;
-            } else {
-                archive.append_path(path)?;
-            }
+    fn xz(dest: &Path, filename: &str, files: Vec<PathBuf>) -> Result<()> {
+        if !is_in_path(TAR) {
+            log_info!("Can't compress with gzip without {TAR} executable");
+            log_line!("Can't compress with gzip without {TAR} executable");
+            return Ok(());
         }
+        let dest = dest.join(filename);
+        let dest = dest.to_str().context("")?;
+        let mut args = vec!["-cJf", &dest];
+        args.extend(files.iter().filter_map(|file| file.to_str()));
+        let _ = execute_without_output(TAR, &args);
         Ok(())
     }
 
-    fn archive(here: &Path, archive_name: &str) -> Result<std::fs::File> {
-        let mut full_path = here.to_path_buf();
-        full_path.push(archive_name);
-        Ok(std::fs::File::create(full_path)?)
-    }
-
-    fn gzip(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
-        let mut encoder = GzEncoder::new(archive, Compression::default());
-
-        // Create tar archive and compress files
-        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
-
-        // Finish Gzip file
-        encoder.finish()?;
-
-        Ok(())
-    }
-
-    fn defl(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
-        let mut encoder = DeflateEncoder::new(archive, Compression::default());
-
-        // Create tar archive and compress files
-        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
-
-        // Finish deflate file
-        encoder.finish()?;
-
-        Ok(())
-    }
-
-    fn zlib(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
-        let mut encoder = ZlibEncoder::new(archive, Compression::default());
-
-        // Create tar archive and compress files
-        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
-
-        // Finish zlib file
-        encoder.finish()?;
-
-        Ok(())
-    }
-
-    fn zip(archive: std::fs::File, files: Vec<PathBuf>) -> Result<()> {
-        let mut zip = zip::ZipWriter::new(archive);
-        let options = SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Stored)
-            .unix_permissions(0o755)
-            .compression_method(zip::CompressionMethod::Bzip2);
-        for file in files.iter() {
-            zip.start_file(file.to_string_lossy().as_ref(), options)?;
-            let mut buffer = Vec::new();
-            let mut content = std::fs::File::open(file)?;
-            content.read_to_end(&mut buffer)?;
-            zip.write_all(&buffer)?;
+    fn zip(dest: &Path, filename: &str, files: Vec<PathBuf>) -> Result<()> {
+        if !is_in_path(ZIP) {
+            log_info!("Can't compress with gzip without {ZIP} executable");
+            log_line!("Can't compress with gzip without {ZIP} executable");
+            return Ok(());
         }
+        let dest = dest.join(filename);
+        let dest = dest.to_str().context("")?;
+        let mut args = vec!["-r", &dest];
+        args.extend(files.iter().filter_map(|file| file.to_str()));
+        let _ = execute_without_output(ZIP, &args);
+        Ok(())
+    }
 
-        // Finish zip file
-        zip.finish()?;
+    fn gz(dest: &Path, filename: &str, files: Vec<PathBuf>) -> Result<()> {
+        if !is_in_path(TAR) {
+            log_info!("Can't compress with gzip without {TAR} executable");
+            log_line!("Can't compress with gzip without {TAR} executable");
+            return Ok(());
+        }
+        let dest = dest.join(filename);
+        let dest = dest.to_str().context("")?;
+        let mut args = vec!["-czf", &dest];
+        args.extend(files.iter().filter_map(|file| file.to_str()));
+        let _ = execute_without_output(TAR, &args);
         Ok(())
     }
 
