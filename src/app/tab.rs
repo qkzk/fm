@@ -218,6 +218,7 @@ impl Tab {
         }
     }
 
+    /// Returns the selected file path
     pub fn selected_path(&self) -> Option<Arc<std::path::Path>> {
         match self.display_mode {
             Display::Tree => Some(Arc::from(self.tree.selected_path())),
