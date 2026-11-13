@@ -9,28 +9,42 @@ use flate2::read::{DeflateDecoder, GzDecoder, MultiGzDecoder, ZlibDecoder};
 use tar::Archive;
 use xz2::read::XzDecoder;
 
-use crate::common::{filename_from_path, is_in_path, path_to_string, BSDTAR, SEVENZ};
 use crate::io::{execute_and_output, execute_without_output};
+use crate::{
+    common::{filename_from_path, is_in_path, path_to_string, BSDTAR, SEVENZ, UNZIP},
+    io::execute,
+};
 use crate::{log_info, log_line};
 
-/// Decompress a zipped compressed file into its parent directory.
+/// Decompress a zip compressed file into its parent directory.
 ///
 /// # Errors
 ///
-/// It may fail if the file can't be opened or if [`zip::ZipArchive::new`] can't
-/// read the archive.
+/// It may fail if the file can't be opened.
 pub fn decompress_zip(source: &Path) -> Result<()> {
-    let file = File::open(source)?;
-    let mut zip = zip::ZipArchive::new(file)?;
-
+    log_info!("decompress_zip");
+    if !is_in_path(UNZIP) {
+        log_info!(
+            "Can't decompress {source} without {UNZIP} executable",
+            source = source.display()
+        );
+        log_line!(
+            "Can't decompress {source} without {UNZIP} executable",
+            source = source.display()
+        );
+        return Ok(());
+    }
     let parent = source
         .parent()
         .context("decompress: source should have a parent")?;
-    zip.extract(parent)?;
-
+    let args: &[&str] = &[
+        &path_to_string(&source),
+        "-d",
+        &format!("{parent}", parent = parent.display()),
+    ];
+    let _ = execute(UNZIP, args, true);
     Ok(())
 }
-
 /// Decompress a 7z compressed file into its parent directory.
 ///
 /// # Errors
@@ -115,25 +129,6 @@ pub fn decompress_xz_gz(source: &Path) -> Result<()> {
 fn try_unpack<R: Read>(reader: R, dst: &Path) -> bool {
     let mut archive = Archive::new(reader);
     archive.unpack(dst).is_ok()
-}
-
-/// List files contained in a ZIP file.
-/// Will return an error if the ZIP file is corrupted.
-///
-/// # Errors
-///
-/// It may fail if the source file can't be open.
-/// It may also fail if [`zip::ZipArchive::new`] read the archive.
-pub fn list_files_zip<P>(source: P) -> Result<Vec<String>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(source)?;
-    let zip = zip::ZipArchive::new(file)?;
-    Ok(zip
-        .file_names()
-        .map(std::borrow::ToOwned::to_owned)
-        .collect())
 }
 
 /// List files contained in a tar.something file.

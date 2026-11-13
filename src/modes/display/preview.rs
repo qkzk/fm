@@ -24,7 +24,7 @@ use crate::app::try_build_plugin;
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, ACTION_LOG_PATH, BSDTAR,
     COLUMN, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO,
-    PDFTOPPM, PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM,
+    PDFTOPPM, PDFTOTEXT, READELF, RSVG_CONVERT, SEVENZ, SS, TRANSMISSION_SHOW, UDEVADM, ZIPINFO,
 };
 use crate::config::{
     get_prefered_imager, get_previewer_command, get_previewer_plugins, get_syntect_theme, Imagers,
@@ -32,9 +32,8 @@ use crate::config::{
 use crate::io::execute_and_capture_output_without_check;
 use crate::log_info;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, ContentWindow, DisplayedImage,
-    DisplayedImageBuilder, FileInfo, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder,
-    TreeLines, Users,
+    extract_extension, list_files_tar, ContentWindow, DisplayedImage, DisplayedImageBuilder,
+    FileInfo, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
 
 fn images_are_enabled() -> bool {
@@ -62,6 +61,7 @@ pub enum ExtensionKind {
     Svg,
     Torrent,
     Video,
+    Zipinfo,
 
     #[default]
     Default,
@@ -72,7 +72,7 @@ impl ExtensionKind {
     #[rustfmt::skip]
     pub fn matcher(ext: &str) -> Self {
         match ext {
-            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "gz" | "zst" | "deb" | "rpm"
+            "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "gz" | "zst" | "deb" | "rpm"
             => Self::Archive,
             "csv"
             => Self::Csv,
@@ -100,6 +100,8 @@ impl ExtensionKind {
             => Self::Epub,
             "torrent"
             => Self::Torrent,
+            "zip"
+            => Self::Zipinfo,
             _
             => Self::Default,
         }
@@ -119,6 +121,7 @@ impl ExtensionKind {
             Self::Sevenz    => is_in_path(SEVENZ),
             Self::Svg       => is_in_path(RSVG_CONVERT),
             Self::Video     => is_in_path(FFMPEG),
+            Self::Zipinfo   => is_in_path(ZIPINFO),
             Self::Font      => is_in_path(FONTIMAGE),
             Self::Pdf       => {
                                is_in_path(PDFINFO)
@@ -160,6 +163,7 @@ impl std::fmt::Display for ExtensionKind {
             Self::Office    => "office",
             Self::Epub      => "epub",
             Self::Torrent   => "torrent",
+            Self::Zipinfo   => "zip",
             Self::Default   => "default",
         };
         write!(f, "{}", repr)
@@ -323,6 +327,9 @@ impl PreviewBuilder {
             ExtensionKind::Csv if kind.has_programs() => Ok(Preview::Text(Text::csv(&self.path)?)),
             ExtensionKind::Sevenz if kind.has_programs() => {
                 Ok(Preview::Text(Text::sevenz(&self.path)?))
+            }
+            ExtensionKind::Zipinfo if kind.has_programs() => {
+                Ok(Preview::Text(Text::zipinfo(&self.path)?))
             }
             ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(&self.path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
@@ -556,6 +563,7 @@ pub enum TextKind {
     Sevenz,
     Socket,
     Sqlite3,
+    Zipinfo,
     Torrent,
 }
 
@@ -582,6 +590,7 @@ impl TextKind {
             Self::Socket => "a Socket file",
             Self::Sqlite3 => "a Sqlite3 database file",
             Self::Torrent => "a torrent",
+            Self::Zipinfo => "a zip file",
         }
     }
 }
@@ -740,7 +749,6 @@ impl Text {
     /// A generic error message prevent it from returning an error.
     fn archive(path: &Path, ext: &str) -> Result<Self> {
         let content = match ext {
-            "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
             "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
                 list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
             }
@@ -796,6 +804,10 @@ impl Text {
             &["l", &path_to_string(&path)],
             path,
         )
+    }
+
+    fn zipinfo(path: &Path) -> Result<Self> {
+        Self::from_command_output(TextKind::Zipinfo, ZIPINFO, &[&path_to_string(&path)], path)
     }
 
     fn iso(path: &Path) -> Result<Self> {

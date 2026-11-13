@@ -253,6 +253,10 @@ pub const TAR: &str = "tar";
 pub const SEVENZ: &str = "7z";
 /// zip executable, used to compress files
 pub const ZIP: &str = "zip";
+/// unzip executable, used to decompress files
+pub const UNZIP: &str = "unzip";
+/// zipinfo executable, used to decompress files
+pub const ZIPINFO: &str = "zipinfo";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit
