@@ -249,6 +249,10 @@ pub const BSDTAR: &str = "bsdtar";
 pub const COLUMN: &str = "column";
 /// tar executable, used to compress files
 pub const TAR: &str = "tar";
+/// gz executable, used to decompress files
+pub const GZ: &str = "gz";
+/// xz executable, used to decompress files
+pub const XZ: &str = "xz";
 /// 7z executable, used to display 7z archive content
 pub const SEVENZ: &str = "7z";
 /// zip executable, used to compress files

@@ -2203,10 +2203,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] compressing a single file shouldn't use a tar
   - [ ] compressing a single file should escape filename and append extension
   - [ ] compressing a file should show a truncated list of compressed files
-  - [ ] compression & decompression should use external tools 
-    - [x] compression use external tools (7z, tar, zip)
-    - [ ] decompression 
-    - [ ] list files
+  - [x] compression & decompression should use external tools (7z, tar, bsdtar, xz, gzip, zip, zipinfo)
 
 ## TODO
 

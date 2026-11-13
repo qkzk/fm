@@ -32,8 +32,8 @@ use crate::config::{
 use crate::io::execute_and_capture_output_without_check;
 use crate::log_info;
 use crate::modes::{
-    extract_extension, list_files_tar, ContentWindow, DisplayedImage, DisplayedImageBuilder,
-    FileInfo, FileKind, FilterKind, Quote, TLine, Tree, TreeBuilder, TreeLines, Users,
+    extract_extension, ContentWindow, DisplayedImage, DisplayedImageBuilder, FileInfo, FileKind,
+    FilterKind, Quote, TLine, Tree, TreeBuilder, TreeLines, Users,
 };
 
 fn images_are_enabled() -> bool {
@@ -322,7 +322,7 @@ impl PreviewBuilder {
         let kind = ExtensionKind::matcher(&extension);
         match kind {
             ExtensionKind::Archive if kind.has_programs() => {
-                Ok(Preview::Text(Text::archive(&self.path, &extension)?))
+                Ok(Preview::Text(Text::archive(&self.path)?))
             }
             ExtensionKind::Csv if kind.has_programs() => Ok(Preview::Text(Text::csv(&self.path)?)),
             ExtensionKind::Sevenz if kind.has_programs() => {
@@ -744,24 +744,13 @@ impl Text {
         )
     }
 
-    /// Holds a list of file of an archive as returned by
-    /// `ZipArchive::file_names` or from  a `tar tvf` command.
-    /// A generic error message prevent it from returning an error.
-    fn archive(path: &Path, ext: &str) -> Result<Self> {
-        let content = match ext {
-            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
-                list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
-            }
-            _ => vec![format!("Unsupported format: {ext}")],
-        };
-
-        Ok(Self {
-            title: filename_from_path(path).context("")?.to_owned(),
-            kind: TextKind::Archive,
-            filepath: Arc::from(path),
-            length: content.len(),
-            content,
-        })
+    fn archive(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::Archive,
+            BSDTAR,
+            &["-v", "--list", "--file", path_to_string(&path).as_str()],
+            path,
+        )
     }
 
     fn csv(path: &Path) -> Result<Self> {
