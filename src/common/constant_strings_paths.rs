@@ -250,7 +250,7 @@ pub const COLUMN: &str = "column";
 /// tar executable, used to compress files
 pub const TAR: &str = "tar";
 /// gz executable, used to decompress files
-pub const GZ: &str = "gz";
+pub const GZIP: &str = "gzip";
 /// xz executable, used to decompress files
 pub const XZ: &str = "xz";
 /// 7z executable, used to display 7z archive content

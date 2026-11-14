@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::{
-    common::{filename_from_path, is_in_path, path_to_string, GZ, SEVENZ, UNZIP},
+    common::{filename_from_path, is_in_path, path_to_string, GZIP, SEVENZ, UNZIP},
     io::execute,
 };
 use crate::{
@@ -69,19 +69,19 @@ pub fn decompress_xz(source: &Path) -> Result<()> {
 }
 
 fn decompress_single_gz(source: &Path) -> Result<()> {
-    if !is_in_path(GZ) {
+    if !is_in_path(GZIP) {
         log_info!(
-            "Can't decompress {source} without {GZ} executable",
+            "Can't decompress {source} without {GZIP} executable",
             source = source.display()
         );
         log_line!(
-            "Can't decompress {source} without {GZ} executable",
+            "Can't decompress {source} without {GZIP} executable",
             source = source.display()
         );
         return Ok(());
     }
     let args = &["-d", "-k", &path_to_string(&source)];
-    let _ = execute_without_output(GZ, args);
+    let _ = execute_without_output(GZIP, args);
     Ok(())
 }
 

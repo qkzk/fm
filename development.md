@@ -2200,10 +2200,10 @@ Once that's done, it's all. No not implement anything else
 - [ ] FEAT: WEBDAV rclone whatever 
 - [ ] improve compression, decompression 
   - [ ] BUG: compressing a file flag the others (see status compression, flag all files of parent dir)
-  - [ ] compressing a single file shouldn't use a tar
-  - [ ] compressing a single file should escape filename and append extension
-  - [ ] compressing a file should show a truncated list of compressed files
   - [x] compression & decompression should use external tools (7z, tar, bsdtar, xz, gzip, zip, zipinfo)
+  - [x] compressing a single file should append extension
+  - [x] compressing a single file shouldn't use a tar
+  - [ ] compressing a file should show a truncated list of compressed files
 
 ## TODO
 
