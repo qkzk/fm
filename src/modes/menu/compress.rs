@@ -57,13 +57,13 @@ impl Compresser {
             #[rustfmt::skip]
             CompressionMethod::Zip            => Self::zip(here, base_name + ".zip", files)?,
             #[rustfmt::skip]
-            CompressionMethod::Zlib if single => Self::simple_xz(&files[0])?,
+            CompressionMethod::Zlib if single => Self::simple(&files[0], XZ)?,
             #[rustfmt::skip]
-            CompressionMethod::Zlib           => Self::tar_xz(here, base_name + ".tar.xz", files)?,
+            CompressionMethod::Zlib           => Self::tar(here, base_name + ".tar.xz", files, "xz", "-cJf")?,
             #[rustfmt::skip]
-            CompressionMethod::Gz if single   => Self::simple_gz(&files[0])?,
+            CompressionMethod::Gz if single   => Self::simple(&files[0], GZIP)?,
             #[rustfmt::skip]
-            CompressionMethod::Gz             => Self::tar_gz(here, base_name + ".tar.gz", files)?,
+            CompressionMethod::Gz             => Self::tar(here, base_name + ".tar.gz", files, "gzip", "-czf")?,
             #[rustfmt::skip]
             CompressionMethod::Sevenz         => Self::sevenz(here, base_name + ".7z", files)?,
         }
@@ -104,53 +104,33 @@ impl Compresser {
         Ok(())
     }
 
-    fn simple_xz(file: &Path) -> Result<()> {
-        if !is_in_path(XZ) {
-            log_info!("Can't compress with xz without {XZ} executable");
-            log_line!("Can't compress with xz without {XZ} executable");
+    fn simple(file: &Path, exe: &str) -> Result<()> {
+        if !is_in_path(exe) {
+            log_info!("Can't compress with xz without {exe} executable");
+            log_line!("Can't compress with xz without {exe} executable");
             return Ok(());
         }
         let p = path_to_string(&file);
         let args = vec!["-k", &p];
-        let _ = execute_without_output(XZ, &args);
+        let _ = execute_without_output(exe, &args);
         Ok(())
     }
 
-    fn tar_xz(dest: &Path, filename: String, files: Vec<PathBuf>) -> Result<()> {
+    fn tar(
+        dest: &Path,
+        filename: String,
+        files: Vec<PathBuf>,
+        method: &str,
+        flags: &str,
+    ) -> Result<()> {
         if !is_in_path(TAR) {
-            log_info!("Can't compress with gzip without {TAR} executable");
-            log_line!("Can't compress with gzip without {TAR} executable");
+            log_info!("Can't compress with {method} without {TAR} executable");
+            log_line!("Can't compress with {method} without {TAR} executable");
             return Ok(());
         }
         let dest = dest.join(filename);
         let dest = dest.to_str().context("")?;
-        let mut args = vec!["-cJf", &dest];
-        args.extend(files.iter().filter_map(|file| file.to_str()));
-        let _ = execute_without_output(TAR, &args);
-        Ok(())
-    }
-
-    fn simple_gz(file: &Path) -> Result<()> {
-        if !is_in_path(GZIP) {
-            log_info!("Can't compress with gzip without {GZIP} executable");
-            log_line!("Can't compress with gzip without {GZIP} executable");
-            return Ok(());
-        }
-        let p = path_to_string(&file);
-        let args = vec!["-k", &p];
-        let _ = execute_without_output(GZIP, &args);
-        Ok(())
-    }
-
-    fn tar_gz(dest: &Path, filename: String, files: Vec<PathBuf>) -> Result<()> {
-        if !is_in_path(TAR) {
-            log_info!("Can't compress with gzip without {TAR} executable");
-            log_line!("Can't compress with gzip without {TAR} executable");
-            return Ok(());
-        }
-        let dest = dest.join(filename);
-        let dest = dest.to_str().context("")?;
-        let mut args = vec!["-czf", &dest];
+        let mut args = vec![flags, &dest];
         args.extend(files.iter().filter_map(|file| file.to_str()));
         let _ = execute_without_output(TAR, &args);
         Ok(())
