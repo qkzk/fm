@@ -2204,6 +2204,7 @@ Once that's done, it's all. No not implement anything else
   - [x] compressing a single file should append extension
   - [x] compressing a single file shouldn't use a tar
   - [x] compressing a file should show a truncated list of compressed files
+  - [ ] add external dependencies for tar, xz, gzip, bsdtar, zip, 7z in readme
 
 ## TODO
 
