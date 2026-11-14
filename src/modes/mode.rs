@@ -291,8 +291,7 @@ impl Navigate {
     pub fn simple_draw_menu(&self) -> bool {
         matches!(
             self,
-            Self::Compress
-                | Self::Shortcut
+            Self::Shortcut
                 | Self::TuiApplication
                 | Self::CliApplication
                 | Self::Marks(_)

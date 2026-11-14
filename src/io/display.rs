@@ -29,7 +29,7 @@ use crate::{
         with_icon, with_icon_metadata, ColorG, FileStyle, Gradient, MenuStyle, FILE_STYLES,
         MATCHER, MENU_STYLES,
     },
-    io::{read_last_log_line, DrawMenu, ImageAdapter, ImageDisplayer},
+    io::{read_last_log_line, CowStr, DrawMenu, ImageAdapter, ImageDisplayer},
     log_info,
     modes::{
         highlighted_text, parse_input_permission, AnsiString, BinLine, BinaryContent, Content,
@@ -1549,6 +1549,7 @@ impl<'a> Menu<'a> {
             Navigate::History => self.history(f, rect),
             Navigate::Picker => self.picker(f, rect, menu_style),
             Navigate::Trash => self.trash(f, rect, menu_style),
+            Navigate::Compress => self.compress(f, rect, menu_style),
             _ => unreachable!("menu.simple_draw_menu should cover this mode"),
         }
     }
@@ -1657,6 +1658,33 @@ impl<'a> Menu<'a> {
             Span::styled(fileinfo.format_metadata(6, 6), fileinfo.style(file_style))
                 .render(p_rect, f.buffer_mut());
         };
+    }
+
+    fn compress(&self, f: &mut Frame, rect: &Rect, menu_style: &'static MenuStyle) {
+        self.status
+            .menu
+            .compression
+            .draw_menu(f, rect, &self.status.menu.window);
+        self.draw_flagged_for_compress(f, rect, menu_style);
+    }
+
+    fn draw_flagged_for_compress(
+        &self,
+        f: &mut Frame,
+        rect: &Rect,
+        menu_style: &'static MenuStyle,
+    ) {
+        let flagged_rect = rect.offseted(3, 8);
+        let lines: Vec<_> = self
+            .status
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .take((flagged_rect.height as usize).saturating_sub(3))
+            .map(|p| Line::styled(p.cow_str(), menu_style.palette_2))
+            .collect();
+        Paragraph::new(lines).render(flagged_rect, f.buffer_mut());
     }
 
     /// Display the possible completion items. The currently selected one is
