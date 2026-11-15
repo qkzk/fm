@@ -2199,13 +2199,6 @@ Once that's done, it's all. No not implement anything else
 
 #### Changelog 
 
-- [ ] IMP: warning: package `spin v0.9.8` in Cargo.lock is yanked in registry `crates-io`, consider running without --locked
-  - required reqwest 0.12 wich is required by oauth2-rs which hasn't been updated
-- [ ] FEAT: progress bar for decompression 
-  PB: Archive libraries (zip, 7z whatever) don't support progress output which could be captured.
-  - [ ] read a chunk at a time & decompress... which doesn't seem to be supported.
-  - [ ] 7z has progress bar...
-- [ ] FEAT: WEBDAV rclone whatever 
 - [x] improve compression, decompression 
   - [x] FIX: compressing a file flag the others (see status compression, flag all files of parent dir)
   - [x] compression & decompression should use external tools (7z, tar, bsdtar, xz, gzip, zip, zipinfo)
@@ -2213,6 +2206,13 @@ Once that's done, it's all. No not implement anything else
   - [x] compressing a single file shouldn't use a tar
   - [x] compressing a file should show a truncated list of compressed files
   - [x] add external dependencies for tar, xz, gzip, bsdtar, zip, 7z in readme
+- [ ] IMP: warning: package `spin v0.9.8` in Cargo.lock is yanked in registry `crates-io`, consider running without --locked
+  - required reqwest 0.12 wich is required by oauth2-rs which hasn't been updated
+- [ ] FEAT: progress bar for decompression 
+  PB: Archive libraries (zip, 7z whatever) don't support progress output which could be captured.
+  - [ ] read a chunk at a time & decompress... which doesn't seem to be supported.
+  - [ ] 7z has progress bar...
+- [ ] FEAT: WEBDAV rclone whatever 
 
 ## TODO
 
