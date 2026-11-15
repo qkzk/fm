@@ -287,7 +287,7 @@ end
 ### Archives
 
 - Decompress an archive by opening it (o, enter, middle click)
-- Compress flagged files with C. Pick the desired algorithm from a menu.
+- Compress flagged files with Alt+C. Pick the desired algorithm from a menu.
 
 ### Custom binds
 
@@ -536,6 +536,11 @@ Most of the openers and tui applications are configurable from config files. Som
 - [gio](https://docs.gtk.org/gio/) is used to mount removable devices
 - [udevadm](https://systemd.io/) is used to get information about fifo file
 - [bdstar](https://www.libarchive.org/) used to display common archive content
+- [zip, unzip](https://en.wikipedia.org/wiki/ZIP_(file_format)) used to compress or decompress files
+- [7z](https://www.7-zip.org/) used to compress or decompress files
+- [gzip](https://www.gzip.org/) used to compress or decompress files
+- [xz](https://tukaani.org/xz/) used to compress or decompress files
+- [tar](https://savannah.gnu.org/projects/tar) used to compress or decompress files 
 - [column](https://www.kernel.org/pub/linux/utils/util-linux/) is used to align text properly in csv previews
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [ss](https://git.kernel.org/pub/scm/network/iproute2/iproute2.git) used to display info about socket files
