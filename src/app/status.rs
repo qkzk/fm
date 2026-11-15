@@ -993,7 +993,7 @@ impl Status {
     }
 
     /// Flag a directory and all its children recursively.
-    pub fn flag_all_children_of_dir(&mut self, path: PathBuf) {
+    pub fn flag_all_children_of_dir(&mut self, path: &Path) {
         if !path.is_dir() {
             return;
         }
@@ -2288,21 +2288,6 @@ impl Status {
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(&mut self) -> Result<()> {
-        if self.menu.flagged.is_empty() {
-            let sel = self
-                .current_tab()
-                .selected_path()
-                .context("can't be empty")?;
-
-            let dir = if sel.is_dir() {
-                sel.as_ref()
-            } else {
-                self.menu.flagged.toggle(sel.as_ref());
-                sel.parent().context("no parent")?
-            };
-
-            self.flag_all_children_of_dir(dir.to_path_buf());
-        }
         let here = &self.current_tab().directory.path;
         set_current_dir(here)?;
         let files_with_relative_paths = self.flagged_or_selected_files_relative_to(here);
@@ -2321,6 +2306,22 @@ impl Status {
             }
             Err(error) => log_info!("Error compressing files. Error: {error}"),
         }
+        Ok(())
+    }
+
+    /// Flag selected _file_ or its children if it's a directory.
+    pub fn flag_selection_or_its_children(&mut self) -> Result<()> {
+        let sel = self
+            .current_tab()
+            .selected_path()
+            .context("can't be empty")?;
+
+        if sel.is_dir() {
+            self.flag_all_children_of_dir(sel.as_ref());
+        } else {
+            self.menu.flagged.toggle(sel.as_ref());
+        }
+
         Ok(())
     }
 

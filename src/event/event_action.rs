@@ -1692,6 +1692,9 @@ impl EventAction {
             if status.menu.compression.is_empty() {
                 status.menu.compression.setup();
             }
+            if status.menu.flagged.is_empty() {
+                status.flag_selection_or_its_children()?;
+            }
             status.set_menu_mode(status.index, Menu::Navigate(Navigate::Compress))?;
         }
         Ok(())

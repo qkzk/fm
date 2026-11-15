@@ -2199,7 +2199,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] 7z has progress bar...
 - [ ] FEAT: WEBDAV rclone whatever 
 - [ ] improve compression, decompression 
-  - [ ] BUG: compressing a file flag the others (see status compression, flag all files of parent dir)
+  - [x] FIX: compressing a file flag the others (see status compression, flag all files of parent dir)
   - [x] compression & decompression should use external tools (7z, tar, bsdtar, xz, gzip, zip, zipinfo)
   - [x] compressing a single file should append extension
   - [x] compressing a single file shouldn't use a tar
