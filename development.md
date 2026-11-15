@@ -2189,6 +2189,14 @@ Once that's done, it's all. No not implement anything else
 
 ### Version 0.2.6 
 
+#### Summary 
+
+- Removed internal methods for compression & decompression. Only use external tools like tar, gzip, xz, 7z, zip
+
+#### Bugfixes 
+
+- Fixed a bug where compressing a single unflagged file would flag all surrounding files
+
 #### Changelog 
 
 - [ ] IMP: warning: package `spin v0.9.8` in Cargo.lock is yanked in registry `crates-io`, consider running without --locked
@@ -2198,13 +2206,13 @@ Once that's done, it's all. No not implement anything else
   - [ ] read a chunk at a time & decompress... which doesn't seem to be supported.
   - [ ] 7z has progress bar...
 - [ ] FEAT: WEBDAV rclone whatever 
-- [ ] improve compression, decompression 
+- [x] improve compression, decompression 
   - [x] FIX: compressing a file flag the others (see status compression, flag all files of parent dir)
   - [x] compression & decompression should use external tools (7z, tar, bsdtar, xz, gzip, zip, zipinfo)
   - [x] compressing a single file should append extension
   - [x] compressing a single file shouldn't use a tar
   - [x] compressing a file should show a truncated list of compressed files
-  - [ ] add external dependencies for tar, xz, gzip, bsdtar, zip, 7z in readme
+  - [x] add external dependencies for tar, xz, gzip, bsdtar, zip, 7z in readme
 
 ## TODO
 
