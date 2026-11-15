@@ -1665,7 +1665,10 @@ impl<'a> Menu<'a> {
             .menu
             .compression
             .draw_menu(f, rect, &self.status.menu.window);
-        self.draw_flagged_for_compress(f, rect, menu_style);
+        let nb_compression_method = self.status.menu.compression.len() as u16;
+        Span::styled("Files to compress:", menu_style.second)
+            .render(rect.offseted(3, nb_compression_method + 3), f.buffer_mut());
+        self.draw_flagged_for_compress(f, rect, menu_style, nb_compression_method);
     }
 
     fn draw_flagged_for_compress(
@@ -1673,15 +1676,16 @@ impl<'a> Menu<'a> {
         f: &mut Frame,
         rect: &Rect,
         menu_style: &'static MenuStyle,
+        nb_compression_method: u16,
     ) {
-        let flagged_rect = rect.offseted(3, 8);
+        let flagged_rect = rect.offseted(3, nb_compression_method + 4);
         let lines: Vec<_> = self
             .status
             .menu
             .flagged
             .content()
             .iter()
-            .take((flagged_rect.height as usize).saturating_sub(3))
+            .take((flagged_rect.height as usize).saturating_sub(2))
             .map(|p| Line::styled(p.cow_str(), menu_style.palette_2))
             .collect();
         Paragraph::new(lines).render(flagged_rect, f.buffer_mut());
