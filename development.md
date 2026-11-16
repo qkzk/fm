@@ -2218,6 +2218,7 @@ Once that's done, it's all. No not implement anything else
   - [x] store .renames (Option<PB>, Option<PB>) in menu holder 
   - [x] use menuholder.renames[tab_index] as old path in leave menu 
   - [x] reset menuholder.renames[tab_index] = None from leave menu
+- [ ] BUG: prevent opening multiple menus with input since input is replaced in both tabs
 
 ## TODO
 
