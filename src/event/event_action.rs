@@ -325,6 +325,9 @@ impl EventAction {
             .current_tab()
             .selected_path()
             .context("No selected file")?;
+        status
+            .menu
+            .set_oldpath_for_rename(status.index, selected_path.clone())?;
         if selected_path == status.current_tab().directory.path {
             return Ok(());
         }

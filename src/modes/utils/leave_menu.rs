@@ -227,12 +227,15 @@ impl LeaveMenu {
             return Ok(());
         }
         let new_path = status.menu.input.string();
-        let old_path = status.current_tab().current_file()?.path;
+        let old_path = status.menu.renames[status.index]
+            .clone()
+            .context("Old path should be set for this tab.")?;
         match rename_fullpath(&old_path, &new_path) {
             Ok(()) => {
                 status.rename_marks(&old_path, &new_path)?;
                 status.current_tab_mut().refresh_view()?;
                 status.current_tab_mut().cd_to_file(&new_path)?;
+                status.menu.reset_oldpath_for_rename(status.index)?;
             }
             Err(error) => {
                 log_info!(

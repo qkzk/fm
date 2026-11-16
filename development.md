@@ -2196,6 +2196,7 @@ Once that's done, it's all. No not implement anything else
 #### Bugfixes 
 
 - Fixed a bug where compressing a single unflagged file would flag all surrounding files
+- Fixed a bug where change file in top window while renaming would end renaming the wrong file
 
 #### Changelog 
 
@@ -2213,8 +2214,10 @@ Once that's done, it's all. No not implement anything else
   - [ ] read a chunk at a time & decompress... which doesn't seem to be supported.
   - [ ] 7z has progress bar...
 - [ ] FEAT: WEBDAV rclone whatever 
-- [ ] BUG: select file, open rename menu, change file in top window, rename... and the wrong file is renamed.
-  FIX: add the selected file in menu.rename or whatever and use it to rename
+- [x] FIX: select file, open rename menu, change file in top window, rename... and the wrong file is renamed.
+  - [x] store .renames (Option<PB>, Option<PB>) in menu holder 
+  - [x] use menuholder.renames[tab_index] as old path in leave menu 
+  - [x] reset menuholder.renames[tab_index] = None from leave menu
 
 ## TODO
 

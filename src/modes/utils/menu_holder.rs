@@ -1,6 +1,6 @@
 use std::os::unix::fs::MetadataExt;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use ratatui::layout::Rect;
 use ratatui::Frame;
@@ -92,6 +92,8 @@ pub struct MenuHolder {
     pub history: History,
     /// mounts
     pub mount: Mount,
+    /// renamed files
+    pub renames: [Option<std::sync::Arc<std::path::Path>>; 2],
 }
 
 impl MenuHolder {
@@ -118,6 +120,7 @@ impl MenuHolder {
             tui_applications: TuiApplications::default(),
             window: ContentWindow::default(),
             mount: Mount::default(),
+            renames: [None, None],
         })
     }
 
@@ -445,10 +448,33 @@ impl MenuHolder {
         Ok(())
     }
 
+    /// Remove a mark from temp_marks and marks
     pub fn delete_mark(&mut self, old_path: &std::path::Path) -> Result<()> {
         crate::log_info!("Remove mark {old_path:?}");
         self.temp_marks.remove_path(old_path);
         self.marks.remove_path(old_path)
+    }
+
+    /// Store the old path of this tab for future rename.
+    pub fn set_oldpath_for_rename(
+        &mut self,
+        tab_index: usize,
+        old_path: std::sync::Arc<std::path::Path>,
+    ) -> Result<()> {
+        if tab_index > 1 {
+            bail!("Wrong index for tab {tab_index}");
+        }
+        self.renames[tab_index] = Some(old_path);
+        Ok(())
+    }
+
+    /// Reset the old path to None for this tab.
+    pub fn reset_oldpath_for_rename(&mut self, tab_index: usize) -> Result<()> {
+        if tab_index > 1 {
+            bail!("Wrong index for tab {tab_index}");
+        }
+        self.renames[tab_index] = None;
+        Ok(())
     }
 
     impl_navigate_from_char!(shortcut_from_char, shortcut);
