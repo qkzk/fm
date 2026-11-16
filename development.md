@@ -2213,6 +2213,8 @@ Once that's done, it's all. No not implement anything else
   - [ ] read a chunk at a time & decompress... which doesn't seem to be supported.
   - [ ] 7z has progress bar...
 - [ ] FEAT: WEBDAV rclone whatever 
+- [ ] BUG: select file, open rename menu, change file in top window, rename... and the wrong file is renamed.
+  FIX: add the selected file in menu.rename or whatever and use it to rename
 
 ## TODO
 
