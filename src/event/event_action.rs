@@ -314,6 +314,9 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::Rename)
@@ -434,6 +437,9 @@ impl EventAction {
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn chmod(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::Chmod)
@@ -447,6 +453,9 @@ impl EventAction {
 
     /// Enter a new node mode.
     fn new_node(status: &mut Status, input_kind: InputSimple) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if !matches!(input_kind, InputSimple::Newdir | InputSimple::Newfile) {
             return Ok(());
         }
@@ -546,6 +555,9 @@ impl EventAction {
 
     /// Enter the execute mode.
     pub fn exec(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputCompleted(InputCompleted::Exec)
@@ -567,6 +579,9 @@ impl EventAction {
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn sort(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::Sort)
@@ -586,6 +601,9 @@ impl EventAction {
     /// Enter the filter mode, where you can filter.
     /// See `crate::modes::Filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::Filter)
@@ -614,6 +632,9 @@ impl EventAction {
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
     pub fn search(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputCompleted(InputCompleted::Search)
@@ -628,6 +649,9 @@ impl EventAction {
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn regex_match(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::RegexMatch)
@@ -676,6 +700,9 @@ impl EventAction {
 
     /// Enter the cd mode where an user can type a path to jump to.
     pub fn cd(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputCompleted(InputCompleted::Cd)
@@ -707,6 +734,9 @@ impl EventAction {
     /// Enter the shell input command mode. The user can type a command which
     /// will be parsed and run.
     pub fn shell_command(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::ShellCommand)
@@ -887,6 +917,9 @@ impl EventAction {
     /// Enter the set neovim RPC address mode where the user can type
     /// the RPC address himself
     pub fn set_nvim_server(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::SetNvimAddr)
@@ -1538,6 +1571,9 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         status.force_clear();
         status.fuzzy_init(FuzzyKind::File);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
@@ -1547,6 +1583,9 @@ impl EventAction {
 
     /// Start a fuzzy find for a specific line with skim.
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         status.force_clear();
         status.fuzzy_init(FuzzyKind::Line);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
@@ -1555,6 +1594,9 @@ impl EventAction {
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         status.fuzzy_init(FuzzyKind::Action);
         status.current_tab_mut().set_display_mode(Display::Fuzzy);
         let help = help_string(binds, &status.internal_settings.opener);
@@ -1730,6 +1772,9 @@ impl EventAction {
     /// Enter action mode in which you can type any valid action.
     /// Some action does nothing as they require to be executed from a specific context.
     pub fn action(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputCompleted(InputCompleted::Action)
@@ -1745,6 +1790,9 @@ impl EventAction {
     /// Enter the remote mount mode where the user can provide an username, an adress and
     /// a mount point to mount a remote device through SSHFS.
     pub fn remote_mount(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().menu_mode,
             Menu::InputSimple(InputSimple::Remote)
@@ -1759,6 +1807,9 @@ impl EventAction {
     }
 
     pub fn cloud_enter_newdir_mode(status: &mut Status) -> Result<()> {
+        if status.unfocused_tab().has_input_string() {
+            return Ok(());
+        }
         status.cloud_enter_newdir_mode()
     }
 

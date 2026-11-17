@@ -202,8 +202,8 @@ impl Status {
 
         let height = size.height as usize;
         let tabs = [
-            Tab::new(&args, height, users_left)?,
-            Tab::new(&args, height, users_right)?,
+            Tab::new(true, &args, height, users_left)?,
+            Tab::new(false, &args, height, users_right)?,
         ];
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
@@ -238,6 +238,10 @@ impl Status {
         self.current_tab().directory_str()
     }
 
+    /// Returns a reference to the unfocused_tab
+    pub fn unfocused_tab(&self) -> &Tab {
+        &self.tabs[1 - self.index]
+    }
     /// True if a quit event was registered in the selected tab.
     pub fn must_quit(&self) -> bool {
         self.internal_settings.must_quit
@@ -592,8 +596,7 @@ impl Status {
     }
 
     fn set_height_of_unfocused_menu(&mut self) -> Result<()> {
-        let unfocused_tab = &self.tabs[1 - self.index];
-        match unfocused_tab.menu_mode {
+        match self.unfocused_tab().menu_mode {
             Menu::Nothing => (),
             unfocused_mode => {
                 let len = self.menu.len(unfocused_mode);

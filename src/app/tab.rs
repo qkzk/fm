@@ -76,6 +76,8 @@ impl TabSettings {
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
+    /// true if it's the left tab, false if it's the right tab
+    pub is_left: bool,
     /// Kind of display: `Preview, Normal, Tree`
     pub display_mode: Display,
 
@@ -132,7 +134,7 @@ impl Tab {
     /// - doesn't exist
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
-    pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
+    pub fn new(is_left: bool, args: &Args, height: usize, users: Users) -> Result<Self> {
         let path = &START_FOLDER.get().context("Startfolder should be set")?;
         let start_dir = Self::start_dir(path)?;
         let settings = TabSettings::new(args);
@@ -151,6 +153,7 @@ impl Tab {
 
         window.scroll_to(index);
         Ok(Self {
+            is_left,
             display_mode,
             menu_mode,
             window,
@@ -913,5 +916,11 @@ impl Tab {
 
     pub fn reset_visual(&mut self) {
         self.visual = false
+    }
+
+    /// True if this tab requires an input string,
+    /// either by being in fuzzy mode or having an open menu with input
+    pub fn has_input_string(&self) -> bool {
+        self.menu_mode.has_input_string() | self.display_mode.is_fuzzy()
     }
 }

@@ -2219,6 +2219,10 @@ Once that's done, it's all. No not implement anything else
   - [x] use menuholder.renames[tab_index] as old path in leave menu 
   - [x] reset menuholder.renames[tab_index] = None from leave menu
 - [ ] BUG: prevent opening multiple menus with input since input is replaced in both tabs
+  - [x] prevent the opening of a second menu with input mode
+  - [x] when focus leaves the cursor should disappear
+  - [ ] changing focus from a menu with input string shouldn't hide it
+  - [ ] opening any menu in other tab resets the input string. This one might be difficult since input.reset() is called everywhere...
 
 ## TODO
 

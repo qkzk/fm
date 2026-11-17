@@ -388,6 +388,11 @@ impl Menu {
     pub fn name_for_picker(&self) -> Option<String> {
         self.to_string().split(':').next().map(|s| s.to_string())
     }
+
+    /// True iff the menu requires an input string
+    pub fn has_input_string(&self) -> bool {
+        matches!(self, Self::InputCompleted(_) | Self::InputSimple(_))
+    }
 }
 
 impl CursorOffset for Menu {

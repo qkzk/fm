@@ -281,9 +281,11 @@ impl<'a> Files<'a> {
                 content_rect,
                 image_adapter,
             ),
-            DisplayMode::Fuzzy => {
-                FuzzyDisplay::new(self).fuzzy(f, second_line_rect, content_rect, menu_style)
-            }
+            DisplayMode::Fuzzy => FuzzyDisplay::new(
+                self,
+                self.tab.is_left ^ (self.status.index == 1),
+            )
+            .fuzzy(f, second_line_rect, content_rect, menu_style),
         }
     }
 
@@ -316,12 +318,14 @@ impl<'a> CopyProgressBar<'a> {
 
 struct FuzzyDisplay<'a> {
     status: &'a Status,
+    has_focus: bool,
 }
 
 impl<'a> FuzzyDisplay<'a> {
-    fn new(files: &'a Files) -> Self {
+    fn new(files: &'a Files, is_left: bool) -> Self {
         Self {
             status: files.status,
+            has_focus: is_left,
         }
     }
 
@@ -374,12 +378,14 @@ impl<'a> FuzzyDisplay<'a> {
         self.set_cursor_position(f, rect, &fuzzy.input);
     }
 
+    /// Move the cursor to the prompt
     fn set_cursor_position(&self, f: &mut Frame, rect: &Rect, input: &Input) {
-        // Move the cursor to the prompt
-        f.set_cursor_position(Position {
-            x: rect.x + input.index() as u16 + 2,
-            y: rect.y,
-        });
+        if self.has_focus {
+            f.set_cursor_position(Position {
+                x: rect.x + input.index() as u16 + 2,
+                y: rect.y,
+            });
+        }
     }
 
     fn line_match_info(
@@ -1440,6 +1446,10 @@ impl<'a> Menu<'a> {
         Paragraph::new(lines).render(p_rect, f.buffer_mut());
     }
 
+    fn this_tab_has_focus(&self) -> bool {
+        self.tab.is_left ^ (self.status.index == 1)
+    }
+
     /// Hide the cursor if the current mode doesn't require one.
     /// Otherwise, display a cursor in the top row, at a correct column.
     ///
@@ -1447,7 +1457,7 @@ impl<'a> Menu<'a> {
     ///
     /// may fail if we can't display on the terminal.
     fn cursor(&self, f: &mut Frame, rect: &Rect) {
-        if self.tab.menu_mode.show_cursor() {
+        if self.this_tab_has_focus() && self.tab.menu_mode.show_cursor() {
             let offset = self.tab.menu_mode.cursor_offset();
             let avail = rect.width.saturating_sub(offset + 1) as usize;
             let cursor_index = self.status.menu.input.display_index(avail) as u16;
