@@ -2221,11 +2221,11 @@ Once that's done, it's all. No not implement anything else
 - [ ] BUG: prevent opening multiple menus with input since input is replaced in both tabs
   - [x] prevent the opening of a second menu with input mode
   - [x] when focus leaves the cursor should disappear
-  - [ ] changing focus from a menu with input string shouldn't hide it
   - [ ] opening any menu in other tab resets the input string. This one might be difficult since input.reset() is called everywhere... store one input per menu should work since only one input can be opened at once.
     - [x] FIX: don't reset input & completion from reset tabs... 
     - [ ] needs more testing
   - [x] FIX: opening 2 menus shows wrong first line on unfocused one
+  - [x] FIX: changing focus from a menu with input string shouldn't hide it
 
 ## TODO
 
