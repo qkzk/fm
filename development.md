@@ -2225,7 +2225,7 @@ Once that's done, it's all. No not implement anything else
   - [ ] opening any menu in other tab resets the input string. This one might be difficult since input.reset() is called everywhere... store one input per menu should work since only one input can be opened at once.
     - [x] FIX: don't reset input & completion from reset tabs... 
     - [ ] needs more testing
-  - [ ] opening 2 menus shows wrong first line on unfocused one
+  - [x] FIX: opening 2 menus shows wrong first line on unfocused one
 
 ## TODO
 

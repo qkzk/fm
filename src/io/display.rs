@@ -1395,12 +1395,14 @@ impl<'a> FilesFooter<'a> {
 struct Menu<'a> {
     status: &'a Status,
     tab: &'a Tab,
+    index: usize,
 }
 
 impl<'a> Menu<'a> {
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
             status,
+            index,
             tab: &status.tabs[index],
         }
     }
@@ -1417,7 +1419,7 @@ impl<'a> Menu<'a> {
         }
         let mode = self.tab.menu_mode;
         self.cursor(f, rect);
-        MenuFirstLine::new(self.status, rect).draw(f, rect, menu_style);
+        MenuFirstLine::new(self.status, self.index, rect).draw(f, rect, menu_style);
         self.menu_line(f, rect, menu_style);
         self.content_per_mode(f, rect, mode, menu_style, file_style);
         self.binds_per_mode(f, rect, mode, menu_style);
@@ -1807,9 +1809,9 @@ impl MenuFirstLine {
     /// Number of spaces between rect border and first char of the line.
     pub const LEFT_MARGIN: u16 = 2;
 
-    fn new(status: &Status, rect: &Rect) -> Self {
+    fn new(status: &Status, index: usize, rect: &Rect) -> Self {
         Self {
-            content: status.current_tab().menu_mode.line_display(status, rect),
+            content: status.tabs[index].menu_mode.line_display(status, rect),
         }
     }
 
