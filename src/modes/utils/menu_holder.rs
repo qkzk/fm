@@ -124,13 +124,6 @@ impl MenuHolder {
         })
     }
 
-    pub fn reset(&mut self) {
-        self.input.reset();
-        self.completion.reset();
-        self.bulk.reset();
-        self.sudo_command = None;
-    }
-
     pub fn resize(&mut self, menu_mode: Menu, height: usize) {
         self.window.set_height(height);
         if let Menu::Navigate(_) = menu_mode {

@@ -588,7 +588,6 @@ impl Status {
                 return Ok(false);
             }
         }
-        self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
         self.set_menu_mode(self.index, Menu::Nothing)?;
         self.set_height_of_unfocused_menu()?;
@@ -998,7 +997,7 @@ impl Status {
         if !path.is_dir() {
             return;
         }
-        for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
             let p = entry.path();
             if !p.is_dir() {
                 self.menu.flagged.push(p.to_path_buf());
@@ -2329,13 +2328,7 @@ impl Status {
     /// Sort all file in a tab with a sort key which is selected according to which char was pressed.
     pub fn sort_by_char(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
-        self.menu.reset();
-        self.set_height_for_menu_mode(self.index, Menu::Nothing)?;
-        self.tabs[self.index].menu_mode = Menu::Nothing;
-        let len = self.menu.len(Menu::Nothing);
-        let height = self.second_window_height()?;
-        self.menu.window = ContentWindow::new(len, height);
-        self.focus = self.focus.to_parent();
+        self.reset_menu_mode()?;
         Ok(())
     }
 

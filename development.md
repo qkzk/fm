@@ -2226,10 +2226,8 @@ Once that's done, it's all. No not implement anything else
     - [ ] needs more testing
   - [x] FIX: opening 2 menus shows wrong first line on unfocused one
   - [x] FIX: changing focus from a menu with input string shouldn't hide it
-  - [ ] BUG: pressing escape on second tab resets first tab...
-    should menus be holded per tab instead of per status...
-  - [ ] FIX: when not in fucus "open with" (e) is hidden
-    line display doesn't care about the index but uses status.current_tab everywhere
+  - [x] FIX: pressing escape on second tab resets first tab...
+  - [x] FIX: when not in fucus "open with" (e) is hidden
 
 ## TODO
 
