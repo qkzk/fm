@@ -83,9 +83,11 @@ impl EventAction {
             status.current_tab_mut().reset_visual();
             return Ok(());
         };
+        if status.current_tab().menu_mode.has_input_string() {
+            status.menu.input.reset();
+            status.menu.completion.reset();
+        }
         status.leave_menu_mode()?;
-        status.menu.input.reset();
-        status.menu.completion.reset();
         Ok(())
     }
 
