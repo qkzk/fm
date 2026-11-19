@@ -1811,7 +1811,9 @@ impl MenuFirstLine {
 
     fn new(status: &Status, index: usize, rect: &Rect) -> Self {
         Self {
-            content: status.tabs[index].menu_mode.line_display(status, rect),
+            content: status.tabs[index]
+                .menu_mode
+                .line_display(status, index, rect),
         }
     }
 

@@ -11,29 +11,29 @@ use crate::modes::{
 /// Most of the time it's a few lines describing the menu actions.
 pub trait LineDisplay {
     /// Returns a displayable representation of the object as a vector of `String`s
-    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String>;
+    fn line_display(&self, status: &Status, index: usize, rect: &Rect) -> Vec<String>;
 }
 
 impl LineDisplay for Menu {
-    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String> {
+    fn line_display(&self, status: &Status, index: usize, rect: &Rect) -> Vec<String> {
         match self {
-            Self::Navigate(mode) => mode.line_display(status, rect),
-            Self::InputSimple(mode) => mode.line_display(status, rect),
-            Self::InputCompleted(mode) => mode.line_display(status, rect),
-            Self::NeedConfirmation(mode) => mode.line_display(status, rect),
+            Self::Navigate(mode) => mode.line_display(status, index, rect),
+            Self::InputSimple(mode) => mode.line_display(status, index, rect),
+            Self::InputCompleted(mode) => mode.line_display(status, index, rect),
+            Self::NeedConfirmation(mode) => mode.line_display(status, index, rect),
             Self::Nothing => vec![],
         }
     }
 }
 
 impl LineDisplay for NeedConfirmation {
-    fn line_display(&self, _status: &Status, _: &Rect) -> Vec<String> {
+    fn line_display(&self, _status: &Status, _index: usize, _: &Rect) -> Vec<String> {
         vec![self.to_string(), " (y/n)".to_owned()]
     }
 }
 
 impl LineDisplay for Navigate {
-    fn line_display(&self, _status: &Status, _: &Rect) -> Vec<String> {
+    fn line_display(&self, _status: &Status, _index: usize, _: &Rect) -> Vec<String> {
         match self {
             Self::Marks(MarkAction::Jump) => {
                 vec!["Jump to...".to_owned()]
@@ -49,8 +49,8 @@ impl LineDisplay for Navigate {
 }
 
 impl LineDisplay for InputCompleted {
-    fn line_display(&self, status: &Status, _: &Rect) -> Vec<String> {
-        let tab = status.current_tab();
+    fn line_display(&self, status: &Status, index: usize, _: &Rect) -> Vec<String> {
+        let tab = &status.tabs[index];
         let mut completion_strings = vec![tab.menu_mode.to_string(), status.menu.input.string()];
         if let Some(completion) = status
             .menu
@@ -69,7 +69,7 @@ impl LineDisplay for InputCompleted {
 }
 
 impl LineDisplay for InputSimple {
-    fn line_display(&self, status: &Status, rect: &Rect) -> Vec<String> {
+    fn line_display(&self, status: &Status, _index: usize, rect: &Rect) -> Vec<String> {
         match self {
             Self::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) => {
                 vec![
