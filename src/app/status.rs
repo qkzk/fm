@@ -636,8 +636,6 @@ impl Status {
 
     /// Refresh the input, completion and every tab.
     pub fn refresh_tabs(&mut self) -> Result<()> {
-        // self.menu.input.reset();
-        // self.menu.completion.reset();
         self.tabs[0].refresh_and_reselect_file()?;
         self.tabs[1].refresh_and_reselect_file()
     }
