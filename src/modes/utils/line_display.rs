@@ -35,11 +35,11 @@ impl LineDisplay for NeedConfirmation {
 impl LineDisplay for Navigate {
     fn line_display(&self, _status: &Status, _index: usize, _: &Rect) -> Vec<String> {
         match self {
-            Self::Marks(MarkAction::Jump) => {
-                vec!["Jump to...".to_owned()]
-            }
             Self::Marks(MarkAction::New) => {
                 vec!["Save mark...".to_owned()]
+            }
+            Self::TempMarks(MarkAction::New) => {
+                vec!["Save temp mark...".to_owned()]
             }
             _ => {
                 vec![Menu::Navigate(*self).to_string()]

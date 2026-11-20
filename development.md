@@ -2228,6 +2228,7 @@ Once that's done, it's all. No not implement anything else
   - [x] FIX: changing focus from a menu with input string shouldn't hide it
   - [x] FIX: pressing escape on second tab resets first tab...
   - [x] FIX: when not in fucus "open with" (e) is hidden
+- [x] FIX: wrong description for marks & temps marks
 
 ## TODO
 
